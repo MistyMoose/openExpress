@@ -42,6 +42,12 @@ METAINFO = METAINFO_TEMPLATE.with_suffix("")  # …metainfo.xml, made from the t
 GETTEXT_CALL = re.compile(r"\b(_|N_|NC_|ngettext|pgettext|npgettext)\(")
 KEYWORDS = ("--keyword=_", "--keyword=N_", "--keyword=NC_:1c,2", "--keyword=ngettext:1,2",
             "--keyword=pgettext:1c,2", "--keyword=npgettext:1c,2,3")
+# Every text of the code is a format of str.format(), also one without a {name}: msgfmt -c and
+# Weblate's check then refuse a translation that adds a placeholder, not only one that drops or
+# misspells one. The same arguments as KEYWORDS gives, without the contexts.
+FLAGS = tuple(f"--flag={call}:{n}:python-brace-format"
+              for call, n in (("_", 1), ("N_", 1), ("NC_", 2), ("ngettext", 1), ("ngettext", 2),
+                              ("pgettext", 2), ("npgettext", 2), ("npgettext", 3)))
 
 
 class CatalogError(Exception):
@@ -87,7 +93,7 @@ def write_template(out: Path = TEMPLATE) -> Path:
         (PO / "POTFILES").write_text("\n".join(files) + "\n", encoding="utf-8")
     # The files without their lines: a change of code moves no reference of a text it leaves
     # as it was, so the template and every .po change only where a text does.
-    _run([_tool("xgettext"), "--from-code=UTF-8", *KEYWORDS, "--add-comments=TRANSLATORS",
+    _run([_tool("xgettext"), "--from-code=UTF-8", *KEYWORDS, *FLAGS, "--add-comments=TRANSLATORS",
           "--add-location=file", f"--package-name={i18n.DOMAIN}",
           f"--package-version={__version__}", f"--output={out}", *files])
     add_flags(out)

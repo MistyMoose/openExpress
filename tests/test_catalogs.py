@@ -107,6 +107,22 @@ def test_the_template_holds_every_text_of_the_code_and_the_metainfo(tmp_path):
     assert not any(t.startswith("Clearer icons.") for t in texts)
 
 
+@needs_gettext
+def test_every_text_of_the_code_has_its_placeholders_checked(tmp_path):
+    """Every text of the code is marked python-brace-format, also one without a {name}: msgfmt
+    -c and Weblate's check then refuse a translation that adds a placeholder (which .format()
+    fails on, or shows as it is), as they refuse one that drops or misspells one."""
+    fresh = tmp_path / "openexpress.pot"
+    catalogs.write_template(fresh)
+    code = {(context, text) for path in catalogs.potfiles() if path.endswith(".py")
+            for _line, _column, context, text in _marked((ROOT / path).read_text(encoding="utf-8"))}
+    assert len(code) > 1000
+    for pot in (fresh, ROOT / "po" / "openexpress.pot"):
+        flags = _flags_in(pot)
+        without = sorted(key for key in code if "python-brace-format" not in flags.get(key, []))
+        assert without == [], f"{pot.name}: {len(without)} texts without the flag, {without[:3]}"
+
+
 def _unescaped(text: str) -> str:
     return re.sub(r"\\(.)", lambda m: {"n": "\n", "t": "\t"}.get(m.group(1), m.group(1)), text)
 

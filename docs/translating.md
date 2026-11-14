@@ -79,8 +79,10 @@ example:
 - **Plurals**: fill every plural form your language has. Weblate sets the `Plural-Forms` line
   of the header when it starts the language.
 - **Placeholders** in braces (`{count}`, `{name}`, `{size}`, `{date}`…) stay exactly as they are.
-  You may move them within the sentence. A few texts are date formats (`%Y-%m-%d`); their
-  comment says so, and they must keep valid format codes.
+  You may move them within the sentence. A text without placeholders gets none. Weblate checks
+  this for every text and does not save a translation that drops, changes or adds a
+  placeholder as finished. A few texts are date formats (`%Y-%m-%d`); their comment says so,
+  and they must keep valid format codes.
 - **Ellipsis**: the single character `…` (U+2026), wherever the English has it: a button that
   asks for more before it acts, or a task under way.
 - **Hard spaces**: where your language's typography wants a hard space (after a one-letter

@@ -136,6 +136,17 @@ Less work at each release: Hosted Weblate (D1).
 - **7b. The project merges and corrects every language.** − Each of its commits to a language's
   file made a conflict with Weblate's next pull request.
 
+### D8: the placeholders of a translation — chosen: 8a
+
+- **8a. Every text of the code marked `python-brace-format` in the template (xgettext's
+  `--flag` for each keyword, `catalogs.FLAGS`), and Weblate's "Python brace format" check
+  enforced (chosen).** A translation that drops, misspells or adds a placeholder fails
+  `msgfmt -c` and is saved in Weblate as needing editing, so it never reaches the program.
+  + `.format()` never meets a name it does not fill, and a placeholder added to a text without
+  one never shows as it is. − A translation cannot hold a brace of its own; none needs one.
+- **8b. Only the texts with a placeholder marked (xgettext's own guess).** − A placeholder added
+  to a text without one passes every check.
+
 ## 5. Garmin Connect's words for translators
 
 Garmin Connect's words matter most on the activity page (summary tiles, details, charts and

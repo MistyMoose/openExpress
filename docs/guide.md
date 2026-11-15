@@ -188,8 +188,11 @@ connected device; no login is needed.
   Drive 53 EX) from the ordinary USB connection. Right after such a device is opened, openExpress
   reads that folder once through a USB session of its own (*Reading the folder .System…*; the
   device leaves the file manager for a moment) and compares the files offered with those there
-  by name and size; their contents are not read. It installs nothing there yet, and the page
-  says so; **Check Again** reads the folder anew. When the session cannot be opened (a Flatpak
+  by name and size; their contents are not read. It installs software updates and the time zone
+  map there as Garmin Express writes them: the old file of that name is deleted first, and the
+  new one is checked by its size and read back whole; after the device's own software, the
+  message says to keep the device powered while it installs it. **Check Again** reads the folder
+  anew. When the session cannot be opened (a Flatpak
   without access to USB devices), the page says why the folder could not be read. Voices and
   vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
 

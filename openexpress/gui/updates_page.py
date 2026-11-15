@@ -109,39 +109,6 @@ def nothing_installable_title(count: int) -> str:
     return ngettext("Update Cannot Be Installed", "Updates Cannot Be Installed", count)
 
 
-def read_only_folder_text(folder: str) -> str:
-    # TRANSLATORS: subtitle of an update on the Updates page that openExpress does not install
-    # yet, without a full stop; {folder}: a folder the device hides, e.g. .System, which
-    # openExpress reads through a USB session of its own
-    return _("Not installed yet: it goes to {folder}, which openExpress only "
-             "reads").format(folder=folder)
-
-
-def read_only_software_text(folder: str) -> str:
-    # TRANSLATORS: on the Updates page, under the device's software: the device keeps it in a
-    # folder hidden from the ordinary USB connection ({folder}, e.g. .System), which openExpress
-    # reads through a USB session of its own
-    text = pgettext("updates page", "openExpress reads the folder {folder} through its own USB "
-                    "connection, but does not install into it yet.")
-    return text.format(folder=folder)
-
-
-def file_size_line(u) -> str | None:
-    """What openExpress's own session found of the file of `u` in a folder the device hides,
-    by name and size (its contents are never read); None when nothing was found."""
-    if u.hidden_size_same is None:
-        return None
-    if u.hidden_size_same:
-        # TRANSLATORS: on the Updates page, without a full stop: a file of the update's name in a
-        # folder the device hides, found by name and size only; {file}: e.g. gmaptz.img
-        return _("The device already has a file named {file} of the same size; openExpress does "
-                 "not read its contents to compare them").format(file=u.filename)
-    # TRANSLATORS: on the Updates page, without a full stop: a file of the update's name is on
-    # the device, of another size than offered, which is only noted; {file}: e.g. B444900.update
-    return _("The device already has a file named {file}, of another size than the new one; no "
-             "action is needed").format(file=u.filename)
-
-
 def not_read_text(u) -> str | None:
     """Why openExpress's own session could not read the folder of `u` the device hides; None
     when it read it, or did not try."""
@@ -191,8 +158,7 @@ def install_updates(s, chosen, progress, offered=None):
     from openexpress import updates as upd
 
     return upd.install(chosen, s.storage, session=s.client.http, progress=progress,
-                       unit_id=s.device.unit_id, offered=offered,
-                       hidden_trial=upd.HIDDEN_FOLDER_INSTALL)
+                       unit_id=s.device.unit_id, offered=offered)
 
 
 def _below_the_question(s, chosen):
@@ -506,11 +472,7 @@ class UpdatesPage:
             detail = caption(system.title, system.severity_text, system.filename)
             # Copied before and offered again: the device has not installed it.
             note = copied_update_text(system)
-            if system.hidden_read and not upd.HIDDEN_FOLDER_INSTALL:
-                # Its folder the device hides was read: what is there, nothing installed.
-                note = read_only_software_text(system.hidden_folder)
-                advice = file_size_line(system)
-            elif system.hidden_folder is not None and not system.hidden_read:
+            if system.hidden_folder is not None and not system.hidden_read:
                 # Its folder is not seen: nothing to install, and why.
                 note = hidden_software_text(system.hidden_folder)
                 advice = not_read_text(system)
@@ -550,7 +512,8 @@ class UpdatesPage:
                 if lead.changed_on_device:  # copied again, it may be taken this time
                     buttons.append(self._button(_("Reinstall"),
                                                 lambda u=lead: self.confirm_update(u), None))
-            advice = not_installed_advice()
+            advice = not_installed_advice(
+                hidden_folder=any(u.hidden_folder is not None for u in untaken))
         else:
             icon, subtitle = "object-select-symbolic", installed
             title = update_state_text("current")
@@ -606,15 +569,8 @@ class UpdatesPage:
             if note is not None:
                 subtitle += "\n" + note
                 reinstall = True
-            from openexpress import updates as upd
-
-            button = waits_for is None and (
-                u.hidden_folder is None or (upd.HIDDEN_FOLDER_INSTALL and u.hidden_read))
-            if u.hidden_read and not upd.HIDDEN_FOLDER_INSTALL:
-                subtitle += "\n" + read_only_folder_text(u.hidden_folder)
-                if (size := file_size_line(u)) is not None:
-                    subtitle += "\n" + size
-            elif u.hidden_folder is not None and not u.hidden_read:
+            button = waits_for is None and (u.hidden_folder is None or u.hidden_read)
+            if u.hidden_folder is not None and not u.hidden_read:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
         row = Adw.ActionRow(
             # TRANSLATORS: title of the row of an update of the device's own software (firmware), on
@@ -631,9 +587,16 @@ class UpdatesPage:
 
     @staticmethod
     def _update_done_text(rep) -> str:
-        """What the window says after an update was copied, with what to do next."""
-        return _("Files copied to the device.") + ("\n" + _(FINISH_STEPS_WINDOW)
+        """What the window says after an update was copied, with what to do next; after the
+        software of a device that keeps it in a folder it hides (a car navigator), that it must
+        keep its power while it installs it."""
+        from openexpress import updates as upd
+
+        text = _("Files copied to the device.") + ("\n" + _(FINISH_STEPS_WINDOW)
                                                     if rep.written else "")
+        if any(u.is_system and u.hidden_folder is not None for u in rep.written):
+            text += "\n\n" + upd.power_text()
+        return text
 
     def confirm_update(self, u) -> None:
         s = self.session

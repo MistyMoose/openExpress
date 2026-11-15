@@ -1392,11 +1392,8 @@ NAVIGATOR_WORDS = {
     "maps-navigator": {
         "en": "Cannot be read: openExpress cannot see the folder of its files on this device",
         "pl": "Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu jej plików"},
-    "updates-read-navigator": {
-        "en": "openExpress reads the folder .System through its own USB connection, but does not "
-              "install into it yet.",
-        "pl": "openExpress odczytuje folder .System przez własne połączenie USB, ale jeszcze "
-              "niczego w\u00a0nim nie instaluje."},
+    # Its folder read: installed there as on a watch.
+    "updates-read-navigator": {"en": "2 updates available", "pl": "Dostępne są 2 aktualizacje"},
     "maps-read-navigator": {
         "en": "openExpress does not install into .System yet",
         "pl": "openExpress jeszcze nie instaluje w\u00a0folderze .System"},
@@ -1411,8 +1408,9 @@ NAVIGATOR_WORDS = {
 def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, width, page):
     """Its Updates page has no Install for what goes to .System and says why; its Maps page
     shows the City Navigator without a button and says why; once .System is read through
-    openExpress's own session, they say what was read, and Device Status counts its maps; in the
-    narrowest window and a wide one. With OPENEXPRESS_NAVIGATOR_SHOTS, a picture of each."""
+    openExpress's own session, the Updates page offers Install for what goes there, the Maps
+    page says what was read, and Device Status counts its maps; in the narrowest window and a
+    wide one. With OPENEXPRESS_NAVIGATOR_SHOTS, a picture of each."""
     from pathlib import Path
 
     from gi.repository import Gtk
@@ -1423,14 +1421,16 @@ def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, widt
     win.navigation.push(win.device_view)
     win.select_section(key)
     _iterate(0.3)
-    page_widgets = descendants(win.sections[key].stack)
+    page_widgets = list(descendants(win.sections[key].stack))  # read three times below
     texts = [w.get_label() for w in page_widgets if isinstance(w, Gtk.Label) and w.get_label()]
     texts += [w.get_subtitle() for w in page_widgets if hasattr(w, "get_subtitle")
               and isinstance(w, Gtk.Widget) and w.get_subtitle()]
     assert any(NAVIGATOR_WORDS[page][language] in t for t in texts)
     buttons = {w.get_label() for w in page_widgets if isinstance(w, Gtk.Button)}
-    assert not buttons & {"Install", "Zainstaluj", "Install All", "Zainstaluj wszystkie",
+    installs = buttons & {"Install", "Zainstaluj", "Install All", "Zainstaluj wszystkie",
                           "Update", "Aktualizuj"}
+    # Only into the folder read, and only updates: never a map there.
+    assert bool(installs) == (page == "updates-read-navigator")
     if NAVIGATOR_SHOTS:
         window_picture(win, Path(NAVIGATOR_SHOTS)
                        / f"{page}-{language}-{'360' if width == NARROWEST else 'wide'}.png")

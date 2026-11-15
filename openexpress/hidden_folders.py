@@ -1,10 +1,11 @@
 """Folders of a device's top level that ordinary MTP does not show (a car navigator keeps its
 software, its time zone map and its maps in .System), read through openExpress's own USB
-session: the names and sizes of what the folders asked hold, never the contents of a file, and
-nothing is written there. The session takes the device from the file manager for a moment, so
-what it read is kept for the connection (kept) until the device is unplugged or the user asks
-again (forget: Check Again, Refresh); updates.mark_present, maps.mark_waiting and history.count
-take it from there. Whatever writes there one day lists its folder anew in its own session."""
+session: the names and sizes of what the folders asked hold, never the contents of a file. The
+session takes the device from the file manager for a moment, so what it read is kept for the
+connection (kept) until the device is unplugged or the user asks again (forget: Check Again,
+Refresh); updates.mark_present, maps.mark_waiting and history.count take it from there. A file
+of an update is written there by write, as Garmin Express writes it, in a session of its own
+that lists its folder anew."""
 
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ from openexpress.device.storage import (
     named_in_any_case,
 )
 from openexpress.i18n import _
-from openexpress.progress import say_to
+from openexpress.progress import Step, say_to
 
 log = logging.getLogger(__name__)
 
@@ -256,7 +257,7 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
         listing.folders[folder.casefold()] = ("/".join(real), entries)
 
 
-# --- writing one file there (a trial: updates._install with hidden_trial) ---------------------
+# --- writing one file there (updates._write_hidden) -------------------------------------------
 
 
 class WriteRefused(DeviceError):
@@ -286,7 +287,7 @@ def contents_not_read_text(name: str) -> str:
     # TRANSLATORS: {name} is an update, e.g. "Time Zone Map", written into a folder the device
     # hides; the device refused to give it back, so its bytes were not checked
     return _("{name} was written at its size, but the device did not let openExpress read it "
-             "back, so its contents were not compared. The trial stops here: nothing else is "
+             "back, so its contents were not compared. openExpress stops here: nothing else is "
              "written.").format(name=name)
 
 
@@ -313,7 +314,8 @@ class Written:
 
 
 def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, margin: int,
-          progress: Callable[[str], None] | None = None) -> Written:
+          progress: Callable[[str], None] | None = None, copying: str | None = None,
+          checking: str | None = None) -> Written:
     """Write `data` as the file at `path` in a folder of the top level ordinary MTP does not
     show, as Garmin Express writes there, in a session of its own: the folder listed afresh
     (the ordinary listing and Garmin's together), the space checked with the old file counted
@@ -322,7 +324,8 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
     its size as the device gives it, and the whole file read back against `md5`. A file not
     written whole, or read back otherwise, is deleted at once (NotWritten, which says what is on
     the device); one the device does not give back stays (ContentsNotRead). No folder is ever
-    made; nothing else is touched. `name`: of the update, for the words."""
+    made; nothing else is touched. `name`: of the update, for the words; `copying` and
+    `checking`: the heads of the steps told to `progress` while it is sent and read back."""
     parts = [p for p in path.replace("\\", "/").split("/") if p]
     folder, filename = "/".join(parts[:-1]), parts[-1]
     opener = storage.exclusive_ptp()
@@ -352,11 +355,18 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                 raise NotWritten(not_written_text(name, old_removed=False)) from e
             log.info("hidden folders: the old %s (%s) deleted", old.name, applog.size(old.size))
         handle = None
+        say = say_to(progress)
         try:
+            if copying:
+                say(Step(copying, 0, len(data), in_bytes=True))
             handle = session.send_object(store, parent.handle, filename, data)
             size = session.info(handle).size
             if size != len(data):
                 raise ptp.PtpWriteError(f"{size} B on the device, {len(data)} B written")
+            if copying:
+                say(Step(copying, len(data), len(data), in_bytes=True))
+            if checking:
+                say(Step(checking, 0, len(data), in_bytes=True))
             try:
                 back = session.read_file(handle)
             except ptp.PtpRefused as e:
@@ -365,6 +375,8 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                 raise ContentsNotRead(contents_not_read_text(name)) from e
             if md5 is not None and hashlib.md5(back).hexdigest() != md5.casefold():
                 raise ptp.PtpWriteError("the file read back differs from the one written")
+            if checking:
+                say(Step(checking, len(data), len(data), in_bytes=True))
         except ContentsNotRead:
             raise
         except ptp.PtpError as e:

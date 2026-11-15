@@ -118,8 +118,8 @@ def writing_text(name: str) -> str:
 def checking_text(name: str) -> str:
     from openexpress.i18n import _
 
-    # TRANSLATORS: a step of a long task: an update or a map read back from a USB drive after
-    # its copy and compared with what was written ("… · 1.2 MB of 3.4 MB")
+    # TRANSLATORS: a step of a long task: an update or a map read back from the device after its
+    # copy and compared with what was written ("… · 1.2 MB of 3.4 MB")
     return _("Checking {name} on the device").format(name=name)
 
 

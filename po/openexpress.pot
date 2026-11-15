@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-13 23:07+0100\n"
+"POT-Creation-Date: 2026-11-15 22:06+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2429,17 +2429,24 @@ msgstr ""
 #, python-brace-format
 msgid ""
 "To install it, eject the drive in the file manager, then unplug the device."
-msgstr ""
+msgid_plural ""
+"To install them, eject the drive in the file manager, then unplug the device."
+msgstr[0] ""
+msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Unplug the device to install it."
-msgstr ""
+msgid_plural "Unplug the device to install them."
+msgstr[0] ""
+msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Update copied, waiting for the device to install it:"
-msgstr ""
+msgid_plural "Updates copied, waiting for the device to install them:"
+msgstr[0] ""
+msgstr[1] ""
 
 #: openexpress/cli.py
 #, ignore-reused, python-brace-format
@@ -3967,13 +3974,6 @@ msgstr ""
 msgid ""
 "download the updates chosen with --install and copy them to the device, "
 "accepting their licenses"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"a trial: also write the updates chosen into a folder the device hides, such "
-"as a car navigator's .System, once openExpress has read it"
 msgstr ""
 
 #: openexpress/cli.py
@@ -8932,43 +8932,6 @@ msgid_plural "Updates Cannot Be Installed"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS: subtitle of an update on the Updates page that openExpress does not install
-#. yet, without a full stop; {folder}: a folder the device hides, e.g. .System, which
-#. openExpress reads through a USB session of its own
-#: openexpress/gui/updates_page.py
-#, python-brace-format
-msgid "Not installed yet: it goes to {folder}, which openExpress only reads"
-msgstr ""
-
-#. TRANSLATORS: on the Updates page, under the device's software: the device keeps it in a
-#. folder hidden from the ordinary USB connection ({folder}, e.g. .System), which openExpress
-#. reads through a USB session of its own
-#: openexpress/gui/updates_page.py
-#, python-brace-format
-msgctxt "updates page"
-msgid ""
-"openExpress reads the folder {folder} through its own USB connection, but "
-"does not install into it yet."
-msgstr ""
-
-#. TRANSLATORS: on the Updates page, without a full stop: a file of the update's name in a
-#. folder the device hides, found by name and size only; {file}: e.g. gmaptz.img
-#: openexpress/gui/updates_page.py
-#, python-brace-format
-msgid ""
-"The device already has a file named {file} of the same size; openExpress "
-"does not read its contents to compare them"
-msgstr ""
-
-#. TRANSLATORS: on the Updates page, without a full stop: a file of the update's name is on
-#. the device, of another size than offered, which is only noted; {file}: e.g. B444900.update
-#: openexpress/gui/updates_page.py
-#, python-brace-format
-msgid ""
-"The device already has a file named {file}, of another size than the new "
-"one; no action is needed"
-msgstr ""
-
 #. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
 #. ordinary USB connection, e.g. .System
 #: openexpress/gui/updates_page.py
@@ -9280,6 +9243,17 @@ msgstr ""
 msgid ""
 "Copied {when}. The device was unplugged since and has not installed it; the "
 "file is still on it, unchanged."
+msgstr ""
+
+#. TRANSLATORS: on the Updates page, after a car navigator was unplugged and plugged in
+#. again without installing the update openExpress copied
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid ""
+"Unplug the device from the computer, connect it to power (its car cable or a "
+"USB charger), turn it on and wait until it has installed the update. If it "
+"is still listed when you plug it in again, a device report helps find out "
+"why."
 msgstr ""
 
 #. TRANSLATORS: "Settings → System → About" is the menu of the device; use the words of the
@@ -10290,7 +10264,7 @@ msgstr ""
 #, python-brace-format
 msgid ""
 "{name} was written at its size, but the device did not let openExpress read "
-"it back, so its contents were not compared. The trial stops here: nothing "
+"it back, so its contents were not compared. openExpress stops here: nothing "
 "else is written."
 msgstr ""
 
@@ -11027,8 +11001,8 @@ msgstr ""
 msgid "Writing {name} to the device"
 msgstr ""
 
-#. TRANSLATORS: a step of a long task: an update or a map read back from a USB drive after
-#. its copy and compared with what was written ("… · 1.2 MB of 3.4 MB")
+#. TRANSLATORS: a step of a long task: an update or a map read back from the device after its
+#. copy and compared with what was written ("… · 1.2 MB of 3.4 MB")
 #: openexpress/progress.py
 #, python-brace-format
 msgid "Checking {name} on the device"
@@ -11928,15 +11902,6 @@ msgstr ""
 msgid "Unspecified"
 msgstr ""
 
-#. TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; its
-#. folder ({folder}, e.g. .System) the device hides, and openExpress only reads it
-#: openexpress/updates.py
-#, python-brace-format
-msgid ""
-"Not installed yet: {name} {version} goes to {folder}, which openExpress only "
-"reads."
-msgstr ""
-
 #. TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
 #. folder of the device's top level its file goes to, e.g. .System
 #: openexpress/updates.py
@@ -11964,34 +11929,6 @@ msgid ""
 "Keep the device powered while it installs its software: connect it to power "
 "(its car cable or a USB charger) or make sure its battery is well charged, "
 "and do not cut its power until it has finished."
-msgstr ""
-
-#. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder hidden from
-#. the ordinary USB connection ({folder}, e.g. .System), which openExpress reads through a
-#. USB session of its own
-#: openexpress/updates.py
-#, python-brace-format
-msgid ""
-"openExpress reads the folder {folder} through its own USB connection, but "
-"does not install into it yet."
-msgstr ""
-
-#. TRANSLATORS: `openexpress updates`, under an update: a file of its name is on the device,
-#. of another size than the one offered, which is only noted; {file}: e.g. B444900.update
-#: openexpress/updates.py
-#, python-brace-format
-msgid ""
-"The device already has a file named {file}, of another size than the new "
-"one; no action is needed."
-msgstr ""
-
-#. TRANSLATORS: `openexpress updates`: a file of the update's name in a folder the device
-#. hides, found by name and size only; {file}: e.g. gmaptz.img
-#: openexpress/updates.py
-#, python-brace-format
-msgid ""
-"The device already has a file named {file} of the same size; openExpress "
-"does not read its contents to compare them."
 msgstr ""
 
 #. TRANSLATORS: `openexpress updates`: items Garmin offers to add to the device (voices,

@@ -77,8 +77,16 @@ def not_installed_text(u) -> str:
              "file is still on it, unchanged.").format(when=when)
 
 
-def not_installed_advice() -> str:
-    """What to do about an update the device has not installed (not_installed_text)."""
+def not_installed_advice(hidden_folder: bool = False) -> str:
+    """What to do about an update the device has not installed (not_installed_text).
+    `hidden_folder`: it went to a folder the device hides (a car navigator, which installs it
+    on its own power once unplugged), which has no menu of a watch nor a drive to eject."""
+    if hidden_folder:
+        # TRANSLATORS: on the Updates page, after a car navigator was unplugged and plugged in
+        # again without installing the update openExpress copied
+        return _("Unplug the device from the computer, connect it to power (its car cable or a "
+                 "USB charger), turn it on and wait until it has installed the update. If it is "
+                 "still listed when you plug it in again, a device report helps find out why.")
     # TRANSLATORS: "Settings → System → About" is the menu of the device; use the words of the
     # Garmin devices in your language
     return _("Check the version on the device (Settings → System → About). Ejecting "

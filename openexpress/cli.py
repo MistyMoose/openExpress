@@ -1852,22 +1852,27 @@ def _copied_note(u) -> str | None:
     return _("Copied {when}: check on the device that it is installed.").format(when=when)
 
 
-def _to_install_staged(st) -> str:
-    """What makes the device install an update copied already: a device in mass storage
-    mode takes it once its drive is ejected."""
+def _to_install_staged(st, count: int = 1) -> str:
+    """What makes the device install the `count` updates copied already: a device in mass
+    storage mode takes them once its drive is ejected."""
     if getattr(st, "mass_storage", False):
-        return _("To install it, eject the drive in the file manager, then unplug the device.")
-    return _("Unplug the device to install it.")
+        return ngettext("To install it, eject the drive in the file manager, then unplug the "
+                        "device.",
+                        "To install them, eject the drive in the file manager, then unplug the "
+                        "device.", count)
+    return ngettext("Unplug the device to install it.", "Unplug the device to install them.",
+                    count)
 
 
 def _print_staged(staged, st) -> None:
     """Updates copied to the device already, waiting for it to install them (staged)."""
     if not staged:
         return
-    print(_("Update copied, waiting for the device to install it:"))
+    print(ngettext("Update copied, waiting for the device to install it:",
+                   "Updates copied, waiting for the device to install them:", len(staged)))
     for u in staged:
         print("  " + _update_line(u) + _flags(u))
-    print(_to_install_staged(st))
+    print(_to_install_staged(st, len(staged)))
 
 
 def _eject_drive(st, files: bool = False) -> bool:
@@ -1922,7 +1927,8 @@ def _print_present(present, verbose: bool) -> None:
 
 def _print_hidden(updates_shown, add_ons, lines: bool = False) -> None:
     """Under the updates: the add-ons not offered, and, when the device's own software goes to a
-    folder of its top level the listing does not show, why nothing is installed there.
+    folder of its top level the listing does not show and openExpress's own session did not
+    read, why nothing is installed there.
     `lines`: also a line for each update refused (`updates --install`)."""
     from openexpress import updates as upd
 
@@ -1931,14 +1937,9 @@ def _print_hidden(updates_shown, add_ons, lines: bool = False) -> None:
             print(upd.not_installed_here_text(u))
     if add_ons:
         print(upd.add_ons_text(len(add_ons)))
-    system = next((u for u in updates_shown if u.is_system and u.hidden_folder), None)
+    system = next((u for u in updates_shown if u.is_system and u.hidden_folder
+                   and not u.hidden_read), None)
     if system is None:
-        return
-    if system.hidden_read:
-        print(upd.read_only_software_text(system.hidden_folder))
-        if system.hidden_size_same is not None:
-            print(upd.same_size_text(system) if system.hidden_size_same
-                  else upd.other_size_text(system))
         return
     print(upd.hidden_software_text(system.hidden_folder))
     if (why := upd.not_read_text(system)) is not None:
@@ -1994,7 +1995,7 @@ def cmd_updates(args) -> int:
         for u in sorted(visible, key=lambda x: (not x.is_system, x.severity.lower() != "critical",
                                                 x.name)):
             print("  " + _update_line(u) + _flags(u))
-            if u.hidden_folder is not None:
+            if u.hidden_folder is not None and not u.hidden_read:
                 print("      " + upd.not_installed_here_text(u))
             note = _copied_note(u)
             if note:
@@ -2019,11 +2020,9 @@ def cmd_updates(args) -> int:
     chosen = upd.select(items, args.install, keep_present=args.reinstalls)
     if args.install == ["all"]:
         chosen = [u for u in chosen if not u.is_add_on]  # said with the hidden ones below
-    # Nothing goes to a folder of the device's top level the listing does not show, unless in
-    # a trial into one read through openExpress's own session.
-    trial = bool(getattr(args, "hidden_folder_trial", False))
-    refused = [u for u in chosen if u.hidden_folder is not None
-               and not (trial and u.hidden_read)]
+    # Nothing goes to a folder of the device's top level the listing does not show, unless
+    # openExpress's own session read it.
+    refused = [u for u in chosen if u.hidden_folder is not None and not u.hidden_read]
     chosen = [u for u in chosen if not any(u is r for r in refused)]
     _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
     if refused and not chosen:
@@ -2039,8 +2038,9 @@ def cmd_updates(args) -> int:
                 print("  " + _update_line(u))
         if not chosen:
             print(_("Nothing to install: every offered file is already on the device."))
-            if any(any(u is s for s in staged) for u in skipped):
-                print(_to_install_staged(st))  # what is left to do
+            waiting = [u for u in skipped if any(u is s for s in staged)]
+            if waiting:
+                print(_to_install_staged(st, len(waiting)))  # what is left to do
             return 0
     if not chosen:
         # "all" with nothing offered (a part number that is not offered is an error in select).
@@ -2078,7 +2078,7 @@ def cmd_updates(args) -> int:
         return 0
     with _progress() as progress:
         rep = upd.install(chosen, st, session=client.http, progress=progress,
-                          unit_id=dev.unit_id, offered=items, hidden_trial=trial)
+                          unit_id=dev.unit_id, offered=items)
     n = len(rep.written)
     print("\n" + ngettext("Copied {count} file.", "Copied {count} files.", n).format(count=n))
     if n and getattr(st, "mass_storage", False) and not _eject_drive(st):
@@ -3626,10 +3626,6 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--apply", action="store_true",
                    help=_("download the updates chosen with --install and copy them to the "
                           "device, accepting their licenses"))
-    s.add_argument("--hidden-folder-trial", action="store_true",
-                   help=_("a trial: also write the updates chosen into a folder the device "
-                          "hides, such as a car navigator's .System, once openExpress has read "
-                          "it"))
     s.set_defaults(func=cmd_updates)
 
     s = sub.add_parser("maps", help=_("maps on the device (TopoActive, base maps, CourseView…)"))

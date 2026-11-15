@@ -421,11 +421,6 @@ def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
 
 
 def not_installed_here_text(u: SoftwareUpdate) -> str:
-    if u.hidden_read:
-        # TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; its
-        # folder ({folder}, e.g. .System) the device hides, and openExpress only reads it
-        return _("Not installed yet: {name} {version} goes to {folder}, which openExpress only "
-                 "reads.").format(name=u.title, version=u.version, folder=u.hidden_folder)
     # TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
     # folder of the device's top level its file goes to, e.g. .System
     return _("Not installed: {name} {version} goes to {folder}, which openExpress cannot see "
@@ -448,28 +443,6 @@ def power_text() -> str:
              "its power until it has finished.")
 
 
-def read_only_software_text(folder: str) -> str:
-    # TRANSLATORS: `openexpress updates`: the device keeps its software in a folder hidden from
-    # the ordinary USB connection ({folder}, e.g. .System), which openExpress reads through a
-    # USB session of its own
-    return _("openExpress reads the folder {folder} through its own USB connection, but does "
-             "not install into it yet.").format(folder=folder)
-
-
-def other_size_text(u: SoftwareUpdate) -> str:
-    # TRANSLATORS: `openexpress updates`, under an update: a file of its name is on the device,
-    # of another size than the one offered, which is only noted; {file}: e.g. B444900.update
-    return _("The device already has a file named {file}, of another size than the new one; no "
-             "action is needed.").format(file=u.filename)
-
-
-def same_size_text(u: SoftwareUpdate) -> str:
-    # TRANSLATORS: `openexpress updates`: a file of the update's name in a folder the device
-    # hides, found by name and size only; {file}: e.g. gmaptz.img
-    return _("The device already has a file named {file} of the same size; openExpress does not "
-             "read its contents to compare them.").format(file=u.filename)
-
-
 def not_read_text(u: SoftwareUpdate) -> str | None:
     """Why the hidden folder of `u` could not be read; None when it was, or was not tried."""
     if u.hidden_folder is None or u.hidden_session in (None, hidden_folders.READ):
@@ -486,17 +459,10 @@ def add_ons_text(count: int) -> str:
                     "install add-ons yet.", count).format(count=count)
 
 
-# Whether the window installs into a folder of the top level ordinary MTP does not show (read
-# through openExpress's own session), as the command line does with --hidden-folder-trial: the
-# one change that turns it on.
-HIDDEN_FOLDER_INSTALL = False
-
-
 def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
-    """Those the window may write: none whose top folder it cannot see, unless that folder was
-    read and HIDDEN_FOLDER_INSTALL is on."""
-    return [u for u in updates
-            if u.hidden_folder is None or (HIDDEN_FOLDER_INSTALL and u.hidden_read)]
+    """Those that may be written: none whose top folder ordinary MTP does not show, unless that
+    folder was read through openExpress's own session (hidden_folders)."""
+    return [u for u in updates if u.hidden_folder is None or u.hidden_read]
 
 
 def add_ons(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -832,22 +798,20 @@ def _install(
     progress: Callable[[str], None] | None = None,
     *,
     report: InstallReport,
-    hidden_trial: bool = False,
 ) -> InstallReport:
     """`progress`: each update by its name, in bytes ("Downloading … · 1.2 MB of 3.4 MB",
-    "Copying … to the device · …"); the files are the server's and the device's own.
-    `hidden_trial`: also into a folder of the top level the device hides, once read
-    (_write_hidden). Two
-    updates for one file: one of them is copied (one_per_file). `report` is filled as it goes:
-    what was written before a failure is in it."""
+    "Copying … to the device · …"); the files are the server's and the device's own. Into a
+    folder of the top level the device hides only once openExpress's own session has read it
+    (_write_hidden). Two updates for one file: one of them is copied (one_per_file). `report`
+    is filled as it goes: what was written before a failure is in it."""
     updates = one_per_file(updates)[0]  # the others are told in the log
     # Never a folder of the device's top level the listing does not show (a car navigator's
-    # .System), unless `hidden_trial` and that folder was read through openExpress's own session;
-    # nothing is downloaded for an update refused.
+    # .System), unless that folder was read through openExpress's own session; nothing is
+    # downloaded for an update refused.
     tops = top_folders(storage)
     for u in updates:
         u.hidden_folder = top_folder_not_seen(u, tops)
-        if u.hidden_folder is not None and not (hidden_trial and u.hidden_read):
+        if u.hidden_folder is not None and not u.hidden_read:
             log.info("software update: %s %s not installed: its top folder %s is not seen",
                      u.part_number, u.version, u.hidden_folder)
             raise UpdateError(not_installed_here_text(u))
@@ -913,7 +877,9 @@ def _write_hidden(storage: Storage, u: SoftwareUpdate, local: Path, progress,
     try:
         written = hidden_folders.write(storage, u.device_path, local.read_bytes(),
                                        download.normalize_md5(u.md5), u.title,
-                                       space_margin(storage), progress=progress)
+                                       space_margin(storage), progress=progress,
+                                       copying=copying_text(u.title),
+                                       checking=checking_text(u.title))
     except hidden_folders.ContentsNotRead as e:
         report.written.append(u)
         raise UpdateError(str(e)) from e

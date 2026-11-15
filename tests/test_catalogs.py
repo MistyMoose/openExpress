@@ -22,12 +22,15 @@ XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 needs_gettext = pytest.mark.skipif(not shutil.which("xgettext"), reason="gettext not installed")
 
 
-def test_the_languages_are_those_of_linguas_each_with_its_po():
+def test_the_languages_of_linguas_each_have_their_po():
     """po/LINGUAS is the project's, not written by Weblate: Polish (which Weblate leaves out)
-    and exactly the languages with a po/<language>.po, each once."""
+    and languages with a po/<language>.po, each once. A language's file may come from Weblate
+    before the project lists it."""
     languages = catalogs.languages()
     assert "pl" in languages
-    assert sorted(p.stem for p in (ROOT / "po").glob("*.po")) == sorted(languages)
+    assert len(set(languages)) == len(languages)
+    files = {p.stem for p in (ROOT / "po").glob("*.po")}
+    assert [lang for lang in languages if lang not in files] == []
 
 
 def test_linguas_takes_comments_and_several_languages_on_a_line(tmp_path):
@@ -102,6 +105,22 @@ def test_the_template_holds_every_text_of_the_code_and_the_metainfo(tmp_path):
     # Not to translate: the name, the developer, the keywords, the release notes.
     assert not texts & {"openExpress", "Tomasz Bojanowski", "Garmin", "fenix"}
     assert not any(t.startswith("Clearer icons.") for t in texts)
+
+
+@needs_gettext
+def test_every_text_of_the_code_has_its_placeholders_checked(tmp_path):
+    """Every text of the code is marked python-brace-format, also one without a {name}: msgfmt
+    -c and Weblate's check then refuse a translation that adds a placeholder (which .format()
+    fails on, or shows as it is), as they refuse one that drops or misspells one."""
+    fresh = tmp_path / "openexpress.pot"
+    catalogs.write_template(fresh)
+    code = {(context, text) for path in catalogs.potfiles() if path.endswith(".py")
+            for _line, _column, context, text in _marked((ROOT / path).read_text(encoding="utf-8"))}
+    assert len(code) > 1000
+    for pot in (fresh, ROOT / "po" / "openexpress.pot"):
+        flags = _flags_in(pot)
+        without = sorted(key for key in code if "python-brace-format" not in flags.get(key, []))
+        assert without == [], f"{pot.name}: {len(without)} texts without the flag, {without[:3]}"
 
 
 def _unescaped(text: str) -> str:

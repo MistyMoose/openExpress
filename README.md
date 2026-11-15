@@ -44,6 +44,10 @@ devices that connect over USB (MTP) should work too – reports are welcome.
   on your account can be added from openExpress (experimental).
 - Installs and updates software and free maps (TopoActive, CourseView, Ski…), checked by MD5
   before they are written, and copies maps of your own.
+- Keeps the GPS satellite data of the Forerunner 45 and the fēnix 8 current when they sync,
+  without the phone: it only refreshes the files the watch already keeps, downloaded from
+  Garmin's server without your account or any detail of the watch (experimental, off by
+  default).
 - Copies courses from GPX files to the device, which turns them into courses when it is
   unplugged, without Garmin Connect; lists and removes them (experimental).
 - Installs, updates and removes Connect IQ apps, turns them on or off and puts them back in
@@ -98,7 +102,7 @@ devices that connect over USB (MTP) should work too – reports are welcome.
 | Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
 | Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |
 | Instinct 2S Solar | USB drive | [#24](https://github.com/TomaszBojanowski/openExpress/issues/24) |
-| Forerunner 45 | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36) |
+| Forerunner 45 | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36), [#30](https://github.com/TomaszBojanowski/openExpress/issues/30) |
 | zūmo 595LM | – | [#15](https://github.com/TomaszBojanowski/openExpress/issues/15) |
 | Other Garmin watches and bike computers over USB (MTP) | MTP | expected to work, untested |
 
@@ -178,8 +182,11 @@ changes anything only shows its plan until you add `--apply`. Every command:
   through a USB session of its own, to show what is on the device, and the command line writes
   updates there only in a trial (`--hidden-folder-trial`, [command line](docs/cli.md)). Voices
   and vehicles Garmin offers to add are not installed either.
-- GPS satellite data (ephemerides), which Garmin Express writes to the device when it syncs and
-  which helps the device find its position faster, is not written.
+- GPS satellite data is written only to watches that already keep it in a format openExpress
+  knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8), and only when
+  **Satellite Data** is turned on for them (experimental); other watches get it from the phone
+  app as before. On a watch that hides these files, such as the fēnix 8, the row appears after
+  the first sync.
 - ECG recordings are not uploaded: they go to Garmin Health, which needs a sign-in of its own. A
   sync leaves them on the device and says how many there are.
 - The privacy-policy consents are not checked before a sync; the upload consent is
@@ -228,10 +235,12 @@ also when everything works.
 
 <a href="https://hosted.weblate.org/projects/openexpress/"><img alt="Translation status on Hosted Weblate" src="https://hosted.weblate.org/widget/openexpress/openexpress/svg-badge.svg"></a>
 
-openExpress speaks English, Polish, German and Czech. To add your language or correct one, translate it
-in your browser on [Hosted Weblate](https://hosted.weblate.org/projects/openexpress/) (Polish,
-which the project keeps itself: an issue or a pull request):
-[Translating openExpress](docs/translating.md).
+openExpress speaks English, Polish, German, Czech and, in part, French. To add your language or
+correct one, translate it in your browser on
+[Hosted Weblate](https://hosted.weblate.org/projects/openexpress/) (Polish, which the project
+keeps itself: an issue or a pull request):
+[Translating openExpress](docs/translating.md). To see your translation in the program before a
+release, see [Trying a translation in the window](docs/translating.md#trying-a-translation-in-the-window).
 
 ## Documentation
 
@@ -252,6 +261,8 @@ which the project keeps itself: an issue or a pull request):
   symbolic icons.
 - hutamaki found why every write to the device failed from the Flatpak on Ubuntu 22.04
   and sent the fix ([#28](https://github.com/TomaszBojanowski/openExpress/issues/28)).
+- The translators on Hosted Weblate: prajzner (Czech), BeGiBue (German) and Alex Giroux
+  (French); see [TRANSLATORS](TRANSLATORS).
 
 ## License
 

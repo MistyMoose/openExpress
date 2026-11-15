@@ -474,6 +474,25 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   the device is not on it, or the list cannot be fetched, nothing is uploaded and nothing is
   written to the device. `openexpress baseline` needs a login too. Features without the account
   (backup, software updates, maps, music) work with any device.
+- **Satellite data (experimental).** Some older watches, such as the Forerunner 45, keep the
+  satellite data that speeds up their first GPS fix in `GARMIN/REMOTESW/CPE.BIN`, which Garmin
+  Express or the phone app refreshes. When a watch already holds that file in the format
+  openExpress knows, its device page shows **Satellite Data**; turned on, each sync downloads
+  Garmin's current file and writes it when it differs from the watch's. The file is written as
+  Garmin sends it, never changed. If the watch rejects it (it renames it to `CPE_BAD.bin`),
+  openExpress turns the switch off for that watch and says so; turned on again, the next sync
+  tries once more.
+  A fēnix 8 keeps two such files in `GARMIN/RemoteSW`, `GPE.bin` (data for seven days) and
+  `GPES.bin` (twelve hours), which it hides from the ordinary USB connection once it has unpacked
+  them. openExpress finds them at a sync in a USB session of its own (the watch leaves the file
+  manager for a moment; a Flatpak needs access to USB devices) and, with the switch on, writes
+  each when the watch's is older than a day (`GPE.bin`) or four hours (`GPES.bin`); the phone app
+  refreshes them too. A file the watch does not take is said, and the switch turns off. On a
+  watch that hides these files, such as the fēnix 8, the row appears after the first sync, once
+  openExpress has found them.
+  The watch itself decides which satellite data it uses and in which format; openExpress only
+  refreshes the files the watch already keeps, downloaded from Garmin's server as it sends them,
+  without your account or any detail of the watch, and never adds one it does not have.
 - Adding a device to the account (experimental): a device the account does not list can be
   added from openExpress, as Garmin Express adds one: **Add to Account** on the banner or on the
   device page, or `openexpress register` (a dry run; `--apply` adds it). The confirmation dialog
@@ -547,8 +566,8 @@ name; an answer that took more than 5 s is noted too.
 
 ### Languages
 
-The interface is available in English, Polish, German and Czech. The language follows the system
-locale; you can override it:
+The interface is available in English, Polish, German, Czech and, in part, French (its texts not
+translated yet stay in English). The language follows the system locale; you can override it:
 
 - in the window: main menu (☰) → Preferences → **Language**,
 - for one command: `openexpress --lang pl …` or `OPENEXPRESS_LANG=pl`,

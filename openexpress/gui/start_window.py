@@ -527,7 +527,7 @@ class StartWindow:
                     and tile.kind in ("mtp", "ums")):
                 continue
             if s is not None and self._is_open(source):
-                if (getattr(s, "drive_refusal", None) is not None
+                if (service.not_synced(s)
                         or getattr(s, "ownership_error", None) is not None):
                     continue
                 holder, device, storage = s, s.device, s.storage

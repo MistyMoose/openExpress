@@ -130,15 +130,25 @@ def refresh_last_sync_subtitle(win) -> None:
         row.set_subtitle(text)
 
 
+def sync_gate_answered(win, s) -> bool:
+    """On the window's thread, once the answer of unit-info came: the gate of the sync closed by
+    it (service.note_unit_info) is shown once, the page shown left as it is. False: for
+    GLib.idle_add, once."""
+    if win.session is s and service.note_unit_info(s):
+        win._update_banner()
+        win._update_actions()
+        win.show_overview()
+    return False
+
+
 def count_open_activities(win) -> None:
     """The device page of the open device: its activities not uploaded yet counted once, in
     the background, also when its tile was never drawn (opened at once); under the
     conditions of its tile: logged in, on the account, not a drive that is not synced. The
     count is the window's (_activities_counted)."""
     s = win.session
-    if (s is None or getattr(s, "to_sync_asked", True)
-            or getattr(s, "drive_refusal", None) is not None or not s.logged_in
-            or s.ownership_error is not None):
+    if (s is None or getattr(s, "to_sync_asked", True) or service.not_synced(s)
+            or not s.logged_in or s.ownership_error is not None):
         return
     s.to_sync_asked = True
     win.in_background(lambda: sync.activities_to_sync(s.device, s.storage),
@@ -893,6 +903,11 @@ class DevicePage:
         elif s is not None and getattr(s, "drive_refusal", None) is not None:
             # A drive openExpress does not sync needs neither the setup nor the account.
             self.banner.set_revealed(False)
+        elif (s is not None and getattr(s, "sync_refusal", None) is not None
+              and s.client.consumer is not None):
+            # Not synced over MTP: no account to sign in to for it; the setup stays, which its
+            # updates and maps need.
+            self.banner.set_revealed(False)
         elif s is not None and s.client.consumer is None:
             self.banner.set_title(_("One-time setup: choose the Garmin Express installer for "
                                     "Windows (GarminExpress.exe from garmin.com). openExpress "
@@ -990,6 +1005,9 @@ class DevicePage:
         sec = self.sections["watch"]
         sec.clear()
         d = s.device
+        if getattr(s, "on_unit_info", None) is None:
+            # Its answer, asked for the picture or the maps, may close the gate of the sync.
+            s.on_unit_info = lambda: GLib.idle_add(sync_gate_answered, self, s)
 
         hero = sec.group()
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, halign=Gtk.Align.CENTER,
@@ -1045,8 +1063,12 @@ class DevicePage:
         # in place of the sync.
         mass_storage = getattr(s, "mass_storage", False)
         refused = getattr(s, "drive_refusal", None)
+        gated = getattr(s, "sync_refusal", None)
         if refused is not None:
             sec.group(_("USB Drive"), service.drive_sync_refusal_text(*refused))
+        elif gated is not None:
+            # Over MTP, behind the gate: why, in place of its rows.
+            sec.group(_("Sync With Garmin Connect"), service.mtp_sync_refusal_text(gated))
         else:
             g = sec.group(
                 _("Sync With Garmin Connect"),
@@ -1105,7 +1127,10 @@ class DevicePage:
                 count = self.music_count
                 note_music_count(self, *(count or (None, None)))
 
-        if s.logged_in or not mass_storage:
+        # Not synced (a drive, or behind the gate over MTP): nothing of the account about the
+        # device, only the account itself.
+        about_device = not mass_storage and getattr(s, "sync_refusal", None) is None
+        if s.logged_in or about_device:
             g = sec.group(_("Garmin Connect Account"))
         if s.logged_in:
             row = Adw.ActionRow(title=GLib.markup_escape_text(s.client.auth.display))
@@ -1113,7 +1138,7 @@ class DevicePage:
             g.add(row)
         if offers_adding(s):
             g.add(add_to_account_row(self, s))
-        if not mass_storage:
+        if about_device:
             # The row stays when it cannot be read: why, in short.
             self.primary_row = Adw.ActionRow(
                 # TRANSLATORS: title of the row with the Garmin account's primary training
@@ -1567,7 +1592,7 @@ class DevicePage:
 
     def start_sync(self, first_run: str | None = None) -> None:
         s = self.session
-        if (not s or getattr(s, "drive_refusal", None) is not None or not s.logged_in
+        if (not s or service.not_synced(s) or not s.logged_in
                 or s.ownership_error is not None):
             return
 

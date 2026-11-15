@@ -497,6 +497,12 @@ class GarminClient:
                                    (self.settings.environment, unit_id, part_number), ask,
                                    about=[unit_id])
 
+    def kept_unit_info(self, unit_id: int, part_number: str) -> dict | None:
+        """The answer of unit_info as kept (answers.LIFETIMES), without asking; None when none
+        is kept."""
+        return answers.ANSWERS.kept(answers.UNIT_INFO,
+                                    (self.settings.environment, unit_id, part_number))
+
     def _omt_scope(self) -> tuple:
         """What an answer of the update server depends on besides the question: the
         environment and the language it answers in."""

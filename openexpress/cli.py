@@ -3038,7 +3038,7 @@ def cmd_courses(args) -> int:
         courses.check_local(Path(args.file), args.name)
     st, dev = open_device(args)
     if not courses.offered(dev):
-        _error(courses.not_offered_text())
+        _error(courses.not_offered_text(dev))
         return 1
     if args.courses_cmd == "add":
         return _courses_add(args, dev, st)

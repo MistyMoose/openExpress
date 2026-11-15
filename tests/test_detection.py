@@ -3323,8 +3323,10 @@ def test_pages_not_available_for_a_garmin_drive(drive_window, monkeypatch, force
 
 
 @pytest.mark.parametrize("logged_in", [False, True])
-def test_sync_is_grey_for_a_garmin_drive(drive_window, monkeypatch, logged_in):
-    """With its reason in the tooltip ("USB Drive"); and no sync starts anyway."""
+def test_no_sync_button_for_a_garmin_drive_that_is_not_synced(drive_window, monkeypatch,
+                                                              logged_in):
+    """Neither button (their box hidden; the page says why), the action off; and no sync
+    starts anyway."""
     from openexpress.gui.app import MainWindow
 
     s = drive_session(drive_window, monkeypatch)
@@ -3333,6 +3335,7 @@ def test_sync_is_grey_for_a_garmin_drive(drive_window, monkeypatch, logged_in):
     win = _sync_window(s)
     win.update()
     assert _looks(win) == (False, False, "USB Drive", "USB Drive")
+    assert win.sync_buttons.visible is False
     started = []
     win.run_task = lambda *a, **kw: started.append(a)
     MainWindow.start_sync(win)
@@ -4317,6 +4320,16 @@ class _SyncButton:
         self.tooltip = text
 
 
+class _SyncButtons:
+    """Stands in for the box of both Sync buttons: whether it is shown."""
+
+    def __init__(self):
+        self.visible = True
+
+    def set_visible(self, value):
+        self.visible = value
+
+
 def _sync_window(session=None, busy=False):
     from openexpress.gui.app import MainWindow
 
@@ -4325,7 +4338,7 @@ def _sync_window(session=None, busy=False):
         set_enabled=lambda value: enabled.__setitem__(name, value))
     win = stand_in(session=session, busy=busy, lookup_action=action,
                    _usb_title="", enabled=enabled, sync_button=_SyncButton(),
-                   sync_icon_button=_SyncButton(),
+                   sync_icon_button=_SyncButton(), sync_buttons=_SyncButtons(),
                    _ownership_title=MainWindow._ownership_title)
     window_methods(win, ["_sync_blocked"])
     win.update = types.MethodType(MainWindow._update_actions, win)

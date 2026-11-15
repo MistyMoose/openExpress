@@ -242,7 +242,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         self.net_none = self.net_retry_line = None
         self.net_rows: dict = {}
         self.content_header = self.refresh_button = self.sync_button = None
-        self.sync_icon_button = self.banner = self.pages = None
+        self.sync_icon_button = self.sync_buttons = self.banner = self.pages = None
         self.progress_bar = self.progress_label = self.busy_spinner = None
         self.unplug_label = self.action_bar = self.stop_wait_button = None
         self.content_page = self.start = self.device_view = None
@@ -354,12 +354,16 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         # TRANSLATORS: button that starts syncing
         self.sync_button = Gtk.Button(label=_("Sync"), action_name="win.sync")
         self.sync_button.add_css_class("suggested-action")
-        header.pack_end(self.sync_button)
         self.sync_icon_button = Gtk.Button(icon_name="mail-send-receive-symbolic",
                                            tooltip_text=_("Sync"), action_name="win.sync",
                                            visible=False)
         self.sync_icon_button.add_css_class("suggested-action")
-        header.pack_end(self.sync_icon_button)
+        # The breakpoint shows one of the two (their `visible`); a device that is not synced
+        # hides both through their box, which the breakpoint leaves alone.
+        self.sync_buttons = Gtk.Box()
+        self.sync_buttons.append(self.sync_icon_button)
+        self.sync_buttons.append(self.sync_button)
+        header.pack_end(self.sync_buttons)
         content_view.add_top_bar(header)
         self.banner = Adw.Banner(revealed=False)
         self.banner.connect("button-clicked", lambda *_a: self._banner_action())
@@ -465,6 +469,8 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
             return self._usb_title or _("Connect Your Device")
         if getattr(s, "drive_refusal", None) is not None:
             return _("USB Drive")  # a drive that is not synced; the device page says why
+        if getattr(s, "sync_refusal", None) is not None:
+            return service.mtp_sync_refusal_text(s.sync_refusal)  # also on the device page
         if not s.logged_in:
             return _("Not signed in to Garmin Connect")
         if s.ownership_error is not None:
@@ -476,6 +482,10 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
     def _update_actions(self) -> None:
         reason = self._sync_blocked()
         self.lookup_action("sync").set_enabled(not reason)
+        # A device that is not synced has no Sync at all (its page says why); a greyed one
+        # stays for the other reasons, which pass.
+        self.sync_buttons.set_visible(self.session is None
+                                      or not service.not_synced(self.session))
         # A blue button looks ready even when it is not: without a sync to start it is plain
         # grey and says why.
         for button, usual in ((self.sync_button, None), (self.sync_icon_button, _("Sync"))):

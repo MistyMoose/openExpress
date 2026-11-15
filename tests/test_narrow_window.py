@@ -1292,3 +1292,81 @@ def test_the_page_from_the_records_fits_the_narrowest_window(narrow_window, lang
     _iterate(0.3)
     width = _min_width(win.kept_status.page)
     assert width <= NARROWEST, width
+
+
+# --- a device whose data Garmin Connect does not take: no sync in the window ------------------
+
+
+@pytest.mark.parametrize("gate", ["mtp", "drive"])
+@pytest.mark.parametrize("width", [NARROWEST, 1000], ids=["360", "wide"])
+def test_behind_the_gate_there_is_no_sync_button_at_any_width(narrow_window, width, gate):
+    """Neither the button nor its icon of the narrow window, also across the breakpoint, which
+    switches the two; a device over MTP, and a drive that is not synced too."""
+    from openexpress import service
+
+    win = narrow_window("en")
+    win.set_default_size(width, 800)
+    key = _fill(win, "device")
+    if gate == "mtp":
+        win.session.sync_refusal = service.CONNECT_DISABLED
+    else:
+        win.session.mass_storage = True
+        win.session.drive_refusal = (service.NO_UPLOAD_TYPES, "")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section(key)
+    win._update_actions()
+    _iterate(0.3)
+    assert not win.sync_buttons.get_visible()
+    assert not win.lookup_action("sync").get_enabled()
+    win.set_default_size(1000 if width == NARROWEST else NARROWEST, 800)
+    _iterate(0.5)
+    assert not win.sync_buttons.get_visible()
+    # Another device in the window: the button again.
+    win.session.sync_refusal = win.session.drive_refusal = None
+    win.session.mass_storage = False
+    win._update_actions()
+    assert win.sync_buttons.get_visible()
+
+
+@pytest.mark.parametrize("consumer", [True, False])
+def test_behind_the_gate_no_sign_in_banner_the_setup_one_stays(narrow_window, consumer):
+    from openexpress import service
+
+    win = narrow_window("en")
+    _fill(win, "device")
+    win.session.logged_in = False
+    win.session.client.consumer = object() if consumer else None
+    win.session.sync_refusal = service.CONNECT_DISABLED
+    win._update_banner()
+    if consumer:
+        assert not win.banner.get_revealed()
+    else:
+        assert win.banner.get_revealed() and win.banner.get_title().startswith("One-time setup")
+
+
+def test_an_answer_that_comes_later_changes_the_page_once_and_keeps_the_page_shown(
+        narrow_window):
+    from openexpress import service
+
+    win = narrow_window("en")
+    win.set_default_size(1000, 800)
+    _fill(win, "device")
+    s = win.session
+    s.logged_in = False
+    s.device.files = [types.SimpleNamespace(readable=True)]  # it declares activities
+    s.client.unit_info = lambda unit, part: {"connectsupport": "Disabled"}
+    win.show_overview()  # the device page, as built when the device is opened
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section("maps")
+    win._update_banner()
+    win._update_actions()
+    assert win.sync_buttons.get_visible() and win.banner.get_revealed()  # Sign In
+    service.unit_info(s)  # the window's own request (the picture, the maps)
+    _iterate(0.3)
+    assert s.sync_refusal == service.CONNECT_DISABLED
+    assert not win.sync_buttons.get_visible() and not win.banner.get_revealed()
+    assert win.pages.get_visible_child_name() == "maps"
+    titles = [g.get_title() for g in win.sections["watch"].groups]
+    assert "Sync With Garmin Connect" in titles

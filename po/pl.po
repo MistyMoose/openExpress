@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-14 09:16+0100\n"
+"POT-Creation-Date: 2026-11-15 23:26+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -5150,6 +5150,17 @@ msgstr ""
 msgid "Garmin devices save waypoints as saved locations."
 msgstr "Urządzenia Garmina zapisują punkty jako zapisane lokalizacje."
 
+#. TRANSLATORS: a device that takes GPX files in a folder of its own ({folder}, e.g. GPX),
+#. not in Garmin/NewFiles, where openExpress copies them
+#: openexpress/courses.py
+#, python-brace-format
+msgid ""
+"This device takes GPX files in its own folder {folder}, where openExpress "
+"does not copy them."
+msgstr ""
+"To urządzenie przyjmuje pliki GPX we własnym folderze {folder}, do którego "
+"openExpress ich nie kopiuje."
+
 #. TRANSLATORS: a device that does not take GPX files in Garmin/NewFiles
 #: openexpress/courses.py
 #, python-brace-format
@@ -7010,6 +7021,17 @@ msgstr "Plik na urządzeniu"
 msgctxt "course"
 msgid "Free After Copying"
 msgstr "Wolne miejsce po skopiowaniu"
+
+#. TRANSLATORS: the Courses page of a device that takes GPX files in a folder of its own
+#. ({folder}, e.g. GPX), not in Garmin/NewFiles, where openExpress copies them
+#: openexpress/gui/courses_page.py
+#, python-brace-format
+msgid ""
+"This device takes GPX files in its own folder {folder}, where openExpress "
+"does not copy them"
+msgstr ""
+"To urządzenie przyjmuje pliki GPX we własnym folderze {folder}, do którego "
+"openExpress ich nie kopiuje"
 
 #. TRANSLATORS: the Courses page of a device that does not take GPX files
 #: openexpress/gui/courses_page.py
@@ -11685,6 +11707,25 @@ msgid ""
 msgstr ""
 "Token jest dla środowiska {token_environment}, a skonfigurowane jest "
 "{environment}. Zaloguj się ponownie."
+
+#. TRANSLATORS: "connect support: Disabled" is what Garmin's server says; keep it as it is
+#: openexpress/service.py
+#, python-brace-format
+msgid ""
+"Garmin's server says that Garmin Connect does not take this device's data "
+"(connect support: Disabled), so it is not synced."
+msgstr ""
+"Serwer Garmina mówi, że Garmin Connect nie przyjmuje danych tego urządzenia "
+"(connect support: Disabled), więc nie jest ono synchronizowane."
+
+#: openexpress/service.py
+#, python-brace-format
+msgid ""
+"This device declares no data that goes from it to Garmin Connect, so there "
+"is nothing to sync."
+msgstr ""
+"To urządzenie nie deklaruje żadnych danych, które idą z niego do Garmin "
+"Connect, więc nie ma czego synchronizować."
 
 #: openexpress/service.py
 #, python-brace-format

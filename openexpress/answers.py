@@ -257,6 +257,13 @@ class Answers:
             flight.done.set()
         return copy.deepcopy(value)
 
+    def kept(self, kind: str, key: Iterable) -> Any:
+        """A fresh answer of `kind` for `key` as kept (in memory, else on disk), without asking;
+        None when there is none. A copy of its own."""
+        with self._lock:
+            hit = self._fresh(kind, (kind, *key))
+        return None if hit is _MISSING else copy.deepcopy(hit)
+
     def _fresh(self, kind: str, full: tuple):
         """A kept answer still fresh (in memory, else on disk), or _MISSING. Under the lock."""
         now = self.clock()

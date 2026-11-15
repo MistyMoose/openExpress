@@ -115,6 +115,11 @@ class UniversalMap:
     # The cleanup rules of the answer, for every map as Garmin Express keeps them (only
     # shown: cleanup_plan).
     cleanup_rules: tuple[CleanupRule, ...] = ()
+    # The size of each of its files on the device (also those a newer version removes), by
+    # its path in lower case, as mark_waiting found them; None when they are not known (not
+    # checked against the device, its listing failed, or a folder of its files is hidden and
+    # was not read).
+    device_sizes: dict[str, int] | None = None
 
     # The states of the server ("installationState"): 0 not installed, 1 installed, 2 partly
     # on the device, 3 a newer version on the device.
@@ -538,8 +543,8 @@ def cannot_install_message(m: UniversalMap) -> str:
     if m.hidden_folder is not None:
         # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
         # e.g. .System
-        return _("Map “{name}” cannot be installed: openExpress does not install into {folder} "
-                 "yet.").format(name=m.name, folder=m.hidden_folder)
+        return _("Map “{name}” cannot be installed: openExpress does not install maps into "
+                 "{folder} yet.").format(name=m.name, folder=m.hidden_folder)
     if m.restricted is True:
         return _("Map “{name}” cannot be installed: Garmin does not offer it in your account's "
                  "country ({country}).").format(name=m.name,
@@ -630,9 +635,11 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     for m in maps:
         m.waiting = None
         m.unseen = False
+        m.device_sizes = None
     wanted = {p for m in maps for p in m.all_paths}
     present: dict[str, int] = {}  # casefolded path -> size, one listing per folder
     unseen: set[str] = set()  # casefolded folders the listing does not show
+    unread: set[str] = set()  # of those, the hidden ones not read: what they hold is not known
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
     try:
         tops = top_folders(storage)
@@ -645,6 +652,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
                         and listing.state_of(folder) == hidden_folders.READ else None)
                 if read is None:
                     unseen.add(folder.casefold())
+                    unread.add(folder.casefold())
                 for e in read or []:
                     if not e.is_dir:
                         present[posixpath.join(folder, e.name).casefold()] = e.size
@@ -662,6 +670,10 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
                     "waiting for unplugging: %s", e)
         log_states(maps)
         return
+    for m in maps:
+        paths = {p.casefold() for p in m.all_paths}
+        if not any(posixpath.dirname(p) in unread for p in paths):
+            m.device_sizes = {p: present[p] for p in paths if p in present}
     for m in maps:
         # Written: the server does not have the map (or has an older version), yet every file
         # of the map is on the device, at the size the server gives.
@@ -689,6 +701,18 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     for m in removed:
         m.waiting = WAIT_REMOVE
     log_states(maps)
+
+
+def used_on_device(maps: list[UniversalMap]) -> int | None:
+    """What the files of `maps` take on the device: the size of each as mark_waiting found it,
+    a file several maps use counted once; None when the size of a file of one of them is not
+    known (a smaller sum would be shown as the whole)."""
+    sizes: dict[str, int] = {}
+    for m in maps:
+        if m.device_sizes is None:
+            return None
+        sizes.update(m.device_sizes)
+    return sum(sizes.values())
 
 
 def _top_not_seen(paths, tops: set[str] | None) -> str | None:
@@ -721,14 +745,15 @@ def hidden_needed(maps: list[UniversalMap]) -> list[str]:
 
 def not_installed_into(folder: str) -> str:
     # TRANSLATORS: on the Maps page, under a map whose files go to a folder the device hides
-    # ({folder}, e.g. .System), and under its own maps' folder there, without a full stop
-    return _("openExpress does not install into {folder} yet").format(folder=folder)
+    # ({folder}, e.g. .System), and under its own maps' folder there, without a full stop;
+    # openExpress installs software updates there, not maps
+    return _("openExpress does not install maps into {folder} yet").format(folder=folder)
 
 
 def read_only_text(folder: str) -> str:
     # TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
-    # ({folder}, e.g. .System), which openExpress only reads
-    return _("openExpress does not install into {folder} yet.").format(folder=folder)
+    # ({folder}, e.g. .System); openExpress installs software updates there, not maps
+    return _("openExpress does not install maps into {folder} yet.").format(folder=folder)
 
 
 def _state_words(m: UniversalMap) -> str:
@@ -1019,7 +1044,7 @@ def removal_refused(m: UniversalMap) -> str | None:
     if m.hidden_folder is not None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
         # ordinary USB connection, e.g. .System
-        return _("Map “{name}” cannot be removed: openExpress does not change the folder "
+        return _("Map “{name}” cannot be removed: openExpress does not remove maps from "
                  "{folder} yet.").format(name=m.name, folder=m.hidden_folder)
     return None
 

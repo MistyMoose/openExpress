@@ -1395,8 +1395,8 @@ NAVIGATOR_WORDS = {
     # Its folder read: installed there as on a watch.
     "updates-read-navigator": {"en": "2 updates available", "pl": "Dostępne są 2 aktualizacje"},
     "maps-read-navigator": {
-        "en": "openExpress does not install into .System yet",
-        "pl": "openExpress jeszcze nie instaluje w\u00a0folderze .System"},
+        "en": "openExpress does not install maps into .System yet",
+        "pl": "openExpress jeszcze nie instaluje map w\u00a0folderze .System"},
     "status-navigator": {"en": "5.3\u00a0GB", "pl": "5,3\u00a0GB"},  # its maps
 }
 

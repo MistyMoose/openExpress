@@ -218,10 +218,14 @@ not offer in the country of your Garmin account is not installed or updated, and
 the computer's IP address); without it (not signed in, a device of another account) such a map
 is only marked.
 
+Under the device's free space, **Maps use** is what the files of its maps take there, a file
+several maps use counted once; while a folder of them cannot be read, the size is left out. A map
+with an update names the version offered and what the update downloads.
+
 On a car navigator that keeps its maps in the folder it hides (`.System/Map`), the Maps page shows
 them as read through that USB session (see [Software updates](#software-updates)), without
-**Update** or **Remove**: openExpress does not install into that folder yet. When the device's
-folder for maps of your own is there too, **Add Map…** is off for the same reason.
+**Update** or **Remove**: openExpress does not install or remove maps in that folder yet. When
+the device's folder for maps of your own is there too, **Add Map…** is off for the same reason.
 
 ## Maps of your own
 

@@ -1923,3 +1923,72 @@ def test_a_device_that_stops_answering_while_its_map_files_are_listed_stops_the_
 
     with pytest.raises(DeviceNotResponding):
         waiting_maps(server, device_root, stalls(device_root, lists=("",)))
+
+
+# --- what the maps take on the device, and the row of a map with an update --------------------
+
+ON_THE_DEVICE = {"W.img": 6000, "W.gma": 100, "DEM.img": 1500, "E.img": 3000, "E.gma": 100}
+
+
+def _maps_on_the_device(server, device_root):
+    """The maps of maps_response checked against a device with their older files: West's and
+    East's own files and the DEM.img both use."""
+    g = device_root / "GARMIN"
+    for name, size in ON_THE_DEVICE.items():
+        (g / name).write_bytes(b"x" * size)
+    all_maps = maps.parse_maps(maps_response(server))
+    maps.mark_waiting(LocalStorage(device_root), all_maps)
+    return all_maps
+
+
+def test_maps_use_counts_the_files_on_the_device_each_once(server, device_root):
+    on_device = [m for m in _maps_on_the_device(server, device_root) if m.occupies]
+    # The files there, the DEM.img of both maps once; not the sizes of the newest versions the
+    # server lists (two of 9000 B), which an update would download.
+    assert maps.used_on_device(on_device) == sum(ON_THE_DEVICE.values())
+    assert sum(m.size for m in on_device) == 18_000
+
+
+def test_maps_use_is_not_known_before_its_files_are_listed(server):
+    # Not checked against the device (mark_waiting never ran, or the listing failed).
+    assert maps.used_on_device(maps.parse_maps(maps_response(server))[:2]) is None
+
+
+@pytest.mark.needs_display
+def test_maps_page_says_what_the_maps_take_on_the_device(server, device_root):
+    from openexpress.gui.app import MainWindow
+    from openexpress.i18n import human_size
+
+    all_maps = _maps_on_the_device(server, device_root)
+    win, _reloads = maps_window(LocalStorage(device_root))
+    MainWindow.show_maps(win, (all_maps, len(all_maps)), space=(5_000_000, 32_000_000))
+    space_row = win.sections["maps"].groups[0].rows[0]
+    assert space_row.get_subtitle() == "Maps use " + human_size(sum(ON_THE_DEVICE.values()))
+    # Not read: the space without a size that would be too small.
+    unread = maps.parse_maps(maps_response(server))
+    win, _reloads = maps_window(LocalStorage(device_root))
+    MainWindow.show_maps(win, (unread, len(unread)), space=(5_000_000, 32_000_000))
+    assert not win.sections["maps"].groups[0].rows[0].get_subtitle()
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize("language", ["en", "pl"])
+def test_the_row_of_a_map_with_an_update_says_what_it_downloads(server, device_root, language):
+    from openexpress import i18n
+    from openexpress.gui.app import MainWindow
+
+    all_maps = _maps_on_the_device(server, device_root)
+    i18n.setup(language)
+    try:
+        win, _reloads = maps_window(LocalStorage(device_root))
+        MainWindow.show_maps(win, (all_maps, len(all_maps)), space=(5_000_000, 32_000_000))
+        rows = {r.get_title(): r.get_subtitle() for r in win.sections["maps"].groups[0].rows[1:]}
+    finally:
+        i18n.setup("en")
+    expected = {
+        "en": {"TopoActive East": "TopoActive · 2026.11 available · 9.0 kB to download",
+               "TopoActive West": "TopoActive · 2026.11 · 9.0 kB · up to date"},
+        "pl": {"TopoActive East": ("TopoActive · dostępna wersja 2026.11 · 9,0 kB do "
+                                   "pobrania"),
+               "TopoActive West": "TopoActive · 2026.11 · 9,0 kB · aktualna"}}
+    assert rows == expected[language]

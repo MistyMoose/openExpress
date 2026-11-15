@@ -158,12 +158,14 @@ class MapsPage:
         g.set_header_suffix(self._button(
             _("Check Again"), lambda: check_maps_again(self)))
         if free is not None and total:
-            used_by_maps = sum(m.size for m in installed if m.occupies)
-            row = Adw.ActionRow(
-                title=space_text(free, total),
-                # TRANSLATORS: subtitle under the free space of the device on the Maps page ({size}:
-                # the space the maps take)
-                subtitle=_("Maps use {size}").format(size=human_size(used_by_maps)))
+            # What their files take on the device, each file once; without a size when that of
+            # a file is not known (a folder the device hides, not read), rather than one too small.
+            used_by_maps = mp.used_on_device([m for m in installed if m.occupies])
+            row = Adw.ActionRow(title=space_text(free, total))
+            if used_by_maps is not None:
+                # TRANSLATORS: subtitle under the free space of the device on the Maps page
+                # ({size}: the space the files of the maps take on the device)
+                row.set_subtitle(_("Maps use {size}").format(size=human_size(used_by_maps)))
             row.add_suffix(Gtk.LevelBar(min_value=0, max_value=1, value=1 - free / total,
                                         valign=Gtk.Align.CENTER, width_request=120))
             g.add(row)
@@ -411,13 +413,25 @@ class MapsPage:
 
     @staticmethod
     def _map_subtitle(m) -> str:
-        """Type, version, size and status of an installed map; without the type when the map
-        is named like its type ("Base maps")."""
+        """Type, version, size and status of an installed map; with an update, the version
+        offered and what it downloads instead; without the type when the map is named like its
+        type ("Base maps")."""
         from openexpress import maps as mp
 
         kind = m.map_type.strip()
-        parts = [kind if kind.casefold() != m.name.strip().casefold() else "",
-                 m.version, human_size(m.size), m.status]
+        kind = kind if kind.casefold() != m.name.strip().casefold() else ""
+        if m.update_available:
+            # The version and the size the server lists are those of the update, not of the
+            # map on the device.
+            # TRANSLATORS: on the Maps page, in the row of a map with an update: {version} the
+            # version Garmin offers, e.g. 2027.20
+            available = _("{version} available").format(version=m.version)
+            # TRANSLATORS: on the Maps page, in the row of a map with an update: {size} what the
+            # update downloads, e.g. 8.3 GB
+            download = _("{size} to download").format(size=human_size(m.size))
+            parts = [kind, available, download]
+        else:
+            parts = [kind, m.version, human_size(m.size), m.status]
         note = mp.restriction_note(m)  # the account's country not known: only marked
         return caption(*parts) + ("\n" + note if note else "")
 

@@ -704,12 +704,12 @@ def test_a_map_in_a_folder_read_has_its_state_and_is_never_written(navigator):
     assert "cannot be read" not in city.status
     assert not maps.can_install(city)
     assert maps.cannot_install_message(city) == (
-        "Map “Made-up City Navigator” cannot be installed: openExpress does not install into "
-        ".System yet.")
+        "Map “Made-up City Navigator” cannot be installed: openExpress does not install maps "
+        "into .System yet.")
     with pytest.raises(maps.MapError) as refused:
         maps.uninstall(city, [city], storage)
     assert str(refused.value) == ("Map “Made-up City Navigator” cannot be removed: openExpress "
-                                  "does not change the folder .System yet.")
+                                  "does not remove maps from .System yet.")
     assert fake.sent(ptp.DELETE_OBJECT) == 0
 
 
@@ -722,7 +722,7 @@ def test_a_new_map_into_a_folder_not_seen_is_refused_before_anything(navigator, 
              "isreinstall": False}
     (new,) = _maps_from(storage, entry)
     assert new.hidden_folder == ".System" and not maps.can_install(new)
-    with pytest.raises(maps.MapError, match="does not install into .System yet"):
+    with pytest.raises(maps.MapError, match="does not install maps into .System yet"):
         maps.install(new, [new], storage, activate=lambda identifier: pytest.fail("activated"))
     assert not any(p.name.casefold() == ".system" for p in navigator.iterdir())
 
@@ -834,7 +834,7 @@ def test_the_maps_page_shows_a_map_read_with_its_state_and_no_buttons(navigator)
     MainWindow.show_maps(win, (found, count))
     (on_device,) = win.sections["maps"].groups
     (row,) = [r for r in on_device.rows if r.get_title() == "Made-up City Navigator"]
-    assert row.get_subtitle().endswith("\nopenExpress does not install into .System yet")
+    assert row.get_subtitle().endswith("\nopenExpress does not install maps into .System yet")
     assert "Cannot be read" not in row.get_subtitle()
     assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
 
@@ -871,11 +871,12 @@ def test_the_command_line_lists_a_map_read_and_never_removes_it(navigator, monke
         {"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR[0])]}))
     assert main(["maps"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert "    openExpress does not install into .System yet." in out and storage.sessions == 1
+    assert "    openExpress does not install maps into .System yet." in out
+    assert storage.sessions == 1
     assert main(["maps", "remove", "Made-up City Navigator", "--apply"]) == 1
     said = capsys.readouterr()
-    assert ("Map “Made-up City Navigator” cannot be removed: openExpress does not change the "
-            "folder .System yet.") in said.out + said.err
+    assert ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
+            "from .System yet.") in said.out + said.err
     assert storage.fake.sent(ptp.DELETE_OBJECT) == 0 and not said.out.startswith("Removing")
 
 
@@ -896,15 +897,15 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
         i18n.setup("en")
     expected = {
         "en": ["Reading the folder .System…", NO_SESSION_LINE,
-               "openExpress does not install into .System yet",
-               ("Map “Made-up City Navigator” cannot be removed: openExpress does not change the "
-                "folder .System yet.")],
+               "openExpress does not install maps into .System yet",
+               ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
+                "from .System yet.")],
         "pl": ["Odczytywanie folderu .System…",
                ("openExpress nie może otworzyć własnej sesji USB z\u00a0tym urządzeniem, więc nie "
                 "odczyta folderu .System."),
-               "openExpress jeszcze nie instaluje w\u00a0folderze .System",
-               ("Nie można usunąć mapy „Made-up City Navigator”: openExpress jeszcze nie zmienia "
-                "folderu .System.")]}
+               "openExpress jeszcze nie instaluje map w\u00a0folderze .System",
+               ("Nie można usunąć mapy „Made-up City Navigator”: openExpress jeszcze nie usuwa map "
+                "z\u00a0folderu .System.")]}
     assert texts == expected[language]
 
 
@@ -1068,7 +1069,7 @@ def test_an_own_map_is_never_written_into_a_folder_the_device_hides(navigator, t
     device = service.read_device(storage, found_now=False)
     overview = ownmaps.overview(device, storage, [])
     assert overview.hidden_folder == ".System"
-    with pytest.raises(maps.MapError, match="does not install into .System yet"):
+    with pytest.raises(maps.MapError, match="does not install maps into .System yet"):
         ownmaps.plan_add(device, storage, [], _map_file(tmp_path))
     assert not any(p.name.casefold() == ".system" for p in navigator.iterdir())
 
@@ -1098,7 +1099,7 @@ def test_the_maps_page_offers_no_own_map_for_a_folder_the_device_hides(navigator
     buttons = [w for w in [own.header, *descendants(own.header)] if isinstance(w, Gtk.Button)
                and w.get_label() == "Add Map…"]
     assert buttons and not any(b.get_sensitive() for b in buttons)
-    assert any(r.get_subtitle() == "openExpress does not install into .System yet"
+    assert any(r.get_subtitle() == "openExpress does not install maps into .System yet"
                for r in own.rows if hasattr(r, "get_subtitle"))
 
 
@@ -1590,3 +1591,11 @@ def test_the_advice_for_a_copy_not_installed_in_both_languages(language):
     finally:
         i18n.setup("en")
     assert texts == [NAVIGATOR_ADVICE[language], WATCH_ADVICE[language]]
+
+
+def test_maps_use_of_a_navigator_comes_from_its_folder_read(navigator):
+    storage = OverUsb(navigator, navigator_session())
+    found = _maps_from(storage)
+    assert maps.used_on_device(found) is None  # .System not read: not known
+    hidden_folders.read(storage, maps.hidden_needed(found), "test")
+    assert maps.used_on_device(_maps_from(storage)) == len(MAP_FILE)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 22:06+0100\n"
+"POT-Creation-Date: 2026-11-15 22:40+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -7086,8 +7086,8 @@ msgstr ""
 msgid "No Maps Available"
 msgstr ""
 
-#. TRANSLATORS: subtitle under the free space of the device on the Maps page ({size}:
-#. the space the maps take)
+#. TRANSLATORS: subtitle under the free space of the device on the Maps page
+#. ({size}: the space the files of the maps take on the device)
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid "Maps use {size}"
@@ -7215,6 +7215,20 @@ msgstr ""
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid "Remove Anyway"
+msgstr ""
+
+#. TRANSLATORS: on the Maps page, in the row of a map with an update: {version} the
+#. version Garmin offers, e.g. 2027.20
+#: openexpress/gui/maps_page.py
+#, python-brace-format
+msgid "{version} available"
+msgstr ""
+
+#. TRANSLATORS: on the Maps page, in the row of a map with an update: {size} what the
+#. update downloads, e.g. 8.3 GB
+#: openexpress/gui/maps_page.py
+#, python-brace-format
+msgid "{size} to download"
 msgstr ""
 
 #: openexpress/gui/maps_page.py
@@ -10532,8 +10546,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be installed: openExpress does not install into {folder} "
-"yet."
+"Map “{name}” cannot be installed: openExpress does not install maps into "
+"{folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10563,17 +10577,18 @@ msgid "No map named “{name}”"
 msgstr ""
 
 #. TRANSLATORS: on the Maps page, under a map whose files go to a folder the device hides
-#. ({folder}, e.g. .System), and under its own maps' folder there, without a full stop
+#. ({folder}, e.g. .System), and under its own maps' folder there, without a full stop;
+#. openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install into {folder} yet"
+msgid "openExpress does not install maps into {folder} yet"
 msgstr ""
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
-#. ({folder}, e.g. .System), which openExpress only reads
+#. ({folder}, e.g. .System); openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install into {folder} yet."
+msgid "openExpress does not install maps into {folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10641,7 +10656,7 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be removed: openExpress does not change the folder "
+"Map “{name}” cannot be removed: openExpress does not remove maps from "
 "{folder} yet."
 msgstr ""
 

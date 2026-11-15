@@ -166,6 +166,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         # (the device has no maps), "failed"
         self.map_state: str | None = None
         self.map_update_count = 0
+        self.map_count = 0  # maps on the device, for the "Maps" row when none can be updated
         self._map_check_session = None
         # The old files Garmin's cleanup rules would take, from the maps read for the device
         # open (maps_page.load_maps); only shown in the questions before a map changes.

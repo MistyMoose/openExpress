@@ -86,16 +86,35 @@ def _kind(datatype: str) -> str | None:
 
 class _Folders:
     """The device's folders, each listed once for all the kinds (over MTP each listing is a
-    round trip)."""
+    round trip). The folders of its top level ordinary MTP does not show come from what
+    openExpress's own session read of them on this connection (hidden_folders.kept); one of
+    them it did not read is taken for empty, so that what it holds stays in "system"."""
 
     def __init__(self, storage: Storage):
+        from openexpress import hidden_folders
+
         self.storage = storage
         self.listed: dict[str, list[Entry]] = {}
+        listing = hidden_folders.kept(storage)
+        self.hidden = listing if listing is not None and listing.state == hidden_folders.READ \
+            else None
 
     def entries(self, real: str) -> list[Entry]:
         if real not in self.listed:
-            self.listed[real] = self.storage.list_at(real)
+            self.listed[real] = self._list(real)
         return self.listed[real]
+
+    def _list(self, real: str) -> list[Entry]:
+        if self.hidden is None:
+            return self.storage.list_at(real)
+        if not real:
+            found = self.storage.list_at(real)
+            seen = {e.name.casefold() for e in found}
+            return found + [Entry(top, True) for top in self.hidden.tops()
+                            if top.casefold() not in seen]
+        if real.split("/")[0].casefold() in {t.casefold() for t in self.hidden.tops()}:
+            return self.hidden.entries(real) or []
+        return self.storage.list_at(real)
 
     def resolve(self, folder: str) -> str | None:
         real = ""
@@ -123,6 +142,21 @@ class _Folders:
                 elif deep and not e.is_link:
                     stack.append(p)
         return out
+
+
+def declared_under(device: GarminDevice, tops) -> list[str]:
+    """The folders GarminDevice.xml names (its data types, its update files) under the folders
+    of the top level `tops`, in any letter case, each once: what count walks there."""
+    wanted = {t.casefold() for t in tops}
+    if not wanted:
+        return []
+    out: dict[str, str] = {}
+    for where in [*(f.path for f in device.files),
+                  *(u.path for u in getattr(device, "update_files", None) or [])]:
+        folder = where.replace("\\", "/").strip("/")
+        if folder and folder.split("/")[0].casefold() in wanted:
+            out.setdefault(folder.casefold(), folder)
+    return sorted(out.values(), key=str.casefold)
 
 
 # Declared for the device's whole main folder (FITBinary, FTLImageVersion, the maps of a fēnix 8):
@@ -427,6 +461,17 @@ def note_connection(device: GarminDevice, storage: Storage | None, found=None,
 def _via(storage: Storage) -> str:
     """How the device is connected, as the log keeps it (VIA): a drive or MTP."""
     return "drive" if getattr(storage, "mass_storage", False) else "mtp"
+
+
+def connection_started(device: GarminDevice, storage: Storage) -> float | None:
+    """When the line of the device's present connection was written (its first opening while
+    it stays plugged in, _key), as a time stamp; None when there is no such line."""
+    if not getattr(device, "unit_id", None):
+        return None
+    key = _key(device, storage, _via(storage))
+    kept = read(device.unit_id, bool(getattr(storage, "test_drive", False)))
+    line = next((line for line in reversed(kept.lines) if line.get("conn") == key), None)
+    return _when(line).timestamp() if line is not None else None
 
 
 def _last_key(where: Path) -> str | None:

@@ -15,6 +15,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import answers, service  # noqa: E402
+from openexpress.gui.hidden_reading import read_again  # noqa: E402
 from openexpress.gui.tasks import read_again_after_failure, writes_to_device  # noqa: E402
 from openexpress.gui.window_tasks import Answer, confirm  # noqa: E402
 from openexpress.gui.words import free_after_text, space_text  # noqa: E402
@@ -24,11 +25,14 @@ log = logging.getLogger(__name__)
 
 
 def check_maps_again(win) -> None:
-    """"Check Again" on the Maps page: Garmin's servers are asked anew, unit-info too."""
+    """"Check Again" on the Maps page: Garmin's servers are asked anew, unit-info too; the
+    folders of the device's top level ordinary MTP does not show that it needs are read anew
+    first, and the page after them (hidden_reading)."""
     if win.session is not None:
         service.forget_unit_info(win.session)
         answers.forget_session(answers.UNIVERSAL_MAPS, win.session)
-    win.load_section("maps", force=True)
+    if not read_again(win):
+        win.load_section("maps", force=True)
 
 
 def map_update_type_text(word: str) -> str:
@@ -57,6 +61,12 @@ def _no_maps(win, sec, text: str, detail: str | None = None) -> None:
     check.connect("clicked", lambda *_a: check_maps_again(win))
     box.append(check)
     sec.group().add(box)
+
+
+def unseen_map_text() -> str:
+    # TRANSLATORS: on the Maps page, under a map whose files are in a folder the device hides
+    # from the ordinary USB connection (a car navigator's .System), without a full stop
+    return _("Cannot be read: openExpress cannot see the folder of its files on this device")
 
 
 class MapsPage:
@@ -148,18 +158,35 @@ class MapsPage:
         g.set_header_suffix(self._button(
             _("Check Again"), lambda: check_maps_again(self)))
         if free is not None and total:
-            used_by_maps = sum(m.size for m in installed if m.occupies)
-            row = Adw.ActionRow(
-                title=space_text(free, total),
-                # TRANSLATORS: subtitle under the free space of the device on the Maps page ({size}:
-                # the space the maps take)
-                subtitle=_("Maps use {size}").format(size=human_size(used_by_maps)))
+            # What their files take on the device, each file once; without a size when that of
+            # a file is not known (a folder the device hides, not read), rather than one too small.
+            used_by_maps = mp.used_on_device([m for m in installed if m.occupies])
+            row = Adw.ActionRow(title=space_text(free, total))
+            if used_by_maps is not None:
+                # TRANSLATORS: subtitle under the free space of the device on the Maps page
+                # ({size}: the space the files of the maps take on the device)
+                row.set_subtitle(_("Maps use {size}").format(size=human_size(used_by_maps)))
             row.add_suffix(Gtk.LevelBar(min_value=0, max_value=1, value=1 - free / total,
                                         valign=Gtk.Align.CENTER, width_request=120))
             g.add(row)
         for m in installed:
             row = Adw.ActionRow(title=GLib.markup_escape_text(m.name),
                                 subtitle=GLib.markup_escape_text(self._map_subtitle(m)))
+            if m.unseen:
+                # The device hides the folder of its files: no state, nothing to do, and why.
+                kind = m.map_type.strip()
+                row.set_subtitle(GLib.markup_escape_text(
+                    caption(kind if kind.casefold() != m.name.strip().casefold() else "",
+                            m.version, human_size(m.size)) + "\n" + unseen_map_text()))
+                g.add(row)
+                continue
+            if m.hidden_folder is not None:
+                # Its files are in a folder the device hides, read through openExpress's own
+                # session: its state, and nothing is installed or removed there yet.
+                row.set_subtitle(GLib.markup_escape_text(
+                    self._map_subtitle(m) + "\n" + mp.cannot_install_reason(m)))
+                g.add(row)
+                continue
             if m.waiting:
                 # Nothing to do until the device is unplugged, as for apps waiting there.
                 row.set_sensitive(m.waiting != mp.WAIT_REMOVE)
@@ -222,7 +249,15 @@ class MapsPage:
         g = self.sections["maps"].group(
             # TRANSLATORS: heading of the group of maps the user added, not from Garmin
             _("Own Maps"), _("Maps not from Garmin, e.g. from OpenStreetMap"))
-        g.set_header_suffix(self._button(_("Add Map…"), self.choose_map))
+        add = self._button(_("Add Map…"), self.choose_map)
+        g.set_header_suffix(add)
+        if overview.hidden_folder is not None:
+            # Its map folder is in a folder the device hides: nothing is added there, and why.
+            from openexpress import maps as mp
+
+            add.set_sensitive(False)
+            g.add(Adw.ActionRow(title=_("Map Folder"),
+                                subtitle=mp.not_installed_into(overview.hidden_folder)))
         if overview.unreadable:
             # TRANSLATORS: title of the row of the device's folder of own maps, when it could
             # not be read
@@ -378,13 +413,25 @@ class MapsPage:
 
     @staticmethod
     def _map_subtitle(m) -> str:
-        """Type, version, size and status of an installed map; without the type when the map
-        is named like its type ("Base maps")."""
+        """Type, version, size and status of an installed map; with an update, the version
+        offered and what it downloads instead; without the type when the map is named like its
+        type ("Base maps")."""
         from openexpress import maps as mp
 
         kind = m.map_type.strip()
-        parts = [kind if kind.casefold() != m.name.strip().casefold() else "",
-                 m.version, human_size(m.size), m.status]
+        kind = kind if kind.casefold() != m.name.strip().casefold() else ""
+        if m.update_available:
+            # The version and the size the server lists are those of the update, not of the
+            # map on the device.
+            # TRANSLATORS: on the Maps page, in the row of a map with an update: {version} the
+            # version Garmin offers, e.g. 2027.20
+            available = _("{version} available").format(version=m.version)
+            # TRANSLATORS: on the Maps page, in the row of a map with an update: {size} what the
+            # update downloads, e.g. 8.3 GB
+            download = _("{size} to download").format(size=human_size(m.size))
+            parts = [kind, available, download]
+        else:
+            parts = [kind, m.version, human_size(m.size), m.status]
         note = mp.restriction_note(m)  # the account's country not known: only marked
         return caption(*parts) + ("\n" + note if note else "")
 

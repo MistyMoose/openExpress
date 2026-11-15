@@ -19,10 +19,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
 
-from openexpress import answers, applog, cache, download, known_devices, paths
+from openexpress import answers, applog, cache, download, hidden_folders, known_devices, paths
 from openexpress.device.storage import MAIN_FOLDERS, DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import UserFacingError
-from openexpress.i18n import N_, _
+from openexpress.i18n import N_, _, ngettext
 from openexpress.progress import (
     Step,
     byte_steps,
@@ -139,6 +139,18 @@ class SoftwareUpdate:
     # The size and time of its file on the device when Free Up Space listed it
     # (freeing.updates_not_installed); None: not listed.
     listed_file: tuple | None = None
+    # The server's word whether the device has this product ("isProductInstalled"); None: not
+    # said.
+    product_installed: bool | None = None
+    # The folder of the device's top level its file goes to when the ordinary listing does not
+    # show it (mark_present): openExpress never writes there.
+    hidden_folder: str | None = None
+    # For one with a hidden_folder: what became of reading its folder through openExpress's own
+    # USB session on this connection (hidden_folders.Listing.state); None: not tried.
+    hidden_session: str | None = None
+    # Its file found in the folder read, by name: True at the size offered, False of another
+    # size; None: not there, or not read. Its contents are never read.
+    hidden_size_same: bool | None = None
 
     @property
     def key(self) -> str:
@@ -191,6 +203,21 @@ class SoftwareUpdate:
         return self.filename.upper() in SYSTEM_FILES and folder in MAIN_FOLDERS
 
     @property
+    def hidden_read(self) -> bool:
+        """Its folder, which ordinary MTP does not show, was read through openExpress's own
+        session: what is there is known by name and size."""
+        return self.hidden_session == hidden_folders.READ
+
+    @property
+    def is_add_on(self) -> bool:
+        """Something the device does not have that Garmin offers to add to it (a voice, a
+        vehicle of a car navigator): the server says it is not installed, it is not the device's
+        own software, and it is below "Recommended", the importance from which Garmin Express
+        installs an item by itself. A new part the server recommends stays an update."""
+        return (self.product_installed is False and not self.is_system
+                and self.severity.casefold() not in ("critical", "recommended"))
+
+    @property
     def installs_when_disconnected(self) -> bool:
         """An update that the device installs itself once it is disconnected, perhaps with a
         restart: the device's own software or the software of a part of it. Copied last, and
@@ -226,6 +253,8 @@ SEVERITY_NAMES = {
 # Whether the file of an offered update is on the device, as the log says it.
 MATCHES = "matches"
 NOT_ON_THE_DEVICE = "not on the device"
+TOP_FOLDER_NOT_SEEN = "its top folder not seen"
+SAME_SIZE = "same size, contents not compared"
 MD5_DIFFERS = "MD5 differs"
 
 
@@ -281,6 +310,23 @@ def presence(storage: Storage, u: SoftwareUpdate) -> Presence:
         return Presence("not compared (cannot be read)", real)
 
 
+def presence_by_size(listing: hidden_folders.Listing, u: SoftwareUpdate) -> Presence:
+    """Whether the file of this update is in a folder read through openExpress's own session
+    (hidden_folders), by its name in any letter case and its size; its contents are not read.
+    Sets u.hidden_size_same."""
+    entry = listing.file(u.device_path)
+    if entry is None:
+        return Presence(NOT_ON_THE_DEVICE)
+    real = posixpath.join(listing.real(posixpath.dirname(u.device_path)) or "", entry.name)
+    if not u.size:
+        return Presence("not compared (no size from the server)", real)
+    u.hidden_size_same = entry.size == u.size
+    if u.hidden_size_same:
+        return Presence(SAME_SIZE, real)
+    return Presence(f"size differs ({applog.size(entry.size)} on the device, "
+                    f"{applog.size(u.size)} offered)", real)
+
+
 def _where(u: SoftwareUpdate, found: Presence) -> str:
     """The place of an update's file for the log: the server's path, and the file on the
     device too when its name has another letter case (its folder's case is the device's
@@ -304,10 +350,23 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
 
     `components`: how many components the device's GarminDevice.xml lists, for the log."""
     offered = [u for u in updates if u.is_offer]
+    tops = top_folders(storage)
+    listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
     found = []
     for u in offered:
-        found.append(presence(storage, u))
-        u.on_device = found[-1].why == MATCHES
+        u.hidden_folder = top_folder_not_seen(u, tops)
+        u.hidden_session = u.hidden_size_same = None
+        if u.hidden_folder is None:
+            found.append(presence(storage, u))
+        else:
+            u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
+                                if listing is not None else None)
+            found.append(presence_by_size(listing, u) if u.hidden_read
+                         else Presence(TOP_FOLDER_NOT_SEEN))
+        # The device's own software at the size offered is not taken for the same file: its
+        # contents were not compared.
+        u.on_device = found[-1].why == MATCHES or (found[-1].why == SAME_SIZE
+                                                   and not u.is_system)
         u.changed_on_device = found[-1].why == MD5_DIFFERS
     # For each: where its file goes on the device, from the device's folder, and whether it
     # is there; never an address (a download address carries a token).
@@ -318,7 +377,97 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
     log.info("updates: %d offered%s, %d of them already on the device%s", len(offered),
              f" ({named})" if named else "", sum(1 for u in offered if u.on_device),
              f"; {components} components listed" if components is not None else "")
+    hidden = sorted({u.hidden_folder for u in offered if u.hidden_folder})
+    extra = [u for u in offered if u.is_add_on]
+    if hidden or extra:
+        log.info("updates: %d in a top folder not seen (%s), %d add-ons (not installed: %s)",
+                 sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
+                 len(extra), ", ".join(sorted({u.severity or "no importance" for u in extra}))
+                 or "none")
     return updates
+
+
+def top_folders(storage: Storage) -> set[str] | None:
+    """The names of the folders of the device's top level that the ordinary listing shows,
+    in lower case; None when they cannot be listed (then no folder is taken for unseen)."""
+    try:
+        return {e.name.casefold() for e in storage.listdir("") if e.is_dir}
+    except DeviceNotResponding:
+        raise
+    except DeviceError:
+        return None
+
+
+def top_folder_not_seen(u: SoftwareUpdate, tops: set[str] | None) -> str | None:
+    """The folder of the device's top level the file of `u` goes to when the listing does not
+    show it (a car navigator hides its .System from MTP); None when it is seen, when the file
+    goes to the top level itself, or when the top level could not be listed. A folder inside
+    a folder that is seen is made for the write like any other."""
+    parts = [p for p in u.device_path.split("/") if p]
+    if len(parts) < 2 or tops is None:
+        return None
+    return None if parts[0].casefold() in tops else parts[0]
+
+
+def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
+    """The folders the offered updates go to whose folder of the top level ordinary MTP does not
+    show, and that this connection has not tried to read yet (hidden_folders.read), each once."""
+    out: dict[str, str] = {}
+    for u in updates:
+        if u.is_offer and u.hidden_folder is not None and u.hidden_session is None:
+            folder = posixpath.dirname(u.device_path)
+            out.setdefault(folder.casefold(), folder)
+    return sorted(out.values(), key=str.casefold)
+
+
+def not_installed_here_text(u: SoftwareUpdate) -> str:
+    # TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
+    # folder of the device's top level its file goes to, e.g. .System
+    return _("Not installed: {name} {version} goes to {folder}, which openExpress cannot see "
+             "on the device.").format(name=u.title, version=u.version, folder=u.hidden_folder)
+
+
+def hidden_software_text(folder: str) -> str:
+    # TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress
+    # cannot see over MTP; {folder}: e.g. .System
+    return _("openExpress cannot see the folder {folder}, where this device keeps its software, "
+             "so it installs nothing there. Some devices, such as car navigators, hide it from "
+             "the ordinary USB connection.").format(folder=folder)
+
+
+def power_text() -> str:
+    # TRANSLATORS: after the device's own software was written into the folder a car navigator
+    # hides: it installs it once unplugged, and must not lose power meanwhile
+    return _("Keep the device powered while it installs its software: connect it to power (its "
+             "car cable or a USB charger) or make sure its battery is well charged, and do not cut "
+             "its power until it has finished.")
+
+
+def not_read_text(u: SoftwareUpdate) -> str | None:
+    """Why the hidden folder of `u` could not be read; None when it was, or was not tried."""
+    if u.hidden_folder is None or u.hidden_session in (None, hidden_folders.READ):
+        return None
+    return hidden_folders.no_session_text(u.hidden_folder, u.hidden_session)
+
+
+def add_ons_text(count: int) -> str:
+    # TRANSLATORS: `openexpress updates`: items Garmin offers to add to the device (voices,
+    # vehicles) that it does not have
+    return ngettext("{count} add-on not on the device is not offered: openExpress does not "
+                    "install add-ons yet.",
+                    "{count} add-ons not on the device are not offered: openExpress does not "
+                    "install add-ons yet.", count).format(count=count)
+
+
+def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
+    """Those that may be written: none whose top folder ordinary MTP does not show, unless that
+    folder was read through openExpress's own session (hidden_folders)."""
+    return [u for u in updates if u.hidden_folder is None or u.hidden_read]
+
+
+def add_ons(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
+    """The add-ons offered (is_add_on): not updates, and not installed by openExpress yet."""
+    return [u for u in updates if u.is_offer and u.is_add_on and not u.on_device]
 
 
 def staged(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -336,7 +485,8 @@ def staged(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
 def pending(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
     """The real updates: not reinstalls, not metadata, not on the device already, and not
     copied before and not installed by the device (not_installed)."""
-    return [u for u in updates if u.is_offer and not u.on_device and not _not_installed(u)]
+    return [u for u in updates if u.is_offer and not u.on_device and not _not_installed(u)
+            and not u.is_add_on]
 
 
 def not_installed(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -369,8 +519,24 @@ def offered(storage: Storage, response: dict, device,
     before (mark_copied; `forget_installed`: False for a check that keeps nothing). A test
     drive carries a real device's unit ID: what was copied to that device is not its."""
     unit = None if _test_drive(storage) else getattr(device, "unit_id", None)
-    return mark_copied(mark_present(storage, parse_updates(response, device),
-                                    component_count(device)), unit, forget_installed)
+    items = mark_present(storage, parse_updates(response, device), component_count(device))
+    started = (_connection_started(device, storage)
+               if unit and any(u.hidden_folder for u in items) else None)
+    return mark_copied(items, unit, forget_installed, connected_at=started)
+
+
+def _connection_started(device, storage) -> float | None:
+    """When the device's present connection began (history.connection_started); None when
+    that is not known. Optional: a failure is only written to the log."""
+    from openexpress import history
+
+    try:
+        return history.connection_started(device, storage)
+    except DeviceNotResponding:
+        raise
+    except Exception as e:  # noqa: BLE001 - only to tell an unplugging since a copy
+        log.info("updates: the start of this connection not read (%s)", type(e).__name__)
+        return None
 
 
 def _test_drive(storage) -> bool:
@@ -378,7 +544,8 @@ def _test_drive(storage) -> bool:
 
 
 def mark_copied(updates: list[SoftwareUpdate], unit_id: int | None,
-                forget_installed: bool = True) -> list[SoftwareUpdate]:
+                forget_installed: bool = True,
+                connected_at: float | None = None) -> list[SoftwareUpdate]:
     """The updates openExpress copied to this device before that the server still offers
     (not as reinstalls): when each was copied (known_devices), each said in the log, with
     whether the file at its place changed since (the same size, other bytes: the device
@@ -403,6 +570,14 @@ def mark_copied(updates: list[SoftwareUpdate], unit_id: int | None,
             continue
         u.copied_at = at
         u.unplugged_since_copy = unplugged is not None and unplugged > at
+        if u.hidden_folder is not None:
+            # In a folder the device hides, known by name and size: openExpress's copy is there
+            # at the size offered (its bytes were checked as it was written), or the device
+            # changed it; a connection begun after the copy (`connected_at`) is an unplugging.
+            u.on_device = u.on_device or u.hidden_size_same is True
+            u.changed_on_device = u.hidden_size_same is False
+            if connected_at is not None and connected_at > at:
+                u.unplugged_since_copy = True
         when = datetime.fromtimestamp(at).isoformat(timespec="minutes")
         if _not_installed(u):
             log.info("software update: %s %s copied %s, on the device after an unplugging "
@@ -452,6 +627,8 @@ def parse_updates(response: dict, device=None) -> list[SoftwareUpdate]:
                 datatype=u.get("datatype") or "",
                 release_state=str(u.get("releasestate") or ""),
                 model_part_number=model,
+                product_installed=(inst.get("isproductinstalled")
+                                   if isinstance(inst.get("isproductinstalled"), bool) else None),
             )
         )
         new = out[-1]
@@ -623,11 +800,23 @@ def _install(
     report: InstallReport,
 ) -> InstallReport:
     """`progress`: each update by its name, in bytes ("Downloading … · 1.2 MB of 3.4 MB",
-    "Copying … to the device · …"); the files are the server's and the device's own. Two
-    updates for one file: one of them is copied (one_per_file). `report` is filled as it goes:
-    what was written before a failure is in it."""
+    "Copying … to the device · …"); the files are the server's and the device's own. Into a
+    folder of the top level the device hides only once openExpress's own session has read it
+    (_write_hidden). Two updates for one file: one of them is copied (one_per_file). `report`
+    is filled as it goes: what was written before a failure is in it."""
     updates = one_per_file(updates)[0]  # the others are told in the log
-    need, free = check_space(storage, updates)
+    # Never a folder of the device's top level the listing does not show (a car navigator's
+    # .System), unless that folder was read through openExpress's own session; nothing is
+    # downloaded for an update refused.
+    tops = top_folders(storage)
+    for u in updates:
+        u.hidden_folder = top_folder_not_seen(u, tops)
+        if u.hidden_folder is not None and not u.hidden_read:
+            log.info("software update: %s %s not installed: its top folder %s is not seen",
+                     u.part_number, u.version, u.hidden_folder)
+            raise UpdateError(not_installed_here_text(u))
+    # A file in a hidden folder is checked against the space in its own session.
+    need, free = check_space(storage, [u for u in updates if u.hidden_folder is None])
     storage.require_space(need, space_margin(storage), error=UpdateError, free=free,
                           margin_said=True)
     # Download everything first so the watch is never left with only some of the files.
@@ -653,6 +842,11 @@ def _install(
         local_files[u.key] = local
     for u in sort_for_install(updates):
         local = local_files[u.key]
+        if u.hidden_folder is not None:
+            # As Garmin Express writes there; the device's own software after the rest, and the
+            # first failure stops all that would follow.
+            _write_hidden(storage, u, local, progress, report)
+            continue
         size = local.stat().st_size
         log.debug("software update: copying %s", u.device_path)
         copying = copying_text(u.title)
@@ -673,6 +867,29 @@ def _install(
         log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
                  applog.size(size), real)
     return report
+
+
+def _write_hidden(storage: Storage, u: SoftwareUpdate, local: Path, progress,
+                  report: InstallReport) -> None:
+    """The file of `u` into the folder of the top level the device hides (hidden_folders.write);
+    an UpdateError that says what is on the device when it was not written whole, or could not
+    be read back (it then stays, counted as written)."""
+    try:
+        written = hidden_folders.write(storage, u.device_path, local.read_bytes(),
+                                       download.normalize_md5(u.md5), u.title,
+                                       space_margin(storage), progress=progress,
+                                       copying=copying_text(u.title),
+                                       checking=checking_text(u.title))
+    except hidden_folders.ContentsNotRead as e:
+        report.written.append(u)
+        raise UpdateError(str(e)) from e
+    except DeviceNotResponding:
+        raise
+    except DeviceError as e:
+        raise UpdateError(str(e)) from e
+    report.written.append(u)
+    log.info("software update: %s %s (%s) written to %s", u.part_number, u.version,
+             applog.size(written.size), written.real)
 
 
 # Left by a device that takes an update in parts. openExpress deletes it from the folder of

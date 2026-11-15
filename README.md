@@ -98,6 +98,7 @@ devices that connect over USB (MTP) should work too – reports are welcome.
 | Instinct 3 – 45mm Tactical | MTP | [#21](https://github.com/TomaszBojanowski/openExpress/issues/21) |
 | Edge 1040 | MTP | [#8](https://github.com/TomaszBojanowski/openExpress/issues/8), [#10](https://github.com/TomaszBojanowski/openExpress/issues/10) |
 | Edge 540 | MTP | [#18](https://github.com/TomaszBojanowski/openExpress/issues/18), [#28](https://github.com/TomaszBojanowski/openExpress/issues/28) |
+| Drive 53 EX | MTP | a user; [#42](https://github.com/TomaszBojanowski/openExpress/issues/42) |
 | inReach Mini 2 | USB drive | [#11](https://github.com/TomaszBojanowski/openExpress/issues/11) |
 | Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
 | Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |
@@ -176,6 +177,12 @@ changes anything only shows its plan until you add `--apply`. Every command:
   service (the window and `openexpress maps` say so, and the Maps page names the map update type
   Garmin gives the device, which helps a report). Maps go only to the device's internal memory,
   not to a memory card.
+- A car navigator that hides the folder of its software and maps (`.System`) from the ordinary USB
+  connection, such as the Drive 53 EX ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)),
+  gets only its software updates and its time zone map installed there: openExpress reads that
+  folder through a USB session of its own and writes them as Garmin Express does, each checked
+  by its size and read back whole. Its maps there are shown but not installed or removed yet, and
+  voices and vehicles Garmin offers to add are not installed either.
 - GPS satellite data is written only to watches that already keep it in a format openExpress
   knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8), and only when
   **Satellite Data** is turned on for them (experimental); other watches get it from the phone
@@ -208,7 +215,7 @@ More: [Privacy and security](docs/privacy.md).
 
 Besides a window and the network, the Flatpak may run `gio copy` on the host (gvfs lets no
 sandboxed app write to MTP devices), open USB devices (`--device=usb`: Connect IQ apps on
-watches that hide their app folder) and use the drives mounted under `/run/media` and `/media`
+watches that hide their app folder, the folder a car navigator hides) and use the drives mounted under `/run/media` and `/media`
 (devices in mass storage mode). What each is for and how to turn it off:
 [Flatpak permissions](docs/privacy.md#flatpak-permissions).
 

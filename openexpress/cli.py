@@ -17,7 +17,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from openexpress import __version__, applog, i18n, known_devices, paths
+from openexpress import __version__, applog, hidden_folders, i18n, known_devices, paths
 from openexpress.auth import store
 from openexpress.connect import (
     ApiError,
@@ -109,6 +109,33 @@ def open_storage(args) -> Storage:
 NOTED_AFTER_READING = ("diagnostics", "report")
 
 
+def _read_hidden(st, dev, needed=(), why: str = "") -> bool:
+    """Read once a command, through a session of its own, the folders of the device's top level
+    that ordinary MTP does not show which `needed` names (updates, maps) or the device is known
+    to hide, with what its GarminDevice.xml names under them (hidden_folders.folders_to_read):
+    what the window reads, so that both count and compare the same; once read, the line of
+    this connection in the device's log counted again, as the window counts it. Whether it read
+    now."""
+    if hidden_folders.kept(st) is not None:
+        return False
+    folders = hidden_folders.folders_to_read(dev, needed)
+    if not folders:
+        return False
+    with _progress() as progress:
+        listing = hidden_folders.read(st, folders, why, progress=progress,
+                                      unit_id=getattr(dev, "unit_id", None))
+    if listing.state == hidden_folders.READ and getattr(dev, "unit_id", None):
+        from openexpress import history
+
+        try:
+            history.note_counted(dev, st)
+        except DeviceNotResponding:
+            raise
+        except Exception as e:  # noqa: BLE001 - the log is a side line, as at the opening
+            log.info("history: not counted again after the reading (%s)", type(e).__name__)
+    return True
+
+
 def open_device(args) -> tuple[Storage, GarminDevice]:
     from openexpress import service
     from openexpress.device.gio_storage import mass_storage_text
@@ -131,6 +158,9 @@ def open_device(args) -> tuple[Storage, GarminDevice]:
     # A device found now is remembered, and its connection noted in its log; a folder given
     # with --path may be a copy.
     dev = service.read_device(st, found_now=not args.path, refuse=refuse)
+    if not args.path:
+        # Before anything counts it: the folders it is known to hide, as the window reads them.
+        _read_hidden(st, dev, why="the device is known to hide them")
     if not args.path and command not in NOTED_AFTER_READING:
         from openexpress import history
 
@@ -1120,7 +1150,8 @@ def cmd_status(args) -> int:
     USB mode, whether on the account), the last sync of each and what the last check of its
     updates found. Reads only the devices' GarminDevice.xml and the files this installation
     keeps; with --online it asks the account's device list and the update server too,
-    keeping nothing."""
+    keeping nothing of their answers (a car navigator's hidden folder is read for its updates
+    then, as the window reads it: _read_hidden)."""
     from openexpress.device import gio_storage
 
     try:
@@ -1293,8 +1324,11 @@ def _status_updates_online(client, s) -> str:
         if device is None or storage is None:  # a drive: probe keeps nothing of it
             storage = gio_storage.open_ums_storage(s.found)
             device = parse(storage.read("GARMIN/GarminDevice.xml"))
-        items = upd.offered(storage, client.software_updates(device.raw), device,
-                            forget_installed=False)  # keeps nothing
+        answer = client.software_updates(device.raw)
+        items = upd.offered(storage, answer, device, forget_installed=False)  # keeps nothing
+        if _read_hidden(storage, device, upd.hidden_needed(items), "updates go there"):
+            # As the window says it once it has read them.
+            items = upd.offered(storage, answer, device, forget_installed=False)
     except DeviceNotResponding:
         raise
     except (ApiError, DeviceError) as e:
@@ -1818,22 +1852,27 @@ def _copied_note(u) -> str | None:
     return _("Copied {when}: check on the device that it is installed.").format(when=when)
 
 
-def _to_install_staged(st) -> str:
-    """What makes the device install an update copied already: a device in mass storage
-    mode takes it once its drive is ejected."""
+def _to_install_staged(st, count: int = 1) -> str:
+    """What makes the device install the `count` updates copied already: a device in mass
+    storage mode takes them once its drive is ejected."""
     if getattr(st, "mass_storage", False):
-        return _("To install it, eject the drive in the file manager, then unplug the device.")
-    return _("Unplug the device to install it.")
+        return ngettext("To install it, eject the drive in the file manager, then unplug the "
+                        "device.",
+                        "To install them, eject the drive in the file manager, then unplug the "
+                        "device.", count)
+    return ngettext("Unplug the device to install it.", "Unplug the device to install them.",
+                    count)
 
 
 def _print_staged(staged, st) -> None:
     """Updates copied to the device already, waiting for it to install them (staged)."""
     if not staged:
         return
-    print(_("Update copied, waiting for the device to install it:"))
+    print(ngettext("Update copied, waiting for the device to install it:",
+                   "Updates copied, waiting for the device to install them:", len(staged)))
     for u in staged:
         print("  " + _update_line(u) + _flags(u))
-    print(_to_install_staged(st))
+    print(_to_install_staged(st, len(staged)))
 
 
 def _eject_drive(st, files: bool = False) -> bool:
@@ -1886,6 +1925,27 @@ def _print_present(present, verbose: bool) -> None:
             print(f"      -> {u.device_path}")
 
 
+def _print_hidden(updates_shown, add_ons, lines: bool = False) -> None:
+    """Under the updates: the add-ons not offered, and, when the device's own software goes to a
+    folder of its top level the listing does not show and openExpress's own session did not
+    read, why nothing is installed there.
+    `lines`: also a line for each update refused (`updates --install`)."""
+    from openexpress import updates as upd
+
+    if lines:
+        for u in updates_shown:
+            print(upd.not_installed_here_text(u))
+    if add_ons:
+        print(upd.add_ons_text(len(add_ons)))
+    system = next((u for u in updates_shown if u.is_system and u.hidden_folder
+                   and not u.hidden_read), None)
+    if system is None:
+        return
+    print(upd.hidden_software_text(system.hidden_folder))
+    if (why := upd.not_read_text(system)) is not None:
+        print(why)
+
+
 def cmd_updates(args) -> int:
     from openexpress import updates as upd
 
@@ -1894,6 +1954,8 @@ def cmd_updates(args) -> int:
     resp = client.software_updates(dev.raw, include_reinstalls=args.reinstalls)
     # Only reads the device.
     items = upd.offered(st, resp, dev)
+    if _read_hidden(st, dev, upd.hidden_needed(items), "updates go there"):
+        items = upd.offered(st, resp, dev)  # compared again with what was read
     if not args.reinstalls:
         items = [u for u in items if not u.is_reinstall]
     # A system update that is on the device already waits for the device to install it.
@@ -1909,9 +1971,12 @@ def cmd_updates(args) -> int:
         device=dev.description, version=dev.software_version_str))
     if upd.beta_offered(resp):
         print(_(upd.BETA_OFFERED))
+    # Offered to add to the device (a voice, a vehicle): not updates, not installed yet.
+    extra = [] if args.reinstalls else upd.add_ons(items)
     if not args.install:
         listed = items if args.reinstalls else [u for u in items if not u.on_device
-                                                and not any(u is n for n in untaken)]
+                                                and not any(u is n for n in untaken)
+                                                and not u.is_add_on]
         if not listed:
             if staged:
                 _print_staged(staged, st)  # not up to date: the update waits for the device
@@ -1920,6 +1985,7 @@ def cmd_updates(args) -> int:
                       else _("The server returned no items."))
             _print_not_installed(untaken)
             _print_present(present, args.verbose)
+            _print_hidden(listed, extra)
             return 0
         visible = [u for u in listed if not u.is_metadata or args.verbose]
         # TRANSLATORS: `openexpress updates --reinstalls`: how many items the server offers to
@@ -1929,6 +1995,8 @@ def cmd_updates(args) -> int:
         for u in sorted(visible, key=lambda x: (not x.is_system, x.severity.lower() != "critical",
                                                 x.name)):
             print("  " + _update_line(u) + _flags(u))
+            if u.hidden_folder is not None and not u.hidden_read:
+                print("      " + upd.not_installed_here_text(u))
             note = _copied_note(u)
             if note:
                 print("      " + note)
@@ -1940,6 +2008,7 @@ def cmd_updates(args) -> int:
             _print_present(present, args.verbose)
             _print_staged(staged, st)
             _print_not_installed(untaken)
+        _print_hidden(visible, extra)
         # TRANSLATORS: `openexpress updates`, under the list: {command} is the command that installs
         # an update (not translated)
         print("\n" + _("Install: {command}").format(
@@ -1949,6 +2018,15 @@ def cmd_updates(args) -> int:
     # "all" means the updates: a file the device already has is not written again, unless
     # the reinstalls were asked for. A part number given by name is always taken.
     chosen = upd.select(items, args.install, keep_present=args.reinstalls)
+    if args.install == ["all"]:
+        chosen = [u for u in chosen if not u.is_add_on]  # said with the hidden ones below
+    # Nothing goes to a folder of the device's top level the listing does not show, unless
+    # openExpress's own session read it.
+    refused = [u for u in chosen if u.hidden_folder is not None and not u.hidden_read]
+    chosen = [u for u in chosen if not any(u is r for r in refused)]
+    _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
+    if refused and not chosen:
+        return 1
     skipped = [u for u in upd.present_with_metadata(items) if not u.is_metadata
                and not any(u is c for c in chosen)] if args.install == ["all"] else []
     if skipped:
@@ -1960,8 +2038,9 @@ def cmd_updates(args) -> int:
                 print("  " + _update_line(u))
         if not chosen:
             print(_("Nothing to install: every offered file is already on the device."))
-            if any(any(u is s for s in staged) for u in skipped):
-                print(_to_install_staged(st))  # what is left to do
+            waiting = [u for u in skipped if any(u is s for s in staged)]
+            if waiting:
+                print(_to_install_staged(st, len(waiting)))  # what is left to do
             return 0
     if not chosen:
         # "all" with nothing offered (a part number that is not offered is an error in select).
@@ -2006,7 +2085,9 @@ def cmd_updates(args) -> int:
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:
         print(_(FINISH_STEPS))
-    return 0
+    if any(u.is_system and u.hidden_folder is not None for u in rep.written):
+        print(upd.power_text())  # a navigator, its software written: it must not lose power
+    return 1 if refused else 0
 
 
 def _drive_synced(client, dev) -> bool:
@@ -2056,6 +2137,8 @@ def _load_maps(args, client, own: bool = False):
             # so their names alone are kept apart (ownmaps.is_garmin_name).
             all_maps, listed = [], 0
     mp.mark_waiting(st, all_maps)
+    if _read_hidden(st, dev, mp.hidden_needed(all_maps), "the maps' files are there"):
+        mp.mark_waiting(st, all_maps)  # marked again with what was read
     return st, dev, all_maps, listed
 
 
@@ -2182,6 +2265,8 @@ def cmd_maps(args) -> int:
             print(f"  {m.name:48} {m.version:>9}  {human_size(m.size):>9}  {m.status}")
             if (note := mp.restriction_note(m)) is not None:
                 print("    " + note)
+            if m.hidden_folder is not None and not m.unseen:
+                print("    " + mp.read_only_text(m.hidden_folder))
         if not args.all:
             n = len(all_maps) - len(on_device)
             print("\n" + ngettext("{count} more map is available (openexpress maps --all).",
@@ -2199,7 +2284,10 @@ def cmd_maps(args) -> int:
         return 0
 
     if args.maps_cmd == "update":
-        targets = [m for m in all_maps if m.update_available]
+        targets = [m for m in all_maps if m.update_available and m.hidden_folder is None]
+        for m in all_maps:
+            if m.update_available and m.hidden_folder is not None:
+                print(mp.cannot_install_message(m))
         incomplete = sum(1 for m in all_maps if m.incomplete)
         for m in all_maps:
             if m.would_update and m.restricted is True:
@@ -2226,6 +2314,8 @@ def cmd_maps(args) -> int:
 
     for m in targets:
         if args.maps_cmd == "remove":
+            if (why := mp.removal_refused(m)) is not None:
+                raise mp.MapError(why)  # refused before anything is listed
             if not m.can_uninstall:
                 # Refused before anything is listed: the files are not going to be removed.
                 raise mp.MapError(mp.cannot_remove_message(m))

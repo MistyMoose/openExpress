@@ -93,6 +93,11 @@ class DeviceSession:
     sync_refusal: str | None = None
     # Told, on the thread that asked, once unit_info has the session's answer (the window).
     on_unit_info: Callable[[], None] | None = field(default=None, repr=False)
+    # The folders of its top level ordinary MTP does not show that what the first checks after
+    # the opening found goes to (gui/hidden_reading.note_needed), by path in lower case, and
+    # whether openExpress's own session reads them now.
+    hidden_wanted: dict[str, str] = field(default_factory=dict, repr=False)
+    hidden_reading: bool = False
     # Its satellite data (satellite.State), read in the background once its page is shown
     # (satellite.seen); None: not for this device, or not read yet.
     satellite: satellite.State | None = None

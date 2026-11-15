@@ -8,9 +8,8 @@ msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-14 01:29+0100\n"
-"PO-Revision-Date: 2026-11-14 07:28+0000\n"
-"Last-Translator: Tomasz Bojanowski "
-"<tbojanowski@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-15 19:13+0000\n"
+"Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/cs/>\n"
 "Language: cs\n"
@@ -219,7 +218,7 @@ msgstr "Spouštění při přihlášení nebylo povoleno."
 
 #: openexpress/background.py
 msgid "Sync the device with Garmin Connect when it is connected."
-msgstr "Po připojení zařízení jej synchronizovat s Garmin Connect."
+msgstr "Po připojení automaticky synchronizovat zařízení s Garmin Connect."
 
 #: openexpress/background.py
 msgid "systemctl was not found; background sync needs systemd."
@@ -1457,7 +1456,7 @@ msgstr "Zařízení:"
 #. ("006-B1234-00")
 #: openexpress/cli.py
 msgid "Part number:"
-msgstr "Číslo dílu:"
+msgstr "Produktové číslo:"
 
 #. TRANSLATORS: label in `openexpress info`, followed by the version of the device's software
 #: openexpress/cli.py
@@ -1964,85 +1963,78 @@ msgstr "Software zařízení: {text}"
 
 #. TRANSLATORS: `openexpress status`, after "Satellite data (experimental):": turned on
 #: openexpress/cli.py
-#, fuzzy
-#| msgid "none"
 msgctxt "satellite data"
 msgid "on"
-msgstr "žádné"
+msgstr "zapnuto"
 
 #. TRANSLATORS: `openexpress status`, after "Satellite data (experimental):": turned off
 #: openexpress/cli.py
 msgctxt "satellite data"
 msgid "off"
-msgstr ""
+msgstr "vypnuto"
 
 #. TRANSLATORS: `openexpress status`, after "Satellite data (experimental):"
 #: openexpress/cli.py
 msgctxt "satellite data"
 msgid "off (the switch is on the device page in the window)"
-msgstr ""
+msgstr "vypnuto (přepínač se nachází na stránce zařízení)"
 
 #. TRANSLATORS: in the subtitle of the row Satellite Data: the last sync did not update
 #. them; {reason} says why
 #: openexpress/cli.py openexpress/gui/words.py
-#, fuzzy, python-brace-format
-#| msgid "Nothing was uploaded: {reason}"
+#, python-brace-format
 msgctxt "satellite data"
 msgid "not updated: {reason}"
-msgstr "Nic se nenahrálo: {reason}"
+msgstr "neaktualizováno: {reason}"
 
 #. TRANSLATORS: in the subtitle of the row Satellite Data: on, nothing written yet,
 #. as the watch's own satellite data (e.g. from the phone) is current
 #: openexpress/cli.py openexpress/gui/words.py
-#, fuzzy
-#| msgid "Already on the device: {count}"
 msgid "the data on the device is current"
-msgstr "Již v zařízení: {count}"
+msgstr "satelitní data v zařízení jsou aktuální"
 
 #. TRANSLATORS: in the subtitle of the row Satellite Data: on, not written yet
 #: openexpress/cli.py openexpress/gui/words.py
 msgid "the next sync updates it"
-msgstr ""
+msgstr "při příští synchronizaci se data aktualizují"
 
 #. TRANSLATORS: in the subtitle of the row Satellite Data: when the last sync wrote them,
 #. e.g. "updated yesterday, 20:39"
 #: openexpress/cli.py openexpress/gui/words.py
-#, fuzzy, python-brace-format
-#| msgid "Created: {when}"
+#, python-brace-format
 msgctxt "satellite data"
 msgid "updated {when}"
-msgstr "Vytvořeno: {when}"
+msgstr "aktualizováno {when}"
 
 #. TRANSLATORS: `openexpress status`: the GPS satellite data of a watch that keeps it as
 #. CPE.BIN; {text} says whether it is on and what the last sync did
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Satellite data (experimental): {text}"
-msgstr ""
+msgstr "Satelitní data (experimentální): {text}"
 
 #. TRANSLATORS: `openexpress sync --apply`: the satellite data written to the device
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Satellite data updated ({size})"
-msgstr ""
+msgstr "Satelitní data aktualizována ({size})"
 
 #. TRANSLATORS: `openexpress sync` (the dry run)
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Satellite data: would be updated ({size})"
-msgstr ""
+msgstr "Satelitní data: budou aktualizována ({size})"
 
 #. TRANSLATORS: `openexpress sync`: the device has Garmin's current file already
 #: openexpress/cli.py
 msgid "Satellite data already current"
-msgstr ""
+msgstr "Satelitní data jsou již aktuální"
 
 #. TRANSLATORS: `openexpress sync`; {reason} says why
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "{device} was not forgotten: {reason}"
+#, python-brace-format
 msgid "Satellite data not updated: {reason}"
-msgstr "Zařízení {device} se nepodařilo odebrat: {reason}"
+msgstr "Satelitní data nebyla aktualizována: {reason}"
 
 #: openexpress/cli.py
 msgid "an update is ready: unplug the device to install it"
@@ -2121,7 +2113,7 @@ msgstr "Zařízení rozpoznaná touto instalací:"
 #: openexpress/gui/start_window.py openexpress/gui/words.py
 #, python-brace-format
 msgid "Software {version}"
-msgstr "verze softwaru {version}"
+msgstr "Verze softwaru {version}"
 
 #. TRANSLATORS: when this computer last saw a device: {when} is "2 h ago" on a tile, a full date
 #. in its tooltip and in the CLI
@@ -3180,7 +3172,7 @@ msgstr "Hlavní tréninkové zařízení: {name} (toto zařízení)"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary training device: {name}"
-msgstr "Primární tréninkové zařízení: {name}"
+msgstr "Hlavní tréninkové zařízení: {name}"
 
 #: openexpress/cli.py
 msgid "a device that is not on the account's list"
@@ -3208,7 +3200,7 @@ msgstr "Změnilo by se na: {device}"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary training device set to {device}."
-msgstr "Primární tréninkové zařízení nastaveno na {device}."
+msgstr "Hlavní tréninkové zařízení nastaveno na {device}."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3239,14 +3231,14 @@ msgstr "Pro tento účet Garmin není nastaveno hlavní nositelné zařízení."
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable: {name} (this device)"
-msgstr "Primární nositelné zařízení: {name} (toto zařízení)"
+msgstr "Hlavní nositelné zařízení: {name} (toto zařízení)"
 
 #. TRANSLATORS: CLI: the account's primary wearable is another device ({name}: that
 #. device's name)
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable: {name}"
-msgstr "Primární nositelné zařízení: {name}"
+msgstr "Hlavní nositelné zařízení: {name}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3260,12 +3252,12 @@ msgstr "Připojené zařízení nemůže být hlavním nositelným zařízením.
 #: openexpress/cli.py
 #, python-brace-format
 msgid "{device} is already the primary wearable."
-msgstr "{device} už je primární nositelné zařízení."
+msgstr "{device} už je hlavní nositelné zařízení."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable set to {device}."
-msgstr "Primární nositelné zařízení nastaveno na {device}."
+msgstr "Hlavní nositelné zařízení nastaveno na {device}."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3954,7 +3946,7 @@ msgstr "vypsat celou odpověď serveru jako JSON"
 
 #: openexpress/cli.py
 msgid "sync with Garmin Connect (dry run by default)"
-msgstr "synchronizovat s Garmin Connect (ve výchozím stavu jen zkušebně)"
+msgstr "synchronizovat s Garmin Connect (ve výchozím nastavení pouze simulace)"
 
 #: openexpress/cli.py
 msgid "actually upload and write"
@@ -4093,19 +4085,19 @@ msgstr "zkopírovat mapu do zařízení"
 
 #: openexpress/cli.py
 msgid "show the primary training device of the Garmin account"
-msgstr "zobrazit primární tréninkové zařízení účtu Garmin"
+msgstr "zobrazit hlavní tréninkové zařízení účtu Garmin"
 
 #: openexpress/cli.py
 msgid ""
 "the primary wearable (steps and sleep in Garmin Connect) instead of the "
 "primary training device"
 msgstr ""
-"primární nositelné zařízení (kroky a spánek v Garmin Connect) namísto "
-"primárního tréninkového zařízení"
+"hlavní nositelné zařízení (kroky a spánek v Garmin Connect) namísto hlavního "
+"tréninkového zařízení"
 
 #: openexpress/cli.py
 msgid "make the connected device the primary training device"
-msgstr "nastavit připojené zařízení jako primární tréninkové zařízení"
+msgstr "nastavit připojené zařízení jako hlavní tréninkové zařízení"
 
 #: openexpress/cli.py
 msgid "change it in your Garmin account"
@@ -4513,14 +4505,14 @@ msgstr "Umístění účtu"
 #: openexpress/connect.py openexpress/service.py
 msgctxt "server request"
 msgid "Primary training device"
-msgstr "Primární tréninkové zařízení"
+msgstr "Hlavní tréninkové zařízení"
 
 #. TRANSLATORS: the name of a request to Garmin's server, shown before its error
 #. ("Primary wearable: network error (…)")
 #: openexpress/connect.py
 msgctxt "server request"
 msgid "Primary wearable"
-msgstr "Primární nositelné zařízení"
+msgstr "Hlavní nositelné zařízení"
 
 #: openexpress/connect.py
 msgid "Adding the device to the account"
@@ -6451,7 +6443,7 @@ msgstr "Zařízení není připravené"
 
 #: openexpress/gui/detection.py
 msgid "This takes a moment after the cable is plugged in."
-msgstr "Po připojení kabelu to chvíli trvá."
+msgstr "Po připojení kabelu může chvíli trvat, než se zařízení rozpozná."
 
 #: openexpress/gui/detection.py
 msgid "Device Starting…"
@@ -6518,7 +6510,7 @@ msgstr "Neúplná záloha"
 #. wearable")
 #: openexpress/gui/device_page.py openexpress/gui/start_window.py
 msgid "Primary Wearable"
-msgstr "Primární nositelné zařízení"
+msgstr "Hlavní nositelné zařízení"
 
 #. TRANSLATORS: button beside "Primary Wearable" or "Primary Training Device": makes this
 #. device the account's primary one
@@ -6528,7 +6520,7 @@ msgstr "Nastavit jako primární"
 
 #: openexpress/gui/device_page.py
 msgid "Change the Primary Wearable?"
-msgstr "Změnit primární nositelné zařízení?"
+msgstr "Změnit hlavní nositelné zařízení?"
 
 #: openexpress/gui/device_page.py
 #, python-brace-format
@@ -6538,7 +6530,7 @@ msgid ""
 "Current: {old}\n"
 "New: {new}"
 msgstr ""
-"Údaje o krocích a spánku v Garmin Connect pocházejí z primárního nositelného "
+"Údaje o krocích a spánku v Garmin Connect pocházejí z hlavního nositelného "
 "zařízení.\n"
 "\n"
 "Aktuální: {old}\n"
@@ -6551,17 +6543,17 @@ msgstr "Změnit"
 
 #: openexpress/gui/device_page.py
 msgid "Primary wearable changed"
-msgstr "Primární nositelné zařízení bylo změněno"
+msgstr "Hlavní nositelné zařízení bylo změněno"
 
 #: openexpress/gui/device_page.py
 msgid "Changing the Primary Wearable…"
-msgstr "Změna primárního nositelného zařízení…"
+msgstr "Změna hlavního nositelného zařízení…"
 
 #. TRANSLATORS: heading of the error when the primary wearable could not be
 #. changed on the account
 #: openexpress/gui/device_page.py
 msgid "Primary Wearable Not Changed"
-msgstr "Primární nositelné zařízení se nepodařilo změnit"
+msgstr "Hlavní nositelné zařízení se nepodařilo změnit"
 
 #: openexpress/gui/device_page.py
 msgid "Device Picture"
@@ -6604,11 +6596,8 @@ msgstr "Nepodařilo se vyžádat obrázek z Garmin Connect. Zkuste to později."
 #. TRANSLATORS: row of the device page, with a switch: the GPS satellite data of a watch
 #. that keeps it as CPE.BIN, written with each sync while on
 #: openexpress/gui/device_page.py
-#, fuzzy
-#| msgctxt "storage kind"
-#| msgid "Updates and Satellite Data"
 msgid "Satellite Data"
-msgstr "Aktualizace a satelitní data"
+msgstr "Satelitní data"
 
 #. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
 #: openexpress/gui/device_page.py
@@ -6731,7 +6720,7 @@ msgstr "Odhlásit se"
 #. device (the main source of performance and training data)
 #: openexpress/gui/device_page.py
 msgid "Primary Training Device"
-msgstr "Primární tréninkové zařízení"
+msgstr "Hlavní tréninkové zařízení"
 
 #: openexpress/gui/device_page.py openexpress/gui/start.py
 msgid "Tools"
@@ -6751,7 +6740,7 @@ msgstr "Vytvořit"
 #. TRANSLATORS: row with the device's Garmin part number, a product code such as 006-B1234-00
 #: openexpress/gui/device_page.py openexpress/gui/start.py
 msgid "Part Number"
-msgstr "Číslo dílu"
+msgstr "Produktové číslo"
 
 #. TRANSLATORS: subtitle of "Primary Training Device" or "Primary Wearable": the account
 #. has none set
@@ -6773,7 +6762,7 @@ msgstr "Jiné zařízení"
 
 #: openexpress/gui/device_page.py
 msgid "Change the Primary Training Device?"
-msgstr "Změnit primární tréninkové zařízení?"
+msgstr "Změnit hlavní tréninkové zařízení?"
 
 #: openexpress/gui/device_page.py
 #, python-brace-format
@@ -6784,7 +6773,7 @@ msgid ""
 "Current: {old}\n"
 "New: {new}"
 msgstr ""
-"Primární tréninkové zařízení je hlavním zdrojem údajů o výkonu a tréninku v "
+"Hlavní tréninkové zařízení je hlavním zdrojem údajů o výkonu a tréninku v "
 "Garmin Connect.\n"
 "\n"
 "Aktuální: {old}\n"
@@ -6792,17 +6781,17 @@ msgstr ""
 
 #: openexpress/gui/device_page.py
 msgid "Primary training device changed"
-msgstr "Primární tréninkové zařízení bylo změněno"
+msgstr "Hlavní tréninkové zařízení bylo změněno"
 
 #: openexpress/gui/device_page.py
 msgid "Changing the Primary Training Device…"
-msgstr "Mění se primární tréninkové zařízení…"
+msgstr "Mění se hlavní tréninkové zařízení…"
 
 #. TRANSLATORS: heading of the error when the primary training device could
 #. not be changed on the account
 #: openexpress/gui/device_page.py
 msgid "Primary Training Device Not Changed"
-msgstr "Primární tréninkové zařízení se nepodařilo změnit"
+msgstr "Hlavní tréninkové zařízení se nepodařilo změnit"
 
 #: openexpress/gui/device_page.py openexpress/gui/words.py
 #, python-brace-format
@@ -8151,8 +8140,7 @@ msgstr "Pády a aktualizace"
 
 #: openexpress/gui/status_page.py
 msgid "Crashes that restarted the device, and its software updates"
-msgstr ""
-"Pády systému, které způsobily restart zařízení, a aktualizace jeho softwaru"
+msgstr "Pády systému způsobující restart zařízení a aktualizace softwaru"
 
 #. TRANSLATORS: beside "… free of …" on the page Device Status
 #: openexpress/gui/status_page.py
@@ -8191,9 +8179,9 @@ msgstr "Podrobnosti kategorie"
 #, python-brace-format
 msgid "the same error as the one before"
 msgid_plural "the same error as the {count} before"
-msgstr[0] "Stejná chyba jako předchozí"
-msgstr[1] "Stejná chyba jako předchozí {count} chyby"
-msgstr[2] "Stejná chyba jako předchozích {count} chyb"
+msgstr[0] "stejná chyba jako předchozí"
+msgstr[1] "stejná chyba jako předchozí {count} chyby"
+msgstr[2] "stejná chyba jako předchozích {count} chyb"
 
 #. TRANSLATORS: a row of "Crashes and Updates" on the page Device Status
 #: openexpress/gui/status_page.py
@@ -9030,9 +9018,9 @@ msgstr ""
 #, python-brace-format
 msgid "{count} activity to upload now"
 msgid_plural "{count} activities to upload now"
-msgstr[0] "K okamžitému nahrání: {count} aktivita"
-msgstr[1] "K okamžitému nahrání: {count} aktivity"
-msgstr[2] "K okamžitému nahrání: {count} aktivit"
+msgstr[0] "K nahrání: {count} aktivita"
+msgstr[1] "K nahrání: {count} aktivity"
+msgstr[2] "K nahrání: {count} aktivit"
 
 #. TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
 #. "Podstawowe urządzenie typu wearable")
@@ -9679,26 +9667,20 @@ msgstr "bez údajů"
 
 #. TRANSLATORS: why the satellite data was not updated, after "not updated: "
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgid "Removing a file waiting for the device: {name}"
 msgid "Garmin's file is not in the format the device has"
-msgstr "Odebírání souboru čekajícího na přenos do zařízení: {name}"
+msgstr "Soubor od Garminu nemá formát podporovaný zařízením"
 
 #. TRANSLATORS: why the satellite data was not updated, after "not updated: "
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgid "The GPX file could not be written there. Choose another folder."
 msgid "the file could not be written to the device"
-msgstr "Soubor GPX sem nelze uložit. Vyberte jinou složku."
+msgstr "soubor se nepodařilo zapsat do zařízení"
 
 #. TRANSLATORS: why the satellite data was not updated, after "not updated: ": the watch
 #. keeps them hidden from the file manager and the app cannot open its own connection to
 #. the watch here (e.g. a Flatpak without access to USB)
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgid "The app list on the device has entries that cannot be read"
 msgid "the device's hidden files cannot be reached here"
-msgstr "Seznam aplikací v zařízení obsahuje nečitelné položky"
+msgstr "Nelze získat přístup ke skrytým souborům zařízení"
 
 #. TRANSLATORS: why the satellite data was not updated, after "not updated: ": Garmin's
 #. server answered that it was asked too often; {time} is when it may be asked again,
@@ -9706,57 +9688,48 @@ msgstr "Seznam aplikací v zařízení obsahuje nečitelné položky"
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "Garmin's server asks to wait until {time}"
-msgstr ""
+msgstr "Server Garminu vyžaduje počkat do {time}"
 
 #. TRANSLATORS: `openexpress status` and `sync`: the watch did not take the satellite
 #. data file written (left it as written after it was unplugged, or renamed it)
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgid "The device did not remove the file."
-#| msgid_plural "The device did not remove the {count} files."
 msgid "the device did not take the last file"
-msgstr "Zařízení neodstranilo soubor."
+msgstr "zařízení nepřijalo poslední soubor"
 
 #. TRANSLATORS: `openexpress status` and `sync`: the satellite data file written was not
 #. on the watch twice in a row
 #: openexpress/gui/words.py
 msgid "the written file disappeared twice"
-msgstr ""
+msgstr "zapsaný soubor dvakrát po sobě zmizel"
 
 #. TRANSLATORS: `openexpress status` and `sync`: the watch renamed the file written to
 #. CPE_BAD.bin
 #: openexpress/gui/words.py
 msgid "the device rejected the last file (CPE_BAD.bin)"
-msgstr ""
+msgstr "zařízení odmítlo poslední soubor (CPE_BAD.bin)"
 
 #. TRANSLATORS: subtitle of the row Satellite Data: the watch did not take the file
 #. written (left it as written after it was unplugged, or renamed it), so the switch
 #. was turned off
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgid "The device did not remove the file."
-#| msgid_plural "The device did not remove the {count} files."
 msgid "Turned off: the device did not take the last file"
-msgstr "Zařízení neodstranilo soubor."
+msgstr "Vypnuto: zařízení nepřijalo poslední soubor"
 
 #. TRANSLATORS: subtitle of the row Satellite Data: the file written was not on the
 #. watch twice in a row, so the switch was turned off
 #: openexpress/gui/words.py
 msgid "Turned off: the written file disappeared twice"
-msgstr ""
+msgstr "Vypnuto: Zapsaný soubor dvakrát po sobě zmizel"
 
 #. TRANSLATORS: subtitle of the row Satellite Data: the watch renamed the file written to
 #. CPE_BAD.bin, so the switch was turned off
 #: openexpress/gui/words.py
 msgid "Turned off: the device rejected the last file (CPE_BAD.bin)"
-msgstr ""
+msgstr "Vypnuto: Zařízení odmítlo poslední soubor (CPE_BAD.bin)"
 
 #. TRANSLATORS: the first part of the subtitle of the row Satellite Data: the feature is
 #. experimental (in Polish plural, as "dane satelitarne")
 #: openexpress/gui/words.py
-#, fuzzy
-#| msgctxt "chip"
-#| msgid "Experimental"
 msgctxt "satellite data"
 msgid "Experimental"
 msgstr "Experimentální"
@@ -9765,6 +9738,8 @@ msgstr "Experimentální"
 #: openexpress/gui/words.py
 msgid "when on, each sync updates it"
 msgstr ""
+"pokud je funkce zapnutá, satelitní data se aktualizují při každé "
+"synchronizaci"
 
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop
@@ -9881,9 +9856,9 @@ msgstr "včera, {time}"
 #, python-brace-format
 msgid "{n} day ago"
 msgid_plural "{n} days ago"
-msgstr[0] "před {n} dnem"
-msgstr[1] "před {n} dny"
-msgstr[2] "před {n} dny"
+msgstr[0] "Před {n} dnem"
+msgstr[1] "Před {n} dny"
+msgstr[2] "Před {n} dny"
 
 #. TRANSLATORS: tooltip of "Last Sync": when the sync was, today; {time}: the hour, e.g.
 #. 23:41
@@ -10556,8 +10531,8 @@ msgid ""
 "This device is connected as a USB drive and declares no data that goes from "
 "it to Garmin Connect, so there is nothing to sync."
 msgstr ""
-"Toto zařízení je připojeno jako jednotka USB a neuvádí žádná data určená k "
-"odeslání do Garmin Connect. Není tedy co synchronizovat."
+"Toto zařízení je připojeno jako jednotka USB a neobsahuje žádná data určená "
+"k odeslání do Garmin Connect. Není tedy co synchronizovat."
 
 #. TRANSLATORS: "connect support: Disabled" is what Garmin's server says; keep it as it is
 #: openexpress/service.py
@@ -10675,8 +10650,7 @@ msgid ""
 "Garmin Connect accepted the request, but the primary training device did not "
 "change."
 msgstr ""
-"Garmin Connect požadavek přijal, ale primární tréninkové zařízení se "
-"nezměnilo."
+"Garmin Connect požadavek přijal, ale hlavní tréninkové zařízení se nezměnilo."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -10696,8 +10670,7 @@ msgstr ""
 msgid ""
 "Garmin Connect accepted the request, but the primary wearable did not change."
 msgstr ""
-"Garmin Connect požadavek přijal, ale primární nositelné zařízení se "
-"nezměnilo."
+"Garmin Connect požadavek přijal, ale hlavní nositelné zařízení se nezměnilo."
 
 #. TRANSLATORS: a type of data on the device, lowercase, in lists ("Files from the device:
 #. activities ×2, sleep") and after "Uploading"
@@ -10825,7 +10798,7 @@ msgstr "teplota pokožky"
 
 #: openexpress/service.py
 msgid "primary training device data"
-msgstr "údaje primárního tréninkového zařízení"
+msgstr "údaje hlavního tréninkového zařízení"
 
 #. TRANSLATORS: a type of data: a Garmin Coach training plan (Garmin Coach is a name)
 #: openexpress/service.py
@@ -11386,9 +11359,10 @@ msgid ""
 "openExpress cannot sync this device: sync it with the Garmin Connect app "
 "first, or the data not uploaded yet is lost."
 msgstr ""
-"Upozornění: instalace aktualizace vymaže data uložená v zařízení. "
-"openExpress toto zařízení nedokáže synchronizovat. Nejprve ho synchronizujte "
-"pomocí aplikace Garmin Connect, jinak se dosud nenahraná data ztratí."
+"Upozornění: Instalace aktualizace vymaže data uložená v zařízení. "
+"openExpress toto zařízení nedokáže synchronizovat. Nejprve zařízení "
+"synchronizujte pomocí aplikace Garmin Connect, jinak dojde ke ztrátě dosud "
+"nenahraných dat."
 
 #: openexpress/updates.py
 msgid "Garmin offers beta software for this device."

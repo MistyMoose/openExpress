@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-14 09:16+0100\n"
+"POT-Creation-Date: 2026-11-14 10:37+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -11685,6 +11685,25 @@ msgid ""
 msgstr ""
 "Token jest dla środowiska {token_environment}, a skonfigurowane jest "
 "{environment}. Zaloguj się ponownie."
+
+#. TRANSLATORS: "connect support: Disabled" is what Garmin's server says; keep it as it is
+#: openexpress/service.py
+#, python-brace-format
+msgid ""
+"Garmin's server says that Garmin Connect does not take this device's data "
+"(connect support: Disabled), so it is not synced."
+msgstr ""
+"Serwer Garmina mówi, że Garmin Connect nie przyjmuje danych tego urządzenia "
+"(connect support: Disabled), więc nie jest ono synchronizowane."
+
+#: openexpress/service.py
+#, python-brace-format
+msgid ""
+"This device declares no data that goes from it to Garmin Connect, so there "
+"is nothing to sync."
+msgstr ""
+"To urządzenie nie deklaruje żadnych danych, które idą z niego do Garmin "
+"Connect, więc nie ma czego synchronizować."
 
 #: openexpress/service.py
 #, python-brace-format

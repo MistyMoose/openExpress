@@ -88,6 +88,11 @@ class DeviceSession:
     # asked once per session, and only when such a map is there.
     account_country_code: str | None = field(default=None, repr=False)
     account_country_asked: bool = False
+    # Why a device over MTP is not synced (mtp_sync_refusal: Garmin Connect does not take its
+    # data, or it declares none that goes from it); None: synced as any (check_session).
+    sync_refusal: str | None = None
+    # Told, on the thread that asked, once unit_info has the session's answer (the window).
+    on_unit_info: Callable[[], None] | None = field(default=None, repr=False)
     # Its satellite data (satellite.State), read in the background once its page is shown
     # (satellite.seen); None: not for this device, or not read yet.
     satellite: satellite.State | None = None
@@ -129,6 +134,9 @@ def unit_info(session) -> dict:
                   if device.unit_id else {})
         session.unit_info_answer = answer
         note_model_name(device, answer)  # the same name, whichever thread notes it
+        heard = getattr(session, "on_unit_info", None)
+        if heard is not None:
+            heard()  # the window: the gate of the sync may close (note_unit_info)
     return answer
 
 
@@ -306,6 +314,58 @@ def _connect_refusal(unit_info: dict | None) -> str | None:
     if isinstance(support, str) and support.strip().casefold() == "disabled":
         return CONNECT_DISABLED
     return None
+
+
+def mtp_sync_refusal(device: GarminDevice, unit_info: dict | None) -> str | None:
+    """Why a device over MTP is not synced, None when it is: NO_UPLOAD_TYPES when its
+    GarminDevice.xml declares no data type whose files go from it; CONNECT_DISABLED when an
+    answer of unit-info says that Garmin Connect does not take its data (a car navigator).
+    Without an answer, or one without that word, it is synced as any device: only Garmin's own
+    word closes the gate."""
+    if not declares_uploads(device):
+        return NO_UPLOAD_TYPES
+    return CONNECT_DISABLED if _connect_refusal(unit_info) == CONNECT_DISABLED else None
+
+
+def mtp_sync_refusal_text(reason: str) -> str:
+    """What the device page says in place of the sync of a device over MTP behind the gate."""
+    if reason == CONNECT_DISABLED:
+        # TRANSLATORS: "connect support: Disabled" is what Garmin's server says; keep it as it is
+        return _("Garmin's server says that Garmin Connect does not take this device's data "
+                 "(connect support: Disabled), so it is not synced.")
+    return _("This device declares no data that goes from it to Garmin Connect, so there is "
+             "nothing to sync.")
+
+
+def kept_unit_info(s) -> dict | None:
+    """The answer of unit-info the session has, else the one kept (answers), without asking."""
+    answer = getattr(s, "unit_info_answer", None)
+    if answer is None and getattr(s.device, "unit_id", None):
+        answer = s.client.kept_unit_info(s.device.unit_id, s.device.part_number)
+    return answer
+
+
+def not_synced(s) -> bool:
+    """Whether the device of `s` is not synced: a drive that is not (drive_refusal), or a
+    device over MTP behind the gate (sync_refusal)."""
+    return (getattr(s, "drive_refusal", None) is not None
+            or getattr(s, "sync_refusal", None) is not None)
+
+
+def note_unit_info(s) -> bool:
+    """After the window's own request of unit-info: the gate of a device over MTP from the
+    answer it brought. True when that closed the gate now (once): the account is then as if
+    not asked about the device (check_session)."""
+    if s.mass_storage or s.sync_refusal is not None:
+        return False
+    s.sync_refusal = mtp_sync_refusal(s.device, getattr(s, "unit_info_answer", None))
+    if s.sync_refusal is None:
+        return False
+    log.info("sync: Garmin Connect does not take the device's data (%s): no sync in the window",
+             s.sync_refusal)
+    s.ownership_error = None
+    s.account_devices = None
+    return True
 
 
 def declares_uploads(device: GarminDevice) -> bool:
@@ -871,11 +931,20 @@ def check_session(s: DeviceSession) -> DeviceSession:
     s.ownership_error = None
     s.account_devices = None
     s.drive_refusal = None
+    s.sync_refusal = None
     if s.mass_storage:
         s.drive_refusal = drive_refusal(s)
         if s.drive_refusal is not None:
             log.info("device: a USB drive that is not synced (%s): the account is not asked "
                      "about it", s.drive_refusal[0])
+            return s
+    else:
+        # Over MTP only from what is known without a request: a kept answer of unit-info, the
+        # device's XML. A later answer of the window's own request closes it then (note_unit_info).
+        s.sync_refusal = mtp_sync_refusal(s.device, kept_unit_info(s))
+        if s.sync_refusal is not None:
+            log.info("sync: Garmin Connect does not take the device's data (%s): no sync in the "
+                     "window; the account is not asked about it", s.sync_refusal)
             return s
     if s.logged_in:
         try:

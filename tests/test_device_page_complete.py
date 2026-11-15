@@ -607,3 +607,23 @@ def test_the_opening_reads_whether_the_device_has_the_file(tmp_path, clock):
         read_satellite(s)
         found[name] = s.satellite
     assert found == {"like a forerunner": satellite.State(), "like an edge": None}
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize("reason", ["connect-disabled", "no-upload-types"])
+@pytest.mark.parametrize("logged_in", [False, True])
+def test_a_device_over_mtp_behind_the_gate_says_why_in_place_of_the_sync(reason, logged_in):
+    """As a drive that is not synced: one sentence in place of the sync, and nothing of
+    the account about the device: no Primary Training Device; signed out, no group of the
+    account at all."""
+    from openexpress import service
+
+    _win, section = _page(sync_refusal=reason, logged_in=logged_in)
+    groups = _groups(section)
+    assert groups["Sync With Garmin Connect"].get_description() == (
+        service.mtp_sync_refusal_text(reason))
+    rows = _rows(section)
+    assert "Last Sync" not in rows and "Primary Training Device" not in rows
+    assert "Syncs each time a device is connected, even when the window is closed" not in rows
+    assert "USB Drive" not in groups
+    assert ("Garmin Connect Account" in groups) == logged_in

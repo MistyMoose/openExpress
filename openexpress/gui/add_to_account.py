@@ -29,7 +29,7 @@ def offers_adding(s) -> bool:
     (not a list that could not be read), while logged in, and not a USB drive openExpress
     does not sync."""
     return (s is not None and s.logged_in and isinstance(s.ownership_error, NotAccountDevice)
-            and getattr(s, "drive_refusal", None) is None)
+            and not service.not_synced(s))
 
 
 def _account(s) -> str:

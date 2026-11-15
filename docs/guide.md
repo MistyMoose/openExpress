@@ -460,6 +460,13 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   the device is not on it, or the list cannot be fetched, nothing is uploaded and nothing is
   written to the device. `openexpress baseline` needs a login too. Features without the account
   (backup, software updates, maps, music) work with any device.
+- A device whose data Garmin Connect does not take is not synced in the window: one whose
+  `GarminDevice.xml` declares no data that goes from it, or one Garmin's update server says
+  Garmin Connect does not take (connect support: Disabled), such as a car navigator. Its device
+  page has no **Sync** button and no sign-in bar, says why in place of the sync, and the account
+  is not asked about it; its software updates and maps work as on any device. Without an answer
+  of that server it is synced as any device. A drive that is not synced has no **Sync** button
+  either.
 - **Satellite data (experimental).** Some older watches, such as the Forerunner 45, keep the
   satellite data that speeds up their first GPS fix in `GARMIN/REMOTESW/CPE.BIN`, which Garmin
   Express or the phone app refreshes. When a watch already holds that file in the format

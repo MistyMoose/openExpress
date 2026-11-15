@@ -36,12 +36,12 @@ def drive(tmp_path):
     return root
 
 
-def courses_window(drive, offered=True):
+def courses_window(drive, offered=True, gpx_folder="Garmin/NewFiles"):
     from openexpress.gui.app import MainWindow
 
     win, section = page_window("courses")
     win.session = types.SimpleNamespace(
-        device=course_device(gpx_folder="Garmin/NewFiles" if offered else None),
+        device=course_device(gpx_folder=gpx_folder if offered else None),
         storage=LocalStorage(drive), unit_info_answer=None)
     for name in ("load_courses", "show_courses", "choose_course", "add_course",
                  "_course_refused", "_remove_button", "ask_remove_course"):
@@ -160,6 +160,16 @@ def test_a_device_that_makes_no_courses_of_gpx_files(drive):
     win.load_courses()
     assert section.stack.get_visible_child_name() == "info"
     assert section.info.get_description() == "This device does not make courses of GPX files"
+
+
+def test_a_device_that_takes_gpx_files_in_a_folder_of_its_own_says_which(drive):
+    """A car navigator declares its GPX files in GPX: the page says so, not that it makes no
+    courses of them."""
+    win, section = courses_window(drive, gpx_folder="GPX")
+    win.load_courses()
+    assert section.stack.get_visible_child_name() == "info"
+    assert section.info.get_description() == ("This device takes GPX files in its own folder "
+                                               "GPX, where openExpress does not copy them")
 
 
 def test_the_title_in_the_header_carries_the_chip():

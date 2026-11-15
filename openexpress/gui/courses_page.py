@@ -353,6 +353,19 @@ def _copy(s, path: Path, name: str | None, progress):
     return plan
 
 
+def not_offered_text(device) -> str:
+    """Why the Courses page of `device` lists nothing (courses.offered false), one sentence
+    without a full stop."""
+    folder = courses.own_gpx_folder(device)
+    if folder is not None:
+        # TRANSLATORS: the Courses page of a device that takes GPX files in a folder of its own
+        # ({folder}, e.g. GPX), not in Garmin/NewFiles, where openExpress copies them
+        return _("This device takes GPX files in its own folder {folder}, where openExpress does "
+                 "not copy them").format(folder=folder)
+    # TRANSLATORS: the Courses page of a device that does not take GPX files
+    return _("This device does not make courses of GPX files")
+
+
 class CoursesPage:
     """The Courses page and its tasks."""
 
@@ -360,8 +373,7 @@ class CoursesPage:
         s = self.session
         sec = self.sections["courses"]
         if not courses.offered(s.device):
-            # TRANSLATORS: the Courses page of a device that does not take GPX files
-            sec.show_info(_("This device does not make courses of GPX files"))  # nothing read
+            sec.show_info(not_offered_text(s.device))  # nothing read
             return
         self._load("courses", _("Reading Courses…"),
                    lambda: courses.overview(s.device, s.storage), self.show_courses)

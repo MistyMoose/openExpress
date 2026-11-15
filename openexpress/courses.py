@@ -79,6 +79,16 @@ def offered(device: GarminDevice) -> bool:
     return gpx_target(device) is not None
 
 
+def own_gpx_folder(device: GarminDevice) -> str | None:
+    """The folder a device takes GPX files in when that is not Garmin/NewFiles (a car
+    navigator's GPX): the first it declares, as the log names it (gpx_target); None when it
+    declares none, or Garmin/NewFiles."""
+    targets = device.targets(GPX_DATATYPE)
+    if not targets or any(t.path.strip("/").casefold() == GPX_FOLDER for t in targets):
+        return None
+    return targets[0].path.strip("/") or "/"
+
+
 def _extension(target: DeviceFile) -> str:
     """The extension of a GPX file as the device declares it (".GPX" or ".gpx")."""
     return "." + (target.extension.lstrip(".") or "gpx")
@@ -410,7 +420,14 @@ def what_the_device_does(gpx: GpxFile) -> list[tuple[str, bool]]:
     return said
 
 
-def not_offered_text() -> str:
+def not_offered_text(device: GarminDevice) -> str:
+    """Why `device` is not offered courses (not offered), for the command line."""
+    folder = own_gpx_folder(device)
+    if folder is not None:
+        # TRANSLATORS: a device that takes GPX files in a folder of its own ({folder}, e.g. GPX),
+        # not in Garmin/NewFiles, where openExpress copies them
+        return _("This device takes GPX files in its own folder {folder}, where openExpress does "
+                 "not copy them.").format(folder=folder)
     # TRANSLATORS: a device that does not take GPX files in Garmin/NewFiles
     return _("This device does not make courses of GPX files.")
 
@@ -432,7 +449,7 @@ def plan_add(device: GarminDevice, storage: Storage, local: Path,
     CourseFileError or CourseError says why a file is not copied."""
     target = gpx_target(device)
     if target is None:
-        raise CourseError(not_offered_text())
+        raise CourseError(not_offered_text(device))
     gpx = check_local(local, name)
     course = course_gpx.course_name(gpx, name)
     for named in (course, *(line.name for line in gpx.lines)):

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-14 10:37+0100\n"
+"POT-Creation-Date: 2026-11-15 23:26+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -4685,6 +4685,15 @@ msgstr ""
 msgid "Garmin devices save waypoints as saved locations."
 msgstr ""
 
+#. TRANSLATORS: a device that takes GPX files in a folder of its own ({folder}, e.g. GPX),
+#. not in Garmin/NewFiles, where openExpress copies them
+#: openexpress/courses.py
+#, python-brace-format
+msgid ""
+"This device takes GPX files in its own folder {folder}, where openExpress "
+"does not copy them."
+msgstr ""
+
 #. TRANSLATORS: a device that does not take GPX files in Garmin/NewFiles
 #: openexpress/courses.py
 #, python-brace-format
@@ -6406,6 +6415,15 @@ msgstr ""
 #, python-brace-format
 msgctxt "course"
 msgid "Free After Copying"
+msgstr ""
+
+#. TRANSLATORS: the Courses page of a device that takes GPX files in a folder of its own
+#. ({folder}, e.g. GPX), not in Garmin/NewFiles, where openExpress copies them
+#: openexpress/gui/courses_page.py
+#, python-brace-format
+msgid ""
+"This device takes GPX files in its own folder {folder}, where openExpress "
+"does not copy them"
 msgstr ""
 
 #. TRANSLATORS: the Courses page of a device that does not take GPX files

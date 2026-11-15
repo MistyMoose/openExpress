@@ -1285,6 +1285,60 @@ def test_a_folder_not_on_the_device_is_never_made(navigator):
     assert fake.steps == []
 
 
+def _hidden_folders_log(caplog) -> list[str]:
+    """The lines of hidden_folders in the log, as the log file has them (applog.redact)."""
+    from openexpress import applog
+
+    return [applog.redact(r.getMessage()) for r in caplog.records
+            if r.name == "openexpress.hidden_folders"]
+
+
+def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog):
+    """A size is no identifier: seven digits and more stay in the log, as `updates` writes them."""
+    import logging
+
+    fake = navigator_session(software=b"o" * 1_000_001)
+    storage = OverUsb(navigator, fake)
+    new = b"n" * 1_234_567
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        hidden_folders.write(storage, ".System/B000000.update", new,
+                             hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
+    lines = _hidden_folders_log(caplog)
+    assert [line for line in lines if "<number>" in line] == []
+    assert any("writing B000000.update (1_234_567 B)" in line for line in lines)
+    assert any("the old B000000.update (1_000_001 B) deleted" in line for line in lines)
+    assert any("(1_234_567 B), read back whole" in line for line in lines)
+
+
+def test_the_log_keeps_the_sizes_of_a_write_refused_for_space(navigator, caplog):
+    import logging
+
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    fake.free = 2_000_000
+    new = b"n" * 3_000_000
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"), \
+            pytest.raises(hidden_folders.WriteRefused):
+        hidden_folders.write(storage, ".System/B000000.update", new,
+                             hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
+    (refused,) = [line for line in _hidden_folders_log(caplog) if "not written" in line]
+    assert "<number>" not in refused and "3_000_000 B needed" in refused
+
+
+def test_the_log_names_a_folder_not_on_the_device_as_it_was_asked(navigator, caplog):
+    import logging
+
+    storage = OverUsb(navigator, navigator_session())
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        listing = hidden_folders.read(storage, [".System", ".System/MD2", ".System/GPX/Archive"],
+                                      "test")
+    (read,) = [line for line in _hidden_folders_log(caplog) if "entries" in line]
+    assert ".System/GPX/Archive: not on the device" in read
+    assert ".System/MD2: not on the device" in read
+    # Looked up in any letter case.
+    assert listing.knows(".system/md2") and listing.state_of(".SYSTEM/MD2") == hidden_folders.READ
+
+
 def test_the_command_line_trial_writes_both_and_says_so(offered_to, monkeypatch, capsys,
                                                        trial_downloads):
     from openexpress import cli

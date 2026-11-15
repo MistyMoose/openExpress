@@ -14,6 +14,7 @@ import posixpath
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 
+from openexpress import applog
 from openexpress.device import ptp
 from openexpress.device.storage import (
     DeviceError,
@@ -39,11 +40,11 @@ FAILED = "the session failed"
 class Listing:
     """What one session read: each folder asked, by its path in lower case, with its path in
     the device's letter case and what it holds (the ordinary listing and Garmin's together); the
-    folders asked that the device does not have; `state`: READ, or why nothing was read
-    (NO_SESSION, NO_USB, FAILED)."""
+    folders asked that the device does not have, by their path in lower case, with the path as
+    asked; `state`: READ, or why nothing was read (NO_SESSION, NO_USB, FAILED)."""
 
     folders: dict[str, tuple[str, list[Entry]]] = field(default_factory=dict)
-    missing: set[str] = field(default_factory=set)
+    missing: dict[str, str] = field(default_factory=dict)
     state: str = READ
 
     def tops(self) -> list[str]:
@@ -193,7 +194,8 @@ def read(storage: Storage, folders: Iterable[str], why: str,
                 known_devices.note_hidden_tops(unit_id, listing.tops())
         log.info("hidden folders: %s", "; ".join(
             f"{real}: {len(entries)} entries" for real, entries in listing.folders.values())
-            + "".join(f"; {m}: not on the device" for m in sorted(listing.missing)))
+            + "".join(f"; {m}: not on the device"
+                      for m in sorted(listing.missing.values(), key=str.casefold)))
     _kept[_connection(storage)] = listing
     return listing
 
@@ -236,7 +238,7 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
                 place = (store, top)
                 break
         if place is None:
-            listing.missing.add(folder.casefold())
+            listing.missing[folder.casefold()] = folder
             continue
         store, current = place
         real = [current.name]
@@ -247,7 +249,7 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
                 break
             real.append(current.name)
         if current is None:
-            listing.missing.add(folder.casefold())
+            listing.missing[folder.casefold()] = folder
             continue
         entries = [Entry(i.name, i.is_dir, 0 if i.is_dir else i.size)
                    for i in children(store, current.handle)]
@@ -327,8 +329,8 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
     if opener is None:
         state = NO_USB if storage.usb_blocked() else NO_SESSION
         raise WriteRefused(no_session_text(parts[0], state))
-    log.info("hidden folders: writing %s (%d B) into %s, in a session of its own", filename,
-             len(data), folder)
+    log.info("hidden folders: writing %s (%s) into %s, in a session of its own", filename,
+             applog.size(len(data)), folder)
     say_to(progress)(reading_text([folder]))
     with opener as session:
         store, parent, real = _folder_in(session, folder)
@@ -337,8 +339,9 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
         free = session.free_space(store)
         room = (free or 0) + (old.size if old is not None else 0)
         if free is None or room < len(data) + margin:
-            log.info("hidden folders: %s not written: %s B free with the old file, %s B needed",
-                     filename, room if free is not None else "?", len(data) + margin)
+            log.info("hidden folders: %s not written: %s free with the old file, %s needed",
+                     filename, applog.size(room if free is not None else None),
+                     applog.size(len(data) + margin))
             raise WriteRefused(no_space_text(name, len(data) + margin, room))
         if old is not None:
             try:
@@ -347,7 +350,7 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                 log.warning("hidden folders: the old %s not deleted (%s: %s)", old.name,
                             type(e).__name__, e)
                 raise NotWritten(not_written_text(name, old_removed=False)) from e
-            log.info("hidden folders: the old %s (%d B) deleted", old.name, old.size)
+            log.info("hidden folders: the old %s (%s) deleted", old.name, applog.size(old.size))
         handle = None
         try:
             handle = session.send_object(store, parent.handle, filename, data)
@@ -374,8 +377,8 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                     log.warning("hidden folders: what was written of %s not deleted (%s)",
                                 filename, type(gone).__name__)
             raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
-    log.info("hidden folders: %s written into %s (%d B), read back whole", filename, real,
-             len(data))
+    log.info("hidden folders: %s written into %s (%s), read back whole", filename, real,
+             applog.size(len(data)))
     forget(storage)  # what was read of the folder is not what is there now
     return Written(f"{real}/{filename}", len(data))
 

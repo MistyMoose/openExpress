@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 22:40+0100\n"
+"POT-Creation-Date: 2026-11-15 23:03+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -6910,6 +6910,15 @@ msgstr ""
 #, python-brace-format
 msgid "{count} update available"
 msgid_plural "{count} updates available"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: subtitle of the row "Maps" of the device page when Garmin offers a newer
+#. version that openExpress does not install (a car navigator), without a full stop
+#: openexpress/gui/device_page.py
+#, python-brace-format
+msgid "{count} map on the device"
+msgid_plural "{count} maps on the device"
 msgstr[0] ""
 msgstr[1] ""
 

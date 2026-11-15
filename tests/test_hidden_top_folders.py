@@ -1599,3 +1599,36 @@ def test_maps_use_of_a_navigator_comes_from_its_folder_read(navigator):
     assert maps.used_on_device(found) is None  # .System not read: not known
     hidden_folders.read(storage, maps.hidden_needed(found), "test")
     assert maps.used_on_device(_maps_from(storage)) == len(MAP_FILE)
+
+
+@pytest.mark.parametrize(("language", "text"), [("en", "1 map on the device"),
+                                                ("pl", "1 mapa na urządzeniu")])
+def test_the_maps_row_counts_no_update_openexpress_cannot_install(navigator, language, text):
+    """A newer City Navigator offered for .System: not "1 update available" on the device page
+    (openExpress does not install maps there; the Maps page says so), nor "up to date"."""
+    from openexpress import i18n
+    from openexpress.gui.app import MainWindow
+
+    storage = OverUsb(navigator, navigator_session())
+    newer = _map("Made-up City Navigator", CITY_NAVIGATOR[0])
+    newer["isreinstall"] = False  # a newer version than the one installed
+    hidden_folders.read(storage, [".System/Map"], "test")
+    found = _maps_from(storage, newer)
+    assert found[0].update_available and not maps.can_install(found[0])
+
+    class Row:
+        subtitle = None
+
+        def set_subtitle(self, text):
+            self.subtitle = text
+
+    win = stand_in(session=types.SimpleNamespace(), map_state=None, map_update_count=0,
+                   map_count=0, _map_check_session=None, map_row=Row())
+    for name in ("_render_map_state", "_set_map_state"):
+        setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
+    i18n.setup(language)
+    try:
+        win._set_map_state((found, 1))
+    finally:
+        i18n.setup("en")
+    assert (win.map_update_count, win.map_row.subtitle) == (0, text)

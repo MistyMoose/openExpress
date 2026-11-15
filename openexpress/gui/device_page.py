@@ -1405,6 +1405,11 @@ class DevicePage:
         if self.map_state == "available":
             text = ngettext("{count} update available", "{count} updates available",
                             self.map_update_count).format(count=self.map_update_count)
+        elif self.map_state == "onboard":
+            # TRANSLATORS: subtitle of the row "Maps" of the device page when Garmin offers a newer
+            # version that openExpress does not install (a car navigator), without a full stop
+            text = ngettext("{count} map on the device", "{count} maps on the device",
+                            self.map_count).format(count=self.map_count)
         elif self.map_state == "current":
             # TRANSLATORS: subtitle of the row "Maps" of the device page, without a full stop
             text = _("All installed maps are up to date")
@@ -1434,12 +1439,21 @@ class DevicePage:
             self.map_state = "nomaps" if no_maps else "unsupported"
             self._render_map_state()
             return
+        from openexpress import maps as mp
+
         all_maps, listed = result
-        self.map_update_count = sum(1 for m in all_maps if m.update_available)
+        # Only what openExpress can install: a newer map for a navigator's .System is said on
+        # the Maps page, not as an update here; nor is it "up to date".
+        self.map_update_count = sum(1 for m in all_maps
+                                    if m.update_available and mp.can_install(m))
+        held = any(m.update_available for m in all_maps)
+        self.map_count = sum(1 for m in all_maps if m.installed or m.incomplete)
         if not listed:
             self.map_state = "none"
         elif self.map_update_count:
             self.map_state = "available"
+        elif held:
+            self.map_state = "onboard"
         elif any(m.installed or m.incomplete for m in all_maps):
             self.map_state = "current"
         else:

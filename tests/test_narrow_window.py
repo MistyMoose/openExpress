@@ -51,9 +51,10 @@ def _device(description, version, part):
             else []))
 
 
-def _session(device, drive=False):
-    storage = types.SimpleNamespace(free_space=lambda: 52_140_000_000,
-                                    capacity=lambda: 64_000_000_000)
+def _session(device, drive=False, space=(52_140_000_000, 64_000_000_000)):
+    """`space`: free and total, which every page of the device reads alike (the device page,
+    the Maps page, Device Status)."""
+    storage = types.SimpleNamespace(free_space=lambda: space[0], capacity=lambda: space[1])
     client = types.SimpleNamespace(auth=types.SimpleNamespace(display="name@example.com"),
                                    consumer=object(), http=None)
     # On the account, its primary wearable: the row "Primary Wearable" is measured too
@@ -267,7 +268,9 @@ FENIX = ("fēnix 8 - 47mm, Solar", "23.39", "006-B4532-00")
 INREACH = ("inReach Mini 2", "5.05", "006-B3968-00")
 # A car navigator that hides its .System from MTP: what its pages show (the listing of one in the
 # made-up values below).
-NAVIGATOR = ("Drive 53", "8.50", "006-B4449-00")
+# Its GarminDevice.xml's description, the name the window and the command line show (its
+# software's name on the update server is "Drive 53").
+NAVIGATOR = ("Drive 53 EX", "8.50", "006-B4449-00")
 # Its free space and capacity, the same on its Maps page and its Device Status.
 NAVIGATOR_SPACE = (6_700_000_000, 14_800_000_000)
 
@@ -343,7 +346,8 @@ def _fill(win, page: str) -> str:
     drive = page.endswith("-drive")
     model = (INREACH if drive else NAVIGATOR if page.endswith("-navigator")
              else EDGE if page.startswith(("device", "updates")) else FENIX)
-    win.session = _session(_device(*model), drive=drive)
+    win.session = _session(_device(*model), drive=drive,
+                           **({"space": NAVIGATOR_SPACE} if model is NAVIGATOR else {}))
     if page == "device-refused-drive":
         # Not synced, with the longest of the reasons in place of the sync.
         win.session.drive_refusal = ("no-unit-info",

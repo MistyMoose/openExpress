@@ -1,9 +1,10 @@
 """Satellite data (experimental): the files that speed up the first GPS fix of a watch, written
 as Garmin sends them, never changed, to a watch that already keeps them in a format known here:
 
-* CPE.BIN in GARMIN/REMOTESW of the format of a Forerunner 45 (63,488 bytes, which the address
-  URL gives, not a tar archive), written when it differs from the device's and read back whole;
-  a device that renames the file written to CPE_BAD.bin rejected it;
+* CPE.BIN in GARMIN/REMOTESW of the format of a Forerunner 45 (which the address URL gives, not
+  a tar archive: whole blocks of 2,048 bytes, 31 or 32 of them so far, within SIZES), written
+  when it differs from the device's and read back whole; a device that renames the file written
+  to CPE_BAD.bin rejected it;
 * GPE.bin and GPES.bin in GARMIN/RemoteSW of the rxnetworks kind (gzip as Garmin serves them;
   the watch keeps them unpacked: 01 00, the time of their data, then bytes 6-15 as in RX_HEADER),
   as a fēnix 8 keeps them, hidden from the ordinary MTP listing. Each is written only where it was
@@ -43,7 +44,12 @@ URL = "https://api.gcs.garmin.com/ephemeris/cpe/sony?coverage=WEEKS_1"
 FOLDER = "GARMIN/REMOTESW"
 NAME = "CPE.BIN"
 REJECTED = "CPE_BAD.bin"  # what a watch renames a file it does not take to
-SIZE = 63_488
+# Garmin's file is the length of its data rounded up to whole blocks, zeros after the data: 31
+# blocks, then 32 as its data grew. Some blocks either way are taken as the same format; a size
+# far from them is not known (and a device that does not take a file renames it, which turns the
+# feature off).
+BLOCK = 2_048
+SIZES = (27 * BLOCK, 36 * BLOCK)  # the least and the most: 4 blocks around the sizes seen
 START = bytes.fromhex("2a12a002")
 KEPT = 4 * 3600  # the server's max-age
 TIMEOUT = 30
@@ -60,32 +66,46 @@ BLOCKED_FOR = 3600  # after a 429 that gives no time
 @dataclass(frozen=True)
 class RxFile:
     """A file of the rxnetworks kind: its name as Garmin Express and the phone write it, its
-    address, its size unpacked, and how old the device's may be before it is written again."""
+    address, the sizes it may have unpacked (from, to: the last not included), and how old the
+    device's may be before it is written again."""
 
     name: str
     url: str
-    unpacked: int
+    sizes: tuple[int, int]
     fresh: int
 
 
+KIB = 1024
 RX_FILES = (
-    # Its data cover 7 days; the phone was seen to leave it for more than 8 hours.
+    # Its data cover 7 days; the phone was seen to leave it for more than 8 hours. 213,108 bytes
+    # unpacked so far: taken from 64 KiB to 1 MiB, never in the range of GPES.bin.
     RxFile("GPE.bin", "https://api.gcs.garmin.com/ephemeris/cpe/rxnetworks/bytes?coverage=DAYS_7",
-           213_108, 24 * 3600),
-    # Its data cover 12 hours; the phone gives a new one every few hours.
+           (64 * KIB, 1024 * KIB), 24 * 3600),
+    # Its data cover 12 hours; the phone gives a new one every few hours. 15,976 bytes unpacked
+    # so far: taken from 4 KiB to 64 KiB.
     RxFile("GPES.bin",
            "https://api.gcs.garmin.com/ephemeris/cpe/rxnetworks/bytes?coverage=HOURS_12",
-           15_976, 4 * 3600),
+           (4 * KIB, 64 * KIB), 4 * 3600),
 )
+# The time of the data of Garmin's file: made at most this long ago (Garmin makes them anew every
+# few hours, kept 4 hours), at most this far ahead of this computer's clock.
+RX_AGE = 2 * 24 * 3600
+RX_AHEAD = 3600
+
+
+def size_known(size: int | None) -> bool:
+    """Whether a file of `size` bytes may be of the format known: whole blocks, within SIZES."""
+    return size is not None and SIZES[0] <= size <= SIZES[1] and size % BLOCK == 0
 
 
 def known_format(data: bytes) -> bool:
-    """Whether `data` is a file of the format known: 63,488 bytes that begin with 2a 12 a0 02,
-    the length of their data (bytes 4-7, little-endian) within them, zeros after it."""
-    if len(data) != SIZE or not data.startswith(START):
+    """Whether `data` is a file of the format known: whole blocks of 2,048 bytes within SIZES
+    that begin with 2a 12 a0 02, the length of their data (bytes 4-7, little-endian) within
+    them, zeros after it."""
+    if not size_known(len(data)) or not data.startswith(START):
         return False
     length = int.from_bytes(data[4:8], "little")
-    return 8 < length <= SIZE and not any(data[length:])
+    return 8 < length <= len(data) and not any(data[length:])
 
 
 def rx_time(data: bytes) -> int | None:
@@ -103,17 +123,22 @@ def rx_time(data: bytes) -> int | None:
 
 
 def rx_served(data: bytes, spec: RxFile) -> bool:
-    """Whether Garmin's `data` can be written as `spec`: one whole gzip stream, of its size
-    unpacked, of the rxnetworks kind."""
+    """Whether Garmin's `data` can be written as `spec`: one whole gzip stream (its own check of
+    the bytes and their length), unpacked of the rxnetworks kind, of a size in spec.sizes, its
+    data's time at most RX_AGE old and RX_AHEAD ahead of the clock. Never unpacked beyond the
+    largest size taken."""
     if data[:2] != b"\x1f\x8b":
         return False
     stream = zlib.decompressobj(wbits=31)
     try:
-        raw = stream.decompress(data)
+        raw = stream.decompress(data, spec.sizes[1])
     except zlib.error:
         return False
-    return (stream.eof and not stream.unused_data and len(raw) == spec.unpacked
-            and rx_time(raw) is not None)
+    if not stream.eof or stream.unused_data or not spec.sizes[0] <= len(raw) < spec.sizes[1]:
+        return False
+    stamp = rx_time(raw)
+    now = time.time()
+    return stamp is not None and now - RX_AGE <= stamp <= now + RX_AHEAD
 
 
 @dataclass
@@ -225,10 +250,10 @@ def _sha(data: bytes) -> str:
 
 
 def _read(storage, name: str) -> bytes | None:
-    """The file `name` of the folder, when it has the size of the format; None otherwise
+    """The file `name` of the folder, when it has a size of the format; None otherwise
     (absent, or another file of another size, which is never read)."""
     path = f"{FOLDER}/{name}"
-    if storage.size(path) != SIZE:
+    if not size_known(storage.size(path)):
         return None
     return storage.read(path)
 

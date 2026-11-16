@@ -346,6 +346,7 @@ class _Session(FakeDevice):
     def __init__(self):
         super().__init__()
         self.listed, self.fail_at, self.steps, self.corrupt_reads = [], None, [], False
+        self.parts = []  # (offset, size) of each part of a file read back
 
     def _handle(self, operation, params, data):
         if operation in (ptp.GET_OBJECT_HANDLES, ptp.GARMIN_GET_OBJECT_IDS):
@@ -365,6 +366,12 @@ class _Session(FakeDevice):
             answer = super()._handle(operation, params, data)
             if self.corrupt_reads and answer[0] == ptp.OK:
                 return ptp.OK, bytes(b ^ 1 for b in answer[1])
+            return answer
+        elif operation == ptp.GET_PARTIAL_OBJECT and params[0] in self.objects:
+            self.parts.append((params[1], params[2]))
+            answer = super()._handle(operation, params, data)
+            if self.corrupt_reads and answer[0] == ptp.OK:
+                return ptp.OK, bytes(b ^ 1 for b in answer[1]), answer[2]
             return answer
         return super()._handle(operation, params, data)
 
@@ -1290,11 +1297,11 @@ def test_the_write_lists_the_folder_afresh(navigator, drive_downloads):
     assert fake.steps == TZ_STEPS and fake.data_at(".System/gmaptz.img") == TZ_NEW
 
 
-def test_a_folder_not_on_the_device_is_never_made(navigator):
+def test_a_folder_not_on_the_device_is_never_made(navigator, tmp_path):
     fake = navigator_session()
     storage = OverUsb(navigator, fake)
     with pytest.raises(hidden_folders.WriteRefused, match="openExpress makes no folder there"):
-        hidden_folders.write(storage, ".System/Made-up/x.bin", b"x",
+        hidden_folders.write(storage, ".System/Made-up/x.bin", _on_the_computer(tmp_path, b"x"),
                              hashlib.md5(b"x").hexdigest(), "X", margin=0)
     assert fake.steps == []
 
@@ -1307,7 +1314,7 @@ def _hidden_folders_log(caplog) -> list[str]:
             if r.name == "openexpress.hidden_folders"]
 
 
-def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog):
+def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog, tmp_path):
     """A size is no identifier: seven digits and more stay in the log, as `updates` writes them."""
     import logging
 
@@ -1315,7 +1322,7 @@ def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog):
     storage = OverUsb(navigator, fake)
     new = b"n" * 1_234_567
     with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
-        hidden_folders.write(storage, ".System/B000000.update", new,
+        hidden_folders.write(storage, ".System/B000000.update", _on_the_computer(tmp_path, new),
                              hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
     lines = _hidden_folders_log(caplog)
     assert [line for line in lines if "<number>" in line] == []
@@ -1324,7 +1331,7 @@ def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog):
     assert any("(1_234_567 B), read back whole" in line for line in lines)
 
 
-def test_the_log_keeps_the_sizes_of_a_write_refused_for_space(navigator, caplog):
+def test_the_log_keeps_the_sizes_of_a_write_refused_for_space(navigator, caplog, tmp_path):
     import logging
 
     fake = navigator_session()
@@ -1333,7 +1340,7 @@ def test_the_log_keeps_the_sizes_of_a_write_refused_for_space(navigator, caplog)
     new = b"n" * 3_000_000
     with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"), \
             pytest.raises(hidden_folders.WriteRefused):
-        hidden_folders.write(storage, ".System/B000000.update", new,
+        hidden_folders.write(storage, ".System/B000000.update", _on_the_computer(tmp_path, new),
                              hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
     (refused,) = [line for line in _hidden_folders_log(caplog) if "not written" in line]
     assert "<number>" not in refused and "3_000_000 B needed" in refused
@@ -1427,6 +1434,131 @@ def test_the_window_installs_into_the_folder_read_as_the_command_line_does(navig
     assert [u.part_number for u in report.written] == ["006-D9001-00", "006-B0000-00"]
     assert fake.steps == TZ_STEPS + SYSTEM_STEPS
     assert fake.data_at(".System/B000000.update") == SYSTEM
+
+
+# --- a file sent as it is read, checked whole or by samples ------------------------------
+
+def _on_the_computer(tmp_path, data: bytes, name: str = "downloaded.bin"):
+    """A downloaded file, as the cache holds it."""
+    path = tmp_path / name
+    path.write_bytes(data)
+    return path
+
+
+def _write(storage, tmp_path, data, **more):
+    return hidden_folders.write(storage, ".System/B000000.update", _on_the_computer(tmp_path, data),
+                                hashlib.md5(data).hexdigest(), "Made-up Drive", margin=0, **more)
+
+
+def _byte_steps(told, head):
+    return [(s.done, s.total) for s in told if getattr(s, "head", None) == head]
+
+
+@pytest.fixture
+def small_pieces(monkeypatch):
+    """Pieces of 1 KiB sent and read; the check by samples on files over 1 000 bytes, by
+    blocks of 100 bytes, so that a few kilobytes show what a map of gigabytes would do."""
+    monkeypatch.setattr(ptp, "WRITE_CHUNK", 1024)
+    monkeypatch.setattr(ptp, "READ_CHUNK", 1024)
+    monkeypatch.setattr(hidden_folders, "FULL_CHECK_UP_TO", 1000)
+    monkeypatch.setattr(hidden_folders, "CHECK_BLOCK", 100)
+
+
+def test_a_write_sends_the_file_as_it_is_read_and_tells_its_bytes(navigator, tmp_path,
+                                                                    small_pieces):
+    fake = navigator_session()
+    new = bytes(range(256)) * 10  # 2 560 bytes: three pieces each way
+    told = []
+    _write(OverUsb(navigator, fake), tmp_path, new, progress=told.append, copying="Copying",
+           checking="Checking")
+    assert fake.data_at(".System/B000000.update") == new
+    assert _byte_steps(told, "Copying") == [(0, 2560), (1024, 2560), (2048, 2560), (2560, 2560)]
+    assert _byte_steps(told, "Checking") == [(0, 2560), (1024, 2560), (2048, 2560), (2560, 2560)]
+    assert fake.sent(ptp.GET_OBJECT) == 1 and fake.parts == []  # read back whole by default
+
+
+def test_the_log_tells_the_time_of_the_copy_and_of_the_check_apart(navigator, tmp_path, caplog):
+    import logging
+    import re
+
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        _write(OverUsb(navigator, navigator_session()), tmp_path, b"n" * 5000)
+    lines = _hidden_folders_log(caplog)
+    pace = r"\d+\.\d s(, \d+\.\d MB/s)?"
+    assert [line for line in lines if re.fullmatch(
+        rf"hidden folders: B000000\.update \(5_000 B\) sent in {pace}", line)]
+    assert [line for line in lines if re.fullmatch(
+        rf"hidden folders: B000000\.update read back whole \(5_000 B\) in {pace}", line)]
+
+
+def test_a_large_file_is_checked_by_samples_when_asked(navigator, tmp_path, small_pieces, caplog):
+    import logging
+
+    fake = navigator_session()
+    new = bytes(range(250)) * 12  # 3 000 bytes: 30 blocks of 100
+    told = []
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        _write(OverUsb(navigator, fake), tmp_path, new, check=hidden_folders.SAMPLED,
+               progress=told.append, checking="Checking")
+    # The first and the last block, and 8 others at random, each once; never the whole file.
+    assert fake.sent(ptp.GET_OBJECT) == 0 and len(fake.parts) == 10
+    assert fake.parts[0] == (0, 100) and fake.parts[-1] == (2900, 100)
+    middle = [offset for offset, _size in fake.parts[1:-1]]
+    assert len(set(middle)) == 8 and all(o % 100 == 0 and 100 <= o <= 2800 for o in middle)
+    assert _byte_steps(told, "Checking")[-1] == (1000, 1000)
+    assert fake.data_at(".System/B000000.update") == new
+    assert any("read back by samples (10 blocks, 1_000 B of 3_000 B)" in line
+               for line in _hidden_folders_log(caplog))
+
+
+def test_a_sample_with_other_bytes_removes_the_file(navigator, tmp_path, small_pieces):
+    fake = navigator_session()
+    fake.corrupt_reads = True
+    with pytest.raises(hidden_folders.NotWritten, match="its old file was removed"):
+        _write(OverUsb(navigator, fake), tmp_path, b"m" * 3000, check=hidden_folders.SAMPLED)
+    assert fake.data_at(".System/B000000.update") is None
+    assert fake.steps[-1] == ("delete", ".System/B000000.update")
+
+
+def test_a_file_up_to_the_limit_is_always_read_back_whole(navigator, tmp_path, small_pieces):
+    fake = navigator_session()
+    _write(OverUsb(navigator, fake), tmp_path, b"s" * 1000, check=hidden_folders.SAMPLED)
+    assert fake.sent(ptp.GET_OBJECT) == 1 and fake.parts == []
+
+
+def test_a_device_that_does_not_read_parts_is_read_back_whole(navigator, tmp_path,
+                                                              small_pieces, caplog):
+    import logging
+
+    fake = navigator_session()
+    fake.refuse[ptp.GET_PARTIAL_OBJECT] = ptp.OPERATION_NOT_SUPPORTED
+    new = b"w" * 3000
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        _write(OverUsb(navigator, fake), tmp_path, new, check=hidden_folders.SAMPLED)
+    assert fake.sent(ptp.GET_OBJECT) == 1 and fake.data_at(".System/B000000.update") == new
+    assert any("does not read parts (0x2005): read back whole instead" in line
+               for line in _hidden_folders_log(caplog))
+
+
+def test_a_file_that_differs_from_the_one_on_the_computer_is_removed(navigator, tmp_path):
+    """Read back whole, the device's bytes are compared with the file on the computer too, not
+    only with the MD5 the server gave."""
+    fake = navigator_session()
+    new = b"d" * 4000
+    local = _on_the_computer(tmp_path, new)
+    original = fake._handle
+
+    def other_bytes(operation, params, data):
+        answer = original(operation, params, data)
+        if operation == ptp.GET_OBJECT and answer[0] == ptp.OK:
+            return ptp.OK, b"e" + answer[1][1:]
+        return answer
+
+    fake._handle = other_bytes
+    with pytest.raises(hidden_folders.NotWritten):
+        hidden_folders.write(OverUsb(navigator, fake), ".System/B000000.update", local, None,
+                             "Made-up Drive", margin=0)
+    assert fake.data_at(".System/B000000.update") is None
 
 
 def test_a_write_into_the_folder_read_tells_its_copy_and_its_check(navigator, drive_downloads):

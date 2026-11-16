@@ -337,6 +337,119 @@ def test_the_device_refuses_new_folders(device):
     assert not hasattr(ptp.Session, "make_dir")
 
 
+# --- files larger than memory: sent from a file, read back in pieces ----------------------
+
+def _sent_after_the_header(transfers: list[bytes]) -> list[bytes]:
+    """The transfers of the data phase of the last SendObject, after its header."""
+    start = max(i for i, t in enumerate(transfers) if t[6:8] == b"\x0d\x10" and t[4:6] == b"\x01\x00")
+    return transfers[start + 2:]
+
+
+def test_a_file_is_sent_from_a_stream_as_the_bytes_would_be(device, monkeypatch):
+    """The same transfers as from bytes, read 1 KiB at a time here, the bytes sent told after
+    each piece."""
+    import io
+
+    monkeypatch.setattr(ptp, "WRITE_CHUNK", 1024)
+    data = bytes(range(256)) * 10 + b"tail"
+    apps = device.handle("GARMIN/Apps")
+    with ptp.Session(device) as session:
+        session.send_object(STORAGE, apps, "A.BIN", data)
+        from_bytes = _sent_after_the_header(device.transfers)
+        told = []
+        handle = session.send_object(STORAGE, apps, "B.BIN",
+                                     ptp.Outgoing(io.BytesIO(data), len(data), told.append))
+        from_stream = _sent_after_the_header(device.transfers)
+    assert from_stream == from_bytes and device.objects[handle].data == data
+    assert told == [1024, 2048, len(data)]
+
+
+@pytest.mark.parametrize("size", [0, 512, 1024])
+def test_a_stream_ends_with_the_packet_a_full_last_packet_needs(device, size):
+    import io
+
+    with ptp.Session(device) as session:
+        session.send_object(STORAGE, device.handle("GARMIN/Apps"), "A.BIN",
+                            ptp.Outgoing(io.BytesIO(b"x" * size), size))
+        sent = _sent_after_the_header(device.transfers)
+    assert sent[-2:] == ([b""] if size == 0 else [b"x" * size, b""])[-2:]
+
+
+def test_only_the_size_announced_is_sent_from_a_longer_stream(device):
+    import io
+
+    with ptp.Session(device) as session:
+        handle = session.send_object(STORAGE, device.handle("GARMIN/Apps"), "A.BIN",
+                                     ptp.Outgoing(io.BytesIO(b"announced and more"), 9))
+    assert device.objects[handle].data == b"announced"
+
+
+def test_a_stream_that_ends_early_stops_the_conversation(device):
+    import io
+
+    with ptp.Session(device) as session:
+        with pytest.raises(ptp.PtpWriteError, match="ended before"):
+            session.send_object(STORAGE, device.handle("GARMIN/Apps"), "A.BIN",
+                                ptp.Outgoing(io.BytesIO(b"short"), 100))
+        sent = len(device.transfers)
+        with pytest.raises(ptp.PtpError):
+            session.storages()
+        assert len(device.transfers) == sent  # out of step: nothing more is sent
+    assert device.closed
+
+
+def test_an_object_is_read_in_pieces_never_whole(device, monkeypatch):
+    monkeypatch.setattr(ptp, "READ_CHUNK", 1000)
+    data = bytes(range(256)) * 20  # 5120 bytes: more than five pieces
+    handle = device.add("GARMIN/Apps/BIG.BIN", data)
+    pieces = []
+    with ptp.Session(device) as session:
+        assert session.read_into(handle, pieces.append) == len(data)
+        assert session.storages() == [STORAGE]  # the conversation goes on in step
+    assert b"".join(pieces) == data and max(len(p) for p in pieces) <= 1000
+
+
+def test_an_object_read_in_pieces_split_over_many_reads(device, monkeypatch):
+    monkeypatch.setattr(ptp, "READ_CHUNK", 1000)
+    device.read_chunk = 7
+    data = bytes(range(256)) * 9
+    handle = device.add("GARMIN/Apps/BIG.BIN", data)
+    pieces = []
+    with ptp.Session(device) as session:
+        session.read_into(handle, pieces.append)
+        assert session.read_file(handle) == data
+    assert b"".join(pieces) == data
+
+
+def test_a_read_refused_gives_nothing_to_the_reader(device):
+    device.refuse[ptp.GET_OBJECT] = ptp.ACCESS_DENIED
+    pieces = []
+    with ptp.Session(device) as session:
+        with pytest.raises(ptp.PtpRefused) as error:
+            session.read_into(device.handle("GARMIN/Apps/OUT.BIN"), pieces.append)
+        assert session.storages() == [STORAGE]  # a refusal leaves the conversation in step
+    assert error.value.code == ptp.ACCESS_DENIED and pieces == []
+
+
+def test_a_part_of_an_object(device):
+    data = bytes(range(256)) * 4
+    handle = device.add("GARMIN/Apps/BIG.BIN", data)
+    with ptp.Session(device) as session:
+        assert session.read_part(handle, 300, 100) == data[300:400]
+        assert session.read_part(handle, 1000, 100) == data[1000:]  # the end of the object
+    command_sent = next(t for t in device.transfers if t[6:8] == b"\x1b\x10")
+    assert struct.unpack_from("<III", command_sent, 12) == (handle, 300, 100)
+
+
+def test_a_device_that_does_not_read_parts_says_so(device):
+    device.refuse[ptp.GET_PARTIAL_OBJECT] = ptp.OPERATION_NOT_SUPPORTED
+    with ptp.Session(device) as session:
+        with pytest.raises(ptp.PtpRefused) as error:
+            session.read_part(device.handle("GARMIN/Apps/OUT.BIN"), 0, 2)
+        assert session.storages() == [STORAGE]
+    assert error.value.code == ptp.OPERATION_NOT_SUPPORTED
+
+
 # --- deleting ----------------------------------------------------------------------------
 
 def test_delete_a_fresh_file(device):

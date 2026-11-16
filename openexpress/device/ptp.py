@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import io
 import logging
 import os
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 from openexpress import applog
 from openexpress.device.storage import DeviceError, named_in_any_case
@@ -36,6 +38,7 @@ GET_OBJECT = 0x1009
 DELETE_OBJECT = 0x100B
 SEND_OBJECT_INFO = 0x100C
 SEND_OBJECT = 0x100D
+GET_PARTIAL_OBJECT = 0x101B
 GARMIN_GET_OBJECT_IDS = 0x9002
 
 OPERATIONS = {
@@ -44,7 +47,7 @@ OPERATIONS = {
     GET_OBJECT_HANDLES: "GetObjectHandles", GET_OBJECT_INFO: "GetObjectInfo",
     GET_OBJECT: "GetObject", DELETE_OBJECT: "DeleteObject",
     SEND_OBJECT_INFO: "SendObjectInfo", SEND_OBJECT: "SendObject",
-    GARMIN_GET_OBJECT_IDS: "Garmin GetObjectIds",
+    GET_PARTIAL_OBJECT: "GetPartialObject", GARMIN_GET_OBJECT_IDS: "Garmin GetObjectIds",
 }
 
 # Responses.
@@ -83,6 +86,7 @@ ROOT = 0xFFFFFFFF
 SESSION_ID = 1
 MAX_OBJECT_SIZE = 0xFFFFFFFF - HEADER.size
 READ_SIZE = 64 * 1024
+READ_CHUNK = 1024 * 1024  # the pieces of a file read back, handed on as they come
 WRITE_CHUNK = 1024 * 1024
 TIMEOUT_MS = 30000
 
@@ -111,6 +115,17 @@ class PtpWriteError(PtpError):
     def __init__(self, message: str, handle: int | None = None):
         self.handle = handle
         super().__init__(message)
+
+
+@dataclass
+class Outgoing:
+    """The data of a SendObject read from a file as it goes, never held whole: `size` bytes of
+    `stream`, sent WRITE_CHUNK bytes at a time; `sent` is told the bytes sent so far after each
+    piece."""
+
+    stream: BinaryIO
+    size: int
+    sent: Callable[[int], None] | None = None
 
 
 def operation_name(code: int) -> str:
@@ -456,6 +471,7 @@ class Session:
         self._buffer = b""
         self._open = False
         self._broken = False  # the conversation is out of step; send nothing more
+        self._empty = 0  # reads in a row that brought nothing
 
     def __enter__(self) -> Session:
         try:
@@ -490,40 +506,54 @@ class Session:
             self._open = False
             self.transport.close()
 
-    def transact(self, operation: int, *params: int,
-                 data_out: bytes | None = None) -> tuple[int, bytes, list[int]]:
-        """One transaction: (response code, data received, response parameters)."""
+    def transact(self, operation: int, *params: int, data_out: bytes | Outgoing | None = None,
+                 data_in: Callable[[bytes], None] | None = None) -> tuple[int, bytes, list[int]]:
+        """One transaction: (response code, data received, response parameters). `data_out`:
+        the data sent, as bytes or read from a file as it goes; `data_in`: given the data
+        received piece by piece as it comes, never held whole (the data returned is then
+        empty)."""
+        out = Outgoing(io.BytesIO(data_out), len(data_out)) if isinstance(
+            data_out, (bytes, bytearray)) else data_out
+        received = 0
+        sink = data_in
+        if data_in is not None:
+            def sink(piece: bytes) -> None:
+                nonlocal received
+                received += len(piece)
+                data_in(piece)
         try:
-            code, data, answer = self._transact(operation, *params, data_out=data_out)
+            code, data, answer = self._transact(operation, *params, data_out=out, data_in=sink)
         except PtpError as e:
             log.warning("PTP 0x%04X failed: %s", operation, type(e).__name__)
             raise
         # Only codes and sizes: parameters are handles, the data may be a file.
         log.debug("PTP 0x%04X -> 0x%04X (sent %s, received %s)", operation, code,
-                  applog.size(len(data_out or b"")), applog.size(len(data)))
+                  applog.size(out.size if out is not None else 0),
+                  applog.size(len(data) + received))
         return code, data, answer
 
-    def _transact(self, operation: int, *params: int,
-                  data_out: bytes | None = None) -> tuple[int, bytes, list[int]]:
+    def _transact(self, operation: int, *params: int, data_out: Outgoing | None,
+                  data_in: Callable[[bytes], None] | None) -> tuple[int, bytes, list[int]]:
         if self._broken:
             raise PtpError(_("The connection to the device is out of step."))
-        if data_out is not None and len(data_out) > MAX_OBJECT_SIZE:
+        if data_out is not None and data_out.size > MAX_OBJECT_SIZE:
             raise PtpError(_("The file is too large to send."))
         transaction, self._transaction = self._transaction, self._transaction + 1
         try:
             self.transport.write(command(operation, transaction, params))
             if data_out is not None:
                 # Header and payload as separate transfers, like the Windows MTP stack.
-                self.transport.write(data_header(operation, transaction, len(data_out)))
-                for start in range(0, len(data_out), WRITE_CHUNK):
-                    self.transport.write(data_out[start:start + WRITE_CHUNK])
-                if len(data_out) % self.transport.packet_size == 0:
-                    self.transport.write(b"")  # a full last packet does not end the transfer
+                self.transport.write(data_header(operation, transaction, data_out.size))
+                self._send(data_out)
             data = b""
             while True:
-                kind, code, answered, payload = self._container()
+                kind, code, answered, length = self._header()
                 if answered != transaction or kind not in (DATA, RESPONSE):
                     raise PtpError(_("The device answered out of step."))
+                if kind == DATA and data_in is not None:
+                    self._stream(length - HEADER.size, data_in)
+                    continue
+                payload = self._take(length - HEADER.size)
                 if kind == DATA:
                     data = payload
                 else:
@@ -533,27 +563,61 @@ class Session:
             self._broken = True
             raise
 
-    def _container(self) -> tuple[int, int, int, bytes]:
+    def _send(self, out: Outgoing) -> None:
+        done = 0
+        while done < out.size:
+            piece = out.stream.read(min(WRITE_CHUNK, out.size - done))
+            if not piece:
+                raise PtpWriteError(_("The file ended before all of it was sent."))
+            self.transport.write(piece)
+            done += len(piece)
+            if out.sent is not None:
+                out.sent(done)
+        if out.size % self.transport.packet_size == 0:
+            self.transport.write(b"")  # a full last packet does not end the transfer
+
+    def _header(self) -> tuple[int, int, int, int]:
+        """The header of the next container: (kind, code, transaction, its whole length)."""
         self._fill(HEADER.size)
         length, kind, code, transaction = HEADER.unpack_from(self._buffer)
         if length < HEADER.size or length == 0xFFFFFFFF:
             raise PtpError(_("The device answered out of step."))
-        self._fill(length)
-        payload, self._buffer = self._buffer[HEADER.size:length], self._buffer[length:]
-        return kind, code, transaction, payload
+        self._buffer = self._buffer[HEADER.size:]
+        return kind, code, transaction, length
+
+    def _take(self, size: int) -> bytes:
+        self._fill(size)
+        payload, self._buffer = self._buffer[:size], self._buffer[size:]
+        return payload
+
+    def _stream(self, size: int, data_in: Callable[[bytes], None]) -> None:
+        """`size` bytes of a data phase handed on as they come, READ_CHUNK at most at a time."""
+        self._empty = 0
+        while size > 0:
+            if not self._buffer:
+                self._read(READ_CHUNK)
+                continue
+            take = min(size, READ_CHUNK)
+            piece, self._buffer = self._buffer[:take], self._buffer[take:]
+            size -= len(piece)
+            data_in(piece)
 
     def _fill(self, size: int) -> None:
-        empty = 0
+        self._empty = 0
         while len(self._buffer) < size:
-            chunk = self.transport.read(READ_SIZE)
-            empty = 0 if chunk else empty + 1
-            if empty > 3:  # a zero-length packet may end a data phase; several mean silence
-                raise PtpError(_("The device did not answer in time."))
-            self._buffer += chunk
+            self._read(READ_SIZE)
 
-    def _ok(self, operation: int, *params: int,
-            data_out: bytes | None = None) -> tuple[bytes, list[int]]:
-        code, data, answer = self.transact(operation, *params, data_out=data_out)
+    def _read(self, size: int) -> None:
+        chunk = self.transport.read(size)
+        self._empty = 0 if chunk else self._empty + 1
+        if self._empty > 3:  # a zero-length packet may end a data phase; several mean silence
+            raise PtpError(_("The device did not answer in time."))
+        self._buffer += chunk
+
+    def _ok(self, operation: int, *params: int, data_out: bytes | Outgoing | None = None,
+            data_in: Callable[[bytes], None] | None = None) -> tuple[bytes, list[int]]:
+        code, data, answer = self.transact(operation, *params, data_out=data_out,
+                                           data_in=data_in)
         if code != OK:
             raise PtpRefused(operation, code)
         return data, answer
@@ -613,7 +677,29 @@ class Session:
     def read_file(self, handle: int) -> bytes:
         """The object's content as the device returns it. App files come back encrypted,
         so this cannot verify them."""
-        return self._ok(GET_OBJECT, handle)[0]
+        content = bytearray()
+        self.read_into(handle, content.extend)
+        return bytes(content)
+
+    def read_into(self, handle: int, data_in: Callable[[bytes], None]) -> int:
+        """The object's content given to `data_in` piece by piece as the device sends it,
+        READ_CHUNK bytes at most at a time, never held whole; the bytes read. Raises PtpRefused
+        when the device does not give it (nothing was given to `data_in`)."""
+        read = 0
+
+        def counted(piece: bytes) -> None:
+            nonlocal read
+            read += len(piece)
+            data_in(piece)
+
+        self._ok(GET_OBJECT, handle, data_in=counted)
+        return read
+
+    def read_part(self, handle: int, offset: int, size: int) -> bytes:
+        """At most `size` bytes of the object from `offset` (fewer at its end; the offset is
+        32-bit, as no object over MAX_OBJECT_SIZE is ever sent). Raises PtpRefused
+        (OperationNotSupported) on a device that does not read parts."""
+        return self._ok(GET_PARTIAL_OBJECT, handle, offset, size)[0]
 
     def send_file(self, storage: int, parent: int, name: str, data: bytes,
                   verify_content: bool = False) -> ObjectInfo:
@@ -633,12 +719,14 @@ class Session:
             raise PtpWriteError(_("“{name}” was not written correctly.").format(name=name), handle)
         return written
 
-    def send_object(self, storage: int, parent: int, name: str, data: bytes) -> int:
-        """A new object `name` holding `data` in the folder `parent`, as Garmin Express writes
-        one (SendObjectInfo, then SendObject); its handle. Nothing is checked here. A SendObject
-        that fails raises PtpWriteError with the handle the device gave the object."""
+    def send_object(self, storage: int, parent: int, name: str, data: bytes | Outgoing) -> int:
+        """A new object `name` holding `data` (bytes, or read from a file as it is sent) in the
+        folder `parent`, as Garmin Express writes one (SendObjectInfo, then SendObject); its
+        handle. Nothing is checked here. A SendObject that fails raises PtpWriteError with the
+        handle the device gave the object."""
+        size = data.size if isinstance(data, Outgoing) else len(data)
         _data, answer = self._ok(SEND_OBJECT_INFO, storage, parent,
-                                 data_out=object_info_dataset(name, len(data)))
+                                 data_out=object_info_dataset(name, size))
         if len(answer) < 3:
             raise PtpWriteError(
                 _("The device did not say where it put “{name}”.").format(name=name))

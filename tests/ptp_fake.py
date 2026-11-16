@@ -210,6 +210,11 @@ class FakeDevice:
             if obj.name.upper().endswith(".PRG"):
                 return ptp.OK, bytes(b ^ 0xA5 for b in obj.data)  # "encrypted"
             return ptp.OK, obj.data
+        if operation == ptp.GET_PARTIAL_OBJECT:
+            if obj.data is None:
+                return (ptp.INVALID_OBJECT_HANDLE,)
+            part = obj.data[params[1]:params[1] + params[2]]
+            return ptp.OK, part, (len(part),)
         if operation == ptp.DELETE_OBJECT:
             if obj.name in self.refuse_delete_names:
                 return (self.refuse_delete_names[obj.name],)

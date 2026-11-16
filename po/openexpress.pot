@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 19:17+0100\n"
+"POT-Creation-Date: 2026-11-16 20:33+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5145,6 +5145,11 @@ msgstr ""
 #: openexpress/device/ptp.py
 #, python-brace-format
 msgid "The device answered out of step."
+msgstr ""
+
+#: openexpress/device/ptp.py
+#, python-brace-format
+msgid "The file ended before all of it was sent."
 msgstr ""
 
 #: openexpress/device/ptp.py

@@ -924,7 +924,7 @@ def _write_hidden(storage: Storage, u: SoftwareUpdate, local: Path, progress,
     an UpdateError that says what is on the device when it was not written whole, or could not
     be read back (it then stays, counted as written)."""
     try:
-        written = hidden_folders.write(storage, u.device_path, local.read_bytes(),
+        written = hidden_folders.write(storage, u.device_path, local,
                                        download.normalize_md5(u.md5), u.title,
                                        space_margin(storage), progress=progress,
                                        copying=copying_text(u.title),

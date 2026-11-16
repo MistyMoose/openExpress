@@ -12,8 +12,11 @@ from __future__ import annotations
 import hashlib
 import logging
 import posixpath
+import random
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from openexpress import applog
 from openexpress.device import ptp
@@ -26,7 +29,7 @@ from openexpress.device.storage import (
     named_in_any_case,
 )
 from openexpress.i18n import _
-from openexpress.progress import Step, say_to
+from openexpress.progress import byte_steps, say_to
 
 log = logging.getLogger(__name__)
 
@@ -313,27 +316,49 @@ class Written:
     size: int
 
 
-def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, margin: int,
+# How a file written is read back: whole (FULL), or by samples (SAMPLED: the first and the
+# last block and CHECK_SAMPLES blocks at random, byte for byte against the file on the
+# computer). A file up to FULL_CHECK_UP_TO is always read back whole.
+FULL = "full"
+SAMPLED = "sampled"
+CHECK_BLOCK = 1024 * 1024
+CHECK_SAMPLES = 8
+FULL_CHECK_UP_TO = 256 * 1024 * 1024
+_random = random.Random()
+
+
+def _pace(size: int, seconds: float) -> str:
+    """How long a copy or a check took, and how fast it went (for the log)."""
+    if seconds <= 0:
+        return f"{seconds:.1f} s"
+    return f"{seconds:.1f} s, {size / seconds / 1_000_000:.1f} MB/s"
+
+
+def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, margin: int,
           progress: Callable[[str], None] | None = None, copying: str | None = None,
-          checking: str | None = None) -> Written:
-    """Write `data` as the file at `path` in a folder of the top level ordinary MTP does not
-    show, as Garmin Express writes there, in a session of its own: the folder listed afresh
-    (the ordinary listing and Garmin's together), the space checked with the old file counted
-    (free + old >= new + `margin`, else WriteRefused, nothing changed), the old file of that
-    name deleted (hidden too), the new one announced in that folder and sent, then checked:
-    its size as the device gives it, and the whole file read back against `md5`. A file not
-    written whole, or read back otherwise, is deleted at once (NotWritten, which says what is on
-    the device); one the device does not give back stays (ContentsNotRead). No folder is ever
-    made; nothing else is touched. `name`: of the update, for the words; `copying` and
-    `checking`: the heads of the steps told to `progress` while it is sent and read back."""
+          checking: str | None = None, check: str = FULL) -> Written:
+    """Write the file `local` (on the computer) as the file at `path` in a folder of the top
+    level ordinary MTP does not show, as Garmin Express writes there, in a session of its own:
+    the folder listed afresh (the ordinary listing and Garmin's together), the space checked
+    with the old file counted (free + old >= new + `margin`, else WriteRefused, nothing
+    changed), the old file of that name deleted (hidden too), the new one announced in that
+    folder and sent as it is read (ptp.WRITE_CHUNK at a time, never held whole), then checked:
+    its size as the device gives it, and the file read back (`check`: FULL, the whole file
+    against `local` and `md5`; SAMPLED, blocks of it against `local`, see FULL_CHECK_UP_TO). A
+    file not written whole, or read back otherwise, is deleted at once (NotWritten, which says
+    what is on the device); one the device does not give back stays (ContentsNotRead). No folder
+    is ever made; nothing else is touched. The time of the copy and of the check are logged
+    apart. `name`: of the update, for the words; `copying` and `checking`: the heads of the
+    steps told to `progress` (in bytes) while it is sent and read back."""
     parts = [p for p in path.replace("\\", "/").split("/") if p]
     folder, filename = "/".join(parts[:-1]), parts[-1]
+    size = local.stat().st_size
     opener = storage.exclusive_ptp()
     if opener is None:
         state = NO_USB if storage.usb_blocked() else NO_SESSION
         raise WriteRefused(no_session_text(parts[0], state))
     log.info("hidden folders: writing %s (%s) into %s, in a session of its own", filename,
-             applog.size(len(data)), folder)
+             applog.size(size), folder)
     say_to(progress)(reading_text([folder]))
     with opener as session:
         store, parent, real = _folder_in(session, folder)
@@ -341,11 +366,11 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
         old = named_in_any_case([i for i in items if not i.is_dir], filename)
         free = session.free_space(store)
         room = (free or 0) + (old.size if old is not None else 0)
-        if free is None or room < len(data) + margin:
+        if free is None or room < size + margin:
             log.info("hidden folders: %s not written: %s free with the old file, %s needed",
                      filename, applog.size(room if free is not None else None),
-                     applog.size(len(data) + margin))
-            raise WriteRefused(no_space_text(name, len(data) + margin, room))
+                     applog.size(size + margin))
+            raise WriteRefused(no_space_text(name, size + margin, room))
         if old is not None:
             try:
                 session.delete(old.handle)
@@ -355,28 +380,21 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                 raise NotWritten(not_written_text(name, old_removed=False)) from e
             log.info("hidden folders: the old %s (%s) deleted", old.name, applog.size(old.size))
         handle = None
-        say = say_to(progress)
         try:
-            if copying:
-                say(Step(copying, 0, len(data), in_bytes=True))
-            handle = session.send_object(store, parent.handle, filename, data)
-            size = session.info(handle).size
-            if size != len(data):
-                raise ptp.PtpWriteError(f"{size} B on the device, {len(data)} B written")
-            if copying:
-                say(Step(copying, len(data), len(data), in_bytes=True))
-            if checking:
-                say(Step(checking, 0, len(data), in_bytes=True))
-            try:
-                back = session.read_file(handle)
-            except ptp.PtpRefused as e:
-                log.info("hidden folders: %s written at its size; reading it back refused "
-                         "(0x%04x): kept, contents not compared", filename, e.code)
-                raise ContentsNotRead(contents_not_read_text(name)) from e
-            if md5 is not None and hashlib.md5(back).hexdigest() != md5.casefold():
-                raise ptp.PtpWriteError("the file read back differs from the one written")
-            if checking:
-                say(Step(checking, len(data), len(data), in_bytes=True))
+            sent = byte_steps(progress, copying) if copying else None
+            if sent is not None:
+                sent(0, size)
+            started = time.monotonic()
+            with open(local, "rb") as source:
+                handle = session.send_object(store, parent.handle, filename, ptp.Outgoing(
+                    source, size, None if sent is None else lambda done: sent(done, size)))
+            log.info("hidden folders: %s (%s) sent in %s", filename, applog.size(size),
+                     _pace(size, time.monotonic() - started))
+            on_device = session.info(handle).size
+            if on_device != size:
+                raise ptp.PtpWriteError(f"{on_device} B on the device, {size} B written")
+            how = _read_back(session, handle, filename, local, size, md5, check,
+                             byte_steps(progress, checking) if checking else None, name)
         except ContentsNotRead:
             raise
         except ptp.PtpError as e:
@@ -389,10 +407,84 @@ def write(storage: Storage, path: str, data: bytes, md5: str | None, name: str, 
                     log.warning("hidden folders: what was written of %s not deleted (%s)",
                                 filename, type(gone).__name__)
             raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
-    log.info("hidden folders: %s written into %s (%s), read back whole", filename, real,
-             applog.size(len(data)))
+    log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
+             applog.size(size), how)
     forget(storage)  # what was read of the folder is not what is there now
-    return Written(f"{real}/{filename}", len(data))
+    return Written(f"{real}/{filename}", size)
+
+
+def _read_back(session, handle: int, filename: str, local: Path, size: int, md5: str | None,
+               check: str, told: Callable[[int, int | None], None] | None, name: str) -> str:
+    """Read back the file just written as `check` says; how it was read ("whole", "by
+    samples"). Raises ptp.PtpWriteError when it differs, ContentsNotRead when the device does
+    not give it back."""
+    if check == SAMPLED and size > FULL_CHECK_UP_TO and size > CHECK_BLOCK * (CHECK_SAMPLES + 2):
+        started = time.monotonic()
+        try:
+            read = _compare_samples(session, handle, local, size, told)
+        except ptp.PtpRefused as e:
+            log.info("hidden folders: the device does not read parts (0x%04x): read back whole "
+                     "instead", e.code)
+        else:
+            log.info("hidden folders: %s read back by samples (%s) in %s", filename, read,
+                     _pace(size, time.monotonic() - started))
+            return "by samples"
+    started = time.monotonic()
+    try:
+        _compare_whole(session, handle, local, size, md5, told)
+    except ptp.PtpRefused as e:
+        log.info("hidden folders: %s written at its size; reading it back refused "
+                 "(0x%04x): kept, contents not compared", filename, e.code)
+        raise ContentsNotRead(contents_not_read_text(name)) from e
+    log.info("hidden folders: %s read back whole (%s) in %s", filename, applog.size(size),
+             _pace(size, time.monotonic() - started))
+    return "whole"
+
+
+def _compare_whole(session, handle: int, local: Path, size: int, md5: str | None,
+                   told: Callable[[int, int | None], None] | None) -> None:
+    """The whole file read back as it comes, compared with `local` byte for byte and with
+    `md5` (when given)."""
+    digest = hashlib.md5()
+    done, same = 0, True
+    if told is not None:
+        told(0, size)
+    with open(local, "rb") as mine:
+        def compare(piece: bytes) -> None:
+            nonlocal done, same
+            digest.update(piece)
+            same = same and mine.read(len(piece)) == piece
+            done += len(piece)
+            if told is not None:
+                told(done, size)
+
+        session.read_into(handle, compare)
+    if not same or done != size:
+        raise ptp.PtpWriteError("the file read back differs from the one written")
+    if md5 is not None and digest.hexdigest() != md5.casefold():
+        raise ptp.PtpWriteError("the file read back differs from the one written")
+
+
+def _compare_samples(session, handle: int, local: Path, size: int,
+                     told: Callable[[int, int | None], None] | None) -> str:
+    """The first and the last CHECK_BLOCK of the file and CHECK_SAMPLES blocks at random in
+    between, each read back and compared with `local`; what was read, for the log."""
+    blocks = (size - CHECK_BLOCK) // CHECK_BLOCK  # whole blocks before the last one
+    middle = sorted(_random.sample(range(1, blocks), CHECK_SAMPLES))
+    offsets = [0, *(k * CHECK_BLOCK for k in middle), size - CHECK_BLOCK]
+    total, done = CHECK_BLOCK * len(offsets), 0
+    if told is not None:
+        told(0, total)
+    with open(local, "rb") as mine:
+        for offset in offsets:
+            back = session.read_part(handle, offset, CHECK_BLOCK)
+            mine.seek(offset)
+            if back != mine.read(CHECK_BLOCK):
+                raise ptp.PtpWriteError("a block read back differs from the one written")
+            done += len(back)
+            if told is not None:
+                told(done, total)
+    return f"{len(offsets)} blocks, {applog.size(total)} of {applog.size(size)}"
 
 
 def _folder_in(session, folder: str):

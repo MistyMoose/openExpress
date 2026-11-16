@@ -84,9 +84,10 @@ def not_installed_advice(hidden_folder: bool = False) -> str:
     if hidden_folder:
         # TRANSLATORS: on the Updates page, after a car navigator was unplugged and plugged in
         # again without installing the update openExpress copied
-        return _("Unplug the device from the computer, connect it to power (its car cable or a "
-                 "USB charger), turn it on and wait until it has installed the update. If it is "
-                 "still listed when you plug it in again, a device report helps find out why.")
+        return _("Unplug the device from the computer, connect it to its car cable or a USB "
+                 "charger, turn it on and wait until it has installed the update. If the update "
+                 "is still listed when you plug the device in again, a device report helps find "
+                 "out why.")
     # TRANSLATORS: "Settings → System → About" is the menu of the device; use the words of the
     # Garmin devices in your language
     return _("Check the version on the device (Settings → System → About). Ejecting "

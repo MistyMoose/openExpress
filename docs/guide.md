@@ -171,7 +171,8 @@ connected device; no login is needed.
   the device is the one Garmin offers (the same size and checksum; in a folder the device hides,
   the same size), the row says both versions and *the same file* and keeps **Reinstall**;
   otherwise the row says *an older version* and has no button, and `openexpress updates
-  --install` refuses it, so an older component never replaces the device's own.
+  --install` refuses it, so an older version is written only when the file on the device is
+  the same one; in a folder the device hides, only its size is compared.
 - While software updates or a map's files are copied, openExpress keeps the computer from
   sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
   copy goes on.
@@ -195,13 +196,14 @@ connected device; no login is needed.
 
 - A car navigator may hide the folder where it keeps its software and maps (`.System` on a
   Drive 53 EX) from the ordinary USB connection. Right after such a device is opened, openExpress
-  reads that folder once through a USB session of its own (*Reading the folder .System…*; the
+  reads that folder once through its own USB session (*Reading the folder .System…*; the
   device leaves the file manager for a moment) and compares the files offered with those there
   by name and size; their contents are not read. It installs software updates and the time zone
   map there as Garmin Express writes them: the old file of that name is deleted first, and the
   new one is checked by its size and read back whole; after the device's own software, the
   message says to keep the device powered while it installs it. **Reinstall Components** writes
-  a component already there again the same way; as on a watch, the page then waits for nothing.
+  a component already there again the same way; afterwards the page shows nothing waiting for
+  the device, as on a watch.
   **Check Again** reads the folder anew. When the session cannot be opened (a Flatpak
   without access to USB devices), the page says why the folder could not be read. Voices and
   vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
@@ -234,9 +236,29 @@ with an update names the version offered and what the update downloads.
 
 On a car navigator that keeps its maps in the folder it hides (`.System/Map`), the Maps page shows
 them as read through that USB session (see [Software updates](#software-updates)), without
-**Update** or **Remove**: openExpress does not install or remove maps in that folder yet. When
-the device's folder for maps of your own is one the ordinary USB connection does not show either
-(the folder Map on a Drive 53 EX), **Add Map…** is off for the same reason.
+**Update** or **Remove**: the window does not install or remove maps in that folder; the command
+line can install one as a trial (see below). When the device's folder for maps of your own is one
+the ordinary USB connection does not show either (the folder Map on a Drive 53 EX), **Add Map…**
+is off for the same reason.
+
+### Maps on a car navigator (a trial)
+
+`openexpress maps install NAME --hidden-folder-trial` installs a map into the folder a car
+navigator hides, through openExpress's own USB session; it has not yet been tried on a real
+device. Without `--apply` it changes nothing: it lists the old files it would remove (none that
+other maps use) and the new ones it would write, with their sizes, the space on the device and on
+this computer, an estimate of the time and the largest file, and says what would refuse it (a
+folder not read or not on the device, a file over 4 GiB, a file without a checksum). With
+`--apply`, the whole map is downloaded, checked against its checksums and activated before the
+device changes; an activation that does not say where the unlock file goes refuses it then. Then
+the old files are removed and each new one is written and read back whole, the unlock files last;
+a file the device refuses is written again up to three times while the session goes on.
+
+From the first removal until the last file is written, the device has no complete map: do not
+unplug it until openExpress has finished, and once unplugged keep it powered (its car cable or a
+USB charger) until it has loaded the new map. The computer is kept from sleeping meanwhile.
+Stopped partway, the map shows as incomplete; installing it again downloads nothing again and
+writes only what is missing.
 
 ## Maps of your own
 
@@ -496,9 +518,9 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   `GarminDevice.xml` declares no data that goes from it, or one Garmin's update server says
   Garmin Connect does not take (connect support: Disabled), such as a car navigator. Its device
   page has no **Sync** button and no sign-in bar, says why in place of the sync, and the account
-  is not asked about it; its software updates and maps work as on any device. Without an answer
-  of that server it is synced as any device. A drive that is not synced has no **Sync** button
-  either.
+  is not asked about it; its software updates and maps work as on any device. When that server
+  does not answer, the device is synced as any other. A drive that is not synced has no **Sync**
+  button either.
 - **Satellite data (experimental).** Some older watches, such as the Forerunner 45, keep the
   satellite data that speeds up their first GPS fix in `GARMIN/REMOTESW/CPE.BIN`, which Garmin
   Express or the phone app refreshes. When a watch already holds that file in the format
@@ -510,7 +532,7 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   tries once more.
   A fēnix 8 keeps two such files in `GARMIN/RemoteSW`, `GPE.bin` (data for seven days) and
   `GPES.bin` (twelve hours), which it hides from the ordinary USB connection once it has unpacked
-  them. openExpress finds them at a sync in a USB session of its own (the watch leaves the file
+  them. openExpress finds them at a sync in its own USB session (the watch leaves the file
   manager for a moment; a Flatpak needs access to USB devices) and, with the switch on, writes
   each when the watch's is older than a day (`GPE.bin`) or four hours (`GPES.bin`); the phone app
   refreshes them too. A file the watch does not take is said, and the switch turns off. On a

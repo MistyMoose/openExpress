@@ -1659,3 +1659,62 @@ def test_a_component_offered_older_than_the_devices_says_both_numbers(narrow_win
             adjustment.set_value(adjustment.get_upper() - adjustment.get_page_size())
             _iterate(0.5)
         window_picture(win, Path(REINSTALL_SHOTS) / f"{page}-{language}-360.png")
+
+
+# After a car navigator's software and time zone map were copied into .System: the message "Done"
+# says to keep it powered, and its Updates page, once it was plugged in again without installing
+# them, what it needs; in the narrowest window. With OPENEXPRESS_NAVIGATOR_SHOTS, a picture of
+# each.
+NAVIGATOR_AFTER_COPY = {
+    "done": {"en": "Keep the device powered until it has installed its software: connect it to "
+                   "its car cable or a USB charger, or make sure its battery is well charged.",
+             "pl": "Urządzenie musi mieć zasilanie, dopóki nie zainstaluje oprogramowania: "
+                   "podłącz je kablem samochodowym lub do ładowarki USB albo upewnij się, że "
+                   "bateria jest dobrze naładowana."},
+    "untaken": {"en": "If the update is still listed when you plug the device in again, a device "
+                      "report helps find out why.",
+                "pl": "Jeśli po ponownym podłączeniu aktualizacja nadal będzie na liście, raport "
+                      "o\u00a0urządzeniu pomoże ustalić dlaczego."},
+}
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("shown", ["done", "untaken"])
+def test_after_a_navigator_copy_the_window_says_what_it_needs(narrow_window, language, shown):
+    from pathlib import Path
+
+    from gi.repository import Gtk
+
+    from openexpress import updates
+    from openexpress.gui.app import MainWindow
+    from openexpress.gui.updates_page import tell_update_done
+
+    win = narrow_window(language, width=NARROWEST)
+    win.set_default_size(NARROWEST, 900)
+    _fill(win, "updates-read-navigator")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section("updates")
+    offered = _navigator_updates(read=True)
+    copied = offered[:2]  # its software and its time zone map
+    if shown == "done":
+        win.updates_cache = offered[2:]  # both copied: nothing else to install is offered
+        tell_update_done(win, win.session, updates.InstallReport(written=copied))
+        _iterate(0.3)
+        dialog = win.get_visible_dialog()
+        texts = [dialog.get_body()]
+    else:
+        for u in copied:  # copied, unplugged since, their files still in .System
+            u.copied_at = datetime(2026, 10, 30, 22, 5).timestamp()
+            u.unplugged_since_copy, u.on_device = True, True
+        win.sections["updates"].clear()
+        MainWindow.show_updates(win, offered)
+        _iterate(0.3)
+        texts = [w.get_label() for w in descendants(win.sections["updates"].stack)
+                 if isinstance(w, Gtk.Label) and w.get_label()]
+    assert any(NAVIGATOR_AFTER_COPY[shown][language] in t for t in texts)
+    assert _min_width(win.device_view) <= NARROWEST
+    if NAVIGATOR_SHOTS:
+        window_picture(win, Path(NAVIGATOR_SHOTS) / f"after-copy-{shown}-{language}-360.png")
+    if shown == "done":
+        dialog.force_close()

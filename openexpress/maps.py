@@ -771,7 +771,9 @@ def no_complete_map_text() -> str:
     # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: the old files of the map are
     # removed before the new ones are written, as Garmin Express does
     return _("From the removal of the first old file until the last one is written, the device "
-             "has no complete map. Do not unplug it, and keep it powered.")
+             "has no complete map: do not unplug it until openExpress has finished. Once "
+             "unplugged, keep it powered (its car cable or a USB charger) until it has loaded "
+             "the new map.")
 
 
 def folder_not_read_text(folder: str) -> str:
@@ -790,9 +792,9 @@ def too_large_text(path: str, size: int) -> str:
 
 def no_unlock_place_text(name: str) -> str:
     # TRANSLATORS: {name}: a map; Garmin's server activated it and gave an unlock file without
-    # saying where it goes on the device
-    return _("The activation gave no place on the device for the unlock file of {name}.").format(
-        name=name)
+    # saying where it goes on the device, so the map is refused before the device changes
+    return _("{name} was not installed: Garmin's activation did not say where on the device its "
+             "unlock file goes. Nothing on the device was changed.").format(name=name)
 
 
 def trial_refusals(storage: Storage, m: UniversalMap, removing: list[str]) -> list[str]:

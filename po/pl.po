@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 23:25+0100\n"
+"POT-Creation-Date: 2026-11-17 00:05+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -250,7 +250,9 @@ msgstr "Zapisane logowanie jest uszkodzone; zaloguj się ponownie."
 msgid ""
 "openExpress could not keep the computer from sleeping: keep it awake until "
 "the copy has ended."
-msgstr "openExpress nie mógł zablokować uśpienia komputera: nie usypiaj go do końca kopiowania."
+msgstr ""
+"openExpress nie mógł zablokować uśpienia komputera: nie usypiaj go do końca "
+"kopiowania."
 
 #: openexpress/background.py
 #, python-brace-format
@@ -3001,18 +3003,22 @@ msgid "Space on this computer for the download: {needed} needed, {free} free"
 msgstr "Miejsce na tym komputerze na pobranie: potrzeba {needed}, wolne {free}"
 
 #. TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: an estimate, at the
-#. slowest seen; {minutes}: a number
+#. slowest speed measured so far on such a device; {minutes}: a number
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Writing and reading back on the device: at most about {minutes} min"
-msgstr "Zapis i odczyt kontrolny na urządzeniu: najwyżej około {minutes} min"
+msgid ""
+"Writing and reading back on the device: about {minutes} min at the slowest "
+"speed measured so far"
+msgstr ""
+"Zapis i odczyt kontrolny na urządzeniu: około {minutes} min przy "
+"najwolniejszym dotąd zmierzonym tempie"
 
 #. TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run: why it
 #. would be refused with --apply ({reason}: a sentence)
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Would be refused: {reason}"
-msgstr "Zostałoby odmówione: {reason}"
+msgstr "openExpress odmówiłby instalacji: {reason}"
 
 #. TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run:
 #. the largest file of the map and its size
@@ -3026,7 +3032,9 @@ msgstr "Największy plik: {path}, {size}"
 msgid ""
 "Dry run: nothing was downloaded and nothing on the device was changed. Add --"
 "apply."
-msgstr "Tryb próbny: niczego nie pobrano i niczego na urządzeniu nie zmieniono. Dodaj --apply."
+msgstr ""
+"Tryb próbny: niczego nie pobrano i niczego na urządzeniu nie zmieniono. "
+"Dodaj --apply."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3042,14 +3050,14 @@ msgid_plural ""
 "{count} files were on the device already and read back the same: not written "
 "again."
 msgstr[0] ""
-"{count} plik był już na urządzeniu i odczytał się tak samo: nie zapisano go "
-"ponownie."
+"{count} plik był już na urządzeniu, a odczyt pokazał, że jest taki sam: nie "
+"zapisano go ponownie."
 msgstr[1] ""
-"{count} pliki były już na urządzeniu i odczytały się tak samo: nie zapisano "
-"ich ponownie."
+"{count} pliki były już na urządzeniu, a odczyt pokazał, że są takie same: "
+"nie zapisano ich ponownie."
 msgstr[2] ""
-"{count} plików było już na urządzeniu i odczytało się tak samo: nie zapisano "
-"ich ponownie."
+"{count} plików było już na urządzeniu, a odczyt pokazał, że są takie same: "
+"nie zapisano ich ponownie."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4475,7 +4483,7 @@ msgstr "pobierz mapę i zapisz ją na urządzeniu"
 #, python-brace-format
 msgid ""
 "a trial: install a map into a folder the device hides (a car "
-"navigator's .System), through a USB session of openExpress's own"
+"navigator's .System), through openExpress's own USB session"
 msgstr ""
 "próba: zainstaluj mapę w folderze, który urządzenie ukrywa (.System "
 "nawigacji samochodowej), przez własną sesję USB openExpressu"
@@ -5749,8 +5757,8 @@ msgstr "Odpowiedź urządzenia nie pasuje do wysłanego polecenia."
 
 #: openexpress/device/ptp.py
 #, python-brace-format
-msgid "The file ended before all of it was sent."
-msgstr "Plik skończył się, zanim został wysłany w całości."
+msgid "The file on this computer ended before all of it was sent."
+msgstr "Plik na tym komputerze skończył się, zanim wysłano go w całości."
 
 #: openexpress/device/ptp.py
 #, python-brace-format
@@ -10192,15 +10200,15 @@ msgstr ""
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid ""
-"Unplug the device from the computer, connect it to power (its car cable or a "
-"USB charger), turn it on and wait until it has installed the update. If it "
-"is still listed when you plug it in again, a device report helps find out "
-"why."
+"Unplug the device from the computer, connect it to its car cable or a USB "
+"charger, turn it on and wait until it has installed the update. If the "
+"update is still listed when you plug the device in again, a device report "
+"helps find out why."
 msgstr ""
-"Odłącz urządzenie od komputera, podłącz je do zasilania (kablem samochodowym "
-"albo ładowarką USB), włącz je i poczekaj, aż zainstaluje aktualizację. Jeśli "
-"po ponownym podłączeniu nadal będzie na liście, raport o urządzeniu pomoże "
-"ustalić dlaczego."
+"Odłącz urządzenie od komputera, podłącz je kablem samochodowym albo do "
+"ładowarki USB, włącz je i poczekaj, aż zainstaluje aktualizację. Jeśli po "
+"ponownym podłączeniu aktualizacja nadal będzie na liście, raport "
+"o urządzeniu pomoże ustalić dlaczego."
 
 #. TRANSLATORS: "Settings → System → About" is the menu of the device; use the words of the
 #. Garmin devices in your language
@@ -11235,13 +11243,13 @@ msgstr ""
 #: openexpress/hidden_folders.py
 #, python-brace-format
 msgid ""
-"{name} was written at its size, but the device did not let openExpress read "
-"it back, so its contents were not compared. openExpress stops here: nothing "
-"else is written."
+"{name} was written and has the right size, but the device did not let "
+"openExpress read it back, so its contents were not compared. openExpress "
+"stops here and writes nothing else."
 msgstr ""
 "Zapisano: {name} – rozmiar się zgadza, ale urządzenie nie pozwoliło "
-"openExpress odczytać pliku, więc jego zawartości nie porównano. openExpress "
-"na tym kończy: niczego więcej nie zapisano."
+"openExpressowi odczytać pliku, więc jego zawartości nie porównano. "
+"openExpress na tym kończy i niczego więcej nie zapisuje."
 
 #. TRANSLATORS: {needed} and {free} are sizes; the old file of the update counts as free, as
 #. it is removed before the new one is written
@@ -11258,7 +11266,8 @@ msgstr ""
 #: openexpress/hidden_folders.py
 #, python-brace-format
 msgid ""
-"The folder {folder} is not on the device; openExpress makes no folder there."
+"The folder {folder} is not on the device, and openExpress does not create "
+"folders there."
 msgstr ""
 "Folderu {folder} nie ma na urządzeniu; openExpress nie zakłada tam folderów."
 
@@ -11276,15 +11285,15 @@ msgid_plural ""
 "install it again and only what is missing is written."
 msgstr[0] ""
 "Mapa {name} jest na urządzeniu niepełna: zapisano {done} z {count} plików. "
-"Nic innego nie zostało usunięte, a pobrane pliki zostają na tym komputerze: "
+"Niczego więcej nie usunięto, a pobrane pliki zostają na tym komputerze: "
 "zainstaluj ją ponownie, a zapisane zostanie tylko to, czego brakuje."
 msgstr[1] ""
 "Mapa {name} jest na urządzeniu niepełna: zapisano {done} z {count} plików. "
-"Nic innego nie zostało usunięte, a pobrane pliki zostają na tym komputerze: "
+"Niczego więcej nie usunięto, a pobrane pliki zostają na tym komputerze: "
 "zainstaluj ją ponownie, a zapisane zostanie tylko to, czego brakuje."
 msgstr[2] ""
 "Mapa {name} jest na urządzeniu niepełna: zapisano {done} z {count} plików. "
-"Nic innego nie zostało usunięte, a pobrane pliki zostają na tym komputerze: "
+"Niczego więcej nie usunięto, a pobrane pliki zostają na tym komputerze: "
 "zainstaluj ją ponownie, a zapisane zostanie tylko to, czego brakuje."
 
 #. TRANSLATORS: {name} is a map; {needed} and {free} are sizes; its old files and those it
@@ -11602,30 +11611,40 @@ msgstr "Brak mapy o nazwie „{name}”"
 #, python-brace-format
 msgid ""
 "From the removal of the first old file until the last one is written, the "
-"device has no complete map. Do not unplug it, and keep it powered."
+"device has no complete map: do not unplug it until openExpress has finished. "
+"Once unplugged, keep it powered (its car cable or a USB charger) until it "
+"has loaded the new map."
 msgstr ""
 "Od usunięcia pierwszego starego pliku do zapisania ostatniego urządzenie nie "
-"ma pełnej mapy. Nie odłączaj go i zapewnij mu zasilanie."
+"ma pełnej mapy: nie odłączaj go, dopóki openExpress nie skończy. Po "
+"odłączeniu zasilaj je kablem samochodowym albo z ładowarki USB, dopóki nie "
+"wczyta nowej mapy."
 
 #. TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
 #: openexpress/maps.py
 #, python-brace-format
 msgid "The folder {folder} was not read through openExpress's own USB session."
-msgstr "Folder {folder} nie został odczytany przez własną sesję USB openExpressu."
+msgstr ""
+"Folder {folder} nie został odczytany przez własną sesję USB openExpressu."
 
 #. TRANSLATORS: {path}: a file of a map on the device; {size}: its size
 #: openexpress/maps.py
 #, python-brace-format
 msgid "{path} is {size}: a file over 4 GiB cannot be sent to the device."
-msgstr "{path} ma {size}: pliku większego niż 4 GiB nie da się wysłać na urządzenie."
+msgstr ""
+"{path} ma {size}: pliku większego niż 4 GiB nie da się wysłać na urządzenie."
 
 #. TRANSLATORS: {name}: a map; Garmin's server activated it and gave an unlock file without
-#. saying where it goes on the device
+#. saying where it goes on the device, so the map is refused before the device changes
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"The activation gave no place on the device for the unlock file of {name}."
-msgstr "Aktywacja nie podała miejsca na urządzeniu dla pliku odblokowania mapy {name}."
+"{name} was not installed: Garmin's activation did not say where on the "
+"device its unlock file goes. Nothing on the device was changed."
+msgstr ""
+"Nie zainstalowano mapy {name}: aktywacja w Garminie nie podała, gdzie na "
+"urządzeniu ma trafić jej plik odblokowania. Niczego na urządzeniu nie "
+"zmieniono."
 
 #. TRANSLATORS: {name} is a map; {needed} and {free} are sizes
 #: openexpress/maps.py
@@ -13214,18 +13233,22 @@ msgstr "Nieokreślona"
 msgid "On the device {on_device}, Garmin offers {offered}: the same file."
 msgstr "Na urządzeniu {on_device}, Garmin oferuje {offered}: ten sam plik."
 
-#. TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+#. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+#. the device ({on_device}) is higher than the one Garmin offers ({offered}); its file is
+#. in a folder the device hides, so only its size was compared
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
 "On the device {on_device}, Garmin offers {offered}: the same size, its "
 "contents not compared."
 msgstr ""
-"Na urządzeniu {on_device}, Garmin oferuje {offered}: ten sam rozmiar, treść "
-"nieporównana."
+"Na urządzeniu {on_device}, Garmin oferuje {offered}: ten sam rozmiar, treści "
+"nie porównano."
 
-#. TRANSLATORS: as above, another file: an older version, which openExpress never writes
-#. over the device's
+#. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+#. the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
+#. file on the device is another: an older version, which openExpress never writes over
+#. the device's
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
@@ -13235,8 +13258,9 @@ msgstr ""
 "Na urządzeniu {on_device}, Garmin oferuje {offered}, starszą wersję: bez "
 "ponownej instalacji."
 
-#. TRANSLATORS: as above, its file could not be compared with the one offered (not on the
-#. device, its folder not read)
+#. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+#. the device ({on_device}) is higher than the one Garmin offers ({offered}), while its
+#. file could not be compared with the one offered (not on the device, its folder not read)
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
@@ -13254,20 +13278,26 @@ msgstr ""
 msgid "On the device {on_device} · Garmin offers {offered}, the same file"
 msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, ten sam plik"
 
-#. TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+#. TRANSLATORS: Updates page, in the row of a component whose version on the device
+#. ({on_device}) is higher than the one Garmin offers ({offered}); its file is in a folder
+#. the device hides, so only its size was compared; no full stop
 #: openexpress/updates.py
 #, python-brace-format
 msgid "On the device {on_device} · Garmin offers {offered}, the same size"
 msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, ten sam rozmiar"
 
-#. TRANSLATORS: as above, another file: an older version, which openExpress does not
-#. reinstall (the row has no button)
+#. TRANSLATORS: Updates page, in the row of a component whose version on the device
+#. ({on_device}) is higher than the one Garmin offers ({offered}), while the file on the
+#. device is another: an older version, which openExpress does not reinstall (the row has
+#. no button); no full stop
 #: openexpress/updates.py
 #, python-brace-format
 msgid "On the device {on_device} · Garmin offers {offered}, an older version"
 msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, starszą wersję"
 
-#. TRANSLATORS: as above, its file could not be compared with the one offered
+#. TRANSLATORS: Updates page, in the row of a component whose version on the device
+#. ({on_device}) is higher than the one Garmin offers ({offered}), while its file could
+#. not be compared with the one offered; no full stop
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
@@ -13306,25 +13336,23 @@ msgstr ""
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"Keep the device powered while it installs its software: connect it to power "
-"(its car cable or a USB charger) or make sure its battery is well charged, "
-"and do not cut its power until it has finished."
+"Keep the device powered until it has installed its software: connect it to "
+"its car cable or a USB charger, or make sure its battery is well charged."
 msgstr ""
-"Podczas instalacji oprogramowania urządzenie musi mieć zasilanie: podłącz je "
-"do zasilania (kablem samochodowym albo ładowarką USB) albo upewnij się, że "
-"bateria jest dobrze naładowana, i nie odcinaj zasilania, dopóki instalacja "
-"się nie skończy."
+"Urządzenie musi mieć zasilanie, dopóki nie zainstaluje oprogramowania: "
+"podłącz je kablem samochodowym lub do ładowarki USB albo upewnij się, że "
+"bateria jest dobrze naładowana."
 
 #. TRANSLATORS: `openexpress updates`: items Garmin offers to add to the device (voices,
 #. vehicles) that it does not have
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"{count} add-on not on the device is not offered: openExpress does not "
+"{count} add-on that is not on the device is not listed: openExpress does not "
 "install add-ons yet."
 msgid_plural ""
-"{count} add-ons not on the device are not offered: openExpress does not "
-"install add-ons yet."
+"{count} add-ons that are not on the device are not listed: openExpress does "
+"not install add-ons yet."
 msgstr[0] ""
 "Pominięto {count} dodatek, którego nie ma na urządzeniu: openExpress jeszcze "
 "nie instaluje dodatków."

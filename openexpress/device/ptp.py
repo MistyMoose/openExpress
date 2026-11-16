@@ -637,7 +637,7 @@ class Session:
         while done < out.size:
             piece = out.stream.read(min(WRITE_CHUNK, out.size - done))
             if not piece:
-                raise PtpWriteError(_("The file ended before all of it was sent."))
+                raise PtpWriteError(_("The file on this computer ended before all of it was sent."))
             self.transport.write(piece)
             done += len(piece)
             if out.sent is not None:

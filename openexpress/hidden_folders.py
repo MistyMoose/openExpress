@@ -277,7 +277,7 @@ class NotWritten(DeviceError):
 
 
 class ContentsNotRead(DeviceError):
-    """The file was written at its size, and the device did not let it be read back."""
+    """The file was written and has the right size, and the device did not let it be read back."""
 
 
 def not_written_text(name: str, old_removed: bool) -> str:
@@ -294,9 +294,9 @@ def not_written_text(name: str, old_removed: bool) -> str:
 def contents_not_read_text(name: str) -> str:
     # TRANSLATORS: {name} is an update, e.g. "Time Zone Map", written into a folder the device
     # hides; the device refused to give it back, so its bytes were not checked
-    return _("{name} was written at its size, but the device did not let openExpress read it "
-             "back, so its contents were not compared. openExpress stops here: nothing else is "
-             "written.").format(name=name)
+    return _("{name} was written and has the right size, but the device did not let "
+             "openExpress read it back, so its contents were not compared. openExpress stops here "
+             "and writes nothing else.").format(name=name)
 
 
 def no_space_text(name: str, needed: int, free: int) -> str:
@@ -311,8 +311,8 @@ def no_space_text(name: str, needed: int, free: int) -> str:
 
 def no_folder_text(folder: str) -> str:
     # TRANSLATORS: {folder}: e.g. .System/Map
-    return _("The folder {folder} is not on the device; openExpress makes no folder "
-             "there.").format(folder=folder)
+    return _("The folder {folder} is not on the device, and openExpress does not create "
+             "folders there.").format(folder=folder)
 
 
 @dataclass

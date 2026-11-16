@@ -267,9 +267,10 @@ Besides these, it has three permissions that weaken the sandbox:
 2. It can open USB devices (`--device=usb`: the nodes in `/dev/bus/usb`, nothing else of `/dev`).
    - It uses this only for three things that need a direct USB connection: Connect IQ apps on
      devices that hide their app folder (e.g. the fēnix 8: installing, updating and removing
-     them), reading the hidden crash logs of such a device when you ask, reading the names and
-     sizes of the files in the folder a car navigator hides (`.System`), once a connection, and
-     writing the navigator's software updates and time zone map there when you install them.
+     them), reading the hidden crash logs of such a device when you ask, and the folder a car
+     navigator hides (`.System`): reading the names and sizes of its files, once a connection,
+     and writing there the navigator's software updates, its time zone map and, as a
+     command-line trial, a map, when you install them.
      The device disappears from the file manager for a moment while it is used.
    - To turn it off: `flatpak override --user --nodevice=usb io.github.tomaszbojanowski.OpenExpress`.
      A Flatpak older than 1.16 does not know this permission and runs as without it.

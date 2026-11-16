@@ -787,7 +787,7 @@ msgstr "za mało wolnego miejsca na urządzeniu"
 #: openexpress/ciq.py
 #, python-brace-format
 msgid "the app list folder was not found"
-msgstr "nie znaleziono katalogu z listą aplikacji"
+msgstr "nie znaleziono folderu z listą aplikacji"
 
 #. TRANSLATORS: shown in place of an app's name in the list of what failed in an install
 #. ("USB connection: …")
@@ -799,7 +799,7 @@ msgstr "Połączenie USB"
 #: openexpress/ciq.py
 #, python-brace-format
 msgid "the GARMIN folder was not found on the device"
-msgstr "nie znaleziono katalogu GARMIN na urządzeniu"
+msgstr "nie znaleziono folderu GARMIN na urządzeniu"
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -901,7 +901,7 @@ msgstr "Nie usunięto aplikacji {name}: {error}"
 #: openexpress/ciq.py
 #, python-brace-format
 msgid "the app folder was not found on the device"
-msgstr "nie znaleziono katalogu aplikacji na urządzeniu"
+msgstr "nie znaleziono folderu aplikacji na urządzeniu"
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -3305,7 +3305,7 @@ msgid ""
 "access. openExpress will write the app over a direct USB connection; the "
 "device disappears from the file manager for a moment."
 msgstr ""
-"{name}: urządzenie nie pokazuje katalogu aplikacji {path} przy zwykłym "
+"{name}: urządzenie nie pokazuje folderu aplikacji {path} przy zwykłym "
 "dostępie do plików. openExpress zapisze aplikację przez bezpośrednie "
 "połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
@@ -3316,7 +3316,7 @@ msgid ""
 "try to create it; if the device refuses, the app is only queued in Garmin "
 "Connect and installed by the phone or Garmin Express."
 msgstr ""
-"{name}: katalogu aplikacji {path} nie ma na urządzeniu. openExpress spróbuje "
+"{name}: folderu aplikacji {path} nie ma na urządzeniu. openExpress spróbuje "
 "go utworzyć; jeśli urządzenie odmówi, aplikacja trafi tylko do kolejki "
 "w Garmin Connect i zostanie zainstalowana przez telefon albo Garmin Express."
 
@@ -5160,7 +5160,7 @@ msgstr "To urządzenie nie tworzy kursów z plików GPX."
 #: openexpress/courses.py
 #, python-brace-format
 msgid "The device has no folder {folder}."
-msgstr "Na urządzeniu nie ma katalogu {folder}."
+msgstr "Na urządzeniu nie ma folderu {folder}."
 
 #. TRANSLATORS: copying a map file to the device failed; {path}: the file's path on the
 #. device
@@ -5277,7 +5277,7 @@ msgstr "Nie można usunąć {path}"
 #: openexpress/device/gio_storage.py openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot create directory {path}"
-msgstr "Nie można utworzyć katalogu {path}"
+msgstr "Nie można utworzyć folderu {path}"
 
 #: openexpress/device/gio_storage.py
 #, python-brace-format
@@ -5654,7 +5654,7 @@ msgstr "Odpowiedź urządzenia nie pasuje do wysłanego polecenia."
 #: openexpress/device/ptp.py
 #, python-brace-format
 msgid "Refusing to write into the top folder of the device."
-msgstr "Nie można zapisywać w głównym katalogu urządzenia."
+msgstr "Nie można zapisywać w głównym folderze urządzenia."
 
 #: openexpress/device/ptp.py
 #, python-brace-format
@@ -5691,7 +5691,7 @@ msgstr "Nie znaleziono pliku na urządzeniu: {path}"
 #: openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot write {path}: it is a directory"
-msgstr "Nie można zapisać {path}: to katalog"
+msgstr "Nie można zapisać {path}: to folder"
 
 #: openexpress/device/storage.py
 #, python-brace-format
@@ -5710,7 +5710,7 @@ msgstr "Za mało miejsca na urządzeniu: potrzeba {need}, wolne {free}"
 #: openexpress/device/storage.py
 #, python-brace-format
 msgid "Refusing to delete the root of the device storage"
-msgstr "Odmowa usunięcia głównego katalogu pamięci urządzenia"
+msgstr "Odmowa usunięcia głównego folderu pamięci urządzenia"
 
 #: openexpress/device/storage.py
 #, python-brace-format
@@ -5720,7 +5720,7 @@ msgstr "Nieprawidłowa nazwa pliku: „{path}”"
 #: openexpress/device/storage.py
 #, python-brace-format
 msgid "Not a directory: {path}"
-msgstr "To nie jest katalog: {path}"
+msgstr "To nie jest folder: {path}"
 
 #. TRANSLATORS: a step of copying the diagnostic files the device shows ("… · 3 of 12")
 #: openexpress/diagnostics.py
@@ -7758,12 +7758,12 @@ msgstr "Dodaj mapę…"
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid "Map Folder"
-msgstr "Katalog map"
+msgstr "Folder map"
 
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid "The map folder could not be read"
-msgstr "Nie udało się odczytać katalogu map"
+msgstr "Nie udało się odczytać folderu map"
 
 #: openexpress/gui/maps_page.py
 #, python-brace-format
@@ -11524,7 +11524,7 @@ msgstr "Wybierz inną przez --name."
 #: openexpress/ownmaps.py
 #, python-brace-format
 msgid "This device has no folder for maps."
-msgstr "To urządzenie nie ma katalogu na mapy."
+msgstr "To urządzenie nie ma folderu na mapy."
 
 #: openexpress/ownmaps.py
 #, python-brace-format

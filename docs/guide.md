@@ -166,6 +166,12 @@ connected device; no login is needed.
   refused its file since (the same size, other bytes); `openexpress updates` says the same.
   openExpress keeps only the part number, the version and the time, until the server offers it
   no more.
+- Garmin sometimes offers a component for **Reinstall Components** at a lower version than the
+  device lists for it. openExpress then decides by the file, not by the numbers: when the file on
+  the device is the one Garmin offers (the same size and checksum; in a folder the device hides,
+  the same size), the row says both versions and *the same file* and keeps **Reinstall**;
+  otherwise the row says *an older version* and has no button, and `openexpress updates
+  --install` refuses it, so an older component never replaces the device's own.
 - On a USB drive each file written is read back from the drive, not from the computer's cache,
   and compared with the server's checksum before the copy counts.
 - After an eject with an update waiting, the window says to unplug the cable and leave the device

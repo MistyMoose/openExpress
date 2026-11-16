@@ -183,6 +183,10 @@ class SoftwareUpdate:
     # Its file found in the folder read, by name: True at the size offered, False of another
     # size; None: not there, or not read. Its contents are never read.
     hidden_size_same: bool | None = None
+    # A reinstall whose version on the device (GarminDevice.xml) is higher than the one offered
+    # (offers_older): whether its file is the offered one (mark_present) - OLDER_SAME_FILE,
+    # OLDER_SAME_SIZE, OLDER_DIFFERS or OLDER_NOT_COMPARED; None for every other update.
+    older_offer: str | None = None
 
     @property
     def key(self) -> str:
@@ -287,6 +291,17 @@ MATCHES = "matches"
 NOT_ON_THE_DEVICE = "not on the device"
 TOP_FOLDER_NOT_SEEN = "its top folder not seen"
 SAME_SIZE = "same size, contents not compared"
+
+# A reinstall of an older version than the device lists for it (older_offer): its file on the
+# device is the offered one (the same size and MD5), of its size (a folder the device hides: its
+# contents are not read), another file (an older version: never written over it), or could not
+# be compared (its file not there, its folder not read, no size or MD5 from the server: not
+# written either, as writing an older version without knowing it is the same file risks a
+# component the device has newer).
+OLDER_SAME_FILE = "the same file"
+OLDER_SAME_SIZE = "the same size"
+OLDER_DIFFERS = "another file"
+OLDER_NOT_COMPARED = "not compared"
 MD5_DIFFERS = "MD5 differs"
 
 
@@ -375,6 +390,105 @@ def component_count(device) -> int | None:
     return len(files) if isinstance(files, list) else None
 
 
+def version_number(text: str | None) -> tuple[int, int] | None:
+    """A version as numbers (major, minor), however Garmin writes it: GarminDevice.xml and the
+    server's displayVersion "2.04", its semanticVersion "2.4.0" (the minor part without its zero,
+    a third part that does not count); None when it is no such version."""
+    parts = (text or "").strip().split(".")
+    if len(parts) < 2 or not (parts[0].isdecimal() and parts[1].isdecimal()):
+        return None
+    return int(parts[0]), int(parts[1])
+
+
+def plain_version(text: str) -> str:
+    """A version as a device writes it ("2.20" for the server's "2.20.0"); as it is when it is
+    no such version."""
+    number = version_number(text)
+    return f"{number[0]}.{number[1]:02d}" if number is not None else text
+
+
+def offers_older(u: SoftwareUpdate) -> bool:
+    """Whether `u` is a reinstall of a version lower than the one the device lists for it."""
+    on_device, offered = version_number(u.installed_version), version_number(u.version)
+    return (u.is_reinstall and on_device is not None and offered is not None
+            and on_device > offered)
+
+
+def reinstall_refused(u: SoftwareUpdate) -> bool:
+    """An older version than the device's that is not the same file as the device's: it is
+    never written (the window shows no button, the command line and install refuse it)."""
+    return u.older_offer in (OLDER_DIFFERS, OLDER_NOT_COMPARED)
+
+
+def _older_offer(storage: Storage, listing, u: SoftwareUpdate) -> str:
+    """Whether the file of `u`, an older version than the device's, is the device's file: by
+    its size and MD5 in a folder ordinary MTP shows (read once while it stays the same), by its
+    size in a folder read through openExpress's own session."""
+    if u.hidden_folder is not None:
+        if not u.hidden_read:
+            return OLDER_NOT_COMPARED
+        found = presence_by_size(listing, u)
+        if found.why == SAME_SIZE:
+            return OLDER_SAME_SIZE
+        return OLDER_DIFFERS if found.why.startswith("size differs") else OLDER_NOT_COMPARED
+    found = presence(storage, u)
+    if found.why == MATCHES:
+        return OLDER_SAME_FILE
+    if found.why == MD5_DIFFERS or found.why.startswith("size differs"):
+        return OLDER_DIFFERS
+    return OLDER_NOT_COMPARED
+
+
+def older_offer_text(u) -> str | None:
+    """What the command line says of a reinstall of an older version than the device's (an
+    error too: install refuses it); None for any other update."""
+    words = {
+        # TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+        # the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
+        # file on the device is the very file offered
+        OLDER_SAME_FILE: _("On the device {on_device}, Garmin offers {offered}: the same file."),
+        # TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+        OLDER_SAME_SIZE: _("On the device {on_device}, Garmin offers {offered}: the same size, "
+                           "its contents not compared."),
+        # TRANSLATORS: as above, another file: an older version, which openExpress never writes
+        # over the device's
+        OLDER_DIFFERS: _("On the device {on_device}, Garmin offers {offered}, an older version: "
+                         "not reinstalled."),
+        # TRANSLATORS: as above, its file could not be compared with the one offered (not on the
+        # device, its folder not read)
+        OLDER_NOT_COMPARED: _("On the device {on_device}, Garmin offers {offered}, an older "
+                              "version; the file on the device could not be compared: not "
+                              "reinstalled."),
+    }.get(u.older_offer)
+    if words is None:
+        return None
+    return words.format(on_device=u.installed_version, offered=plain_version(u.version))
+
+
+def older_offer_caption(u) -> str | None:
+    """The same in the row of the component in the window, a caption without a full stop;
+    None for any other update."""
+    words = {
+        # TRANSLATORS: Updates page, in the row of a component whose version on the device
+        # ({on_device}) is higher than the one Garmin offers ({offered}), while the file on the
+        # device is the very file offered; no full stop
+        OLDER_SAME_FILE: _("On the device {on_device} · Garmin offers {offered}, the same file"),
+        # TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+        OLDER_SAME_SIZE: _("On the device {on_device} · Garmin offers {offered}, the same "
+                           "size"),
+        # TRANSLATORS: as above, another file: an older version, which openExpress does not
+        # reinstall (the row has no button)
+        OLDER_DIFFERS: _("On the device {on_device} · Garmin offers {offered}, an older "
+                         "version"),
+        # TRANSLATORS: as above, its file could not be compared with the one offered
+        OLDER_NOT_COMPARED: _("On the device {on_device} · Garmin offers {offered}, an older "
+                              "version; the file on the device could not be compared"),
+    }.get(u.older_offer)
+    if words is None:
+        return None
+    return words.format(on_device=u.installed_version, offered=plain_version(u.version))
+
+
 def mark_present(storage: Storage, updates: list[SoftwareUpdate],
                  components: int | None = None) -> list[SoftwareUpdate]:
     """Find the offered updates whose file the device already has (e.g. map support files
@@ -390,6 +504,13 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
         if u.hidden_read and not u.is_offer:
             # A reinstall's file there, by name and size: the question names what it replaces.
             presence_by_size(listing, u)
+        # An older version than the device's: by its file, never by the numbers alone.
+        u.older_offer = _older_offer(storage, listing, u) if offers_older(u) else None
+    older = [u for u in updates if u.older_offer is not None]
+    if older:
+        log.info("updates: %d reinstalls of an older version than the device's (%s)",
+                 len(older), ", ".join(f"{u.part_number} {u.installed_version} on the device, "
+                                       f"{u.version} offered: {u.older_offer}" for u in older))
     found = []
     for u in offered:
         if u.hidden_folder is None:
@@ -858,6 +979,11 @@ def _install(
     # downloaded for an update refused.
     tops = top_folders(storage)
     listing = hidden_folders.kept(storage)
+    for u in updates:
+        if reinstall_refused(u):  # never an older version over the device's own
+            log.info("software update: %s %s not installed: %s %s on the device, %s",
+                     u.part_number, u.version, u.part_number, u.installed_version, u.older_offer)
+            raise UpdateError(older_offer_text(u))
     for u in updates:
         place(u, tops, listing)  # as the page and the command line placed it
         if u.hidden_folder is not None and not u.hidden_read:

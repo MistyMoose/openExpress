@@ -93,6 +93,29 @@ def _msgids(pot: Path) -> set[tuple[str, str]]:
     return found
 
 
+def _english(pot: Path) -> list[str]:
+    """Every English text of a template, its plural too, as written there (escapes kept)."""
+    found, key = [], None
+    for line in pot.read_text(encoding="utf-8").split("\n\n", 1)[1].splitlines():
+        m = re.match(r'^(msgid|msgid_plural) "(.*)"$', line)
+        if m:
+            key = m.group(1)
+            found.append(m.group(2))
+        elif line.startswith('"') and key:
+            found[-1] += line[1:-1]
+        else:
+            key = None
+    return found
+
+
+def test_no_english_text_writes_an_ellipsis_as_three_dots():
+    """An ellipsis, or a part left out ("ticket=ST-…"), is the one character in every English
+    text, as Weblate's check of the source asks; a command written to be typed as it is, three
+    dots and all, would be the only exception (none is)."""
+    dots = [text for text in _english(ROOT / "po" / "openexpress.pot") if "..." in text]
+    assert dots == []
+
+
 @needs_gettext
 def test_the_template_holds_every_text_of_the_code_and_the_metainfo(tmp_path):
     fresh = tmp_path / "openexpress.pot"

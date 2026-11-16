@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 23:27+0100\n"
+"POT-Creation-Date: 2026-11-16 20:33+0100\n"
 "PO-Revision-Date: 2026-11-15 19:13+0000\n"
 "Last-Translator: BeGiBue <begibue@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/openexpress/"
@@ -223,8 +223,9 @@ msgid "3. Paste the URL: "
 msgstr "3. Fügen Sie die URL ein: "
 
 #: openexpress/auth/sso.py
-#, python-brace-format
-msgid "The given URL has no ticket=ST-... parameter"
+#, fuzzy, python-brace-format
+#| msgid "The given URL has no ticket=ST-... parameter"
+msgid "The given URL has no ticket=ST-… parameter"
 msgstr "Die angegebene URL hat keinen Parameter ticket=ST-..."
 
 #. TRANSLATORS: shown in place of the signed-in Garmin account's name when it has no user
@@ -4556,8 +4557,9 @@ msgid "disable an app or built-in activity"
 msgstr "eine App oder integrierte Aktivität deaktivieren"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "app name (or part of it) or app id"
+#, fuzzy, python-brace-format
+#| msgid "app name (or part of it) or app id"
+msgid "app name (or part of it) or app ID"
 msgstr "App-Name (oder ein Teil davon) oder App-ID"
 
 #: openexpress/cli.py
@@ -6622,10 +6624,15 @@ msgstr "Die Apps auf dem Gerät sind bereits in dieser Reihenfolge"
 msgid "Restoring the Order…"
 msgstr "Reihenfolge wird wiederhergestellt…"
 
+#. TRANSLATORS: the last line of the confirmation before installing apps that ask for
+#. new permissions, under what each of them asks for: "it"/"them" are the apps
 #: openexpress/gui/apps_page.py
-#, python-brace-format
-msgid "openExpress installs it only if you allow them."
-msgid_plural "openExpress installs them only if you allow them."
+#, fuzzy, python-brace-format
+#| msgid "openExpress installs it only if you allow them."
+#| msgid_plural "openExpress installs them only if you allow them."
+msgid "openExpress installs it only if you allow its new permissions."
+msgid_plural ""
+"openExpress installs them only if you allow their new permissions."
 msgstr[0] "openExpress installiert sie nur, wenn Sie sie erlauben."
 msgstr[1] "openExpress installiert sie nur, wenn Sie sie erlauben."
 
@@ -11407,8 +11414,8 @@ msgstr ""
 #| "Map “{name}” cannot be installed: the server did not provide all of its "
 #| "files."
 msgid ""
-"Map “{name}” cannot be installed: openExpress does not install maps into "
-"{folder} yet."
+"Map “{name}” cannot be installed: openExpress does not install maps into the "
+"folder {folder} yet."
 msgstr ""
 "Karte „{name}“ kann nicht installiert werden: Der Server hat nicht alle ihre "
 "Dateien bereitgestellt."
@@ -11451,7 +11458,7 @@ msgstr "Keine Karte namens „{name}“"
 #: openexpress/maps.py
 #, fuzzy, python-brace-format
 #| msgid "openExpress does not remove these files yet."
-msgid "openExpress does not install maps into {folder} yet"
+msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr "openExpress entfernt diese Dateien noch nicht."
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
@@ -11459,7 +11466,7 @@ msgstr "openExpress entfernt diese Dateien noch nicht."
 #: openexpress/maps.py
 #, fuzzy, python-brace-format
 #| msgid "openExpress does not remove these files yet."
-msgid "openExpress does not install maps into {folder} yet."
+msgid "openExpress does not install maps into the folder {folder} yet."
 msgstr "openExpress entfernt diese Dateien noch nicht."
 
 #: openexpress/maps.py
@@ -11547,8 +11554,8 @@ msgstr ""
 #| "Map “{name}” cannot be installed: the server did not provide all of its "
 #| "files."
 msgid ""
-"Map “{name}” cannot be removed: openExpress does not remove maps from "
-"{folder} yet."
+"Map “{name}” cannot be removed: openExpress does not remove maps from the "
+"folder {folder} yet."
 msgstr ""
 "Karte „{name}“ kann nicht installiert werden: Der Server hat nicht alle ihre "
 "Dateien bereitgestellt."
@@ -12870,6 +12877,75 @@ msgstr ""
 "installierte Update sollte nicht mehr aufgeführt sein."
 
 #: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "\n"
+#| "To finish the installation:\n"
+#| "  1. Unplug the device from the computer.\n"
+#| "  2. If the device does not turn on by itself, turn it on.\n"
+#| "  3. The device installs the update by itself. It may ask whether to "
+#| "install it:\n"
+#| "     choose to install now. It may also restart. Wait until it has "
+#| "finished.\n"
+#| "  4. Plug it in again and run `openexpress updates`: the installed "
+#| "update\n"
+#| "     should no longer be listed.\n"
+msgid ""
+"\n"
+"To finish the installation:\n"
+"  1. Unplug the device from the computer.\n"
+"  2. If the device does not turn on by itself, turn it on.\n"
+"  3. The device installs the update by itself. It may ask whether to install "
+"it:\n"
+"     choose to install now. It may also restart. Wait until it has "
+"finished.\n"
+"  4. Plug it in again if you want to check it: the software version stays\n"
+"     the same.\n"
+msgstr ""
+"\n"
+"So schließen Sie die Installation ab:\n"
+"  1. Trennen Sie das Gerät vom Computer.\n"
+"  2. Schaltet sich das Gerät nicht von selbst ein, schalten Sie es ein.\n"
+"  3. Das Gerät installiert das Update selbst. Es fragt möglicherweise, ob es "
+"installiert werden soll:\n"
+"     Wählen Sie „jetzt installieren“. Es kann auch neu starten. Warten Sie, "
+"bis es fertig ist.\n"
+"  4. Schließen Sie es wieder an und führen Sie `openexpress updates` aus: "
+"Das installierte Update\n"
+"     sollte nicht mehr aufgeführt sein.\n"
+
+#. TRANSLATORS: in the message after a component already on the device was copied to it again:
+#. one line for each step, with no line break inside a sentence (the window wraps the words)
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "To finish the installation:\n"
+#| "1. Unplug the device from the computer.\n"
+#| "2. If the device does not turn on by itself, turn it on.\n"
+#| "3. The device installs the update by itself. It may ask whether to "
+#| "install it: choose to install now. It may also restart. Wait until it has "
+#| "finished.\n"
+#| "4. Plug it in again and check for updates again: the installed update "
+#| "should no longer be listed."
+msgid ""
+"To finish the installation:\n"
+"1. Unplug the device from the computer.\n"
+"2. If the device does not turn on by itself, turn it on.\n"
+"3. The device installs the update by itself. It may ask whether to install "
+"it: choose to install now. It may also restart. Wait until it has finished.\n"
+"4. Plug it in again if you want to check it: the software version stays the "
+"same."
+msgstr ""
+"So schließen Sie die Installation ab:\n"
+"1. Trennen Sie das Gerät vom Computer.\n"
+"2. Schaltet sich das Gerät nicht von selbst ein, schalten Sie es ein.\n"
+"3. Das Gerät installiert das Update selbst. Es fragt möglicherweise, ob es "
+"installiert werden soll: Wählen Sie „jetzt installieren“. Es kann auch neu "
+"starten. Warten Sie, bis es fertig ist.\n"
+"4. Schließen Sie es wieder an und suchen Sie erneut nach Updates: Das "
+"installierte Update sollte nicht mehr aufgeführt sein."
+
+#: openexpress/updates.py
 #, python-brace-format
 msgid ""
 "Warning: this is a device system update. Charge the device and do not unplug "
@@ -12977,8 +13053,8 @@ msgstr "Nicht angegeben"
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"Not installed: {name} {version} goes to {folder}, which openExpress cannot "
-"see on the device."
+"Not installed: {name} {version} goes to the folder {folder}, which "
+"openExpress cannot see on the device."
 msgstr ""
 
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress

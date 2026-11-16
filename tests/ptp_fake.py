@@ -50,6 +50,9 @@ class FakeDevice:
         self.wrong_transaction = False
         self.silent = False
         self.truncate_written = 0  # bytes cut from the next stored file
+        # What GetDeviceInfo lists; the strings after it are made up, and must never be read.
+        self.supported = [0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1007, 0x1008, 0x1009,
+                          0x100B, 0x100C, 0x100D, 0x101B, 0x9002]
         self.transfers: list[bytes] = []
         self.operations: list[int] = []
         self.closed = False
@@ -177,6 +180,8 @@ class FakeDevice:
             return (ptp.OK,)
         if operation in self.refuse:
             return (self.refuse[operation],)
+        if operation == ptp.GET_DEVICE_INFO:
+            return ptp.OK, self.device_info()
         if operation == ptp.GET_STORAGE_IDS:
             return ptp.OK, struct.pack("<II", 1, STORAGE)
         if operation == ptp.GET_STORAGE_INFO:
@@ -224,6 +229,18 @@ class FakeDevice:
                 del self.objects[h]
             return (ptp.OK,)
         return (ptp.OPERATION_NOT_SUPPORTED,)
+
+    def device_info(self) -> bytes:
+        """A DeviceInfo dataset: versions, Garmin's extension, the operations supported, then
+        events, properties, formats and the device's strings (all made up)."""
+        def u16s(values) -> bytes:
+            return struct.pack(f"<I{len(values)}H", len(values), *values)
+
+        return (struct.pack("<HIH", 100, 6, 100) + ptp.ptp_string("microsoft.com: 1.0;")
+                + struct.pack("<H", 0) + u16s(self.supported) + u16s([0x4002, 0x4003])
+                + u16s([0xD402]) + u16s([]) + u16s([0x3000, 0x3001])
+                + ptp.ptp_string("Made-up Maker") + ptp.ptp_string("Made-up Model 1")
+                + ptp.ptp_string("9.99") + ptp.ptp_string("MADEUPSERIAL0000"))
 
     def _object_info(self, obj: FakeObject) -> bytes:
         fmt = ptp.FORMAT_FOLDER if obj.data is None else ptp.FORMAT_UNDEFINED

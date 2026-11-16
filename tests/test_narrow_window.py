@@ -285,10 +285,10 @@ def _navigator_updates(read: bool = False, current: bool = False):
     from openexpress import hidden_folders
 
     def offered(name, version, path, size, part, hidden=None, add_on=False, reinstall=False,
-                same=None, installed=None, severity="Recommended"):
+                same=None, installed=None, severity="Recommended", eula=""):
         u = _update(name, version, path, size, system=part == NAVIGATOR[2], reinstall=reinstall)
         u.part_number, u.model_part_number, u.hidden_folder = part, NAVIGATOR[2], hidden
-        u.installed_version, u.severity = installed, severity
+        u.installed_version, u.severity, u.eula_url = installed, severity, eula
         if hidden and read:
             u.hidden_session, u.hidden_size_same = hidden_folders.READ, same
             u.on_device = same is True and not u.is_system
@@ -304,10 +304,47 @@ def _navigator_updates(read: bool = False, current: bool = False):
         offered("Drive 53", "9.00", ".System/B444900.update", 64_655_360, NAVIGATOR[2],
                 hidden=".System", same=current, installed="9.00" if current else "8.50",
                 severity="Critical", reinstall=current),
+        # Garmin's server gives the time zone map a license, as the real Drive's question shows.
         offered("Time Zone Map", "43.00", ".System/gmaptz.img", 582_656, "006-D1074-00",
                 hidden=".System", same=current, installed="43.00" if current else "41.00",
-                reinstall=current),
+                reinstall=current, eula="https://example.org/made-up-eula"),
         *add_ons, *reinstalls]
+
+
+def _older_component(name, on_device, offered, path, size, part, state, severity="Recommended"):
+    """A reinstall of an older version than the device lists, in `state` (updates.OLDER_…)."""
+    from openexpress import updates
+
+    u = _update(name, offered, path, size, reinstall=True)
+    u.part_number, u.installed_version, u.severity = part, on_device, severity
+    u.older_offer = getattr(updates, state)
+    return u
+
+
+def _edge_reinstalls():
+    """The components of an Edge 1050 with software 33.21 offered again: its Emoji Font, which
+    its GarminDevice.xml lists as 2.10 and Garmin offers as 2.00, the very same file (as the real
+    one is, byte for byte), next to one Garmin offers newer and one at the same version."""
+    newer = _update("ETYP", "2.60", "Garmin/ETYP/ETYP.bin", 245_000, reinstall=True)
+    newer.installed_version = "2.40"
+    same = _update("Map Region Grouping", "2.28", "Garmin/Maps/MapRegionGrouping.db", 2_442_874,
+                   reinstall=True)
+    same.installed_version = "2.28"
+    return [newer, same, _older_component(
+        "Emoji Font, Twemoji Extended 20px RGB565", "2.10", "2.00", "Garmin/FNT/006-D8168-19.fnt",
+        3_151_801, "006-D8168-19", "OLDER_SAME_FILE")]
+
+
+def _navigator_older_vehicles():
+    """Its three default vehicles, which its GarminDevice.xml lists as 2.40 and Garmin offers as
+    2.20.0, in the three states a check of their files can end in (made up: which of them the
+    real Drive's are is not known)."""
+    return [_older_component(f"Vehicle, {name}", "2.40", "2.20.0", f"Vehicle/{file}", 1_200_000,
+                             part, state, severity="Unspecified")
+            for name, file, part, state in (
+                ("3D Arrow-Blue", "triangle_blue.srf", "006-D0578-00", "OLDER_DIFFERS"),
+                ("Compact-Blue", "euro_blue.srf", "006-D0578-01", "OLDER_SAME_FILE"),
+                ("Monster Truck-Blue", "truck_blue.srf", "006-D0578-02", "OLDER_NOT_COMPARED"))]
 
 
 def _navigator_maps(read: bool = False):
@@ -394,6 +431,13 @@ def _fill(win, page: str) -> str:
             win.session.device.software_version_str = "9.00"
         MainWindow.show_updates(win, _navigator_updates(read="read" in page or current,
                                                         current=current))
+    elif page == "updates-older-navigator":
+        win.session.device.software_version_str = "9.00"
+        MainWindow.show_updates(win, _navigator_updates(read=True, current=True)
+                                + _navigator_older_vehicles())
+    elif page == "updates-older":
+        win.session.device.software_version_str = "33.21"
+        MainWindow.show_updates(win, _edge_reinstalls())
     elif key == "updates":
         MainWindow.show_updates(win, _updates(copied="copied" in page), beta=True)
     elif page == "maps-none":
@@ -1551,3 +1595,67 @@ def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, widt
     if NAVIGATOR_SHOTS:
         window_picture(win, Path(NAVIGATOR_SHOTS)
                        / f"{page}-{language}-{'360' if width == NARROWEST else 'wide'}.png")
+
+
+# What the row of a component Garmin offers older than the device's says, and whether it has
+# Reinstall: (title, the words, a button). With OPENEXPRESS_REINSTALL_SHOTS=FOLDER, a picture of
+# each page, the rows unfolded.
+REINSTALL_SHOTS = os.environ.get("OPENEXPRESS_REINSTALL_SHOTS")
+OLDER_ROWS = {
+    "updates-older": [("Emoji Font, Twemoji Extended 20px RGB565", {
+        "en": "On the device 2.10\u00a0· Garmin offers 2.00, the same file",
+        "pl": "Na urządzeniu 2.10\u00a0· Garmin oferuje 2.00, ten sam plik"}, True)],
+    "updates-older-navigator": [
+        ("Vehicle, 3D Arrow-Blue", {
+            "en": "On the device 2.40\u00a0· Garmin offers 2.20, an older version",
+            "pl": "Na urządzeniu 2.40\u00a0· Garmin oferuje 2.20, starszą wersję"}, False),
+        ("Vehicle, Compact-Blue", {
+            "en": "On the device 2.40\u00a0· Garmin offers 2.20, the same file",
+            "pl": "Na urządzeniu 2.40\u00a0· Garmin oferuje 2.20, ten sam plik"}, True),
+        ("Vehicle, Monster Truck-Blue", {
+            "en": "On the device 2.40\u00a0· Garmin offers 2.20, an older version; the file on "
+                  "the device could not be compared",
+            "pl": "Na urządzeniu 2.40\u00a0· Garmin oferuje 2.20, starszą wersję; pliku na "
+                  "urządzeniu nie udało się porównać"}, False)],
+}
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("page", ["updates-older", "updates-older-navigator"])
+def test_a_component_offered_older_than_the_devices_says_both_numbers(narrow_window, language,
+                                                                      page):
+    """An Edge 1050's Emoji Font (the same file as Garmin's older one) and a Drive's default
+    vehicles: each row says the version on the device and the one Garmin offers, and whether it
+    is the same file; Reinstall only for the same file; in the narrowest window."""
+    from pathlib import Path
+
+    from gi.repository import Adw, Gtk
+
+    win = narrow_window(language, width=NARROWEST)
+    _fill(win, page)
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section("updates")
+    for row in descendants(win.sections["updates"].stack):
+        if isinstance(row, Adw.ExpanderRow):
+            row.set_expanded(True)
+    _iterate(0.3)
+    rows = {r.get_title(): r for r in descendants(win.sections["updates"].stack)
+            if isinstance(r, Adw.ActionRow) and not isinstance(r, Adw.ExpanderRow)}
+    for title, words, button in OLDER_ROWS[page]:
+        row = rows[title]
+        assert row.get_subtitle().startswith(words[language])
+        labels = {w.get_label() for w in descendants(row) if isinstance(w, Gtk.Button)}
+        assert bool(labels & {"Reinstall", "Zainstaluj ponownie"}) == button
+    assert _min_width(win.device_view) <= NARROWEST
+    if REINSTALL_SHOTS:
+        win.set_default_size(NARROWEST, 1400 if page == "updates-older" else 2900)
+        _iterate(0.5)
+        if page == "updates-older-navigator":  # its vehicles are at the end of the list
+            scrolled = rows[OLDER_ROWS[page][0][0]]
+            while not isinstance(scrolled, Gtk.ScrolledWindow):
+                scrolled = scrolled.get_parent()
+            adjustment = scrolled.get_vadjustment()
+            adjustment.set_value(adjustment.get_upper() - adjustment.get_page_size())
+            _iterate(0.5)
+        window_picture(win, Path(REINSTALL_SHOTS) / f"{page}-{language}-360.png")

@@ -555,7 +555,10 @@ class UpdatesPage:
             subtitle += "\n" + not_installed_text(u)
             reinstall, button = True, u.changed_on_device
         else:
-            details = caption(versions_text(u), human_size(u.size),
+            from openexpress import updates as upd
+
+            # An older version than the device's: both numbers, and whether it is the same file.
+            details = caption(upd.older_offer_caption(u) or versions_text(u), human_size(u.size),
                               u.severity_text, u.filename)
             # A system update says so in its title; the name the server gives it goes first.
             subtitle = caption(u.title, details) if u.is_system else details
@@ -568,7 +571,8 @@ class UpdatesPage:
             if note is not None:
                 subtitle += "\n" + note
                 reinstall = True
-            button = waits_for is None and (u.hidden_folder is None or u.hidden_read)
+            button = (waits_for is None and (u.hidden_folder is None or u.hidden_read)
+                      and not upd.reinstall_refused(u))
             if u.hidden_folder is not None and not u.hidden_read:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
         row = Adw.ActionRow(

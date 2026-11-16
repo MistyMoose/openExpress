@@ -367,5 +367,5 @@ def login_manual(settings: Settings) -> ServiceTicket:
     url = input(_("3. Paste the URL: ")).strip()
     st = ticket_from_url(url)
     if st is None:
-        raise LoginCancelled(_("The given URL has no ticket=ST-... parameter"))
+        raise LoginCancelled(_("The given URL has no ticket=ST-… parameter"))
     return st

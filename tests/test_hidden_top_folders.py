@@ -28,12 +28,12 @@ NEW_PART = b"made-up new part"
 
 
 def _entry(part, name, path, filename, data, severity="Recommended", installed=True,
-           primary=False, locale=None):
+           primary=False, locale=None, eula=None):
     """One offered item, the keys as the server sends them."""
     return {
         "partNumber": part, "productName": name, "dataType": "Firmware",
         "displayVersion": "9.00", "severity": severity, "isPrimaryFirmware": primary,
-        "locale": locale, "releaseState": "live", "releaseNotes": [],
+        "locale": locale, "releaseState": "live", "releaseNotes": [], "eulaUrl": eula,
         "deliverable": {"downloadUrl": "https://example.org/" + filename,
                         "md5": hashlib.md5(data).hexdigest().upper(),
                         "sizeInBytes": len(data)},
@@ -1162,7 +1162,9 @@ def drive_answer():
     return {"updates": [
         _entry("006-B0000-00", "Made-up Drive", ".System", "B000000.update", SYSTEM,
                primary=True),
-        _entry("006-D9001-00", "Time zone map", ".System", "gmaptz.img", TZ_NEW)]}
+        # The server gives the time zone map a license, as the real Drive's question shows.
+        _entry("006-D9001-00", "Time zone map", ".System", "gmaptz.img", TZ_NEW,
+               eula="https://example.org/made-up-eula")]}
 
 
 @pytest.fixture
@@ -1865,6 +1867,7 @@ def test_the_reinstall_row_and_its_question_say_what_is_replaced(navigator, in_t
     (tz_heading, tz_body, tz_below), (_heading, system_body, system_below) = asked
     assert tz_heading == "Install Update?"
     assert tz_body.endswith("\n\nThe update replaces the file gmaptz.img on the device.")
+    assert "License Agreement (EULA)" in tz_below and "License Agreement (EULA)" not in system_below
     assert system_body.endswith("\n\nThe update replaces the file B000000.update on the device.")
     assert updates.SYSTEM_UPDATE_WARNING in system_below
     assert updates.SYSTEM_UPDATE_WARNING not in tz_below
@@ -1957,6 +1960,48 @@ def test_a_reinstall_into_a_folder_not_read_is_refused_and_says_why(navigator, m
     captured = capsys.readouterr()
     assert NOT_INSTALLED_TZ.strip() in captured.out + captured.err
     assert fake.steps == [] and drive_downloads == []
+
+
+# --- an older version than the device's, in the folder it hides ------------------------------------
+
+def _time_zones_listed_newer(navigator, version="9.50"):
+    """The navigator's GarminDevice.xml lists its time zone map at a version higher than the
+    one Garmin offers (9.00): Garmin offers an older one."""
+    major, minor = version.split(".")
+    xml = navigator / "GARMIN" / "GarminDevice.xml"
+    xml.write_text(xml.read_text().replace("</MassStorageMode>", (
+        f"<UpdateFile><PartNumber>006-D9001-00</PartNumber><Version><Major>{major}</Major>"
+        f"<Minor>{minor}</Minor></Version><Path>.System</Path><FileName>gmaptz.img</FileName>"
+        "</UpdateFile></MassStorageMode>")))
+
+
+def test_an_older_version_of_the_same_size_in_the_folder_read_may_be_reinstalled(navigator):
+    _time_zones_listed_newer(navigator)
+    _fake, storage = drive_at_9(navigator)  # its gmaptz.img at the size offered
+    tz = _reinstalls(storage)["006-D9001-00"]
+    assert (tz.installed_version, tz.version) == ("9.50", "9.00")
+    assert tz.older_offer == updates.OLDER_SAME_SIZE and not updates.reinstall_refused(tz)
+    assert updates.older_offer_caption(tz) == (
+        "On the device 9.50 · Garmin offers 9.00, the same size")
+
+
+def test_an_older_version_of_another_size_in_the_folder_read_is_never_written(
+        navigator, drive_downloads):
+    _time_zones_listed_newer(navigator)
+    fake, storage = drive_at_9(navigator)
+    fake.objects[fake.handle(".System/gmaptz.img")].data = b"another time zone map"
+    tz = _reinstalls(storage)["006-D9001-00"]
+    assert tz.older_offer == updates.OLDER_DIFFERS and updates.reinstall_refused(tz)
+    with pytest.raises(updates.UpdateError, match="an older version: not reinstalled"):
+        updates.install([tz], storage)
+    assert drive_downloads == [] and fake.steps == []
+
+
+def test_an_older_version_in_a_folder_not_read_is_not_compared(navigator):
+    _time_zones_listed_newer(navigator)
+    _fake, storage = drive_at_9(navigator)
+    tz = _reinstalls(storage, read=False)["006-D9001-00"]
+    assert tz.older_offer == updates.OLDER_NOT_COMPARED and updates.reinstall_refused(tz)
 
 
 @pytest.mark.needs_display

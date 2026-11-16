@@ -165,6 +165,72 @@ def test_free_space(device):
         assert session.free_space(STORAGE) == 123456
 
 
+# --- what the device says it supports -----------------------------------------------------
+
+def test_the_operations_the_device_lists(device):
+    with ptp.Session(device) as session:
+        assert session.operations() == device.supported
+        assert session.storages() == [STORAGE]
+
+
+def test_the_line_of_the_log_names_the_operations_that_matter_and_nothing_of_the_device(device):
+    with ptp.Session(device) as session:
+        line = ptp.operations_line(session)
+    assert line == (
+        "the device lists 13 operations; GetPartialObject yes, SendObject yes, DeleteObject yes, "
+        "Garmin's hidden listing yes; all: 0x1001 0x1002 0x1003 0x1004 0x1005 0x1007 0x1008 "
+        "0x1009 0x100B 0x100C 0x100D 0x101B 0x9002")
+    assert not any(word in line for word in ("Made-up", "9.99", "MADEUPSERIAL", "microsoft"))
+
+
+def test_the_line_says_what_the_device_does_not_list(device):
+    device.supported = [0x1002, 0x1003, 0x1009, 0x100C, 0x100D]
+    with ptp.Session(device) as session:
+        line = ptp.operations_line(session)
+    assert line.startswith("the device lists 5 operations; GetPartialObject no, SendObject yes, "
+                           "DeleteObject no, Garmin's hidden listing no; all: 0x1002 ")
+
+
+def test_a_device_that_does_not_list_its_operations_goes_on(device):
+    device.refuse[ptp.GET_DEVICE_INFO] = ptp.OPERATION_NOT_SUPPORTED
+    with ptp.Session(device) as session:
+        line = ptp.operations_line(session)
+        assert session.storages() == [STORAGE]  # the session goes on in step
+    assert line == "the device did not list its operations (OperationNotSupported)"
+
+
+@pytest.mark.parametrize("cut", ["in the versions", "in the vendor's words", "in the operations"])
+def test_a_device_info_cut_short_is_an_error(cut):
+    data = FakeDevice().device_info()
+    events = data.index(b"\x02\x00\x00\x00\x02\x40")  # their count, then the first: after the operations
+    keep = {"in the versions": 3, "in the vendor's words": 12, "in the operations": events - 1}[cut]
+    with pytest.raises(ptp.PtpError):
+        ptp.operations_supported(data[:keep])
+
+
+def test_a_session_of_its_own_logs_the_operations_once_it_is_open(device, monkeypatch, caplog):
+    import contextlib
+    import logging
+    import time
+
+    from openexpress.device import gio_storage
+
+    @contextlib.contextmanager
+    def unmounted(storage, what, closed):
+        yield time.monotonic()
+
+    monkeypatch.setattr(gio_storage, "_unmounted", unmounted)
+    monkeypatch.setattr(ptp.LibusbTransport, "open", classmethod(lambda cls, bus, address: device))
+    storage = types.SimpleNamespace(usb=gio_storage.GarminUsb(None, 3, 14))
+    with caplog.at_level(logging.INFO, logger="openexpress.device.gio_storage"), \
+            gio_storage._exclusive(storage) as session:
+        assert session.storages() == [STORAGE]
+    lines = [r.getMessage() for r in caplog.records if r.name == "openexpress.device.gio_storage"]
+    opened = next(i for i, line in enumerate(lines) if line.startswith("PTP: session open after"))
+    assert lines[opened + 1].startswith("PTP: the device lists 13 operations; GetPartialObject yes")
+    assert device.operations[:2] == [ptp.OPEN_SESSION, ptp.GET_DEVICE_INFO]
+
+
 # --- hidden objects ----------------------------------------------------------------------
 
 def test_hidden_folder_is_only_in_garmins_listing(device):

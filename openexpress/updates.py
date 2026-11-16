@@ -423,8 +423,9 @@ def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
 def not_installed_here_text(u: SoftwareUpdate) -> str:
     # TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
     # folder of the device's top level its file goes to, e.g. .System
-    return _("Not installed: {name} {version} goes to {folder}, which openExpress cannot see "
-             "on the device.").format(name=u.title, version=u.version, folder=u.hidden_folder)
+    return _("Not installed: {name} {version} goes to the folder {folder}, which openExpress "
+             "cannot see on the device.").format(name=u.title, version=u.version,
+                                                 folder=u.hidden_folder)
 
 
 def hidden_software_text(folder: str) -> str:

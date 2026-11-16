@@ -135,8 +135,8 @@ def test_the_install_into_a_top_folder_not_seen_is_refused_before_anything(navig
     system = _by_part(items)["006-B0000-00"]
     with pytest.raises(updates.UpdateError) as refused:
         updates.install([system], storage)
-    assert str(refused.value) == ("Not installed: Made-up Drive 9.00 goes to .System, which "
-                                  "openExpress cannot see on the device.")
+    assert str(refused.value) == ("Not installed: Made-up Drive 9.00 goes to the folder .System, "
+                                  "which openExpress cannot see on the device.")
     assert downloads == []
     assert not any(p.name.casefold() == ".system" for p in navigator.iterdir())
 
@@ -160,10 +160,10 @@ def offered_to(navigator, monkeypatch):
     return navigator
 
 
-NOT_INSTALLED_SYSTEM = ("      Not installed: Made-up Drive 9.00 goes to .System, which openExpress "
-                        "cannot see on the device.")
-NOT_INSTALLED_TZ = ("      Not installed: Time zone map 9.00 goes to .System, which openExpress "
-                    "cannot see on the device.")
+NOT_INSTALLED_SYSTEM = ("      Not installed: Made-up Drive 9.00 goes to the folder .System, which "
+                        "openExpress cannot see on the device.")
+NOT_INSTALLED_TZ = ("      Not installed: Time zone map 9.00 goes to the folder .System, which "
+                    "openExpress cannot see on the device.")
 NOTICE = ("openExpress cannot see the folder .System, where this device keeps its software, so it "
           "installs nothing there. Some devices, such as car navigators, hide it from the "
           "ordinary USB connection.")
@@ -705,11 +705,11 @@ def test_a_map_in_a_folder_read_has_its_state_and_is_never_written(navigator):
     assert not maps.can_install(city)
     assert maps.cannot_install_message(city) == (
         "Map “Made-up City Navigator” cannot be installed: openExpress does not install maps "
-        "into .System yet.")
+        "into the folder .System yet.")
     with pytest.raises(maps.MapError) as refused:
         maps.uninstall(city, [city], storage)
     assert str(refused.value) == ("Map “Made-up City Navigator” cannot be removed: openExpress "
-                                  "does not remove maps from .System yet.")
+                                  "does not remove maps from the folder .System yet.")
     assert fake.sent(ptp.DELETE_OBJECT) == 0
 
 
@@ -722,7 +722,7 @@ def test_a_new_map_into_a_folder_not_seen_is_refused_before_anything(navigator, 
              "isreinstall": False}
     (new,) = _maps_from(storage, entry)
     assert new.hidden_folder == ".System" and not maps.can_install(new)
-    with pytest.raises(maps.MapError, match="does not install maps into .System yet"):
+    with pytest.raises(maps.MapError, match="does not install maps into the folder .System yet"):
         maps.install(new, [new], storage, activate=lambda identifier: pytest.fail("activated"))
     assert not any(p.name.casefold() == ".system" for p in navigator.iterdir())
 
@@ -767,8 +767,8 @@ def test_the_new_words_in_both_languages(language):
     finally:
         i18n.setup("en")
     expected = {
-        "en": [("Not installed: Made-up Drive 9.00 goes to .System, which openExpress cannot see "
-                "on the device."), NOTICE, ADD_ONS],
+        "en": [("Not installed: Made-up Drive 9.00 goes to the folder .System, which openExpress "
+                "cannot see on the device."), NOTICE, ADD_ONS],
         "pl": [("Nie zainstalowano: Made-up Drive 9.00 trafia do folderu .System, którego "
                 "openExpress nie widzi na urządzeniu."),
                ("openExpress nie widzi folderu .System, w\u00a0którym to urządzenie trzyma swoje "
@@ -834,7 +834,8 @@ def test_the_maps_page_shows_a_map_read_with_its_state_and_no_buttons(navigator)
     MainWindow.show_maps(win, (found, count))
     (on_device,) = win.sections["maps"].groups
     (row,) = [r for r in on_device.rows if r.get_title() == "Made-up City Navigator"]
-    assert row.get_subtitle().endswith("\nopenExpress does not install maps into .System yet")
+    assert row.get_subtitle().endswith(
+        "\nopenExpress does not install maps into the folder .System yet")
     assert "Cannot be read" not in row.get_subtitle()
     assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
 
@@ -871,12 +872,12 @@ def test_the_command_line_lists_a_map_read_and_never_removes_it(navigator, monke
         {"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR[0])]}))
     assert main(["maps"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert "    openExpress does not install maps into .System yet." in out
+    assert "    openExpress does not install maps into the folder .System yet." in out
     assert storage.sessions == 1
     assert main(["maps", "remove", "Made-up City Navigator", "--apply"]) == 1
     said = capsys.readouterr()
     assert ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
-            "from .System yet.") in said.out + said.err
+            "from the folder .System yet.") in said.out + said.err
     assert storage.fake.sent(ptp.DELETE_OBJECT) == 0 and not said.out.startswith("Removing")
 
 
@@ -897,9 +898,9 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
         i18n.setup("en")
     expected = {
         "en": ["Reading the folder .System…", NO_SESSION_LINE,
-               "openExpress does not install maps into .System yet",
+               "openExpress does not install maps into the folder .System yet",
                ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
-                "from .System yet.")],
+                "from the folder .System yet.")],
         "pl": ["Odczytywanie folderu .System…",
                ("openExpress nie może otworzyć własnej sesji USB z\u00a0tym urządzeniem, więc nie "
                 "odczyta folderu .System."),
@@ -1069,7 +1070,7 @@ def test_an_own_map_is_never_written_into_a_folder_the_device_hides(navigator, t
     device = service.read_device(storage, found_now=False)
     overview = ownmaps.overview(device, storage, [])
     assert overview.hidden_folder == ".System"
-    with pytest.raises(maps.MapError, match="does not install maps into .System yet"):
+    with pytest.raises(maps.MapError, match="does not install maps into the folder .System yet"):
         ownmaps.plan_add(device, storage, [], _map_file(tmp_path))
     assert not any(p.name.casefold() == ".system" for p in navigator.iterdir())
 
@@ -1099,9 +1100,49 @@ def test_the_maps_page_offers_no_own_map_for_a_folder_the_device_hides(navigator
     buttons = [w for w in [own.header, *descendants(own.header)] if isinstance(w, Gtk.Button)
                and w.get_label() == "Add Map…"]
     assert buttons and not any(b.get_sensitive() for b in buttons)
-    assert any(r.get_subtitle() == "openExpress does not install maps into .System yet"
+    assert any(r.get_subtitle() == "openExpress does not install maps into the folder .System yet"
                for r in own.rows if hasattr(r, "get_subtitle"))
 
+
+# Its own maps' folder at the top level, which ordinary MTP does not show and which is no
+# .System: a folder named like a word, "Map".
+OWN_MAPS_AT_THE_TOP = """
+  <DataType><Name>NMaps</Name>
+   <File><Location><Path>Map</Path><FileExtension>img</FileExtension></Location>
+    <TransferDirection>InputToUnit</TransferDirection></File></DataType>
+"""
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize(("language", "text"), [
+    ("en", "openExpress does not install maps into the folder Map yet"),
+    ("pl", "openExpress jeszcze nie instaluje map w\u00a0folderze Map")])
+def test_a_folder_of_the_device_is_called_a_folder(navigator, language, text):
+    from openexpress import i18n, ownmaps, service
+    from openexpress.gui.app import MainWindow
+
+    xml = navigator / "GARMIN" / "GarminDevice.xml"
+    xml.write_text(xml.read_text().replace("</MassStorageMode>",
+                                           OWN_MAPS_AT_THE_TOP + "</MassStorageMode>"))
+    storage = OverUsb(navigator, navigator_session())
+    win, _reloads = maps_window(storage)
+    win.session.device = service.read_device(storage, found_now=False)
+    win.choose_map = lambda *args: pytest.fail("a map was chosen")
+    i18n.setup(language)
+    try:
+        MainWindow.show_own_maps(win, ownmaps.overview(win.session.device, storage, []))
+        (own,) = win.sections["maps"].groups
+        subtitles = [r.get_subtitle() for r in own.rows if hasattr(r, "get_subtitle")]
+        m = types.SimpleNamespace(name="Made-up City Navigator", hidden_folder="Map")
+        u = types.SimpleNamespace(title="Time zone map", version="9.00", hidden_folder="Map")
+        words = [maps.read_only_text("Map"), maps.cannot_install_message(m),
+                 maps.removal_refused(types.SimpleNamespace(unseen=False, **vars(m))),
+                 updates.not_installed_here_text(u)]
+    finally:
+        i18n.setup("en")
+    assert text in subtitles
+    assert all(any(f"{word} Map" in w for word in ("folder", "folderze", "folderu"))
+               for w in words), words
 
 # --- an install writes into the hidden folder, in Garmin Express's order ---------------------
 

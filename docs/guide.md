@@ -225,7 +225,8 @@ with an update names the version offered and what the update downloads.
 On a car navigator that keeps its maps in the folder it hides (`.System/Map`), the Maps page shows
 them as read through that USB session (see [Software updates](#software-updates)), without
 **Update** or **Remove**: openExpress does not install or remove maps in that folder yet. When
-the device's folder for maps of your own is there too, **Add Map…** is off for the same reason.
+the device's folder for maps of your own is one the ordinary USB connection does not show either
+(the folder Map on a Drive 53 EX), **Add Map…** is off for the same reason.
 
 ## Maps of your own
 

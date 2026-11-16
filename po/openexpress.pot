@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 23:27+0100\n"
+"POT-Creation-Date: 2026-11-16 00:03+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -10573,8 +10573,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be installed: openExpress does not install maps into "
-"{folder} yet."
+"Map “{name}” cannot be installed: openExpress does not install maps into the "
+"folder {folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10608,14 +10608,14 @@ msgstr ""
 #. openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install maps into {folder} yet"
+msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr ""
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
 #. ({folder}, e.g. .System); openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install maps into {folder} yet."
+msgid "openExpress does not install maps into the folder {folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10683,8 +10683,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be removed: openExpress does not remove maps from "
-"{folder} yet."
+"Map “{name}” cannot be removed: openExpress does not remove maps from the "
+"folder {folder} yet."
 msgstr ""
 
 #. TRANSLATORS: a step of a map removal; {name}: the map ("… · 2 of 5")
@@ -11964,8 +11964,8 @@ msgstr ""
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"Not installed: {name} {version} goes to {folder}, which openExpress cannot "
-"see on the device."
+"Not installed: {name} {version} goes to the folder {folder}, which "
+"openExpress cannot see on the device."
 msgstr ""
 
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress

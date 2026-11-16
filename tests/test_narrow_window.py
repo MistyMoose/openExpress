@@ -275,11 +275,13 @@ NAVIGATOR = ("Drive 53 EX", "8.50", "006-B4449-00")
 NAVIGATOR_SPACE = (6_700_000_000, 14_800_000_000)
 
 
-def _navigator_updates(read: bool = False):
+def _navigator_updates(read: bool = False, current: bool = False):
     """As a Drive 53 EX is offered: its software and its time-zone map in
     .System, which the listing does not show, 140 voices and vehicles it does not have
     (add-ons) and 27 components already on it. `read`: .System read through openExpress's own
-    session, both files there of another size than offered."""
+    session, both files there of another size than offered. `current`: once it installed both
+    (software 9.00), as reinstalls with their files there at the size offered: 29 components
+    already on it."""
     from openexpress import hidden_folders
 
     def offered(name, version, path, size, part, hidden=None, add_on=False, reinstall=False,
@@ -300,26 +302,36 @@ def _navigator_updates(read: bool = False):
                           f"006-D1{100 + n:03d}-00", reinstall=True) for n in range(27)]
     return [
         offered("Drive 53", "9.00", ".System/B444900.update", 64_655_360, NAVIGATOR[2],
-                hidden=".System", same=False, installed="8.50", severity="Critical"),
+                hidden=".System", same=current, installed="9.00" if current else "8.50",
+                severity="Critical", reinstall=current),
         offered("Time Zone Map", "43.00", ".System/gmaptz.img", 582_656, "006-D1074-00",
-                hidden=".System", same=False, installed="41.00"),
+                hidden=".System", same=current, installed="43.00" if current else "41.00",
+                reinstall=current),
         *add_ons, *reinstalls]
 
 
 def _navigator_maps(read: bool = False):
     """Its City Navigator as a Drive 53 EX has it: listed by Garmin's server with
     an update (2027.20, 8.3 GB of files), its files in four folders of .System, which the
-    listing does not show; `read`: read through openExpress's own session."""
+    listing does not show; `read`: read through openExpress's own session, its files there
+    taking 7.6 GB (the folder Map 5.26 GB; how the rest is shared among the other three is
+    made up). Its own maps' folder, Map, is at the top level, which ordinary MTP does not show:
+    nothing is added there."""
     from openexpress.maps import MapFile, UniversalMap
+    from openexpress.ownmaps import Overview
 
     files = [MapFile(f".System/{folder}/{name}", "u", None, size) for folder, name, size in (
         ("Map", "D0000001A.img", 5_260_000_000), ("JCV", "D0000001B.jcv", 2_100_000_000),
         ("SID", "D0000001C.sid", 400_000_000), ("SQLite", "D0000001D.db", 540_000_000))]
+    on_the_device = dict(zip((f.device_path.casefold() for f in files),
+                             (5_260_000_000, 1_400_000_000, 400_000_000, 540_000_000),
+                             strict=True))
     m = UniversalMap(name="City Navigator North America NT", map_type="City Navigator",
                      state=1, is_reinstall=False, can_uninstall=True, version="2027.20",
                      region="Americas", identifier={}, files=files, files_to_remove=[], hosts=[],
-                     unseen=not read, hidden_folder=".System")
-    return ([m], 1), None
+                     unseen=not read, hidden_folder=".System",
+                     device_sizes=on_the_device if read else None)
+    return ([m], 1), Overview("Map", [], set(), hidden_folder="Map")
 
 
 def _navigator_status_facts():
@@ -348,6 +360,11 @@ def _fill(win, page: str) -> str:
              else EDGE if page.startswith(("device", "updates")) else FENIX)
     win.session = _session(_device(*model), drive=drive,
                            **({"space": NAVIGATOR_SPACE} if model is NAVIGATOR else {}))
+    if model is NAVIGATOR:
+        # Garmin Connect does not take its data (connect support: Disabled): no Sync.
+        from openexpress import service
+
+        win.session.sync_refusal = service.CONNECT_DISABLED
     if page == "device-refused-drive":
         # Not synced, with the longest of the reasons in place of the sync.
         win.session.drive_refusal = ("no-unit-info",
@@ -371,8 +388,12 @@ def _fill(win, page: str) -> str:
     shown = None
     if key == "watch":
         MainWindow.show_overview(win)
-    elif page in ("updates-navigator", "updates-read-navigator"):
-        MainWindow.show_updates(win, _navigator_updates(read="read" in page))
+    elif page in ("updates-navigator", "updates-read-navigator", "updates-current-navigator"):
+        current = page == "updates-current-navigator"
+        if current:
+            win.session.device.software_version_str = "9.00"
+        MainWindow.show_updates(win, _navigator_updates(read="read" in page or current,
+                                                        current=current))
     elif key == "updates":
         MainWindow.show_updates(win, _updates(copied="copied" in page), beta=True)
     elif page == "maps-none":
@@ -1475,16 +1496,26 @@ NAVIGATOR_WORDS = {
     # Its folder read: installed there as on a watch.
     "updates-read-navigator": {"en": "2 updates available", "pl": "Dostępne są 2 aktualizacje"},
     "maps-read-navigator": {
-        "en": "openExpress does not install maps into .System yet",
+        "en": "openExpress does not install maps into the folder .System yet",
         "pl": "openExpress jeszcze nie instaluje map w\u00a0folderze .System"},
     "status-navigator": {"en": "5.3\u00a0GB", "pl": "5,3\u00a0GB"},  # its maps
+    # Software 9.00 installed: its software and its time zone map among the reinstalls.
+    "updates-current-navigator": {
+        "en": "29 components already on the device; useful for troubleshooting",
+        "pl": "29 komponentów jest już na urządzeniu; przydatne przy rozwiązywaniu problemów"},
 }
+# What else its Maps page says, as on the device: what its maps take once .System is read, and
+# its own maps' folder, where nothing is added.
+OWN_MAP_FOLDER = {"en": "openExpress does not install maps into the folder Map yet",
+                  "pl": "openExpress jeszcze nie instaluje map w\u00a0folderze Map"}
+MAPS_USE = {"en": "Maps use 7.6\u00a0GB", "pl": "Mapy zajmują 7,6\u00a0GB"}
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 @pytest.mark.parametrize("width", [NARROWEST, 1000], ids=["360", "wide"])
 @pytest.mark.parametrize("page", ["updates-navigator", "maps-navigator", "updates-read-navigator",
-                                  "maps-read-navigator", "status-navigator"])
+                                  "maps-read-navigator", "status-navigator",
+                                  "updates-current-navigator"])
 def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, width, page):
     """Its Updates page has no Install for what goes to .System and says why; its Maps page
     shows the City Navigator without a button and says why; once .System is read through
@@ -1511,6 +1542,12 @@ def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, widt
                           "Update", "Aktualizuj"}
     # Only into the folder read, and only updates: never a map there.
     assert bool(installs) == (page == "updates-read-navigator")
+    if page.startswith("maps-"):
+        assert any(OWN_MAP_FOLDER[language] in t for t in texts)
+        adds = [w for w in page_widgets if isinstance(w, Gtk.Button)
+                and w.get_label() in ("Add Map…", "Dodaj mapę…")]
+        assert adds and not any(b.get_sensitive() for b in adds)
+        assert any(MAPS_USE[language] == t for t in texts) == (page == "maps-read-navigator")
     if NAVIGATOR_SHOTS:
         window_picture(win, Path(NAVIGATOR_SHOTS)
                        / f"{page}-{language}-{'360' if width == NARROWEST else 'wide'}.png")

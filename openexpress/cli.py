@@ -1994,6 +1994,8 @@ def cmd_updates(args) -> int:
         for u in sorted(visible, key=lambda x: (not x.is_system, x.severity.lower() != "critical",
                                                 x.name)):
             print("  " + _update_line(u) + _flags(u))
+            if (older := upd.older_offer_text(u)) is not None:
+                print("      " + older)
             if u.hidden_folder is not None and not u.hidden_read:
                 print("      " + upd.not_installed_here_text(u))
             note = _copied_note(u)
@@ -2024,6 +2026,12 @@ def cmd_updates(args) -> int:
     refused = [u for u in chosen if u.hidden_folder is not None and not u.hidden_read]
     chosen = [u for u in chosen if not any(u is r for r in refused)]
     _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
+    # Never an older version over the device's own, unless it is the same file.
+    older = [u for u in chosen if upd.reinstall_refused(u)]
+    for u in older:
+        print(upd.older_offer_text(u))
+    chosen = [u for u in chosen if not any(u is o for o in older)]
+    refused += older
     if refused and not chosen:
         return 1
     skipped = [u for u in upd.present_with_metadata(items) if not u.is_metadata

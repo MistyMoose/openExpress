@@ -95,3 +95,33 @@ def test_done_after_the_drive_was_ejected(told, in_the_window, files, words):
     # After an update the device installs it only while it stays unplugged.
     assert told == [("ejected", "Done",
                      ejected_text(update_waits=not files) + ("\n\n" + words if words else ""))]
+
+
+# --- after a reinstall: the same version stays, on every device -------------------------------
+
+REINSTALL_STEP = {
+    "en": "4. Plug it in again if you want to check it: the software version stays the same.",
+    "pl": ("4. Podłącz je ponownie, jeśli chcesz to sprawdzić: wersja oprogramowania zostaje "
+           "ta sama.")}
+UPDATE_STEP = {"en": "the installed update should no longer be listed",
+               "pl": "zainstalowana aktualizacja nie powinna już być na liście"}
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+def test_done_after_a_reinstall_does_not_promise_it_leaves_the_list(language):
+    from openexpress.gui.updates_page import UpdatesPage
+
+    reinstalled = _update("006-D0001-00", is_reinstall=True)
+    updated = _update("006-D0002-00")
+    i18n.setup(language)
+    try:
+        after_reinstall = UpdatesPage._update_done_text(InstallReport(written=[reinstalled]))
+        after_update = UpdatesPage._update_done_text(InstallReport(written=[updated]))
+        both = UpdatesPage._update_done_text(InstallReport(written=[reinstalled, updated]))
+    finally:
+        i18n.setup("en")
+    assert after_reinstall.endswith("\n" + REINSTALL_STEP[language])
+    assert UPDATE_STEP[language] not in after_reinstall
+    assert UPDATE_STEP[language] in after_update and UPDATE_STEP[language] in both
+    # The other steps the same.
+    assert after_reinstall.rsplit("\n", 1)[0] == after_update.rsplit("\n", 1)[0]

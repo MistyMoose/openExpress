@@ -53,7 +53,6 @@ from openexpress.settings import (
     load_consumer,
     save_consumer,
 )
-from openexpress.updates import FINISH_STEPS
 
 log = logging.getLogger(__name__)
 
@@ -2084,7 +2083,7 @@ def cmd_updates(args) -> int:
     if n and getattr(st, "mass_storage", False) and not _eject_drive(st):
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:
-        print(_(FINISH_STEPS))
+        print(_(upd.finish_steps(rep.written)))
     if any(u.is_system and u.hidden_folder is not None for u in rep.written):
         print(upd.power_text())  # a navigator, its software written: it must not lose power
     return 1 if refused else 0

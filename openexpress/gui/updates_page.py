@@ -45,7 +45,6 @@ from openexpress.gui.words import (  # noqa: E402
     update_state_text,
 )
 from openexpress.i18n import SEPARATOR, _, caption, human_size, ngettext, pgettext  # noqa: E402
-from openexpress.updates import FINISH_STEPS_WINDOW  # noqa: E402
 
 log = logging.getLogger(__name__)
 # Between two versions ("23.39 → 23.40"): no-break spaces keep them on one line.
@@ -592,8 +591,8 @@ class UpdatesPage:
         keep its power while it installs it."""
         from openexpress import updates as upd
 
-        text = _("Files copied to the device.") + ("\n" + _(FINISH_STEPS_WINDOW)
-                                                    if rep.written else "")
+        text = _("Files copied to the device.") + (
+            "\n" + _(upd.finish_steps(rep.written, window=True)) if rep.written else "")
         if any(u.is_system and u.hidden_folder is not None for u in rep.written):
             text += "\n\n" + upd.power_text()
         return text

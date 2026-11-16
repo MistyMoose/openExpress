@@ -544,7 +544,7 @@ def cannot_install_message(m: UniversalMap) -> str:
         # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
         # e.g. .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
-                 "{folder} yet.").format(name=m.name, folder=m.hidden_folder)
+                 "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     if m.restricted is True:
         return _("Map “{name}” cannot be installed: Garmin does not offer it in your account's "
                  "country ({country}).").format(name=m.name,
@@ -747,13 +747,15 @@ def not_installed_into(folder: str) -> str:
     # TRANSLATORS: on the Maps page, under a map whose files go to a folder the device hides
     # ({folder}, e.g. .System), and under its own maps' folder there, without a full stop;
     # openExpress installs software updates there, not maps
-    return _("openExpress does not install maps into {folder} yet").format(folder=folder)
+    return _("openExpress does not install maps into the folder {folder} yet").format(
+        folder=folder)
 
 
 def read_only_text(folder: str) -> str:
     # TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
     # ({folder}, e.g. .System); openExpress installs software updates there, not maps
-    return _("openExpress does not install maps into {folder} yet.").format(folder=folder)
+    return _("openExpress does not install maps into the folder {folder} yet.").format(
+        folder=folder)
 
 
 def _state_words(m: UniversalMap) -> str:
@@ -1045,7 +1047,7 @@ def removal_refused(m: UniversalMap) -> str | None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
         # ordinary USB connection, e.g. .System
         return _("Map “{name}” cannot be removed: openExpress does not remove maps from "
-                 "{folder} yet.").format(name=m.name, folder=m.hidden_folder)
+                 "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     return None
 
 

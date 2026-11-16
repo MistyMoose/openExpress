@@ -191,8 +191,9 @@ connected device; no login is needed.
   by name and size; their contents are not read. It installs software updates and the time zone
   map there as Garmin Express writes them: the old file of that name is deleted first, and the
   new one is checked by its size and read back whole; after the device's own software, the
-  message says to keep the device powered while it installs it. **Check Again** reads the folder
-  anew. When the session cannot be opened (a Flatpak
+  message says to keep the device powered while it installs it. **Reinstall Components** writes
+  a component already there again the same way; as on a watch, the page then waits for nothing.
+  **Check Again** reads the folder anew. When the session cannot be opened (a Flatpak
   without access to USB devices), the page says why the folder could not be read. Voices and
   vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
 
@@ -225,7 +226,8 @@ with an update names the version offered and what the update downloads.
 On a car navigator that keeps its maps in the folder it hides (`.System/Map`), the Maps page shows
 them as read through that USB session (see [Software updates](#software-updates)), without
 **Update** or **Remove**: openExpress does not install or remove maps in that folder yet. When
-the device's folder for maps of your own is there too, **Add Map…** is off for the same reason.
+the device's folder for maps of your own is one the ordinary USB connection does not show either
+(the folder Map on a Drive 53 EX), **Add Map…** is off for the same reason.
 
 ## Maps of your own
 

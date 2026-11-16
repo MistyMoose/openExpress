@@ -152,6 +152,25 @@ def sw_response(base):
     ]}
 
 
+def test_the_computer_is_kept_awake_while_updates_are_copied(server, device_root, xdg,
+                                                             no_sleep_blocked):
+    items = updates.parse_updates(sw_response(server))
+    updates.install(updates.select(items, ["all"]), LocalStorage(device_root))
+    assert [kind for kind, _why in no_sleep_blocked] == ["block", "release"]
+
+
+def test_the_computer_is_kept_awake_while_a_map_is_written(server, device_root, xdg,
+                                                          no_sleep_blocked):
+    g = device_root / "GARMIN"
+    for n in ("W.img", "DEM.img", "W.gma", "E.img", "E.gma"):
+        (g / n).write_bytes(b"old")
+    all_maps = maps.parse_maps(maps_response(server))
+    east = all_maps[1]
+    maps.install(east, all_maps, LocalStorage(device_root), lambda ident: {"unlocks": [
+        {"filename": "Garmin/E2.gma", "gma": base64.b64encode(b"UNLOCK").decode()}]})
+    assert [kind for kind, _why in no_sleep_blocked] == ["block", "release"]
+
+
 def test_software_update_flow(server, device_root, xdg):
     items = updates.parse_updates(sw_response(server))
     assert items[1].device_path == "Garmin/RemoteSW/aux.gcd"

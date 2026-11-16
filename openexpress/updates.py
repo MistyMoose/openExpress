@@ -19,7 +19,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
 
-from openexpress import answers, applog, cache, download, hidden_folders, known_devices, paths
+from openexpress import (
+    answers,
+    applog,
+    awake,
+    cache,
+    download,
+    hidden_folders,
+    known_devices,
+    paths,
+)
 from openexpress.device.storage import MAIN_FOLDERS, DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import UserFacingError
 from openexpress.i18n import N_, _, ngettext
@@ -1015,32 +1024,34 @@ def _install(
                     .format(part=u.part_number)
                 )
         local_files[u.key] = local
-    for u in sort_for_install(updates):
-        local = local_files[u.key]
-        if u.hidden_folder is not None:
-            # As Garmin Express writes there; the device's own software after the rest, and the
-            # first failure stops all that would follow.
-            _write_hidden(storage, u, local, progress, report)
-            continue
-        size = local.stat().st_size
-        log.debug("software update: copying %s", u.device_path)
-        copying = copying_text(u.title)
-        _clear_the_place(storage, u)  # deletes a file in another letter case, GUPDATE.TMP
-        # A failed write is cleaned up by the storage itself (half a file over MTP; nothing
-        # on a drive, nor when the copy never started): nothing more is deleted for it here,
-        # and what _clear_the_place deleted does not come back.
-        # A truncated firmware file must not stay where the watch would install it: one of
-        # another size is deleted.
-        # On a drive, read back from it (a step of its own) and compared with the server's
-        # MD5 before it counts.
-        real = storage.write_file_checked(
-            u.device_path, local, byte_steps(progress, copying), error=UpdateError,
-            md5=download.normalize_md5(u.md5),
-            checking=byte_steps(progress, checking_text(u.title)))
-        report.written.append(u)
-        # The whole path from the device's folder, as mark_present names it.
-        log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
-                 applog.size(size), real)
+    # From the first copy to the last the device must not be cut off: kept awake.
+    with awake.kept_awake("software updates are copied", say=say):
+        for u in sort_for_install(updates):
+            local = local_files[u.key]
+            if u.hidden_folder is not None:
+                # As Garmin Express writes there; the device's own software after the rest, and the
+                # first failure stops all that would follow.
+                _write_hidden(storage, u, local, progress, report)
+                continue
+            size = local.stat().st_size
+            log.debug("software update: copying %s", u.device_path)
+            copying = copying_text(u.title)
+            _clear_the_place(storage, u)  # deletes a file in another letter case, GUPDATE.TMP
+            # A failed write is cleaned up by the storage itself (half a file over MTP; nothing
+            # on a drive, nor when the copy never started): nothing more is deleted for it here,
+            # and what _clear_the_place deleted does not come back.
+            # A truncated firmware file must not stay where the watch would install it: one of
+            # another size is deleted.
+            # On a drive, read back from it (a step of its own) and compared with the server's
+            # MD5 before it counts.
+            real = storage.write_file_checked(
+                u.device_path, local, byte_steps(progress, copying), error=UpdateError,
+                md5=download.normalize_md5(u.md5),
+                checking=byte_steps(progress, checking_text(u.title)))
+            report.written.append(u)
+            # The whole path from the device's folder, as mark_present names it.
+            log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
+                     applog.size(size), real)
     return report
 
 
@@ -1050,7 +1061,7 @@ def _write_hidden(storage: Storage, u: SoftwareUpdate, local: Path, progress,
     an UpdateError that says what is on the device when it was not written whole, or could not
     be read back (it then stays, counted as written)."""
     try:
-        written = hidden_folders.write(storage, u.device_path, local.read_bytes(),
+        written = hidden_folders.write(storage, u.device_path, local,
                                        download.normalize_md5(u.md5), u.title,
                                        space_margin(storage), progress=progress,
                                        copying=copying_text(u.title),

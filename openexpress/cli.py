@@ -106,6 +106,9 @@ def open_storage(args) -> Storage:
 # connection in the device log with what they read (open_device does not), so that nothing is
 # read twice.
 NOTED_AFTER_READING = ("diagnostics", "report")
+# Commands that read the folders the device hides themselves, once, with those they need (their
+# line in the device's log counted again after it): not read as the device is opened.
+READS_HIDDEN_ITSELF = ("maps", "updates")
 
 
 def _read_hidden(st, dev, needed=(), why: str = "") -> bool:
@@ -115,9 +118,14 @@ def _read_hidden(st, dev, needed=(), why: str = "") -> bool:
     what the window reads, so that both count and compare the same; once read, the line of
     this connection in the device's log counted again, as the window counts it. Whether it read
     now."""
-    if hidden_folders.kept(st) is not None:
+    kept = hidden_folders.kept(st)
+    needed = list(needed)
+    # Read once; again only for folders this command needs that the first reading (of the
+    # folders the device is known to hide, as it was opened) did not ask for.
+    if kept is not None and (kept.state != hidden_folders.READ
+                             or all(kept.knows(f) for f in needed)):
         return False
-    folders = hidden_folders.folders_to_read(dev, needed)
+    folders = hidden_folders.folders_to_read(dev, [*needed, *(kept.asked() if kept else [])])
     if not folders:
         return False
     with _progress() as progress:
@@ -157,7 +165,7 @@ def open_device(args) -> tuple[Storage, GarminDevice]:
     # A device found now is remembered, and its connection noted in its log; a folder given
     # with --path may be a copy.
     dev = service.read_device(st, found_now=not args.path, refuse=refuse)
-    if not args.path:
+    if not args.path and command not in READS_HIDDEN_ITSELF:
         # Before anything counts it: the folders it is known to hide, as the window reads them.
         _read_hidden(st, dev, why="the device is known to hide them")
     if not args.path and command not in NOTED_AFTER_READING:
@@ -2319,6 +2327,7 @@ def cmd_maps(args) -> int:
             print(f"  - {path}")
         print(cleanup[-1])
 
+    code = 0  # 1 when the dry run of the trial says the map would be refused
     for m in targets:
         if args.maps_cmd == "remove":
             if (why := mp.removal_refused(m)) is not None:
@@ -2344,11 +2353,18 @@ def cmd_maps(args) -> int:
         if m.waiting == mp.WAIT_INSTALL:
             # Refused before anything is listed: it is written already.
             raise mp.MapError(mp.waiting_message(m))
-        if not mp.can_install(m):
-            # Refused before anything is promised, the same reason as with --apply.
-            raise mp.MapError(mp.cannot_install_message(m))
+        trial = getattr(args, "hidden_folder_trial", False)
+        hidden = m.hidden_folder is not None
         removing = mp.removal_list(all_maps, m, rewriting=True)
-        need = mp.space_needed(st, m, removing)
+        # The trial says each reason it would be refused for; anything else is refused before
+        # anything is promised, the same reason as with --apply.
+        refused = mp.trial_refusals(st, m, removing) if trial and hidden else []
+        if refused and args.apply:
+            raise mp.MapError(refused[0])
+        if not refused and not mp.can_install(m, hidden_trial=trial):
+            raise mp.MapError(mp.cannot_install_message(m))
+        need, free = (mp.hidden_space(st, m, removing) if hidden
+                      else (mp.space_needed(st, m, removing), st.free_space()))
         if m.installed:
             msg = ngettext("Updating map {name} {version}: {count} file, download {size}, "
                            "space on the device {needed} ({free} free)",
@@ -2361,13 +2377,43 @@ def cmd_maps(args) -> int:
                            "space on the device {needed} ({free} free)", len(m.files))
         print(msg.format(name=m.name, version=m.version, count=len(m.files),
                          size=human_size(m.size), needed=human_size(need),
-                         free=human_size(st.free_space())))
+                         free=human_size(free)))
         for f in mp.write_order(m):
             print(f"  + {f.device_path}  {human_size(f.size)}")
+        sizes = m.device_sizes or {}
         for p in removing:
-            print(f"  - {p}")
+            # In a folder the device hides, with the size its own session read there.
+            there = sizes.get(p.casefold()) if hidden else None
+            print(f"  - {p}" + (f"  {human_size(there)}" if there is not None else ""))
+        if hidden:
+            need_here, free_here = mp.download_space(m)
+            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: the space the map's
+            # files not downloaded yet take on this computer; {needed}, {free}: sizes
+            print(_("Space on this computer for the download: {needed} needed, {free} free")
+                  .format(needed=human_size(need_here), free=human_size(free_here)))
+            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: an estimate, at the
+            # slowest seen; {minutes}: a number
+            print(_("Writing and reading back on the device: at most about {minutes} min")
+                  .format(minutes=mp.trial_minutes(m)))
+            if removing:
+                print(mp.no_complete_map_text())
         for e in m.eula_urls:
             print(_("License (EULA): {url}").format(url=e))
+        for reason in refused:
+            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run: why it
+            # would be refused with --apply ({reason}: a sentence)
+            print(_("Would be refused: {reason}").format(reason=reason))
+            code = 1
+        if not args.apply and trial and hidden:
+            largest = max(m.files, key=lambda f: f.size or 0, default=None)
+            if largest is not None:
+                # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run:
+                # the largest file of the map and its size
+                print(_("Largest file: {path}, {size}").format(path=largest.device_path,
+                                                               size=human_size(largest.size)))
+            print(_("Dry run: nothing was downloaded and nothing on the device was changed. "
+                    "Add --apply."))
+            continue
         if not args.apply:
             print(_("Dry run: nothing was downloaded or written. Add --apply."))
             continue
@@ -2378,13 +2424,19 @@ def cmd_maps(args) -> int:
                 session=client.http,
                 url_salt=_url_salt(),
                 progress=progress,
+                hidden_trial=trial,
             )
+        if rep.kept:
+            print(ngettext("{count} file was on the device already and read back the same: not "
+                           "written again.",
+                           "{count} files were on the device already and read back the same: not "
+                           "written again.", len(rep.kept)).format(count=len(rep.kept)))
         print(ngettext("Wrote {count} map file and {unlocks} unlock files.",
                        "Wrote {count} map files and {unlocks} unlock files.",
                        len(rep.written)).format(count=len(rep.written),
                                                 unlocks=len(rep.unlocks)))
         print(_("The map will be loaded after the device is unplugged."))
-    return 0
+    return code
 
 
 APP_TYPE_OPTIONS = {"app": 1, "widget": 2, "watch-face": 3, "data-field": 4, "music-app": 7,
@@ -3644,6 +3696,9 @@ def build_parser() -> argparse.ArgumentParser:
                           "lists it"))
     m.add_argument("--apply", action="store_true",
                    help=_("download the map and write it to the device"))
+    m.add_argument("--hidden-folder-trial", action="store_true",
+                   help=_("a trial: install a map into a folder the device hides (a car "
+                          "navigator's .System), through a USB session of openExpress's own"))
     m = msub.add_parser("update", help=_("update installed maps"))
     m.add_argument("--apply", action="store_true",
                    help=_("download the updates and write them to the device"))

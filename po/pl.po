@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 20:33+0100\n"
+"POT-Creation-Date: 2026-11-16 21:36+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -13052,6 +13052,73 @@ msgstr "Opcjonalna"
 #, python-brace-format
 msgid "Unspecified"
 msgstr "Nieokreślona"
+
+#. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+#. the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
+#. file on the device is the very file offered
+#: openexpress/updates.py
+#, python-brace-format
+msgid "On the device {on_device}, Garmin offers {offered}: the same file."
+msgstr "Na urządzeniu {on_device}, Garmin oferuje {offered}: ten sam plik."
+
+#. TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"On the device {on_device}, Garmin offers {offered}: the same size, its "
+"contents not compared."
+msgstr ""
+"Na urządzeniu {on_device}, Garmin oferuje {offered}: ten sam rozmiar, treść "
+"nieporównana."
+
+#. TRANSLATORS: as above, another file: an older version, which openExpress never writes
+#. over the device's
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"On the device {on_device}, Garmin offers {offered}, an older version: not "
+"reinstalled."
+msgstr ""
+"Na urządzeniu {on_device}, Garmin oferuje {offered}, starszą wersję: bez "
+"ponownej instalacji."
+
+#. TRANSLATORS: as above, its file could not be compared with the one offered (not on the
+#. device, its folder not read)
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"On the device {on_device}, Garmin offers {offered}, an older version; the "
+"file on the device could not be compared: not reinstalled."
+msgstr "Na urządzeniu {on_device}, Garmin oferuje {offered}, starszą wersję; pliku na urządzeniu nie udało się porównać: bez ponownej instalacji."
+
+#. TRANSLATORS: Updates page, in the row of a component whose version on the device
+#. ({on_device}) is higher than the one Garmin offers ({offered}), while the file on the
+#. device is the very file offered; no full stop
+#: openexpress/updates.py
+#, python-brace-format
+msgid "On the device {on_device} · Garmin offers {offered}, the same file"
+msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, ten sam plik"
+
+#. TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+#: openexpress/updates.py
+#, python-brace-format
+msgid "On the device {on_device} · Garmin offers {offered}, the same size"
+msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, ten sam rozmiar"
+
+#. TRANSLATORS: as above, another file: an older version, which openExpress does not
+#. reinstall (the row has no button)
+#: openexpress/updates.py
+#, python-brace-format
+msgid "On the device {on_device} · Garmin offers {offered}, an older version"
+msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, starszą wersję"
+
+#. TRANSLATORS: as above, its file could not be compared with the one offered
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"On the device {on_device} · Garmin offers {offered}, an older version; the "
+"file on the device could not be compared"
+msgstr "Na urządzeniu {on_device} · Garmin oferuje {offered}, starszą wersję; pliku na urządzeniu nie udało się porównać"
 
 #. TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
 #. folder of the device's top level its file goes to, e.g. .System

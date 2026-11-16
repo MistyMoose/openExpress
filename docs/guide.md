@@ -465,7 +465,8 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   Express or the phone app refreshes. When a watch already holds that file in the format
   openExpress knows, its device page shows **Satellite Data**; turned on, each sync downloads
   Garmin's current file and writes it when it differs from the watch's. The file is written as
-  Garmin sends it, never changed. If the watch rejects it (it renames it to `CPE_BAD.bin`),
+  Garmin sends it, never changed; one of a form or a size openExpress does not know is not
+  written, and the row says so. If the watch rejects it (it renames it to `CPE_BAD.bin`),
   openExpress turns the switch off for that watch and says so; turned on again, the next sync
   tries once more.
   A fēnix 8 keeps two such files in `GARMIN/RemoteSW`, `GPE.bin` (data for seven days) and

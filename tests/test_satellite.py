@@ -10,6 +10,7 @@ import json
 import logging
 import types
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 import requests
@@ -23,6 +24,7 @@ from openexpress.device.storage import DeviceError, LocalStorage
 UNIT = 3000000045
 NB = "\u00a0"
 CPE = "GARMIN/REMOTESW/CPE.BIN"
+CPE_SIZE = len(made_up_cpe())  # 31 blocks, as Garmin's file was first seen
 
 
 class Device(LocalStorage):
@@ -62,16 +64,16 @@ def rejects(storage) -> None:
 # --- the format and the devices -----------------------------------------------------------------
 
 
-def test_the_format_known_is_its_size_start_length_and_zeros_after_the_data():
+def test_the_format_known_is_whole_blocks_its_start_length_and_zeros_after_the_data():
     good = made_up_cpe()
     assert satellite.known_format(good)
     length = int.from_bytes(good[4:8], "little")
-    assert not satellite.known_format(good[:-1])  # another size
+    assert not satellite.known_format(good[:-1])  # not whole blocks
     assert not satellite.known_format(b"\0" + good[1:])  # another start
-    assert not satellite.known_format(good[:4] + (satellite.SIZE + 1).to_bytes(4, "little")
+    assert not satellite.known_format(good[:4] + (len(good) + 1).to_bytes(4, "little")
                                       + good[8:])  # a length beyond the file
     assert not satellite.known_format(good[:length] + b"\1" + good[length + 1:])  # not zeros
-    assert not satellite.known_format(b"CPE_GPS.BIN" + bytes(satellite.SIZE - 11))  # a tar
+    assert not satellite.known_format(b"CPE_GPS.BIN" + bytes(len(good) - 11))  # a tar
 
 
 def test_a_device_with_the_file_of_the_format_is_remembered_and_off(tmp_path, clock):
@@ -89,7 +91,7 @@ def test_a_device_with_the_file_of_the_format_is_remembered_and_off(tmp_path, cl
     # Like an Edge 1050: no CPE.BIN, only GPES.bin.
     {"GARMIN/RemoteSW/GPES.bin": b"made up" * 100},
     # The tar archive of another address.
-    {CPE: b"CPE_GPS.BIN" + bytes(satellite.SIZE - 11)},
+    {CPE: b"CPE_GPS.BIN" + bytes(CPE_SIZE - 11)},
 ], ids=["like-a-fenix", "like-an-edge", "a-tar"])
 def test_a_device_without_the_file_of_the_format_never_gets_the_row_or_a_write(
         tmp_path, clock, monkeypatch, files):
@@ -127,9 +129,9 @@ def test_on_garmins_file_is_written_read_back_and_kept_in_the_cache_4_hours(
     server = satellite_server(monkeypatch, satellite_answer(made_up_cpe(2)),
                               satellite_answer(made_up_cpe(3)))
     assert satellite.update(device, storage, apply=False) == satellite.Result("would",
-                                                                              satellite.SIZE)
+                                                                              CPE_SIZE)
     assert storage.writes == [] and satellite.load(UNIT).written_at is None  # nothing kept
-    assert satellite.update(device, storage) == satellite.Result("updated", satellite.SIZE)
+    assert satellite.update(device, storage) == satellite.Result("updated", CPE_SIZE)
     assert on_device(storage) == made_up_cpe(2) and server.asked == 1  # the cache's file
     state = satellite.load(UNIT)
     assert state.on and state.written_at == clock.current.timestamp() and state.error is None
@@ -138,7 +140,7 @@ def test_on_garmins_file_is_written_read_back_and_kept_in_the_cache_4_hours(
     assert satellite.update(device, storage) == satellite.Result("current")
     assert len(storage.writes) == 1 and server.asked == 1
     clock.current += timedelta(minutes=2)
-    assert satellite.update(device, storage) == satellite.Result("updated", satellite.SIZE)
+    assert satellite.update(device, storage) == satellite.Result("updated", CPE_SIZE)
     assert on_device(storage) == made_up_cpe(3) and server.asked == 2
 
 
@@ -158,7 +160,7 @@ def test_the_same_file_on_the_watch_is_said_in_the_log(tmp_path, clock, monkeypa
     (requests.ConnectionError("made-up: no route to https://api.gcs.garmin.com/x"),
      "network:made-up: no route to"),
     (satellite_answer(b"Not Found", status=404), "network:404 Client Error: Not Found"),
-    (satellite_answer(b"CPE_GPS.BIN" + bytes(satellite.SIZE - 11)), satellite.FORMAT),
+    (satellite_answer(b"CPE_GPS.BIN" + bytes(CPE_SIZE - 11)), satellite.FORMAT),
     (satellite_answer(made_up_cpe(2), kind="application/x-tar"), satellite.FORMAT),
 ])
 def test_a_file_not_had_or_not_of_the_format_writes_nothing(tmp_path, clock, monkeypatch,
@@ -201,7 +203,7 @@ def test_rejected_it_turns_off_and_turned_on_again_it_tries_once_more(tmp_path, 
     assert satellite.update(device, storage) is None  # off: no write
     # Turned on again: the next sync writes it again (the cache's file, the same one).
     satellite.set_on(UNIT, True)
-    assert satellite.update(device, storage) == satellite.Result("updated", satellite.SIZE)
+    assert satellite.update(device, storage) == satellite.Result("updated", CPE_SIZE)
     assert on_device(storage) == made_up_cpe(2)
     rejects(storage)  # rejected again: off again, told by the sync itself
     assert satellite.update(device, storage) == satellite.Result("stopped")
@@ -242,9 +244,9 @@ def test_the_line_of_status_says_what_the_row_says(tmp_path, clock, monkeypatch)
 def test_the_lines_of_sync_say_what_it_did():
     words = cli._satellite_result
     assert words(None) is None
-    assert words(satellite.Result("updated", satellite.SIZE)) == (
+    assert words(satellite.Result("updated", CPE_SIZE)) == (
         f"Satellite data updated (63.5{NB}kB)")
-    assert words(satellite.Result("would", satellite.SIZE)) == (
+    assert words(satellite.Result("would", CPE_SIZE)) == (
         f"Satellite data: would be updated (63.5{NB}kB)")
     assert words(satellite.Result("current")) == "Satellite data already current"
     assert words(satellite.Result("failed", reason=satellite.FORMAT)) == (
@@ -280,7 +282,7 @@ def test_cpe_bin_gone_while_on_is_written_again_by_the_next_sync(tmp_path, clock
     satellite.set_on(UNIT, False)
     assert satellite.update(device, storage) is None and len(storage.writes) == 1
     satellite.set_on(UNIT, True)
-    assert satellite.update(device, storage) == satellite.Result("updated", satellite.SIZE)
+    assert satellite.update(device, storage) == satellite.Result("updated", CPE_SIZE)
     assert on_device(storage) == made_up_cpe(2)
 
 
@@ -301,11 +303,16 @@ GPE, GPES = satellite.RX_FILES
 REMOTE = "GARMIN/RemoteSW"
 
 
-def made_up_rx(spec, stamp: float, n: int = 1) -> tuple[bytes, bytes]:
+# Their sizes unpacked as Garmin's files have had them so far.
+RX_SIZES = {"GPE.bin": 213_108, "GPES.bin": 15_976}
+
+
+def made_up_rx(spec, stamp: float, n: int = 1, size: int | None = None) -> tuple[bytes, bytes]:
     """A file of the rxnetworks kind as Garmin serves it (gzip) and as a watch keeps it
-    (unpacked): 01 00, the time of its data, the bytes 6-15 every file has, made-up data."""
+    (unpacked): 01 00, the time of its data, the bytes 6-15 every file has, made-up data;
+    `size` unpacked, else as Garmin's so far."""
     raw = b"\x01\x00" + int(stamp).to_bytes(4, "big") + satellite.RX_HEADER
-    raw += bytes((i * n) % 251 for i in range(spec.unpacked - len(raw)))
+    raw += bytes((i * n) % 251 for i in range((size or RX_SIZES[spec.name]) - len(raw)))
     return gzip.compress(raw, mtime=0), raw
 
 
@@ -348,9 +355,10 @@ class Fenix(Device):
         return opened()
 
 
-def fenix(tmp_path, clock, files: dict[str, float]):
+def fenix(tmp_path, clock, files: dict[str, float], sizes: dict[str, int] | None = None):
     """A fēnix with CPE.bin of another format and nvstg.dat shown, and the rxnetworks files of
-    `files` (name: their time) hidden, unpacked, as the phone gives them."""
+    `files` (name: their time) hidden, unpacked, as the phone gives them (`sizes`: unpacked, by
+    name, else as Garmin's so far)."""
     root = tmp_path / "device"
     fake = Recording()
     for name, data in (("CPE.bin", b"\xb5\x62\x13\x20" + bytes(96)), ("nvstg.dat", b"made up")):
@@ -359,7 +367,8 @@ def fenix(tmp_path, clock, files: dict[str, float]):
         fake.add(f"{REMOTE}/{name}", data)
     for spec in satellite.RX_FILES:
         if spec.name in files:
-            fake.add(f"{REMOTE}/{spec.name}", made_up_rx(spec, files[spec.name], 2)[1],
+            size = (sizes or {}).get(spec.name)
+            fake.add(f"{REMOTE}/{spec.name}", made_up_rx(spec, files[spec.name], 2, size)[1],
                      hidden=True)
     device = types.SimpleNamespace(unit_id=UNIT, part_number="006-B0000-00",
                                    software_version_str="1.00")
@@ -509,7 +518,7 @@ def test_the_dry_run_never_leaves_the_device_to_a_session(tmp_path, clock, monke
 @pytest.mark.parametrize("served", [
     made_up_rx(GPES, 0)[1],  # unpacked, not as served
     gzip.compress(made_up_rx(GPE, 0)[1], mtime=0),  # the size of the other file
-    gzip.compress(b"\x01\x00" + bytes(GPES.unpacked - 2), mtime=0),  # not of the kind
+    gzip.compress(b"\x01\x00" + bytes(RX_SIZES["GPES.bin"] - 2), mtime=0),  # not of the kind
     made_up_rx(GPES, 0)[0] + b"\x00",  # more after the gzip stream
 ], ids=["not-gzip", "other-size", "other-header", "more-after"])
 def test_a_file_of_garmin_not_of_the_kind_known_writes_nothing(tmp_path, clock, monkeypatch,
@@ -663,3 +672,164 @@ def test_the_lines_of_sync_say_why_it_turned_off():
         "Satellite data not updated: the device did not take the last file")
     assert words(satellite.Result("stopped", reason=satellite.GONE_TWICE)) == (
         "Satellite data not updated: the written file disappeared twice")
+
+
+# --- the size of Garmin's file: whole blocks around the sizes seen -------------------------------
+#
+# Garmin's CPE.BIN is the length of its data rounded up to whole blocks of 2,048 bytes, zeros after
+# the data; it was seen at 31 blocks and at 32. A size some blocks away is the same format; far
+# more, far less, or not in whole blocks is not known, and nothing is written.
+
+
+@pytest.mark.parametrize(("blocks", "known"), [(26, False), (27, True), (31, True), (32, True),
+                                               (36, True), (37, False)])
+def test_the_format_known_takes_whole_blocks_around_the_sizes_seen(blocks, known):
+    assert satellite.known_format(made_up_cpe(blocks=blocks)) is known
+
+
+def test_a_file_of_32_blocks_spoilt_is_not_known():
+    good = made_up_cpe(blocks=32)
+    length = int.from_bytes(good[4:8], "little")
+    assert not satellite.known_format(good + bytes(100))  # not whole blocks
+    assert not satellite.known_format(good[:length] + b"junk" + good[length + 4:])  # after the data
+    assert not satellite.known_format(good[:4] + (len(good) + 1).to_bytes(4, "little")
+                                      + good[8:])  # a length beyond the file
+    assert not satellite.known_format(bytes.fromhex("2a12a003") + good[4:])  # another start
+
+
+def test_a_watch_with_a_file_of_32_blocks_is_offered_it(tmp_path, clock):
+    storage, device = watch(tmp_path, {CPE: made_up_cpe(blocks=32)})
+    assert satellite.seen(device, storage) == satellite.State()
+
+
+def test_garmins_file_of_32_blocks_is_written_over_one_of_31(tmp_path, clock, monkeypatch):
+    storage, device = watch(tmp_path, {CPE: made_up_cpe(1)})
+    satellite.seen(device, storage)
+    satellite.set_on(UNIT, True)
+    newer = made_up_cpe(2, blocks=32)
+    satellite_server(monkeypatch, satellite_answer(newer))
+    assert satellite.update(device, storage) == satellite.Result("updated", size=len(newer))
+    assert on_device(storage) == newer
+
+
+def test_a_file_of_32_blocks_the_watch_renames_turns_it_off(tmp_path, clock, monkeypatch):
+    storage, device = watch(tmp_path, {CPE: made_up_cpe(1)})
+    satellite.seen(device, storage)
+    satellite.set_on(UNIT, True)
+    satellite_server(monkeypatch, satellite_answer(made_up_cpe(2, blocks=32)))
+    assert satellite.update(device, storage).kind == "updated"
+    rejects(storage)
+    assert satellite.update(device, storage) == satellite.Result("stopped")
+    assert satellite.load(UNIT).stopped
+
+
+def test_a_file_of_gpe_is_never_taken_for_gpes_nor_the_reverse(clock):
+    gpe, gpes = (made_up_rx(spec, hours_ago(clock, 1))[0] for spec in (GPE, GPES))
+    assert satellite.rx_served(gpe, GPE) and satellite.rx_served(gpes, GPES)
+    assert not satellite.rx_served(gpe, GPES) and not satellite.rx_served(gpes, GPE)
+
+
+# --- Garmin's real files, when testdata/ has them ----------------------------------------------
+
+REAL = Path(__file__).resolve().parent.parent / "testdata" / "epo-cpe" / "satellite_expected.json"
+
+
+def _real_files() -> dict[str, list[bytes]]:
+    if not REAL.is_file():
+        pytest.skip("no file of Garmin's satellite data in testdata/")
+    listed = json.loads(REAL.read_text(encoding="utf-8"))
+    return {kind: [(REAL.parent / name).read_bytes() for name in names]
+            for kind, names in listed.items()}
+
+
+def test_garmins_real_files_are_known_and_told_apart(clock):
+    from datetime import datetime
+
+    real = _real_files()
+    assert real["sony"] and all(satellite.known_format(data) for data in real["sony"])
+    for spec, other in ((GPE, GPES), (GPES, GPE)):
+        assert real[spec.name]
+        for data in real[spec.name]:
+            # Asked an hour after Garmin made it.
+            clock.current = datetime.fromtimestamp(satellite.rx_time(data) + 3600)
+            assert satellite.rx_served(data, spec) and not satellite.rx_served(data, other)
+
+
+def test_garmins_real_sony_files_spoilt_are_not_known():
+    for data in _real_files()["sony"]:
+        length = int.from_bytes(data[4:8], "little")
+        spoilt = [data[:-1], data + b"\1", data[:length] + b"\1" + data[length + 1:],
+                  b"\0" + data[1:], data + bytes(8 * 2048), data[:4] + (len(data) + 1).to_bytes(
+                      4, "little") + data[8:]]
+        assert not any(satellite.known_format(s) for s in spoilt)
+
+
+# --- Garmin's files of the rxnetworks kind: taken by their form, not by one size ------------------
+#
+# A whole gzip stream (its own check of the bytes and of their length), unpacked: 01 00, the time of
+# its data (at most RX_AGE old, at most RX_AHEAD ahead of this computer's clock), the bytes 6-15
+# every file has, and a size within its own range: GPES.bin and GPE.bin far apart, never mixed.
+
+
+def _broken_gzip(data: bytes) -> bytes:
+    middle = len(data) // 2
+    return data[:middle] + bytes([data[middle] ^ 0xFF]) + data[middle + 1:]
+
+
+def _rx(spec, clock, hours: float = 0.5, size: int | None = None, header=None) -> bytes:
+    raw = made_up_rx(spec, hours_ago(clock, hours), 3, size)[1]
+    if header is not None:
+        raw = header + raw[len(header):]
+    return gzip.compress(raw, mtime=0)
+
+
+@pytest.mark.parametrize(("spec", "hours", "size"), [
+    (GPES, 0.5, RX_SIZES["GPES.bin"] + 2048),  # 2 KiB larger than so far
+    (GPES, 0.5, 4 * 1024), (GPES, 0.5, 64 * 1024 - 1), (GPE, 0.5, 64 * 1024),
+    (GPE, 0.5, 1024 * 1024 - 1),
+    (GPE, 47, None), (GPES, -0.9, None),  # 47 hours old; 54 minutes ahead of the clock
+])
+def test_a_file_of_the_rxnetworks_kind_is_taken_by_its_form(clock, spec, hours, size):
+    assert satellite.rx_served(_rx(spec, clock, hours, size), spec)
+
+
+@pytest.mark.parametrize("make", [
+    lambda clock: _broken_gzip(_rx(GPES, clock)),
+    lambda clock: _rx(GPES, clock)[:-20],  # cut short
+    lambda clock: _rx(GPES, clock, header=b"\x02\x00"),
+    lambda clock: _rx(GPES, clock, header=b"\x01\x00\x6a\xfb\x36\xc3\x13"),  # bytes 6-15
+    lambda clock: _rx(GPES, clock, hours=24 * 7),  # a week old
+    lambda clock: _rx(GPES, clock, hours=-2),  # two hours ahead of the clock
+    lambda clock: _rx(GPE, clock),  # GPE.bin served as GPES.bin
+    lambda clock: _rx(GPES, clock, size=4 * 1024 - 1),
+    lambda clock: _rx(GPES, clock, size=64 * 1024),
+], ids=["broken-gzip", "cut-short", "header", "bytes-6-15", "week-old", "ahead", "gpe-as-gpes",
+        "too-small", "too-large"])
+def test_a_file_served_as_gpes_bin_not_of_its_form_is_not_taken(clock, make):
+    assert not satellite.rx_served(make(clock), GPES)
+
+
+@pytest.mark.parametrize("make", [
+    lambda clock: _rx(GPES, clock),  # GPES.bin served as GPE.bin
+    lambda clock: _rx(GPE, clock, size=64 * 1024 - 1),
+    lambda clock: _rx(GPE, clock, size=1024 * 1024),
+    lambda clock: _rx(GPE, clock, hours=49),
+], ids=["gpes-as-gpe", "too-small", "too-large", "too-old"])
+def test_a_file_served_as_gpe_bin_not_of_its_form_is_not_taken(clock, make):
+    assert not satellite.rx_served(make(clock), GPE)
+
+
+def test_a_watch_whose_files_have_other_sizes_is_found_written_and_seen_taking_them(
+        tmp_path, clock, monkeypatch):
+    sizes = {"GPE.bin": RX_SIZES["GPE.bin"] + 4096, "GPES.bin": RX_SIZES["GPES.bin"] + 2048}
+    storage, device = fenix(tmp_path, clock, {"GPES.bin": hours_ago(clock, 5)}, sizes)
+    assert satellite.update(device, storage) is None  # found, offered, off
+    assert set(satellite.load(UNIT).files) == {"GPES.bin"}
+    satellite.set_on(UNIT, True)
+    served = made_up_rx(GPES, hours_ago(clock, 0.5), 4, sizes["GPES.bin"])[0]
+    rx_server(monkeypatch, {GPES.url: [rx_answer(served)]})
+    assert satellite.update(device, storage).kind == "updated"
+    unplugged(storage)  # the watch unpacked it: ours, unpacked, hidden
+    clock.current += timedelta(hours=1)
+    assert satellite.update(device, storage) == satellite.Result("current")
+    assert satellite.load(UNIT).files["GPES.bin"]["pending"] is False

@@ -1164,14 +1164,15 @@ def software_update(**fields):
 # --- satellite data -----------------------------------------------------------------------------
 
 
-def made_up_cpe(n: int = 1) -> bytes:
-    """A file of the satellite data format known (satellite.known_format): its size, its first
-    four bytes, the length of its data, zeros after it; the data made up (`n` tells two apart)."""
+def made_up_cpe(n: int = 1, blocks: int = 31) -> bytes:
+    """A file of the satellite data format known (satellite.known_format): `blocks` of 2,048
+    bytes, its first four bytes, the length of its data, zeros after it; the data made up (`n`
+    tells two apart)."""
     from openexpress import satellite
 
     length = 1000 + n
     return (satellite.START + length.to_bytes(4, "little") + bytes([n % 250 + 1]) * (length - 8)
-            + bytes(satellite.SIZE - length))
+            + bytes(blocks * 2048 - length))
 
 
 class SatelliteServer:

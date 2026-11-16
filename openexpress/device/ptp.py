@@ -26,6 +26,7 @@ from openexpress.i18n import _
 log = logging.getLogger(__name__)
 
 # Operations. The 0x9xxx one is Garmin's extension.
+GET_DEVICE_INFO = 0x1001
 OPEN_SESSION = 0x1002
 CLOSE_SESSION = 0x1003
 GET_STORAGE_IDS = 0x1004
@@ -36,15 +37,16 @@ GET_OBJECT = 0x1009
 DELETE_OBJECT = 0x100B
 SEND_OBJECT_INFO = 0x100C
 SEND_OBJECT = 0x100D
+GET_PARTIAL_OBJECT = 0x101B
 GARMIN_GET_OBJECT_IDS = 0x9002
 
 OPERATIONS = {
-    OPEN_SESSION: "OpenSession", CLOSE_SESSION: "CloseSession",
+    GET_DEVICE_INFO: "GetDeviceInfo", OPEN_SESSION: "OpenSession", CLOSE_SESSION: "CloseSession",
     GET_STORAGE_IDS: "GetStorageIDs", GET_STORAGE_INFO: "GetStorageInfo",
     GET_OBJECT_HANDLES: "GetObjectHandles", GET_OBJECT_INFO: "GetObjectInfo",
     GET_OBJECT: "GetObject", DELETE_OBJECT: "DeleteObject",
     SEND_OBJECT_INFO: "SendObjectInfo", SEND_OBJECT: "SendObject",
-    GARMIN_GET_OBJECT_IDS: "Garmin GetObjectIds",
+    GET_PARTIAL_OBJECT: "GetPartialObject", GARMIN_GET_OBJECT_IDS: "Garmin GetObjectIds",
 }
 
 # Responses.
@@ -150,6 +152,38 @@ def read_string(data: bytes, offset: int) -> tuple[str, int]:
     if end > len(data):
         raise PtpError(_("The device sent an incomplete answer."))
     return data[offset + 1:end].decode("utf-16-le", "replace").rstrip("\x00"), end
+
+
+def operations_supported(data: bytes) -> list[int]:
+    """The operations a DeviceInfo dataset lists (OperationsSupported). Nothing after them is
+    read: not the device's maker, model, version nor serial number."""
+    if len(data) < 8:  # the standard's version, the vendor's extension and its version
+        raise PtpError(_("The device sent an incomplete answer."))
+    _words, offset = read_string(data, 8)
+    offset += 2  # the functional mode
+    if offset + 4 > len(data):
+        raise PtpError(_("The device sent an incomplete answer."))
+    (count,) = struct.unpack_from("<I", data, offset)
+    if offset + 4 + 2 * count > len(data):
+        raise PtpError(_("The device sent an incomplete answer."))
+    return list(struct.unpack_from(f"<{count}H", data, offset + 4))
+
+
+# The operations the log names, with whether the device lists them.
+_TOLD = ((GET_PARTIAL_OBJECT, "GetPartialObject"), (SEND_OBJECT, "SendObject"),
+         (DELETE_OBJECT, "DeleteObject"), (GARMIN_GET_OBJECT_IDS, "Garmin's hidden listing"))
+
+
+def operations_line(session: Session) -> str:
+    """One line for the log: the operations the device lists in its DeviceInfo, those that
+    matter by name, then all of them by code; or that it did not list them."""
+    try:
+        listed = session.operations()
+    except PtpRefused as e:
+        return f"the device did not list its operations ({response_name(e.code)})"
+    named = ", ".join(f"{name} {'yes' if code in listed else 'no'}" for code, name in _TOLD)
+    codes = " ".join(f"0x{code:04X}" for code in sorted(set(listed)))
+    return f"the device lists {len(listed)} operations; {named}; all: {codes}"
 
 
 def u32_array(data: bytes) -> list[int]:
@@ -559,6 +593,10 @@ class Session:
         return data, answer
 
     # --- storage and objects -------------------------------------------------------------
+
+    def operations(self) -> list[int]:
+        """The operations the device says it supports (GetDeviceInfo)."""
+        return operations_supported(self._ok(GET_DEVICE_INFO)[0])
 
     def storages(self) -> list[int]:
         return u32_array(self._ok(GET_STORAGE_IDS)[0])

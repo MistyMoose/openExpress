@@ -99,6 +99,20 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.10.6" date="2026-11-16">
+      <description translate="no">
+        <p>A small maintenance release.</p>
+        <ul>
+          <li>Satellite data (experimental): Garmin's file for the Forerunner 45 grew on 16 November
+          and openExpress stopped writing it. Files are now checked by their structure and not by
+          one exact size, also for the fēnix 8, so a change like this no longer stops the
+          feature.</li>
+          <li>German and Czech translations are complete, by BeGiBue and prajzner on Hosted
+          Weblate.</li>
+        </ul>
+        <p>Thanks to PrimeRiposte for the report (#36).</p>
+      </description>
+    </release>
     <release version="0.10.5" date="2026-11-14">
       <description translate="no">
         <p>A translation release.</p>

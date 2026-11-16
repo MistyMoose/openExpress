@@ -240,7 +240,7 @@ def test_the_command_line_refuses_an_older_version(edge_cli, edge_md5, capsys, m
      "Na urządzeniu 2.10, Garmin oferuje 2.00: ten sam plik."),
     ("OLDER_SAME_SIZE",
      "On the device 2.10, Garmin offers 2.00: the same size, its contents not compared.",
-     "Na urządzeniu 2.10, Garmin oferuje 2.00: ten sam rozmiar, treść nieporównana."),
+     "Na urządzeniu 2.10, Garmin oferuje 2.00: ten sam rozmiar, treści nie porównano."),
     ("OLDER_DIFFERS",
      "On the device 2.10, Garmin offers 2.00, an older version: not reinstalled.",
      "Na urządzeniu 2.10, Garmin oferuje 2.00, starszą wersję: bez ponownej instalacji."),

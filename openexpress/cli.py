@@ -2392,8 +2392,9 @@ def cmd_maps(args) -> int:
             print(_("Space on this computer for the download: {needed} needed, {free} free")
                   .format(needed=human_size(need_here), free=human_size(free_here)))
             # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: an estimate, at the
-            # slowest seen; {minutes}: a number
-            print(_("Writing and reading back on the device: at most about {minutes} min")
+            # slowest speed measured so far on such a device; {minutes}: a number
+            print(_("Writing and reading back on the device: about {minutes} min at the slowest "
+                    "speed measured so far")
                   .format(minutes=mp.trial_minutes(m)))
             if removing:
                 print(mp.no_complete_map_text())
@@ -3698,7 +3699,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("download the map and write it to the device"))
     m.add_argument("--hidden-folder-trial", action="store_true",
                    help=_("a trial: install a map into a folder the device hides (a car "
-                          "navigator's .System), through a USB session of openExpress's own"))
+                          "navigator's .System), through openExpress's own USB session"))
     m = msub.add_parser("update", help=_("update installed maps"))
     m.add_argument("--apply", action="store_true",
                    help=_("download the updates and write them to the device"))

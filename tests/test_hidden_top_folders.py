@@ -170,8 +170,8 @@ NOT_INSTALLED_TZ = ("      Not installed: Time zone map 9.00 goes to the folder 
 NOTICE = ("openExpress cannot see the folder .System, where this device keeps its software, so it "
           "installs nothing there. Some devices, such as car navigators, hide it from the "
           "ordinary USB connection.")
-ADD_ONS = ("2 add-ons not on the device are not offered: openExpress does not install add-ons "
-           "yet.")
+ADD_ONS = ("2 add-ons that are not on the device are not listed: openExpress does not install "
+           "add-ons yet.")
 
 
 def test_the_list_says_what_cannot_be_installed_and_leaves_out_the_add_ons(offered_to, capsys):
@@ -1198,9 +1198,8 @@ TZ_STEPS = [("delete", ".System/gmaptz.img"), ("info", ".System/gmaptz.img"), ("
             ("read", ".System/gmaptz.img")]
 SYSTEM_STEPS = [("delete", ".System/B000000.update"), ("info", ".System/B000000.update"),
                 ("send",), ("read", ".System/B000000.update")]
-POWER = ("Keep the device powered while it installs its software: connect it to power (its car "
-         "cable or a USB charger) or make sure its battery is well charged, and do not cut its "
-         "power until it has finished.")
+POWER = ("Keep the device powered until it has installed its software: connect it to its car "
+         "cable or a USB charger, or make sure its battery is well charged.")
 NOT_WRITTEN_TZ = ("Time zone map was not written: its old file was removed and the new one is not "
                   "on the device. Nothing else was changed; install it again.")
 
@@ -1274,9 +1273,9 @@ def test_a_read_back_refused_ends_the_install_after_the_size(navigator, drive_do
     with pytest.raises(updates.UpdateError) as stopped:
         updates.install(_both(_drive_offered(storage)), storage)
     assert str(stopped.value) == (
-        "Time zone map was written at its size, but the device did not let openExpress read it "
-        "back, so its contents were not compared. openExpress stops here: nothing else is "
-        "written.")
+        "Time zone map was written and has the right size, but the device did not let "
+        "openExpress read it back, so its contents were not compared. openExpress stops here and "
+        "writes nothing else.")
     assert fake.data_at(".System/gmaptz.img") == TZ_NEW  # kept, as Garmin Express leaves it
     assert fake.data_at(".System/B000000.update") == OLDER_SYSTEM
 
@@ -1305,7 +1304,7 @@ def test_the_write_lists_the_folder_afresh(navigator, drive_downloads):
 def test_a_folder_not_on_the_device_is_never_made(navigator, tmp_path):
     fake = navigator_session()
     storage = OverUsb(navigator, fake)
-    with pytest.raises(hidden_folders.WriteRefused, match="openExpress makes no folder there"):
+    with pytest.raises(hidden_folders.WriteRefused, match="openExpress does not create folders there"):
         hidden_folders.write(storage, ".System/Made-up/x.bin", _on_the_computer(tmp_path, b"x"),
                              hashlib.md5(b"x").hexdigest(), "X", margin=0)
     assert fake.steps == []
@@ -1403,20 +1402,19 @@ def test_the_words_of_a_write_in_both_languages(language):
         i18n.setup("en")
     expected = {
         "en": [NOT_WRITTEN_TZ,
-               ("Time zone map was written at its size, but the device did not let openExpress "
-                "read it back, so its contents were not compared. openExpress stops here: nothing "
-                "else is written."),
+               ("Time zone map was written and has the right size, but the device did not let "
+                "openExpress read it back, so its contents were not compared. openExpress stops "
+                "here and writes nothing else."),
                "The update replaces the file gmaptz.img on the device.", POWER],
         "pl": [("Nie zapisano: Time zone map. Stary plik usunięto, a\u00a0nowego nie ma na "
                 "urządzeniu. Niczego więcej nie zmieniono; zainstaluj aktualizację ponownie."),
                ("Zapisano: Time zone map\u00a0– rozmiar się zgadza, ale urządzenie nie pozwoliło "
-                "openExpress odczytać pliku, więc jego zawartości nie porównano. openExpress na tym "
-                "kończy: niczego więcej nie zapisano."),
+                "openExpressowi odczytać pliku, więc jego zawartości nie porównano. openExpress na "
+                "tym kończy i\u00a0niczego więcej nie zapisuje."),
                "Aktualizacja zastąpi plik gmaptz.img na urządzeniu.",
-               ("Podczas instalacji oprogramowania urządzenie musi mieć zasilanie: podłącz je do "
-                "zasilania (kablem samochodowym albo ładowarką USB) albo upewnij się, że bateria "
-                "jest dobrze naładowana, i\u00a0nie odcinaj zasilania, dopóki instalacja się nie "
-                "skończy.")]}
+               ("Urządzenie musi mieć zasilanie, dopóki nie zainstaluje oprogramowania: podłącz "
+                "je kablem samochodowym lub do ładowarki USB albo upewnij się, że bateria jest "
+                "dobrze naładowana.")]}
     assert texts == expected[language]
 
 
@@ -1728,17 +1726,18 @@ def test_the_command_line_after_a_copy_says_it_waits_for_the_device(offered_to, 
 
 
 NAVIGATOR_ADVICE = {
-    "en": ("Unplug the device from the computer, connect it to power (its car cable or a USB "
-           "charger), turn it on and wait until it has installed the update. If it is still listed "
-           "when you plug it in again, a device report helps find out why."),
-    "pl": ("Odłącz urządzenie od komputera, podłącz je do zasilania (kablem samochodowym albo "
-           "ładowarką USB), włącz je i poczekaj, aż zainstaluje aktualizację. Jeśli po ponownym "
-           "podłączeniu nadal będzie na liście, raport o urządzeniu pomoże ustalić dlaczego.")}
+    "en": ("Unplug the device from the computer, connect it to its car cable or a USB charger, "
+           "turn it on and wait until it has installed the update. If the update is still listed "
+           "when you plug the device in again, a device report helps find out why."),
+    "pl": ("Odłącz urządzenie od komputera, podłącz je kablem samochodowym albo do ładowarki USB, "
+           "włącz je i\u00a0poczekaj, aż zainstaluje aktualizację. Jeśli po ponownym podłączeniu "
+           "aktualizacja nadal będzie na liście, raport o\u00a0urządzeniu pomoże ustalić "
+           "dlaczego.")}
 WATCH_ADVICE = {
     "en": ("Check the version on the device (Settings → System → About). Ejecting it again does "
            "not help; a device report helps find out why."),
     "pl": ("Sprawdź wersję na urządzeniu (Ustawienia → System → Informacje). Ponowne wysunięcie nie "
-           "pomoże; raport o urządzeniu pomoże ustalić dlaczego.")}
+           "pomoże; raport o\u00a0urządzeniu pomoże ustalić dlaczego.")}
 
 
 @pytest.mark.needs_display
@@ -2388,7 +2387,7 @@ def test_the_command_line_trial_dry_run_says_what_would_be_done(trial_cli, capsy
     assert "  - .System/Map/D0000001A.img  4\u00a0B".replace("\u00a0", " ") in out
     assert "  - " + SHARED not in out  # another map uses it: never removed
     assert "Space on this computer for the download:" in out
-    assert "Writing and reading back on the device: at most about" in out
+    assert "Writing and reading back on the device: about" in out
     assert ("From the removal of the first old file until the last one is written, the device "
             "has no complete map") in out
     assert out.endswith(
@@ -2470,7 +2469,8 @@ def test_the_command_line_trial_dry_run_on_the_drive_as_it_is(navigator, monkeyp
     _keep_output("1-dry-run-drive", out)
     assert "28 files, download 8.3 GB, space on the device 700.0 MB (6.7 GB free)" in out
     assert "  - .System/Map/NA2026_00.img  876.7 MB" in out
-    assert "Writing and reading back on the device: at most about 21 min" in out
+    assert ("Writing and reading back on the device: about 21 min at the slowest speed measured "
+            "so far") in out
     assert fake.steps == [] and map_downloads == []
 
 
@@ -2528,8 +2528,8 @@ def test_a_folder_not_on_the_device_is_refused_before_anything(trial_cli, capsys
     files = {**NEW_MAP, ".System/Atlas/D0000002C.img": b"made-up atlas"}
     trial_cli.answer = {"maps": [_trial_map(files=files), _other_map()]}
     _refused_both_ways(trial_cli, capsys, map_downloads,
-                       "The folder .System/Atlas is not on the device; openExpress makes no "
-                       "folder there.")
+                       "The folder .System/Atlas is not on the device, and openExpress does "
+                       "not create folders there.")
 
 
 def test_a_file_without_a_checksum_is_refused_before_anything(trial_cli, capsys, map_downloads):
@@ -2547,6 +2547,7 @@ def test_an_unlock_file_without_a_place_is_refused_before_the_device_changes(tri
 
     trial_cli.activation = {"unlocks": [{"gma": base64.b64encode(UNLOCK[1]).decode()}]}
     assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 1
-    assert ("The activation gave no place on the device for the unlock file of Made-up City "
-            "Navigator.") in capsys.readouterr().err
+    assert ("Made-up City Navigator was not installed: Garmin's activation did not say where on "
+            "the device its unlock file goes. Nothing on the device was changed."
+            ) in capsys.readouterr().err
     assert trial_cli.order == ["activate"] and trial_cli.fake.steps == []

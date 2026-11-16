@@ -456,15 +456,20 @@ def older_offer_text(u) -> str | None:
         # the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
         # file on the device is the very file offered
         OLDER_SAME_FILE: _("On the device {on_device}, Garmin offers {offered}: the same file."),
-        # TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+        # TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+        # the device ({on_device}) is higher than the one Garmin offers ({offered}); its file is
+        # in a folder the device hides, so only its size was compared
         OLDER_SAME_SIZE: _("On the device {on_device}, Garmin offers {offered}: the same size, "
                            "its contents not compared."),
-        # TRANSLATORS: as above, another file: an older version, which openExpress never writes
-        # over the device's
+        # TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+        # the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
+        # file on the device is another: an older version, which openExpress never writes over
+        # the device's
         OLDER_DIFFERS: _("On the device {on_device}, Garmin offers {offered}, an older version: "
                          "not reinstalled."),
-        # TRANSLATORS: as above, its file could not be compared with the one offered (not on the
-        # device, its folder not read)
+        # TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
+        # the device ({on_device}) is higher than the one Garmin offers ({offered}), while its
+        # file could not be compared with the one offered (not on the device, its folder not read)
         OLDER_NOT_COMPARED: _("On the device {on_device}, Garmin offers {offered}, an older "
                               "version; the file on the device could not be compared: not "
                               "reinstalled."),
@@ -482,14 +487,20 @@ def older_offer_caption(u) -> str | None:
         # ({on_device}) is higher than the one Garmin offers ({offered}), while the file on the
         # device is the very file offered; no full stop
         OLDER_SAME_FILE: _("On the device {on_device} · Garmin offers {offered}, the same file"),
-        # TRANSLATORS: as above, the file in a folder the device hides: only its size is known
+        # TRANSLATORS: Updates page, in the row of a component whose version on the device
+        # ({on_device}) is higher than the one Garmin offers ({offered}); its file is in a folder
+        # the device hides, so only its size was compared; no full stop
         OLDER_SAME_SIZE: _("On the device {on_device} · Garmin offers {offered}, the same "
                            "size"),
-        # TRANSLATORS: as above, another file: an older version, which openExpress does not
-        # reinstall (the row has no button)
+        # TRANSLATORS: Updates page, in the row of a component whose version on the device
+        # ({on_device}) is higher than the one Garmin offers ({offered}), while the file on the
+        # device is another: an older version, which openExpress does not reinstall (the row has
+        # no button); no full stop
         OLDER_DIFFERS: _("On the device {on_device} · Garmin offers {offered}, an older "
                          "version"),
-        # TRANSLATORS: as above, its file could not be compared with the one offered
+        # TRANSLATORS: Updates page, in the row of a component whose version on the device
+        # ({on_device}) is higher than the one Garmin offers ({offered}), while its file could
+        # not be compared with the one offered; no full stop
         OLDER_NOT_COMPARED: _("On the device {on_device} · Garmin offers {offered}, an older "
                               "version; the file on the device could not be compared"),
     }.get(u.older_offer)
@@ -616,9 +627,8 @@ def hidden_software_text(folder: str) -> str:
 def power_text() -> str:
     # TRANSLATORS: after the device's own software was written into the folder a car navigator
     # hides: it installs it once unplugged, and must not lose power meanwhile
-    return _("Keep the device powered while it installs its software: connect it to power (its "
-             "car cable or a USB charger) or make sure its battery is well charged, and do not cut "
-             "its power until it has finished.")
+    return _("Keep the device powered until it has installed its software: connect it to its car "
+             "cable or a USB charger, or make sure its battery is well charged.")
 
 
 def not_read_text(u: SoftwareUpdate) -> str | None:
@@ -631,10 +641,10 @@ def not_read_text(u: SoftwareUpdate) -> str | None:
 def add_ons_text(count: int) -> str:
     # TRANSLATORS: `openexpress updates`: items Garmin offers to add to the device (voices,
     # vehicles) that it does not have
-    return ngettext("{count} add-on not on the device is not offered: openExpress does not "
-                    "install add-ons yet.",
-                    "{count} add-ons not on the device are not offered: openExpress does not "
-                    "install add-ons yet.", count).format(count=count)
+    return ngettext("{count} add-on that is not on the device is not listed: openExpress does "
+                    "not install add-ons yet.",
+                    "{count} add-ons that are not on the device are not listed: openExpress does "
+                    "not install add-ons yet.", count).format(count=count)
 
 
 def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:

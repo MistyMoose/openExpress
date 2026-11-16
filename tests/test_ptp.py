@@ -516,6 +516,71 @@ def test_a_device_that_does_not_read_parts_says_so(device):
     assert error.value.code == ptp.OPERATION_NOT_SUPPORTED
 
 
+# --- how long the device may take to answer ---------------------------------------------------
+
+@pytest.fixture
+def large(monkeypatch):
+    """Objects over 1 000 bytes count as large here; at least 123 s for an answer, at the
+    slowest 10 bytes a second."""
+    monkeypatch.setattr(ptp, "LARGE_OBJECT", 1000)
+    monkeypatch.setattr(ptp, "LARGE_ANSWER_MS", 123_000)
+    monkeypatch.setattr(ptp, "SLOWEST_PACE", 10)
+
+
+def test_the_limit_for_an_answer_grows_with_a_large_object(large):
+    assert ptp.answer_limit_ms(None) == ptp.TIMEOUT_MS
+    assert ptp.answer_limit_ms(1000) == ptp.TIMEOUT_MS  # not over the limit
+    assert ptp.answer_limit_ms(1001) == 123_000  # at least
+    assert ptp.answer_limit_ms(2000) == 200_000  # 2 000 bytes at 10 a second
+
+
+def test_after_a_large_file_is_sent_the_device_has_longer_to_answer(device, large):
+    import io
+
+    data = b"x" * 2000
+    with ptp.Session(device) as session:
+        before = len(device.read_limits)
+        session.send_object(STORAGE, device.handle("GARMIN/Apps"), "BIG.BIN",
+                            ptp.Outgoing(io.BytesIO(data), len(data)))
+        limits = device.read_limits[before:]
+        assert device.timeout_ms == ptp.TIMEOUT_MS  # as it was, after the transaction
+        session.storages()
+    # SendObjectInfo answered at the usual limit, SendObject's answer at the longer one.
+    assert limits[0] == ptp.TIMEOUT_MS and limits[-1] == 200_000
+    assert device.read_limits[-1] == ptp.TIMEOUT_MS
+
+
+def test_a_small_file_keeps_the_usual_limit(device, large):
+    with ptp.Session(device) as session:
+        before = len(device.read_limits)
+        session.send_object(STORAGE, device.handle("GARMIN/Apps"), "SMALL.BIN", b"x" * 10)
+        assert set(device.read_limits[before:]) == {ptp.TIMEOUT_MS}
+
+
+def test_a_large_file_read_back_and_deleted_has_longer_to_answer(device, large):
+    handle = device.add("GARMIN/Apps/BIG.BIN", b"y" * 2000)
+    with ptp.Session(device) as session:
+        before = len(device.read_limits)
+        session.read_into(handle, lambda piece: None, size=2000)
+        read = device.read_limits[before:]
+        before = len(device.read_limits)
+        session.delete(handle, size=2000)
+        deleted = device.read_limits[before:]
+    assert set(read) == {200_000} and set(deleted) == {200_000}
+
+
+def test_no_answer_in_time_after_a_large_file_breaks_the_session(device, large):
+    import io
+
+    with ptp.Session(device) as session:
+        session.send_object(STORAGE, device.handle("GARMIN/Apps"), "A.BIN", b"a")
+        device.silent = True
+        with pytest.raises(ptp.PtpError, match="did not answer"):
+            session.send_object(STORAGE, device.handle("GARMIN/Apps"), "BIG.BIN",
+                                ptp.Outgoing(io.BytesIO(b"x" * 2000), 2000))
+        assert session.broken  # nothing more is sent, nothing is tried again here
+
+
 # --- deleting ----------------------------------------------------------------------------
 
 def test_delete_a_fresh_file(device):

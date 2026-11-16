@@ -2,6 +2,7 @@ openexpress/activities.py
 openexpress/applog.py
 openexpress/auth/sso.py
 openexpress/auth/store.py
+openexpress/awake.py
 openexpress/background.py
 openexpress/backup.py
 openexpress/cache.py

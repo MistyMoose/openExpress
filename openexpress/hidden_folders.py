@@ -10,6 +10,7 @@ that lists its folder anew."""
 from __future__ import annotations
 
 import hashlib
+import io
 import logging
 import posixpath
 import random
@@ -18,7 +19,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from openexpress import applog
+from openexpress import applog, awake
 from openexpress.device import ptp
 from openexpress.device.storage import (
     DeviceError,
@@ -28,7 +29,7 @@ from openexpress.device.storage import (
     Storage,
     named_in_any_case,
 )
-from openexpress.i18n import _
+from openexpress.i18n import _, ngettext
 from openexpress.progress import byte_steps, say_to
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,10 @@ class Listing:
         if self.state != READ:
             return self.state
         return READ if self.knows(folder) else None
+
+    def asked(self) -> list[str]:
+        """The folders this reading was asked for, as asked or in the device's letter case."""
+        return [*(real for real, _entries in self.folders.values()), *self.missing.values()]
 
     def knows(self, folder: str) -> bool:
         """Whether the session told what is at `folder`: read, or not on the device."""
@@ -373,39 +378,19 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
             raise WriteRefused(no_space_text(name, size + margin, room))
         if old is not None:
             try:
-                session.delete(old.handle)
+                session.delete(old.handle, size=old.size)
             except ptp.PtpError as e:
                 log.warning("hidden folders: the old %s not deleted (%s: %s)", old.name,
                             type(e).__name__, e)
                 raise NotWritten(not_written_text(name, old_removed=False)) from e
             log.info("hidden folders: the old %s (%s) deleted", old.name, applog.size(old.size))
-        handle = None
         try:
-            sent = byte_steps(progress, copying) if copying else None
-            if sent is not None:
-                sent(0, size)
-            started = time.monotonic()
-            with open(local, "rb") as source:
-                handle = session.send_object(store, parent.handle, filename, ptp.Outgoing(
-                    source, size, None if sent is None else lambda done: sent(done, size)))
-            log.info("hidden folders: %s (%s) sent in %s", filename, applog.size(size),
-                     _pace(size, time.monotonic() - started))
-            on_device = session.info(handle).size
-            if on_device != size:
-                raise ptp.PtpWriteError(f"{on_device} B on the device, {size} B written")
-            how = _read_back(session, handle, filename, local, size, md5, check,
-                             byte_steps(progress, checking) if checking else None, name)
+            how = _put(session, store, parent.handle, filename, local, size, md5, check,
+                       byte_steps(progress, copying) if copying else None,
+                       byte_steps(progress, checking) if checking else None, name)
         except ContentsNotRead:
             raise
         except ptp.PtpError as e:
-            handle = getattr(e, "handle", None) or handle
-            log.warning("hidden folders: %s not written (%s: %s)", filename, type(e).__name__, e)
-            if handle is not None:
-                try:
-                    session.delete(handle)
-                except ptp.PtpError as gone:
-                    log.warning("hidden folders: what was written of %s not deleted (%s)",
-                                filename, type(gone).__name__)
             raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
     log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
              applog.size(size), how)
@@ -413,8 +398,250 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
     return Written(f"{real}/{filename}", size)
 
 
-def _read_back(session, handle: int, filename: str, local: Path, size: int, md5: str | None,
-               check: str, told: Callable[[int, int | None], None] | None, name: str) -> str:
+# --- a map: its files written in one session (maps, the trial on the command line) -------------
+
+class MapNotWhole(DeviceError):
+    """Some of a map was changed on the device and not all of it written: the text says how
+    much, and that installing it again writes only what is missing."""
+
+
+class UnlockFailed(DeviceError):
+    """The files of a map are written, its unlock file `path` is not (`error`: why)."""
+
+    def __init__(self, path: str, error: Exception):
+        super().__init__(str(error))
+        self.path, self.error = path, error
+
+
+# A file of a map the device refused is written again, while the session goes on: removed (as it
+# is at once) and written anew, after a pause, up to WRITE_TRIES times; an unlock file up to the
+# times of the ordinary way of maps (given by maps).
+WRITE_TRIES = 3
+WRITE_PAUSE_S = 5
+
+
+def map_not_whole_text(name: str, done: int, count: int) -> str:
+    # TRANSLATORS: {name} is a map; it was being written into a folder the device hides and
+    # stopped: {done} of its {count} files are on the device (the verb agrees with {done})
+    return ngettext("{name} is incomplete on the device: {done} of {count} files was written. "
+                    "Nothing else was removed, and the downloaded files stay on this computer: "
+                    "install it again and only what is missing is written.",
+                    "{name} is incomplete on the device: {done} of {count} files were written. "
+                    "Nothing else was removed, and the downloaded files stay on this computer: "
+                    "install it again and only what is missing is written.",
+                    done).format(name=name, done=done, count=count)
+
+
+def no_space_map_text(name: str, needed: int, free: int) -> str:
+    from openexpress.i18n import human_size
+
+    # TRANSLATORS: {name} is a map; {needed} and {free} are sizes; its old files and those it
+    # writes over count as free, as they are removed first
+    return _("Not enough space for {name}: {needed} needed, {free} free with its old files "
+             "counted. openExpress removes nothing else to make room.").format(
+        name=name, needed=human_size(needed), free=human_size(free))
+
+
+@dataclass
+class MapFile:
+    path: str  # on the device, as the server gives it
+    local: Path  # downloaded, checked against its MD5
+    size: int
+    md5: str | None
+
+
+@dataclass
+class MapWritten:
+    written: list[str] = field(default_factory=list)
+    kept: list[str] = field(default_factory=list)  # there already, read back the same
+    removed: list[str] = field(default_factory=list)
+    unlocks: list[str] = field(default_factory=list)
+
+
+def write_map(storage: Storage, name: str, removing: list[str], files: list[MapFile],
+              unlocks: list[tuple[str, bytes]], margin: int,
+              progress: Callable[[str], None] | None = None, copying: str | None = None,
+              checking: str | None = None, check: str = FULL,
+              sleep: Callable[[float], None] = time.sleep, unlock_tries: int = 6,
+              unlock_pause: float = 5) -> MapWritten:
+    """The files of map `name` written into folders of the top level ordinary MTP does not
+    show, in one session of its own, in Garmin Express's order: each folder listed afresh
+    (the ordinary listing and Garmin's together), the space checked with the old files and
+    those written over counted (else WriteRefused, nothing changed), the files of `removing`
+    that are there deleted, then each file of `files` in their order: one there already of its
+    size and read back the same is kept (installed again, only what is missing is written),
+    any other one of that name deleted and the new one written and checked as `write` does;
+    the unlock files last, read back whole. A file the device refuses is written again
+    (WRITE_TRIES, an unlock file `unlock_tries`) while the session goes on; whatever stops it
+    once the device is changed raises MapNotWhole (what was not written whole is deleted at
+    once), an unlock file not written UnlockFailed. The computer is kept awake from the first
+    removal to the last write (awake). No folder is ever made, nothing else is touched. The
+    time of each copy and check go to the log apart."""
+    paths = [*removing, *(f.path for f in files), *(path for path, _data in unlocks)]
+    split = {p: (posixpath.dirname(_clean(p)), posixpath.basename(_clean(p))) for p in paths}
+    folders = sorted({folder for folder, _name in split.values()}, key=str.casefold)
+    opener = storage.exclusive_ptp()
+    if opener is None:
+        state = NO_USB if storage.usb_blocked() else NO_SESSION
+        raise WriteRefused(no_session_text(folders[0].split("/")[0], state))
+    new = sum(f.size for f in files) + sum(len(data) for _path, data in unlocks)
+    log.info("hidden folders: writing map %s (%d files, %s) into %s, in a session of its own",
+             name, len(files), applog.size(new), ", ".join(folders))
+    say_to(progress)(reading_text(folders))
+    out = MapWritten()
+    with opener as session:
+        places = {}
+        for folder in folders:
+            store, parent, _real = _folder_in(session, folder)
+            items = {i.name.casefold(): i for i in _children(session, store, parent.handle)
+                     if not i.is_dir}
+            places[folder.casefold()] = (store, parent, items)
+
+        def there(path: str):
+            folder, filename = split[path]
+            return places[folder.casefold()][2].get(filename.casefold())
+
+        free = session.free_space(places[folders[0].casefold()][0])
+        freed = sum(there(p).size for p in dict.fromkeys(paths) if there(p) is not None)
+        if free is None or free + freed < new + margin:
+            log.info("hidden folders: map %s not written: %s free with its old files, %s needed",
+                     name, applog.size(free + freed if free is not None else None),
+                     applog.size(new + margin))
+            raise WriteRefused(no_space_map_text(name, new + margin, (free or 0) + freed))
+        try:
+            with awake.kept_awake(f"map {name} is written", say=say_to(progress)):
+                for path in removing:
+                    item = there(path)
+                    if item is None:
+                        continue
+                    session.delete(item.handle, size=item.size)
+                    del places[split[path][0].casefold()][2][item.name.casefold()]
+                    out.removed.append(path)
+                    log.info("hidden folders: the old %s (%s) deleted", item.name,
+                             applog.size(item.size))
+                total, before = sum(f.size for f in files), 0
+                for f in files:
+                    told = (byte_steps(progress, copying, before=before, total=total)
+                            if copying else None)
+                    checked = (byte_steps(progress, checking, before=before, total=total)
+                               if checking else None)
+                    if _put_map_file(session, places, split, f.path, f.local, f.size, f.md5, check,
+                                     told, checked, name, tries=WRITE_TRIES, pause=WRITE_PAUSE_S,
+                                     sleep=sleep):
+                        out.kept.append(f.path)
+                    else:
+                        out.written.append(f.path)
+                    before += f.size
+                for path, data in unlocks:
+                    try:
+                        _put_map_file(session, places, split, path, data, len(data), None, FULL,
+                                      None, None, name, keep=False, tries=unlock_tries,
+                                      pause=unlock_pause, sleep=sleep)
+                    except (ptp.PtpError, ContentsNotRead) as e:
+                        log.warning("hidden folders: the unlock file %s of map %s not written (%s)",
+                                    posixpath.basename(path), name, type(e).__name__)
+                        raise UnlockFailed(path, e) from e
+                    out.unlocks.append(path)
+        except (ptp.PtpError, ContentsNotRead) as e:
+            done = len(out.written) + len(out.kept)
+            log.warning("hidden folders: map %s stopped after %d of %d files (%s: %s)", name,
+                        done, len(files), type(e).__name__, e)
+            raise MapNotWhole(map_not_whole_text(name, done, len(files))) from e
+        finally:
+            forget(storage)  # what was read of the folders is not what is there now
+    log.info("hidden folders: map %s written: %d files written, %d there already and read "
+             "back the same, %d old files removed, %d unlock files", name, len(out.written),
+             len(out.kept), len(out.removed), len(out.unlocks))
+    return out
+
+
+def _put_map_file(session, places, split, path: str, local: Path | bytes, size: int,
+                  md5: str | None, check: str, told, checked, name: str,
+                  keep: bool = True, tries: int = 1, pause: float = 0,
+                  sleep: Callable[[float], None] = time.sleep) -> bool:
+    """One file of a map: True when one of its size was there and read back the same (kept,
+    when `keep`); else any other one of that name deleted and this one written (_put), again
+    after `pause` up to `tries` times while the session goes on."""
+    folder, filename = split[path]
+    store, parent, items = places[folder.casefold()]
+    item = items.get(filename.casefold())
+    if item is not None and keep and item.size == size:
+        try:
+            how = _read_back(session, item.handle, filename, local, size, md5, check, checked,
+                             name)
+        except (ptp.PtpWriteError, ContentsNotRead):
+            log.info("hidden folders: %s there at its size, not the same: written again",
+                     filename)
+        else:
+            log.info("hidden folders: %s there already, read back %s: kept", filename, how)
+            return True
+    if item is not None:
+        session.delete(item.handle, size=item.size)
+        log.info("hidden folders: the old %s (%s) deleted", item.name, applog.size(item.size))
+    for attempt in range(1, tries + 1):
+        try:
+            _put(session, store, parent.handle, filename, local, size, md5, check, told,
+                 checked, name)
+            return False
+        except ContentsNotRead:
+            raise
+        except ptp.PtpError:
+            if session.broken or attempt == tries:
+                raise
+            log.warning("hidden folders: %s not written (try %d of %d): again in %g s",
+                        filename, attempt, tries, pause)
+            sleep(pause)
+    return False
+
+
+def _clean(path: str) -> str:
+    return "/".join(p for p in path.replace("\\", "/").split("/") if p)
+
+
+def _open_local(local: Path | bytes):
+    """What is written, to read: a file on the computer, or bytes (an unlock file)."""
+    return io.BytesIO(local) if isinstance(local, bytes) else open(local, "rb")
+
+
+def _put(session, store: int, parent: int, filename: str, local: Path | bytes, size: int,
+         md5: str | None, check: str, sent: Callable[[int, int | None], None] | None,
+         checked: Callable[[int, int | None], None] | None, name: str) -> str:
+    """One file announced in the folder `parent` and sent as it is read (the file on the
+    computer, or bytes), its size checked and the file read back as `check` says; how it was
+    read back. A file not written whole, or read back otherwise, is deleted at once and the
+    error raised (ptp.PtpError); one the device does not give back stays (ContentsNotRead).
+    The time and pace of the copy and of the check go to the log apart."""
+    handle = None
+    try:
+        if sent is not None:
+            sent(0, size)
+        started = time.monotonic()
+        with _open_local(local) as source:
+            handle = session.send_object(store, parent, filename, ptp.Outgoing(
+                source, size, None if sent is None else lambda done: sent(done, size)))
+        log.info("hidden folders: %s (%s) sent in %s", filename, applog.size(size),
+                 _pace(size, time.monotonic() - started))
+        on_device = session.info(handle).size
+        if on_device != size:
+            raise ptp.PtpWriteError(f"{on_device} B on the device, {size} B written")
+        return _read_back(session, handle, filename, local, size, md5, check, checked, name)
+    except ContentsNotRead:
+        raise
+    except ptp.PtpError as e:
+        handle = getattr(e, "handle", None) or handle
+        log.warning("hidden folders: %s not written (%s: %s)", filename, type(e).__name__, e)
+        if handle is not None:
+            try:
+                session.delete(handle, size=size)
+            except ptp.PtpError as gone:
+                log.warning("hidden folders: what was written of %s not deleted (%s)",
+                            filename, type(gone).__name__)
+        raise
+
+
+def _read_back(session, handle: int, filename: str, local: Path | bytes, size: int,
+               md5: str | None, check: str, told: Callable[[int, int | None], None] | None,
+               name: str) -> str:
     """Read back the file just written as `check` says; how it was read ("whole", "by
     samples"). Raises ptp.PtpWriteError when it differs, ContentsNotRead when the device does
     not give it back."""
@@ -441,7 +668,7 @@ def _read_back(session, handle: int, filename: str, local: Path, size: int, md5:
     return "whole"
 
 
-def _compare_whole(session, handle: int, local: Path, size: int, md5: str | None,
+def _compare_whole(session, handle: int, local: Path | bytes, size: int, md5: str | None,
                    told: Callable[[int, int | None], None] | None) -> None:
     """The whole file read back as it comes, compared with `local` byte for byte and with
     `md5` (when given)."""
@@ -449,7 +676,7 @@ def _compare_whole(session, handle: int, local: Path, size: int, md5: str | None
     done, same = 0, True
     if told is not None:
         told(0, size)
-    with open(local, "rb") as mine:
+    with _open_local(local) as mine:
         def compare(piece: bytes) -> None:
             nonlocal done, same
             digest.update(piece)
@@ -458,14 +685,14 @@ def _compare_whole(session, handle: int, local: Path, size: int, md5: str | None
             if told is not None:
                 told(done, size)
 
-        session.read_into(handle, compare)
+        session.read_into(handle, compare, size=size)
     if not same or done != size:
         raise ptp.PtpWriteError("the file read back differs from the one written")
     if md5 is not None and digest.hexdigest() != md5.casefold():
         raise ptp.PtpWriteError("the file read back differs from the one written")
 
 
-def _compare_samples(session, handle: int, local: Path, size: int,
+def _compare_samples(session, handle: int, local: Path | bytes, size: int,
                      told: Callable[[int, int | None], None] | None) -> str:
     """The first and the last CHECK_BLOCK of the file and CHECK_SAMPLES blocks at random in
     between, each read back and compared with `local`; what was read, for the log."""
@@ -475,7 +702,7 @@ def _compare_samples(session, handle: int, local: Path, size: int,
     total, done = CHECK_BLOCK * len(offsets), 0
     if told is not None:
         told(0, total)
-    with open(local, "rb") as mine:
+    with _open_local(local) as mine:
         for offset in offsets:
             back = session.read_part(handle, offset, CHECK_BLOCK)
             mine.seek(offset)

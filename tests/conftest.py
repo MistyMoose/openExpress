@@ -360,6 +360,19 @@ def gvfs_has_mtp(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_sleep_blocked(monkeypatch):
+    """Nothing asks the desktop or logind to keep this computer awake: what would be blocked
+    and released is recorded instead (awake.kept_awake), in order; a test reads it by asking
+    for this fixture."""
+    from openexpress import awake
+
+    held = []
+    monkeypatch.setattr(awake, "_inhibit", lambda why: held.append(("block", why)) or len(held))
+    monkeypatch.setattr(awake, "_release", lambda token: held.append(("release", token)))
+    return held
+
+
+@pytest.fixture(autouse=True)
 def no_drive_ejected(monkeypatch):
     """openExpress remembers the Garmin drives it ejected for as long as it runs: every test
     starts with none."""

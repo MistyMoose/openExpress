@@ -10,6 +10,9 @@ names and values are made up."""
 
 import contextlib
 import hashlib
+import os
+import pathlib
+import posixpath
 import types
 
 import pytest
@@ -2021,3 +2024,529 @@ def test_a_second_reinstall_on_the_same_page_names_the_file_it_replaces(
     done(work())
     MainWindow.confirm_update(win, by["006-D9001-00"])  # Reinstall again, the page as it is
     assert bodies[-1].endswith("\n\nThe update replaces the file gmaptz.img on the device.")
+
+
+# --- a map into the folder the device hides: the trial on the command line ------------------------
+
+NEW_MAP = {".System/Map/D0000002A.img": b"made-up map, part one " * 40,
+           ".System/Map/D0000002B.img": b"made-up map, part two " * 25,
+           ".System/JCV/D0000002.jcv": b"made-up junction view " * 10}
+SHARED = ".System/Map/Shared.img"  # also of another map on the device: never removed
+UNLOCK = (".System/D0000002.gma", b"made-up unlock")
+TRIAL_NAME = "Made-up City Navigator"
+
+
+def _trial_map(state=1, remove=(".System/Map/D0000001A.img", SHARED), files=None):
+    """The map the server offers: its new files (NEW_MAP) and the old ones it removes."""
+    files = NEW_MAP if files is None else files
+    return {
+        "displayname": TRIAL_NAME, "maptype": "CityNavigator", "installationstate": state,
+        "isreinstall": False, "canuninstall": True,
+        "release": {"majorversion": 2027, "minorversion": 20},
+        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
+                          "failoverhosts": []},
+        "filestoremove": [{"filename": p} for p in remove],
+        "installoptions": [{"ispreferred": True, "identifier": {"regionpartnumber": "made-up"},
+                            "files": [{"filename": path, "datatype": "X", "deliverableoptions": [{
+                                "type": 1, "url": posixpath.basename(path),
+                                "md5": hashlib.md5(data).hexdigest(), "sizeinbytes": len(data)}]}
+                                      for path, data in files.items()]}]}
+
+
+def _other_map():
+    """Another map on the device, which uses SHARED too."""
+    return {**_map("Made-up Other Map", SHARED), "installationstate": 1}
+
+
+def trial_navigator():
+    """The navigator with the old version of the map in .System/Map, a file another map uses,
+    and a folder JCV, all hidden."""
+    fake = navigator_session()
+    fake.add(".System/Map/Shared.img", MAP_FILE, hidden=True)
+    fake.add(".System/JCV", hidden=True)
+    return fake
+
+
+@pytest.fixture
+def map_downloads(monkeypatch):
+    """The downloads of the map's files: each by its MD5 from NEW_MAP, written once; what is
+    in the cache already is not downloaded again (as download.fetch does)."""
+    by_md5 = {hashlib.md5(d).hexdigest(): d for d in NEW_MAP.values()}
+    fetched = []
+
+    def fetch(urls, dest, size, md5, session=None, progress=None):
+        if not (dest.exists() and dest.stat().st_size == size):
+            fetched.append(dest.name)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(by_md5[md5])
+        return dest
+
+    monkeypatch.setattr(download, "fetch", fetch)
+    return fetched
+
+
+def _trial_maps(storage, *entries):
+    found, _count = maps.read_maps({"maps": list(entries) or [_trial_map(), _other_map()]})
+    maps.mark_waiting(storage, found)
+    hidden_folders.read(storage, maps.hidden_needed(found), "test")
+    maps.mark_waiting(storage, found)
+    return found
+
+
+def _activate(order):
+    import base64
+
+    def activate(identifier):
+        order.append("activate")
+        return {"unlocks": [{"filename": UNLOCK[0], "gma": base64.b64encode(UNLOCK[1]).decode()}]}
+    return activate
+
+
+def _install_trial(storage, found, order=None):
+    order = [] if order is None else order
+    (m,) = [m for m in found if m.name == TRIAL_NAME]
+    return maps.install(m, found, storage, activate=_activate(order), hidden_trial=True,
+                        sleep=lambda s: None)
+
+
+def test_without_the_trial_a_map_is_never_written_into_the_folder_the_device_hides(navigator,
+                                                                                  map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    (m,) = [m for m in found if m.name == TRIAL_NAME]
+    with pytest.raises(maps.MapError, match="does not install maps into the folder .System yet"):
+        maps.install(m, found, storage, activate=lambda i: pytest.fail("activated"))
+    assert fake.steps == [] and map_downloads == []
+
+
+def test_the_trial_downloads_and_activates_before_it_changes_the_device(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    order = []
+    fake_steps = fake.steps
+    real_handle = fake._handle
+
+    def noted(operation, params, data):
+        if operation in (ptp.DELETE_OBJECT, ptp.SEND_OBJECT_INFO) and "device" not in order:
+            order.append("device")
+        return real_handle(operation, params, data)
+
+    fake._handle = noted
+    report = _install_trial(storage, found, order)
+    assert order == ["activate", "device"] and sorted(map_downloads) == sorted(
+        hashlib.md5(d).hexdigest() for d in NEW_MAP.values())
+    # One session to write: the old file of this map removed, the shared one kept.
+    assert ("delete", ".System/Map/D0000001A.img") in fake_steps
+    assert fake.data_at(SHARED) == MAP_FILE and fake.data_at(".System/Map/D0000001A.img") is None
+    for path, data in NEW_MAP.items():
+        assert fake.data_at(path) == data
+        assert ("read", path) in fake_steps  # each read back whole
+    assert fake.data_at(UNLOCK[0]) == UNLOCK[1]
+    assert sorted(report.written) == sorted(NEW_MAP) and report.unlocks == [UNLOCK[0]]
+    assert report.removed == [".System/Map/D0000001A.img"] and report.kept == []
+
+
+def test_the_trial_logs_the_time_of_each_copy_and_check_apart(navigator, map_downloads, caplog):
+    import logging
+
+    storage = OverUsb(navigator, trial_navigator())
+    found = _trial_maps(storage)
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        _install_trial(storage, found)
+    lines = _hidden_folders_log(caplog)
+    for data in NEW_MAP.values():  # by their sizes: the log hides names that look like numbers
+        assert any(f"({len(data)} B) sent in " in line for line in lines)
+        assert any(f" read back whole ({len(data)} B) in " in line for line in lines)
+
+
+def test_no_room_on_the_device_changes_nothing_and_downloads_nothing(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    fake.free = 10
+    storage.free_space = lambda: 10
+    with pytest.raises(maps.MapError, match="Not enough space on the device"):
+        _install_trial(storage, found)
+    assert fake.steps == [] and map_downloads == []
+
+
+def test_no_room_on_this_computer_changes_nothing(navigator, map_downloads, monkeypatch):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    monkeypatch.setattr(maps, "free_on_computer", lambda: 100)
+    with pytest.raises(maps.MapError, match="Not enough space on this computer"):
+        _install_trial(storage, found)
+    assert fake.steps == [] and map_downloads == []
+
+
+def test_an_interrupted_write_leaves_a_map_that_says_it_is_incomplete(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    fake.refuse_names["D0000002B.img"] = ptp.STORE_FULL  # the second in the order written (smallest first)
+    with pytest.raises(maps.MapError) as stopped:
+        _install_trial(storage, found)
+    assert str(stopped.value) == (
+        "Made-up City Navigator is incomplete on the device: 1 of 3 files was written. Nothing "
+        "else was removed, and the downloaded files stay on this computer: install it again and "
+        "only what is missing is written.")
+    # What was written stays; what was not written whole is not there; the old file is gone.
+    assert fake.data_at(".System/JCV/D0000002.jcv") == NEW_MAP[".System/JCV/D0000002.jcv"]
+    assert fake.data_at(".System/Map/D0000002B.img") is None
+    assert fake.data_at(".System/Map/D0000002A.img") is None
+    assert fake.data_at(".System/Map/D0000001A.img") is None and fake.data_at(SHARED) == MAP_FILE
+    # Plugged in again: the map says it is incomplete, on the command line and the page.
+    fake.reconnect()
+    hidden_folders.forget(storage)
+    again = _trial_maps(storage)
+    (m,) = [x for x in again if x.name == TRIAL_NAME]
+    assert m.incomplete and m.status == "incomplete on the device" and not m.update_available
+
+
+def test_installed_again_only_what_is_missing_is_written(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    fake.refuse_names["D0000002B.img"] = ptp.STORE_FULL
+    with pytest.raises(maps.MapError):
+        _install_trial(storage, found)
+    downloaded = list(map_downloads)
+    del fake.refuse_names["D0000002B.img"]
+    fake.reconnect()
+    fake.steps.clear()
+    hidden_folders.forget(storage)
+    report = _install_trial(storage, _trial_maps(storage))
+    # Nothing downloaded again; the file written before read back, not written again.
+    assert map_downloads == downloaded
+    assert report.kept == [".System/JCV/D0000002.jcv"]
+    assert sorted(report.written) == [".System/Map/D0000002A.img", ".System/Map/D0000002B.img"]
+    assert ("info", ".System/JCV/D0000002.jcv") not in fake.steps
+    assert ("read", ".System/JCV/D0000002.jcv") in fake.steps
+    for path, data in NEW_MAP.items():
+        assert fake.data_at(path) == data
+
+
+def test_a_file_there_of_the_same_size_but_other_bytes_is_written_again(navigator,
+                                                                       map_downloads):
+    fake = trial_navigator()
+    path = ".System/JCV/D0000002.jcv"
+    fake.add(path, b"x" * len(NEW_MAP[path]), hidden=True)
+    storage = OverUsb(navigator, fake)
+    report = _install_trial(storage, _trial_maps(storage))
+    assert report.kept == [] and path in report.written and fake.data_at(path) == NEW_MAP[path]
+
+
+def _refusing(fake, name, times, code=ptp.STORE_FULL):
+    """The device refuses the file `name` at SendObjectInfo `times` times, then takes it."""
+    real = fake._handle
+    left = [times]
+
+    def handle(operation, params, data):
+        if operation == ptp.SEND_OBJECT_INFO and left[0] and ptp.read_string(data, 52)[0] == name:
+            left[0] -= 1
+            return (code,)
+        return real(operation, params, data)
+
+    fake._handle = handle
+
+
+def _install_trial_waiting(storage, found, waits):
+    (m,) = [m for m in found if m.name == TRIAL_NAME]
+    return maps.install(m, found, storage, activate=_activate([]), hidden_trial=True,
+                        sleep=waits.append)
+
+
+def test_a_file_refused_is_written_again_up_to_three_times(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    _refusing(fake, "D0000002B.img", 2)
+    waits = []
+    report = _install_trial_waiting(storage, found, waits)
+    assert waits == [5, 5] and ".System/Map/D0000002B.img" in report.written
+    assert fake.data_at(".System/Map/D0000002B.img") == NEW_MAP[".System/Map/D0000002B.img"]
+
+
+def test_a_file_refused_three_times_stops_the_map(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    _refusing(fake, "D0000002B.img", 3)
+    waits = []
+    with pytest.raises(maps.MapError, match="1 of 3 files was written"):
+        _install_trial_waiting(storage, found, waits)
+    assert waits == [5, 5]
+
+
+def test_a_session_that_broke_is_not_tried_again(navigator, map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    real = fake._handle
+
+    def silent_at_the_second(operation, params, data):
+        if operation == ptp.SEND_OBJECT_INFO and ptp.read_string(data, 52)[0] == "D0000002B.img":
+            fake.silent = True
+        return real(operation, params, data)
+
+    fake._handle = silent_at_the_second
+    waits = []
+    with pytest.raises(maps.MapError, match="1 of 3 files was written"):
+        _install_trial_waiting(storage, found, waits)
+    assert waits == []  # no answer: the session is gone, nothing more is tried in it
+
+
+def test_an_unlock_file_refused_is_written_again_and_said_as_for_other_maps(navigator,
+                                                                           map_downloads):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    _refusing(fake, "D0000002.gma", 6)
+    waits = []
+    with pytest.raises(maps.UnlockNotWritten) as stopped:
+        _install_trial_waiting(storage, found, waits)
+    assert waits == [5] * 5
+    assert str(stopped.value).startswith(
+        "The map files are on the device, but its unlock file .System/D0000002.gma could not be "
+        "written (")
+    for path, data in NEW_MAP.items():  # the map's files stay
+        assert fake.data_at(path) == data
+
+
+def test_the_computer_is_kept_awake_from_the_first_removal_to_the_last_write(
+        navigator, map_downloads, no_sleep_blocked):
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage)
+    events = no_sleep_blocked
+    real = fake._handle
+
+    def noted(operation, params, data):
+        if operation == ptp.DELETE_OBJECT:
+            events.append(("delete", None))
+        elif operation == ptp.SEND_OBJECT:
+            events.append(("send", None))
+        return real(operation, params, data)
+
+    fake._handle = noted
+    _install_trial(storage, found)
+    kinds = [kind for kind, _x in events]
+    assert kinds[0] == "block" and kinds[-1] == "release"
+    assert kinds.count("block") == 1 and kinds.index("delete") == 1
+    assert kinds[-2] == "send"  # the unlock file, written last, inside the block
+
+
+@pytest.fixture
+def trial_cli(navigator, monkeypatch, map_downloads):
+    """The command line on the made-up navigator, the map service's answer and the
+    activation from the examples above (no server asked)."""
+    from openexpress import cli
+
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    monkeypatch.setattr(cli, "open_storage", lambda args: storage)
+    ns = types.SimpleNamespace(fake=fake, storage=storage, order=[],
+                               answer={"maps": [_trial_map(), _other_map()]}, activation=None)
+    monkeypatch.setattr(maps, "check", lambda client, dev, ask=None, country=None:
+                        maps.read_maps(ns.answer))
+
+    def activate(self, raw, identifiers):
+        if ns.activation is not None:
+            ns.order.append("activate")
+            return ns.activation
+        return _activate(ns.order)(identifiers[0])
+
+    monkeypatch.setattr(GarminClient, "activate_maps", activate)
+    monkeypatch.setattr(cli, "_url_salt", lambda: None)
+    monkeypatch.setattr(hidden_folders, "WRITE_PAUSE_S", 0)  # the tries are counted above
+    return ns
+
+
+def test_the_command_line_reads_the_folders_maps_need_besides_those_known(trial_cli, capsys):
+    """Once the device is known to hide .System, the command line reads it as it opens the
+    device; the folders its maps need besides (not named in its GarminDevice.xml) are read
+    then too, else its maps could not be read."""
+    assert main(["maps"]) == 0  # the first time: .System noted as hidden
+    capsys.readouterr()
+    trial_cli.fake.reconnect()
+    hidden_folders.forget(trial_cli.storage)
+    assert main(["maps"]) == 0
+    out = capsys.readouterr().out
+    assert "cannot be read" not in out and "update available" in out
+    assert {".System/Map", ".System/JCV"} <= trial_cli.fake.folders_listed()
+
+
+def test_the_command_line_trial_dry_run_says_what_would_be_done(trial_cli, capsys,
+                                                                map_downloads):
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial"]) == 0
+    out = capsys.readouterr().out
+    for path in NEW_MAP:
+        assert f"  + {path}  " in out
+    assert "  - .System/Map/D0000001A.img  4\u00a0B".replace("\u00a0", " ") in out
+    assert "  - " + SHARED not in out  # another map uses it: never removed
+    assert "Space on this computer for the download:" in out
+    assert "Writing and reading back on the device: at most about" in out
+    assert ("From the removal of the first old file until the last one is written, the device "
+            "has no complete map") in out
+    assert out.endswith(
+        "Largest file: .System/Map/D0000002A.img, 880 B\n"
+        "Dry run: nothing was downloaded and nothing on the device was changed. Add --apply.\n")
+    assert trial_cli.fake.steps == [] and map_downloads == [] and trial_cli.order == []
+
+
+def test_the_command_line_trial_writes_with_apply(trial_cli, capsys):
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
+    out = capsys.readouterr().out
+    _keep_output("2-installed", out)
+    assert "Wrote 3 map files and 1 unlock files." in out
+    for path, data in NEW_MAP.items():
+        assert trial_cli.fake.data_at(path) == data
+
+
+def test_the_command_line_without_the_trial_refuses_the_hidden_folder(trial_cli, capsys):
+    assert main(["maps", "install", TRIAL_NAME]) == 1
+    assert "does not install maps into the folder .System yet" in capsys.readouterr().err
+    assert trial_cli.fake.steps == []
+
+
+# What the command line says in each case, kept for a look with
+# OPENEXPRESS_MAP_TRIAL_OUTPUT=FOLDER (one file each).
+MAP_TRIAL_OUTPUT = os.environ.get("OPENEXPRESS_MAP_TRIAL_OUTPUT")
+
+
+def _keep_output(name: str, text: str) -> None:
+    if MAP_TRIAL_OUTPUT:
+        folder = pathlib.Path(MAP_TRIAL_OUTPUT)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{name}.txt").write_text(text)
+
+
+# A Drive 53 EX as one was seen on its screenshots and listing: City Navigator in four
+# folders of .System taking 7.6 GB (Map 5.26 GB in 6 files), 6.7 GB free of 14.8 GB; the new
+# version 8.3 GB in the same folders. File names and how the sizes split are made up.
+DRIVE_FOLDERS = {"Map": 6, "JCV": 2, "SID": 16, "SQLite": 4}
+OLD_SIZES = {"Map": 5_260_000_000, "JCV": 1_100_000_000, "SID": 840_000_000,
+             "SQLite": 400_000_000}
+NEW_SIZES = {"Map": 5_750_000_000, "JCV": 1_200_000_000, "SID": 900_000_000,
+             "SQLite": 450_000_000}
+
+
+def _drive_files(sizes, version):
+    files = {}
+    for folder, count in DRIVE_FOLDERS.items():
+        each = sizes[folder] // count
+        ext = {"Map": "img", "JCV": "jcv", "SID": "sid", "SQLite": "db"}[folder]
+        for n in range(count):
+            files[f".System/{folder}/NA{version}_{n:02d}.{ext}"] = each
+    return files
+
+
+def test_the_command_line_trial_dry_run_on_the_drive_as_it_is(navigator, monkeypatch, capsys,
+                                                              map_downloads):
+    from openexpress import cli
+
+    old, new = _drive_files(OLD_SIZES, "2026"), _drive_files(NEW_SIZES, "2027")
+    fake = navigator_session()
+    for folder in DRIVE_FOLDERS:
+        fake.add(f".System/{folder}", hidden=True)
+    for path, size in old.items():
+        handle = fake.add(path, b"", hidden=True)
+        fake.objects[handle].listed_size = size
+    storage = OverUsb(navigator, fake)
+    storage.free_space = lambda: 6_700_000_000
+    monkeypatch.setattr(maps, "free_on_computer", lambda: 120_000_000_000)
+    monkeypatch.setattr(cli, "open_storage", lambda args: storage)
+    entry = _trial_map(remove=list(old), files={p: b"" for p in new})
+    for f in entry["installoptions"][0]["files"]:
+        f["deliverableoptions"][0]["sizeinbytes"] = new[f["filename"]]
+    entry["displayname"] = "City Navigator North America NT"
+    monkeypatch.setattr(maps, "check", lambda client, dev, ask=None, country=None:
+                        maps.read_maps({"maps": [entry]}))
+    assert main(["maps", "install", "City Navigator", "--hidden-folder-trial"]) == 0
+    out = capsys.readouterr().out
+    _keep_output("1-dry-run-drive", out)
+    assert "28 files, download 8.3 GB, space on the device 700.0 MB (6.7 GB free)" in out
+    assert "  - .System/Map/NA2026_00.img  876.7 MB" in out
+    assert "Writing and reading back on the device: at most about 21 min" in out
+    assert fake.steps == [] and map_downloads == []
+
+
+def test_the_command_line_trial_stopped_and_installed_again(trial_cli, capsys, map_downloads):
+    fake = trial_cli.fake
+    fake.refuse_names["D0000002B.img"] = ptp.STORE_FULL
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 1
+    stopped = capsys.readouterr()
+    _keep_output("3-stopped", stopped.out + stopped.err)
+    assert "is incomplete on the device: 1 of 3 files was written" in stopped.err
+    # Plugged in again: the map says it is incomplete.
+    del fake.refuse_names["D0000002B.img"]
+    fake.reconnect()
+    hidden_folders.forget(trial_cli.storage)
+    assert main(["maps"]) == 0
+    listed = capsys.readouterr().out
+    _keep_output("4-maps-after-replugging", listed)
+    assert "incomplete on the device" in listed
+    assert listed.count("Reading the folder") == 1  # once: the maps' folders with the known ones
+    downloaded = list(map_downloads)
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
+    again = capsys.readouterr().out
+    _keep_output("5-installed-again", again)
+    assert "1 file was on the device already and read back the same: not written again." in again
+    assert map_downloads == downloaded  # nothing downloaded again
+    for path, data in NEW_MAP.items():
+        assert fake.data_at(path) == data
+
+
+# --- refused before anything: said by the dry run, again before --apply downloads -----------------
+
+def _refused_both_ways(trial_cli, capsys, map_downloads, reason, keep=None):
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial"]) == 1
+    out = capsys.readouterr().out
+    if keep:
+        _keep_output(keep, out)
+    assert f"Would be refused: {reason}" in out
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 1
+    assert reason in capsys.readouterr().err
+    assert trial_cli.fake.steps == [] and map_downloads == [] and trial_cli.order == []
+    return out
+
+
+def test_a_file_over_four_gib_is_refused_before_anything(trial_cli, capsys, map_downloads):
+    entry = _trial_map()
+    big = entry["installoptions"][0]["files"][0]
+    big["deliverableoptions"][0]["sizeinbytes"] = 5 * 1024 ** 3
+    trial_cli.answer = {"maps": [entry, _other_map()]}
+    _refused_both_ways(trial_cli, capsys, map_downloads,
+                       f"{big['filename']} is 5.4\u00a0GB: a file over 4 GiB cannot be sent to "
+                       "the device.".replace("\u00a0", " "), keep="6-dry-run-refused")
+
+
+def test_a_folder_not_on_the_device_is_refused_before_anything(trial_cli, capsys, map_downloads):
+    files = {**NEW_MAP, ".System/Atlas/D0000002C.img": b"made-up atlas"}
+    trial_cli.answer = {"maps": [_trial_map(files=files), _other_map()]}
+    _refused_both_ways(trial_cli, capsys, map_downloads,
+                       "The folder .System/Atlas is not on the device; openExpress makes no "
+                       "folder there.")
+
+
+def test_a_file_without_a_checksum_is_refused_before_anything(trial_cli, capsys, map_downloads):
+    entry = _trial_map()
+    entry["installoptions"][0]["files"][1]["deliverableoptions"][0]["md5"] = "not a checksum"
+    trial_cli.answer = {"maps": [entry, _other_map()]}
+    _refused_both_ways(trial_cli, capsys, map_downloads,
+                       "Map “Made-up City Navigator” cannot be installed: the server gave an "
+                       "invalid checksum for one of its files.")
+
+
+def test_an_unlock_file_without_a_place_is_refused_before_the_device_changes(trial_cli, capsys,
+                                                                             map_downloads):
+    import base64
+
+    trial_cli.activation = {"unlocks": [{"gma": base64.b64encode(UNLOCK[1]).decode()}]}
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 1
+    assert ("The activation gave no place on the device for the unlock file of Made-up City "
+            "Navigator.") in capsys.readouterr().err
+    assert trial_cli.order == ["activate"] and trial_cli.fake.steps == []

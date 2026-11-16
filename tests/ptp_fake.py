@@ -27,6 +27,7 @@ class FakeObject:
     parent: int
     data: bytes | None = None  # None: a folder
     hidden: bool = False
+    listed_size: int | None = None  # listed at this size instead of its bytes' (never read)
 
     @property
     def protection(self) -> int:
@@ -54,6 +55,8 @@ class FakeDevice:
         self.supported = [0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1007, 0x1008, 0x1009,
                           0x100B, 0x100C, 0x100D, 0x101B, 0x9002]
         self.transfers: list[bytes] = []
+        self.timeout_ms = ptp.TIMEOUT_MS  # set by the session, as on a real transport
+        self.read_limits: list[int] = []  # the time limit in force at each read
         self.operations: list[int] = []
         self.closed = False
         self._next = 0x100
@@ -143,6 +146,7 @@ class FakeDevice:
 
     def read(self, size: int) -> bytes:
         assert not self.closed
+        self.read_limits.append(self.timeout_ms)
         if not self._answers:
             return b""
         answer = self._answers.pop(0)
@@ -244,7 +248,8 @@ class FakeDevice:
 
     def _object_info(self, obj: FakeObject) -> bytes:
         fmt = ptp.FORMAT_FOLDER if obj.data is None else ptp.FORMAT_UNDEFINED
-        return (struct.pack("<IHHI", STORAGE, fmt, obj.protection, len(obj.data or b""))
+        size = obj.listed_size if obj.listed_size is not None else len(obj.data or b"")
+        return (struct.pack("<IHHI", STORAGE, fmt, obj.protection, size)
                 + struct.pack("<HIIIIIIIHII", 0, 0, 0, 0, 0, 0, 0, obj.parent, 0, 0, 0)
                 + ptp.ptp_string(obj.name) + ptp.ptp_string("") + ptp.ptp_string("")
                 + ptp.ptp_string(""))

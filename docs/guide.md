@@ -172,6 +172,9 @@ connected device; no login is needed.
   the same size), the row says both versions and *the same file* and keeps **Reinstall**;
   otherwise the row says *an older version* and has no button, and `openexpress updates
   --install` refuses it, so an older component never replaces the device's own.
+- While software updates or a map's files are copied, openExpress keeps the computer from
+  sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
+  copy goes on.
 - On a USB drive each file written is read back from the drive, not from the computer's cache,
   and compared with the server's checksum before the copy counts.
 - After an eject with an update waiting, the window says to unplug the cable and leave the device

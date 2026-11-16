@@ -89,7 +89,20 @@ MAX_OBJECT_SIZE = 0xFFFFFFFF - HEADER.size
 READ_SIZE = 64 * 1024
 READ_CHUNK = 1024 * 1024  # the pieces of a file read back, handed on as they come
 WRITE_CHUNK = 1024 * 1024
-TIMEOUT_MS = 30000
+TIMEOUT_MS = 30000  # each bulk transfer: a piece written, a read
+# After the data of a large object, the device may take long to answer (it stores the file whole
+# first), as it may to give one back or to delete one: then at least LARGE_ANSWER_MS, more for a
+# larger one at SLOWEST_PACE. No answer by then breaks the session; nothing is tried again here.
+LARGE_OBJECT = 256 * 1024 * 1024
+LARGE_ANSWER_MS = 5 * 60 * 1000
+SLOWEST_PACE = 5_000_000  # bytes a second
+
+
+def answer_limit_ms(size: int | None) -> int:
+    """How long the device may take to answer about an object of `size` bytes."""
+    if not size or size <= LARGE_OBJECT:
+        return TIMEOUT_MS
+    return max(LARGE_ANSWER_MS, size * 1000 // SLOWEST_PACE)
 
 
 class PtpError(DeviceError):
@@ -344,6 +357,7 @@ class LibusbTransport:
         self._lib, self._context, self._handle = lib, context, handle
         self._interface, self._ep_out, self._ep_in = interface, ep_out, ep_in
         self.packet_size = packet_size
+        self.timeout_ms = TIMEOUT_MS  # of each bulk transfer; longer while a large answer is due
         self._fd: int | None = None  # the device node opened by `open_node`, closed with us
 
     @classmethod
@@ -443,7 +457,7 @@ class LibusbTransport:
     def write(self, data: bytes) -> None:
         done = ctypes.c_int()
         result = self._lib.libusb_bulk_transfer(self._handle, self._ep_out, bytes(data), len(data),
-                                                ctypes.byref(done), TIMEOUT_MS)
+                                                ctypes.byref(done), self.timeout_ms)
         if result < 0 or done.value != len(data):
             raise PtpError(_("Sending to the device failed: {error}").format(
                 error=(self._lib.libusb_error_name(result).decode() if result < 0
@@ -453,7 +467,7 @@ class LibusbTransport:
         buffer = ctypes.create_string_buffer(size)
         done = ctypes.c_int()
         result = self._lib.libusb_bulk_transfer(self._handle, self._ep_in, buffer, size,
-                                                ctypes.byref(done), TIMEOUT_MS)
+                                                ctypes.byref(done), self.timeout_ms)
         if result == _LIBUSB_ERROR_TIMEOUT and done.value == 0:
             raise PtpError(_("The device did not answer in time."))
         if result < 0 and result != _LIBUSB_ERROR_TIMEOUT:
@@ -506,6 +520,12 @@ class Session:
         self._broken = False  # the conversation is out of step; send nothing more
         self._empty = 0  # reads in a row that brought nothing
 
+    @property
+    def broken(self) -> bool:
+        """The conversation is out of step (a transfer failed or went unanswered): nothing
+        more can be sent in this session."""
+        return self._broken
+
     def __enter__(self) -> Session:
         try:
             self.open()
@@ -540,11 +560,13 @@ class Session:
             self.transport.close()
 
     def transact(self, operation: int, *params: int, data_out: bytes | Outgoing | None = None,
-                 data_in: Callable[[bytes], None] | None = None) -> tuple[int, bytes, list[int]]:
+                 data_in: Callable[[bytes], None] | None = None,
+                 answer_ms: int | None = None) -> tuple[int, bytes, list[int]]:
         """One transaction: (response code, data received, response parameters). `data_out`:
         the data sent, as bytes or read from a file as it goes; `data_in`: given the data
         received piece by piece as it comes, never held whole (the data returned is then
-        empty)."""
+        empty). `answer_ms`: how long the device may take to answer once the data it gets is
+        sent (answer_limit_ms), instead of the usual TIMEOUT_MS."""
         out = Outgoing(io.BytesIO(data_out), len(data_out)) if isinstance(
             data_out, (bytes, bytearray)) else data_out
         received = 0
@@ -555,7 +577,8 @@ class Session:
                 received += len(piece)
                 data_in(piece)
         try:
-            code, data, answer = self._transact(operation, *params, data_out=out, data_in=sink)
+            code, data, answer = self._transact(operation, *params, data_out=out, data_in=sink,
+                                                answer_ms=answer_ms)
         except PtpError as e:
             log.warning("PTP 0x%04X failed: %s", operation, type(e).__name__)
             raise
@@ -566,7 +589,8 @@ class Session:
         return code, data, answer
 
     def _transact(self, operation: int, *params: int, data_out: Outgoing | None,
-                  data_in: Callable[[bytes], None] | None) -> tuple[int, bytes, list[int]]:
+                  data_in: Callable[[bytes], None] | None,
+                  answer_ms: int | None = None) -> tuple[int, bytes, list[int]]:
         if self._broken:
             raise PtpError(_("The connection to the device is out of step."))
         if data_out is not None and data_out.size > MAX_OBJECT_SIZE:
@@ -578,23 +602,35 @@ class Session:
                 # Header and payload as separate transfers, like the Windows MTP stack.
                 self.transport.write(data_header(operation, transaction, data_out.size))
                 self._send(data_out)
-            data = b""
-            while True:
-                kind, code, answered, length = self._header()
-                if answered != transaction or kind not in (DATA, RESPONSE):
-                    raise PtpError(_("The device answered out of step."))
-                if kind == DATA and data_in is not None:
-                    self._stream(length - HEADER.size, data_in)
-                    continue
-                payload = self._take(length - HEADER.size)
-                if kind == DATA:
-                    data = payload
-                else:
-                    return code, data, list(struct.unpack(f"<{len(payload) // 4}I",
-                                                          payload[:len(payload) // 4 * 4]))
+            usual = getattr(self.transport, "timeout_ms", None)
+            if answer_ms is not None and usual is not None:
+                self.transport.timeout_ms = answer_ms
+            try:
+                return self._answer(transaction, data_in)
+            finally:
+                if usual is not None:
+                    self.transport.timeout_ms = usual
         except BaseException:
             self._broken = True
             raise
+
+    def _answer(self, transaction: int,
+                data_in: Callable[[bytes], None] | None) -> tuple[int, bytes, list[int]]:
+        """The device's data, if any, and its response to `transaction`."""
+        data = b""
+        while True:
+            kind, code, answered, length = self._header()
+            if answered != transaction or kind not in (DATA, RESPONSE):
+                raise PtpError(_("The device answered out of step."))
+            if kind == DATA and data_in is not None:
+                self._stream(length - HEADER.size, data_in)
+                continue
+            payload = self._take(length - HEADER.size)
+            if kind == DATA:
+                data = payload
+            else:
+                return code, data, list(struct.unpack(f"<{len(payload) // 4}I",
+                                                      payload[:len(payload) // 4 * 4]))
 
     def _send(self, out: Outgoing) -> None:
         done = 0
@@ -648,9 +684,10 @@ class Session:
         self._buffer += chunk
 
     def _ok(self, operation: int, *params: int, data_out: bytes | Outgoing | None = None,
-            data_in: Callable[[bytes], None] | None = None) -> tuple[bytes, list[int]]:
+            data_in: Callable[[bytes], None] | None = None,
+            answer_ms: int | None = None) -> tuple[bytes, list[int]]:
         code, data, answer = self.transact(operation, *params, data_out=data_out,
-                                           data_in=data_in)
+                                           data_in=data_in, answer_ms=answer_ms)
         if code != OK:
             raise PtpRefused(operation, code)
         return data, answer
@@ -718,10 +755,12 @@ class Session:
         self.read_into(handle, content.extend)
         return bytes(content)
 
-    def read_into(self, handle: int, data_in: Callable[[bytes], None]) -> int:
+    def read_into(self, handle: int, data_in: Callable[[bytes], None],
+                  size: int | None = None) -> int:
         """The object's content given to `data_in` piece by piece as the device sends it,
         READ_CHUNK bytes at most at a time, never held whole; the bytes read. Raises PtpRefused
-        when the device does not give it (nothing was given to `data_in`)."""
+        when the device does not give it (nothing was given to `data_in`). `size`: the
+        object's, when known: a large one may take the device longer (answer_limit_ms)."""
         read = 0
 
         def counted(piece: bytes) -> None:
@@ -729,7 +768,7 @@ class Session:
             read += len(piece)
             data_in(piece)
 
-        self._ok(GET_OBJECT, handle, data_in=counted)
+        self._ok(GET_OBJECT, handle, data_in=counted, answer_ms=answer_limit_ms(size))
         return read
 
     def read_part(self, handle: int, offset: int, size: int) -> bytes:
@@ -769,10 +808,11 @@ class Session:
                 _("The device did not say where it put “{name}”.").format(name=name))
         handle = answer[2]
         try:
-            self._ok(SEND_OBJECT, data_out=data)
+            self._ok(SEND_OBJECT, data_out=data, answer_ms=answer_limit_ms(size))
         except PtpError as e:
             raise PtpWriteError(str(e), handle) from e
         return handle
 
-    def delete(self, handle: int) -> None:
-        self._ok(DELETE_OBJECT, handle, 0)
+    def delete(self, handle: int, size: int | None = None) -> None:
+        """Delete an object; `size`: its, when known (a large one may take longer)."""
+        self._ok(DELETE_OBJECT, handle, 0, answer_ms=answer_limit_ms(size))

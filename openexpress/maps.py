@@ -18,12 +18,13 @@ import hashlib
 import logging
 import posixpath
 import re
+import shutil
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from openexpress import answers, applog, cache, download, hidden_folders, paths
+from openexpress import answers, applog, awake, cache, download, hidden_folders, paths
 from openexpress.connect import ApiError, unexpected_answer_text
 from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import UserFacingError
@@ -40,6 +41,10 @@ from openexpress.progress import (
 log = logging.getLogger(__name__)
 
 SPACE_MARGIN = 50 * 1024 * 1024
+# How fast a map is written and read back whole into a folder a car navigator hides, at the
+# slowest seen (a software update of 64.7 MB on a Drive 53 EX, written and read back in 9.4 s,
+# its read then slowed by this program's own copying): only for the estimate of the trial.
+TRIAL_PACE = 6_900_000  # bytes a second
 WAIT_INSTALL, WAIT_REMOVE = "install", "remove"
 # Writing an unlock file the device refused is tried again after a pause, as Garmin Express
 # does: one try and five more.
@@ -120,6 +125,9 @@ class UniversalMap:
     # checked against the device, its listing failed, or a folder of its files is hidden and
     # was not read).
     device_sizes: dict[str, int] | None = None
+    # A map in a folder the device hides that was being written and stopped (mark_waiting): some
+    # of its old files gone or some of its new ones there, not all of them: incomplete.
+    partly_written: bool = False
 
     # The states of the server ("installationState"): 0 not installed, 1 installed, 2 partly
     # on the device, 3 a newer version on the device.
@@ -136,8 +144,10 @@ class UniversalMap:
 
     @property
     def incomplete(self) -> bool:
-        """Partly on the device: shown there, to be installed again (never an update)."""
-        return self.state == 2 and self.waiting is None and not self.unseen
+        """Partly on the device (as the server knows it, or written partly into a folder the
+        device hides): shown there, to be installed again (never an update)."""
+        return ((self.state == 2 or self.partly_written) and self.waiting is None
+                and not self.unseen)
 
     @property
     def would_update(self) -> bool:
@@ -145,7 +155,7 @@ class UniversalMap:
         does not have; never a newer version on the device, which an update would replace
         with the older one."""
         return (self.state == 1 and not self.is_reinstall and self.waiting is None
-                and not self.unseen)
+                and not self.unseen and not self.partly_written)
 
     @property
     def update_available(self) -> bool:
@@ -518,11 +528,13 @@ def cleanup_lines(files: list[CleanupFile]) -> list[str]:
 MISSING_FILE, BAD_CHECKSUM = "missing-file", "bad-checksum"
 
 
-def can_install(m: UniversalMap) -> bool:
+def can_install(m: UniversalMap, hidden_trial: bool = False) -> bool:
     """Whether the server gave a usable, checked download for every file of `m`, Garmin
-    offers it in the account's country, and its files go to folders ordinary MTP shows."""
+    offers it in the account's country, and its files go to folders ordinary MTP shows - or,
+    with `hidden_trial` (the command line's trial), to a folder the device hides that
+    openExpress's own session read."""
     return (m.installable and bool(m.files) and m.restricted is not True
-            and m.hidden_folder is None)
+            and (m.hidden_folder is None or (hidden_trial and m.device_sizes is not None)))
 
 
 def cannot_install_reason(m: UniversalMap) -> str:
@@ -538,9 +550,11 @@ def cannot_install_reason(m: UniversalMap) -> str:
     return _("Cannot be installed: the server did not provide all of its files")
 
 
-def cannot_install_message(m: UniversalMap) -> str:
-    """Why `m` cannot be installed, the same words in the command line and the window."""
-    if m.hidden_folder is not None:
+def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
+    """Why `m` cannot be installed, the same words in the command line and the window;
+    `hidden_trial`: the reasons of the server and the account only (the trial installs into a
+    folder the device hides)."""
+    if m.hidden_folder is not None and not hidden_trial:
         # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
         # e.g. .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
@@ -636,6 +650,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
         m.waiting = None
         m.unseen = False
         m.device_sizes = None
+        m.partly_written = False
     wanted = {p for m in maps for p in m.all_paths}
     present: dict[str, int] = {}  # casefolded path -> size, one listing per folder
     unseen: set[str] = set()  # casefolded folders the listing does not show
@@ -684,9 +699,11 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
         if (m.files and all(on_device)
                 and (not m.installed or (not m.is_reinstall and new_names))):
             m.waiting = WAIT_INSTALL
+    for m in maps:
+        m.partly_written = _partly_written(m, maps, present)
     removed = []  # decided on the same state for every map, then marked
     for m in maps:
-        if not m.listed or m.waiting:
+        if not m.listed or m.waiting or m.partly_written:
             continue
         # Removed: the server has the map, yet none of its own files (not used by other maps)
         # is on the device.
@@ -701,6 +718,115 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     for m in removed:
         m.waiting = WAIT_REMOVE
     log_states(maps)
+
+
+def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str, int]) -> bool:
+    """Whether a map in a folder the device hides, read through openExpress's own session, was
+    being written and stopped: not all of its files there at their size, while some of its own
+    old files are gone, or (not installed) some of its new files are there. Files other maps use
+    say nothing."""
+    if m.hidden_folder is None or m.device_sizes is None or m.waiting or not m.files:
+        return False
+    here = [present.get(f.device_path.casefold()) == f.size for f in m.files]
+    if all(here):
+        return False
+    new = {f.device_path.casefold() for f in m.files}
+    own_old = [p.casefold() for p in m.files_to_remove
+               if p.casefold() not in new and p.casefold() not in protected_files(maps, m)]
+    old_gone = any(p not in present for p in own_old)
+    return old_gone or (any(here) and not m.installed)
+
+
+def hidden_space(storage: Storage, m: UniversalMap, removing: list[str]) -> tuple[int, int | None]:
+    """(needed, free): the space a map going into a folder the device hides needs there, its old
+    files and those it writes over counted as they are removed first, from what openExpress's
+    own session read (device_sizes); the device's free space."""
+    sizes = m.device_sizes or {}
+    gone = {p.casefold() for p in removing} | {f.device_path.casefold() for f in m.files}
+    freed = sum(sizes.get(p, 0) for p in gone)
+    return max(0, m.size - freed), storage.free_space()
+
+
+def free_on_computer() -> int:
+    """The free space where the map files are downloaded (the cache)."""
+    where = paths.cache_dir()
+    while not where.exists():
+        where = where.parent
+    return shutil.disk_usage(where).free
+
+
+def download_space(m: UniversalMap) -> tuple[int, int]:
+    """(needed, free) on this computer: the files of `m` not in the cache yet, and the space."""
+    needed = sum(f.size or 0 for f in m.files if not (
+        f.md5 and cache_file(f).exists() and cache_file(f).stat().st_size == f.size))
+    return needed, free_on_computer()
+
+
+def trial_minutes(m: UniversalMap) -> int:
+    """At most how many minutes writing and reading back the files of `m` take (TRIAL_PACE)."""
+    return max(1, -(-m.size // (TRIAL_PACE * 60)))
+
+
+def no_complete_map_text() -> str:
+    # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: the old files of the map are
+    # removed before the new ones are written, as Garmin Express does
+    return _("From the removal of the first old file until the last one is written, the device "
+             "has no complete map. Do not unplug it, and keep it powered.")
+
+
+def folder_not_read_text(folder: str) -> str:
+    # TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
+    return _("The folder {folder} was not read through openExpress's own USB session.").format(
+        folder=folder)
+
+
+def too_large_text(path: str, size: int) -> str:
+    from openexpress.i18n import human_size
+
+    # TRANSLATORS: {path}: a file of a map on the device; {size}: its size
+    return _("{path} is {size}: a file over 4 GiB cannot be sent to the device.").format(
+        path=path, size=human_size(size))
+
+
+def no_unlock_place_text(name: str) -> str:
+    # TRANSLATORS: {name}: a map; Garmin's server activated it and gave an unlock file without
+    # saying where it goes on the device
+    return _("The activation gave no place on the device for the unlock file of {name}.").format(
+        name=name)
+
+
+def trial_refusals(storage: Storage, m: UniversalMap, removing: list[str]) -> list[str]:
+    """Why the trial would refuse `m` before it downloads anything or changes the device, each
+    once: what the server gave (no usable download, not in the account's country), a folder
+    of its files in the folder the device hides not read or not on the device (no folder is
+    ever made), a file over what one object can hold."""
+    from openexpress.device import ptp
+
+    reasons = []
+    if not (m.installable and m.files) or m.restricted is True:
+        reasons.append(cannot_install_message(m, hidden_trial=True))
+    listing = hidden_folders.kept(storage)
+    hidden = (m.hidden_folder or "").casefold()
+    targets = {posixpath.dirname(f.device_path.strip("/")) for f in m.files}
+    olds = {posixpath.dirname(p.strip("/")) for p in removing}
+    for folder in sorted(targets | olds, key=str.casefold):
+        if folder.split("/")[0].casefold() != hidden:
+            continue  # a folder ordinary MTP shows
+        if listing is None or listing.state != hidden_folders.READ or not listing.knows(folder):
+            reasons.append(folder_not_read_text(folder))
+        elif listing.entries(folder) is None and folder in targets:
+            reasons.append(hidden_folders.no_folder_text(folder))
+    reasons += [too_large_text(f.device_path, f.size) for f in m.files
+                if f.size and f.size > ptp.MAX_OBJECT_SIZE]
+    return list(dict.fromkeys(reasons))
+
+
+def no_room_on_computer_text(name: str, needed: int, free: int) -> str:
+    from openexpress.i18n import human_size
+
+    # TRANSLATORS: {name} is a map; {needed} and {free} are sizes
+    return _("Not enough space on this computer for the download of {name}: {needed} needed, "
+             "{free} free.").format(name=name, needed=human_size(needed), free=human_size(free))
 
 
 def used_on_device(maps: list[UniversalMap]) -> int | None:
@@ -846,6 +972,8 @@ class MapReport:
     written: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     unlocks: list[str] = field(default_factory=list)
+    kept: list[str] = field(default_factory=list)  # there already, read back the same
+    gmas: list[str] = field(default_factory=list)  # a short MD5 of each unlock file, for the log
 
 
 def _install(
@@ -857,50 +985,37 @@ def _install(
     progress: Callable[[str], None] | None = None,
     url_salt: str | None = None,
     sleep: Callable[[float], None] = time.sleep,
+    hidden_trial: bool = False,
 ) -> MapReport:
     if m.waiting == WAIT_INSTALL:
         raise MapError(waiting_message(m))
-    if not can_install(m):
+    if not can_install(m, hidden_trial=hidden_trial):
         raise MapError(cannot_install_message(m))
     removing = removal_list(all_maps, m, rewriting=True)
+    if m.hidden_folder is not None:
+        return _install_hidden(m, removing, storage, activate, session, progress, url_salt,
+                               sleep)
     need = space_needed(storage, m, removing)
     storage.require_space(need, SPACE_MARGIN, error=MapError)
 
+    local = _download(m, session, progress, url_salt)
+    unlocks = _activation(m, activate, say_to(progress))
     files = write_order(m)
-    local: dict[str, Path] = {}
     say = say_to(progress)
-    # The map as a whole, by its name: the files are the server's and the device's own.
-    downloaded = byte_steps(progress, downloading_text(m.name))
-    # One bar for all the files of the map.
-    overall = download.Overall(m.size, downloaded) if downloaded is not None else None
-    for f in files:
-        log.debug("map install: downloading %s (%s)", f.device_path, applog.size(f.size))
-        urls = [h + f.url.lstrip("/") for h in m.hosts] if not f.url.startswith("http") else [f.url]
-        if url_salt:
-            urls = [download.tokenize(u, url_salt) for u in urls]
-        local[f.device_path] = download.fetch(urls, cache_file(f), f.size, f.md5, session=session,
-                                              progress=overall.file() if overall else None)
-        if overall:
-            overall.finished(f.size)
-
-    say(_("Activating the map on the Garmin server…"))
-    act = activate(m.identifier)
-    entries = act.get("unlocks") or []
-    unlocks = [(u.get("filename"), u.get("gma")) for u in entries
-               if u.get("filename") and u.get("gma")]
-    # Only logged, before anything is written: Garmin Express writes whatever the list holds
-    # and says nothing, and some maps (the base maps, as far as the server's file lists show)
-    # have no unlock file at all, so a missing one is no sure sign of trouble.
-    if not entries:
-        log.warning("map install: the activation of %s %s returned no unlock file (%s)",
-                    m.name, m.version,
-                    "an empty list" if act.get("unlocks") == [] else "no unlocks in the answer")
-    elif len(unlocks) < len(entries):
-        log.warning("map install: %d of %d unlock entries from the activation of %s %s had no "
-                    "file name or data", len(entries) - len(unlocks), len(entries), m.name,
-                    m.version)
-
     report = MapReport()
+    # From the first removal to the last write the device has no complete map: kept awake.
+    with awake.kept_awake(f"map {m.name} is written", say=say):
+        _write_all(m, all_maps, storage, removing, files, local, unlocks, progress, say, sleep,
+                   report)
+    log.info("map install: %s %s, %d files written (%s), %d old files removed, %d unlock files"
+             " (md5 %s)", m.name, m.version, len(report.written), applog.size(m.size),
+             len(report.removed), len(report.unlocks), ", ".join(report.gmas) or "-")
+    return report
+
+
+def _write_all(m, all_maps, storage, removing, files, local, unlocks, progress, say, sleep,
+               report: MapReport) -> None:
+    """The old files of `m` removed, its files written and checked, then its unlock files."""
     for n, p in enumerate(removing, 1):
         # TRANSLATORS: a step of a map install: files of an older version or of maps it
         # replaces ("Removing old map files · 2 of 5")
@@ -924,16 +1039,99 @@ def _install(
                                  _users(all_maps, m, f.device_path), checked)
         copied += f.size or 0
         report.written.append(real)
-    gmas = []
     for fname, gma in unlocks:
         data = base64.b64decode(gma)
         real = _write_unlock(storage, _device_path(fname), data, say, sleep)
         report.unlocks.append(real)
-        gmas.append(_short_md5(data))
-    log.info("map install: %s %s, %d files written (%s), %d old files removed, %d unlock files"
-             " (md5 %s)", m.name, m.version, len(report.written), applog.size(m.size),
-             len(report.removed), len(report.unlocks), ", ".join(gmas) or "-")
-    return report
+        report.gmas.append(_short_md5(data))
+
+
+def _download(m: UniversalMap, session, progress, url_salt: str | None) -> dict[str, Path]:
+    """Every file of `m` downloaded and checked against its MD5 (download.fetch; one in the
+    cache already is not downloaded again), by its path on the device."""
+    local: dict[str, Path] = {}
+    # The map as a whole, by its name: the files are the server's and the device's own.
+    downloaded = byte_steps(progress, downloading_text(m.name))
+    # One bar for all the files of the map.
+    overall = download.Overall(m.size, downloaded) if downloaded is not None else None
+    for f in write_order(m):
+        log.debug("map install: downloading %s (%s)", f.device_path, applog.size(f.size))
+        urls = [h + f.url.lstrip("/") for h in m.hosts] if not f.url.startswith("http") else [f.url]
+        if url_salt:
+            urls = [download.tokenize(u, url_salt) for u in urls]
+        local[f.device_path] = download.fetch(urls, cache_file(f), f.size, f.md5, session=session,
+                                              progress=overall.file() if overall else None)
+        if overall:
+            overall.finished(f.size)
+    return local
+
+
+def _activation(m: UniversalMap, activate, say, strict: bool = False) -> list[tuple[str, str]]:
+    """The map activated on Garmin's server: its unlock files, (file name, data in base64).
+    `strict` (the trial): an unlock file without its place on the device refuses the map,
+    before the device changes."""
+    say(_("Activating the map on the Garmin server…"))
+    act = activate(m.identifier)
+    entries = act.get("unlocks") or []
+    if strict and any(u.get("gma") and not u.get("filename") for u in entries):
+        log.warning("map install: the activation of %s %s gave an unlock file without its "
+                    "place: nothing written", m.name, m.version)
+        raise MapError(no_unlock_place_text(m.name))
+    unlocks = [(u.get("filename"), u.get("gma")) for u in entries
+               if u.get("filename") and u.get("gma")]
+    # Only logged, before anything is written: Garmin Express writes whatever the list holds
+    # and says nothing, and some maps (the base maps, as far as the server's file lists show)
+    # have no unlock file at all, so a missing one is no sure sign of trouble.
+    if not entries:
+        log.warning("map install: the activation of %s %s returned no unlock file (%s)",
+                    m.name, m.version,
+                    "an empty list" if act.get("unlocks") == [] else "no unlocks in the answer")
+    elif len(unlocks) < len(entries):
+        log.warning("map install: %d of %d unlock entries from the activation of %s %s had no "
+                    "file name or data", len(entries) - len(unlocks), len(entries), m.name,
+                    m.version)
+    return unlocks
+
+
+def _install_hidden(m: UniversalMap, removing: list[str], storage: Storage, activate,
+                    session, progress, url_salt: str | None,
+                    sleep: Callable[[float], None] = time.sleep) -> MapReport:
+    """The trial: a map into a folder the device hides, read through openExpress's own session.
+    Nothing on the device changes until every file is downloaded and checked and the map is
+    activated; then one session (hidden_folders.write_map) removes its old files (none that
+    other maps use) and writes its files, each read back whole, then its unlock files."""
+    refused = trial_refusals(storage, m, removing)
+    if refused:
+        log.info("map install: %s %s refused before anything (%d reasons)", m.name, m.version,
+                 len(refused))
+        raise MapError(refused[0])
+    need, free = hidden_space(storage, m, removing)
+    storage.require_space(need, SPACE_MARGIN, error=MapError, free=free)
+    need_here, free_here = download_space(m)
+    if need_here + SPACE_MARGIN > free_here:
+        raise MapError(no_room_on_computer_text(m.name, need_here + SPACE_MARGIN, free_here))
+    log.info("map install: %s %s into %s (the trial): %d files (%s), %d old files to remove",
+             m.name, m.version, m.hidden_folder, len(m.files), applog.size(m.size),
+             len(removing))
+    local = _download(m, session, progress, url_salt)
+    unlocks = _activation(m, activate, say_to(progress), strict=True)
+    files = [hidden_folders.MapFile(f.device_path, local[f.device_path], f.size, f.md5)
+             for f in write_order(m)]
+    try:
+        done = hidden_folders.write_map(
+            storage, m.name, removing, files,
+            [(_device_path(name), base64.b64decode(gma)) for name, gma in unlocks],
+            SPACE_MARGIN, progress=progress, copying=copying_text(m.name),
+            checking=checking_text(m.name), sleep=sleep, unlock_tries=UNLOCK_TRIES,
+            unlock_pause=UNLOCK_PAUSE_S)
+    except DeviceNotResponding:
+        raise
+    except hidden_folders.UnlockFailed as e:  # the map's files are there: said as for any map
+        raise UnlockNotWritten(e.path, e.error) from e
+    except DeviceError as e:  # refused before anything changed, or stopped partway (the text)
+        raise MapError(str(e)) from e
+    return MapReport(written=done.written, removed=done.removed, unlocks=done.unlocks,
+                     kept=done.kept)
 
 
 def install(*args, **kwargs) -> MapReport:

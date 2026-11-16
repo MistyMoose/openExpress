@@ -28,12 +28,12 @@ NEW_PART = b"made-up new part"
 
 
 def _entry(part, name, path, filename, data, severity="Recommended", installed=True,
-           primary=False, locale=None):
+           primary=False, locale=None, eula=None):
     """One offered item, the keys as the server sends them."""
     return {
         "partNumber": part, "productName": name, "dataType": "Firmware",
         "displayVersion": "9.00", "severity": severity, "isPrimaryFirmware": primary,
-        "locale": locale, "releaseState": "live", "releaseNotes": [],
+        "locale": locale, "releaseState": "live", "releaseNotes": [], "eulaUrl": eula,
         "deliverable": {"downloadUrl": "https://example.org/" + filename,
                         "md5": hashlib.md5(data).hexdigest().upper(),
                         "sizeInBytes": len(data)},
@@ -1155,7 +1155,9 @@ def drive_answer():
     return {"updates": [
         _entry("006-B0000-00", "Made-up Drive", ".System", "B000000.update", SYSTEM,
                primary=True),
-        _entry("006-D9001-00", "Time zone map", ".System", "gmaptz.img", TZ_NEW)]}
+        # The server gives the time zone map a license, as the real Drive's question shows.
+        _entry("006-D9001-00", "Time zone map", ".System", "gmaptz.img", TZ_NEW,
+               eula="https://example.org/made-up-eula")]}
 
 
 @pytest.fixture
@@ -1733,6 +1735,7 @@ def test_the_reinstall_row_and_its_question_say_what_is_replaced(navigator, in_t
     (tz_heading, tz_body, tz_below), (_heading, system_body, system_below) = asked
     assert tz_heading == "Install Update?"
     assert tz_body.endswith("\n\nThe update replaces the file gmaptz.img on the device.")
+    assert "License Agreement (EULA)" in tz_below and "License Agreement (EULA)" not in system_below
     assert system_body.endswith("\n\nThe update replaces the file B000000.update on the device.")
     assert updates.SYSTEM_UPDATE_WARNING in system_below
     assert updates.SYSTEM_UPDATE_WARNING not in tz_below

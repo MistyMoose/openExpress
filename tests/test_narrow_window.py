@@ -285,10 +285,10 @@ def _navigator_updates(read: bool = False, current: bool = False):
     from openexpress import hidden_folders
 
     def offered(name, version, path, size, part, hidden=None, add_on=False, reinstall=False,
-                same=None, installed=None, severity="Recommended"):
+                same=None, installed=None, severity="Recommended", eula=""):
         u = _update(name, version, path, size, system=part == NAVIGATOR[2], reinstall=reinstall)
         u.part_number, u.model_part_number, u.hidden_folder = part, NAVIGATOR[2], hidden
-        u.installed_version, u.severity = installed, severity
+        u.installed_version, u.severity, u.eula_url = installed, severity, eula
         if hidden and read:
             u.hidden_session, u.hidden_size_same = hidden_folders.READ, same
             u.on_device = same is True and not u.is_system
@@ -304,9 +304,10 @@ def _navigator_updates(read: bool = False, current: bool = False):
         offered("Drive 53", "9.00", ".System/B444900.update", 64_655_360, NAVIGATOR[2],
                 hidden=".System", same=current, installed="9.00" if current else "8.50",
                 severity="Critical", reinstall=current),
+        # Garmin's server gives the time zone map a license, as the real Drive's question shows.
         offered("Time Zone Map", "43.00", ".System/gmaptz.img", 582_656, "006-D1074-00",
                 hidden=".System", same=current, installed="43.00" if current else "41.00",
-                reinstall=current),
+                reinstall=current, eula="https://example.org/made-up-eula"),
         *add_ons, *reinstalls]
 
 

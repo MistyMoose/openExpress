@@ -3704,7 +3704,7 @@ def build_parser() -> argparse.ArgumentParser:
                            ("enable", _("enable an app or built-in activity")),
                            ("disable", _("disable an app or built-in activity"))):
         a = asub.add_parser(name, help=helptext)
-        a.add_argument("name", metavar="NAME", help=_("app name (or part of it) or app id"))
+        a.add_argument("name", metavar="NAME", help=_("app name (or part of it) or app ID"))
         a.add_argument("--apply", action="store_true", help=apply_help[name])
         if name == "install":
             a.add_argument("--allow-permissions", action="store_true",

@@ -205,7 +205,7 @@ def test_allow_installs_all_and_cancel_nothing(monkeypatch):
     _win, dialog, installed = _question(monkeypatch, [plain, FACE_IT], [FACE_IT])
     assert dialog.get_heading() == "Allow New Permissions?"
     assert "Face It 1.0 needs these permissions:\n• GPS location" in dialog.get_body()
-    assert dialog.get_body().endswith("openExpress installs it only if you allow them.")
+    assert dialog.get_body().endswith("openExpress installs it only if you allow its new permissions.")
     assert [dialog.get_response_label(r) for r in ("cancel", "others", "allow")] == [
         "Cancel", "Skip These Apps", "Allow"]
     _answer(dialog, "allow")
@@ -223,7 +223,7 @@ def test_one_question_for_several_apps_and_no_others_button_without_others(monke
     other = flagged(store_app(STORE_ID, "Connect IQ Store", "watch-app"))
     _win, dialog, installed = _question(monkeypatch, [other, FACE_IT], [other, FACE_IT])
     assert dialog.get_heading() == "Allow New Permissions for 2 Apps?"
-    assert dialog.get_body().endswith("openExpress installs them only if you allow them.")
+    assert dialog.get_body().endswith("openExpress installs them only if you allow their new permissions.")
     assert not dialog.has_response("others")
     _answer(dialog, "allow")
     assert installed == [(["Connect IQ Store", "Face It"], {STORE_ID, FACE})]
@@ -269,6 +269,6 @@ def test_the_question_in_polish(monkeypatch):
     assert body == ("Face It 1.0 potrzebuje tych uprawnień:\n"
                     "• lokalizacja GPS\n"
                     "• internet przez telefon\n\n"
-                    "openExpress zainstaluje ją tylko wtedy, gdy na nie zezwolisz.")
+                    "openExpress zainstaluje ją tylko wtedy, gdy zezwolisz na jej nowe uprawnienia.")
     assert labels == ["Anuluj", "Pomiń te aplikacje", "Zezwól"]
     assert several_heading == "Zezwolić na nowe uprawnienia dla 2 aplikacji?"

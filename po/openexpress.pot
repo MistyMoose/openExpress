@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 19:17+0100\n"
+"POT-Creation-Date: 2026-11-16 20:33+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -217,7 +217,7 @@ msgstr ""
 
 #: openexpress/auth/sso.py
 #, ignore-end-stop, python-brace-format
-msgid "The given URL has no ticket=ST-... parameter"
+msgid "The given URL has no ticket=ST-… parameter"
 msgstr ""
 
 #. TRANSLATORS: shown in place of the signed-in Garmin account's name when it has no user
@@ -4183,7 +4183,7 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "app name (or part of it) or app id"
+msgid "app name (or part of it) or app ID"
 msgstr ""
 
 #: openexpress/cli.py
@@ -6052,10 +6052,13 @@ msgstr ""
 msgid "Restoring the Order…"
 msgstr ""
 
+#. TRANSLATORS: the last line of the confirmation before installing apps that ask for
+#. new permissions, under what each of them asks for: "it"/"them" are the apps
 #: openexpress/gui/apps_page.py
 #, python-brace-format
-msgid "openExpress installs it only if you allow them."
-msgid_plural "openExpress installs them only if you allow them."
+msgid "openExpress installs it only if you allow its new permissions."
+msgid_plural ""
+"openExpress installs them only if you allow their new permissions."
 msgstr[0] ""
 msgstr[1] ""
 

@@ -71,7 +71,7 @@ server request|Primary wearable|ignore-reused
 sport|Stand-up paddleboarding|ignore-multiple-capital
 
 # ignore-end-stop
-|The given URL has no ticket=ST-... parameter|ignore-end-stop
+|The given URL has no ticket=ST-… parameter|ignore-end-stop
 
 # ignore-newline-count
 |\nTo finish the installation:\n  1. Unplug the device from the computer.\n  2. If the device does not turn on by itself, turn it on.\n  3. The device installs the update by itself. It may ask whether to install it:\n     choose to install now. It may also restart. Wait until it has finished.\n  4. Plug it in again and run `openexpress updates`: the installed update\n     should no longer be listed.\n|ignore-newline-count

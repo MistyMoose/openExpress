@@ -449,8 +449,10 @@ class AppsPage:
         others = [a for a in apps if a not in asking]
         allowed = {a.app_id for a in asking}
         body = "\n\n".join([*(ciq.permissions_text(a) for a in asking), ngettext(
-            "openExpress installs it only if you allow them.",
-            "openExpress installs them only if you allow them.", count)])
+            # TRANSLATORS: the last line of the confirmation before installing apps that ask for
+            # new permissions, under what each of them asks for: "it"/"them" are the apps
+            "openExpress installs it only if you allow its new permissions.",
+            "openExpress installs them only if you allow their new permissions.", count)])
         # The choice is data of these closures, not of the dialog (confirm says why).
         answers = [Answer(
             # TRANSLATORS: button of the confirmation about new permissions: skip the apps that

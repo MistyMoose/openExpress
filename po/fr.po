@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 23:27+0100\n"
+"POT-Creation-Date: 2026-11-16 19:17+0100\n"
 "PO-Revision-Date: 2026-11-14 07:23+0000\n"
 "Last-Translator: Tomasz Bojanowski "
 "<tbojanowski@users.noreply.hosted.weblate.org>\n"
@@ -10623,8 +10623,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be installed: openExpress does not install maps into "
-"{folder} yet."
+"Map “{name}” cannot be installed: openExpress does not install maps into the "
+"folder {folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10658,14 +10658,14 @@ msgstr ""
 #. openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install maps into {folder} yet"
+msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr ""
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
 #. ({folder}, e.g. .System); openExpress installs software updates there, not maps
 #: openexpress/maps.py
 #, python-brace-format
-msgid "openExpress does not install maps into {folder} yet."
+msgid "openExpress does not install maps into the folder {folder} yet."
 msgstr ""
 
 #: openexpress/maps.py
@@ -10733,8 +10733,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
-"Map “{name}” cannot be removed: openExpress does not remove maps from "
-"{folder} yet."
+"Map “{name}” cannot be removed: openExpress does not remove maps from the "
+"folder {folder} yet."
 msgstr ""
 
 #. TRANSLATORS: a step of a map removal; {name}: the map ("… · 2 of 5")
@@ -11931,6 +11931,35 @@ msgstr ""
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
+"\n"
+"To finish the installation:\n"
+"  1. Unplug the device from the computer.\n"
+"  2. If the device does not turn on by itself, turn it on.\n"
+"  3. The device installs the update by itself. It may ask whether to install "
+"it:\n"
+"     choose to install now. It may also restart. Wait until it has "
+"finished.\n"
+"  4. Plug it in again if you want to check it: the software version stays\n"
+"     the same.\n"
+msgstr ""
+
+#. TRANSLATORS: in the message after a component already on the device was copied to it again:
+#. one line for each step, with no line break inside a sentence (the window wraps the words)
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"To finish the installation:\n"
+"1. Unplug the device from the computer.\n"
+"2. If the device does not turn on by itself, turn it on.\n"
+"3. The device installs the update by itself. It may ask whether to install "
+"it: choose to install now. It may also restart. Wait until it has finished.\n"
+"4. Plug it in again if you want to check it: the software version stays the "
+"same."
+msgstr ""
+
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
 "Warning: this is a device system update. Charge the device and do not unplug "
 "it while copying."
 msgstr ""
@@ -12022,8 +12051,8 @@ msgstr "Non spécifiée"
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"Not installed: {name} {version} goes to {folder}, which openExpress cannot "
-"see on the device."
+"Not installed: {name} {version} goes to the folder {folder}, which "
+"openExpress cannot see on the device."
 msgstr ""
 
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress

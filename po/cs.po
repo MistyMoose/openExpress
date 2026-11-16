@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 23:27+0100\n"
+"POT-Creation-Date: 2026-11-16 19:17+0100\n"
 "PO-Revision-Date: 2026-11-16 19:44+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -9757,8 +9757,8 @@ msgid ""
 "folder {folder}. Give it the permission (see the README) or use the version "
 "from source."
 msgstr ""
-"Verze Flatpak nemá přístup k USB zařízením, takže nemůže číst složku {folder}"
-". Udělte jí potřebná oprávnění (viz README) nebo použijte verzi ze "
+"Verze Flatpak nemá přístup k USB zařízením, takže nemůže číst složku "
+"{folder}. Udělte jí potřebná oprávnění (viz README) nebo použijte verzi ze "
 "zdrojového kódu."
 
 #. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
@@ -11102,8 +11102,8 @@ msgid ""
 "folder {folder}. Give it the permission (see the README) or use the version "
 "from source."
 msgstr ""
-"Verze Flatpak nemá přístup k USB zařízením, takže nemůže číst složku {folder}"
-". Udělte jí potřebná oprávnění (viz README) nebo použijte verzi ze "
+"Verze Flatpak nemá přístup k USB zařízením, takže nemůže číst složku "
+"{folder}. Udělte jí potřebná oprávnění (viz README) nebo použijte verzi ze "
 "zdrojového kódu."
 
 #. TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection, e.g.
@@ -11433,10 +11433,13 @@ msgstr "Nelze nainstalovat: server neposkytl všechny soubory"
 #. TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
 #. e.g. .System
 #: openexpress/maps.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Map “{name}” cannot be installed: openExpress does not install maps into "
+#| "{folder} yet."
 msgid ""
-"Map “{name}” cannot be installed: openExpress does not install maps into "
-"{folder} yet."
+"Map “{name}” cannot be installed: openExpress does not install maps into the "
+"folder {folder} yet."
 msgstr ""
 "Mapu „{name}“ nelze nainstalovat: openExpress zatím nepodporuje instalaci "
 "map do složky {folder}."
@@ -11475,15 +11478,17 @@ msgstr "Žádná mapa s názvem „{name}“"
 #. ({folder}, e.g. .System), and under its own maps' folder there, without a full stop;
 #. openExpress installs software updates there, not maps
 #: openexpress/maps.py
-#, python-brace-format
-msgid "openExpress does not install maps into {folder} yet"
+#, fuzzy, python-brace-format
+#| msgid "openExpress does not install maps into {folder} yet"
+msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr "openExpress zatím nepodporuje instalaci map do složky {folder}"
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
 #. ({folder}, e.g. .System); openExpress installs software updates there, not maps
 #: openexpress/maps.py
-#, python-brace-format
-msgid "openExpress does not install maps into {folder} yet."
+#, fuzzy, python-brace-format
+#| msgid "openExpress does not install maps into {folder} yet."
+msgid "openExpress does not install maps into the folder {folder} yet."
 msgstr "openExpress zatím nepodporuje instalaci map do složky {folder}."
 
 #: openexpress/maps.py
@@ -11561,10 +11566,13 @@ msgstr ""
 #. TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
 #. ordinary USB connection, e.g. .System
 #: openexpress/maps.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Map “{name}” cannot be removed: openExpress does not remove maps from "
+#| "{folder} yet."
 msgid ""
-"Map “{name}” cannot be removed: openExpress does not remove maps from "
-"{folder} yet."
+"Map “{name}” cannot be removed: openExpress does not remove maps from the "
+"folder {folder} yet."
 msgstr ""
 "Mapu „{name}“ nelze odstranit: openExpress zatím nepodporuje odstraňování "
 "map ze složky {folder}."
@@ -12881,6 +12889,74 @@ msgstr ""
 "aktualizace by se už neměla zobrazovat v seznamu."
 
 #: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "\n"
+#| "To finish the installation:\n"
+#| "  1. Unplug the device from the computer.\n"
+#| "  2. If the device does not turn on by itself, turn it on.\n"
+#| "  3. The device installs the update by itself. It may ask whether to "
+#| "install it:\n"
+#| "     choose to install now. It may also restart. Wait until it has "
+#| "finished.\n"
+#| "  4. Plug it in again and run `openexpress updates`: the installed "
+#| "update\n"
+#| "     should no longer be listed.\n"
+msgid ""
+"\n"
+"To finish the installation:\n"
+"  1. Unplug the device from the computer.\n"
+"  2. If the device does not turn on by itself, turn it on.\n"
+"  3. The device installs the update by itself. It may ask whether to install "
+"it:\n"
+"     choose to install now. It may also restart. Wait until it has "
+"finished.\n"
+"  4. Plug it in again if you want to check it: the software version stays\n"
+"     the same.\n"
+msgstr ""
+"\n"
+"Dokončení instalace:\n"
+"  1. Odpojte zařízení od počítače.\n"
+"  2. Pokud se zařízení samo nezapne, zapněte ho.\n"
+"  3. Zařízení samo nainstaluje aktualizaci. Může se zeptat, zda ji chcete "
+"nainstalovat:\n"
+"     zvolte instalaci nyní. Může se také restartovat. Počkejte na "
+"dokončení.\n"
+"  4. Znovu zařízení připojte a spusťte `openexpress updates`: nainstalovaná\n"
+"     aktualizace by se už neměla zobrazovat v seznamu.\n"
+
+#. TRANSLATORS: in the message after a component already on the device was copied to it again:
+#. one line for each step, with no line break inside a sentence (the window wraps the words)
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "To finish the installation:\n"
+#| "1. Unplug the device from the computer.\n"
+#| "2. If the device does not turn on by itself, turn it on.\n"
+#| "3. The device installs the update by itself. It may ask whether to "
+#| "install it: choose to install now. It may also restart. Wait until it has "
+#| "finished.\n"
+#| "4. Plug it in again and check for updates again: the installed update "
+#| "should no longer be listed."
+msgid ""
+"To finish the installation:\n"
+"1. Unplug the device from the computer.\n"
+"2. If the device does not turn on by itself, turn it on.\n"
+"3. The device installs the update by itself. It may ask whether to install "
+"it: choose to install now. It may also restart. Wait until it has finished.\n"
+"4. Plug it in again if you want to check it: the software version stays the "
+"same."
+msgstr ""
+"Dokončení instalace:\n"
+"1. Odpojte zařízení od počítače.\n"
+"2. Pokud se zařízení samo nezapne, zapněte ho.\n"
+"3. Zařízení samo nainstaluje aktualizaci. Může se zeptat, zda ji chcete "
+"nainstalovat: zvolte instalaci nyní. Může se také restartovat. Počkejte na "
+"dokončení.\n"
+"4. Znovu zařízení připojte a zkontrolujte aktualizace: nainstalovaná "
+"aktualizace by se už neměla zobrazovat v seznamu."
+
+#: openexpress/updates.py
 #, python-brace-format
 msgid ""
 "Warning: this is a device system update. Charge the device and do not unplug "
@@ -12985,10 +13061,13 @@ msgstr "Neurčeno"
 #. TRANSLATORS: `openexpress updates`: an update openExpress does not install; {folder}: the
 #. folder of the device's top level its file goes to, e.g. .System
 #: openexpress/updates.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Not installed: {name} {version} goes to {folder}, which openExpress "
+#| "cannot see on the device."
 msgid ""
-"Not installed: {name} {version} goes to {folder}, which openExpress cannot "
-"see on the device."
+"Not installed: {name} {version} goes to the folder {folder}, which "
+"openExpress cannot see on the device."
 msgstr ""
 "Nenainstalováno: aktualizace {name} verze {version} se ukládá do složky "
 "{folder}, ke které openExpress nemá na tomto zařízení přístup."

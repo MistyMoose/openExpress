@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 19:17+0100\n"
+"POT-Creation-Date: 2026-11-16 20:33+0100\n"
 "PO-Revision-Date: 2026-11-16 19:44+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -222,8 +222,9 @@ msgid "3. Paste the URL: "
 msgstr "3. Vložte adresu URL: "
 
 #: openexpress/auth/sso.py
-#, python-brace-format
-msgid "The given URL has no ticket=ST-... parameter"
+#, fuzzy, python-brace-format
+#| msgid "The given URL has no ticket=ST-... parameter"
+msgid "The given URL has no ticket=ST-… parameter"
 msgstr "Zadaná URL neobsahuje parametr ticket=ST-..."
 
 #. TRANSLATORS: shown in place of the signed-in Garmin account's name when it has no user
@@ -4596,8 +4597,9 @@ msgid "disable an app or built-in activity"
 msgstr "vypnout aplikaci nebo vestavěnou aktivitu"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "app name (or part of it) or app id"
+#, fuzzy, python-brace-format
+#| msgid "app name (or part of it) or app id"
+msgid "app name (or part of it) or app ID"
 msgstr "název aplikace (nebo jeho část) nebo ID aplikace"
 
 #: openexpress/cli.py
@@ -6624,10 +6626,15 @@ msgstr "Aplikace v zařízení už jsou v tomto pořadí"
 msgid "Restoring the Order…"
 msgstr "Obnovování pořadí…"
 
+#. TRANSLATORS: the last line of the confirmation before installing apps that ask for
+#. new permissions, under what each of them asks for: "it"/"them" are the apps
 #: openexpress/gui/apps_page.py
-#, python-brace-format
-msgid "openExpress installs it only if you allow them."
-msgid_plural "openExpress installs them only if you allow them."
+#, fuzzy, python-brace-format
+#| msgid "openExpress installs it only if you allow them."
+#| msgid_plural "openExpress installs them only if you allow them."
+msgid "openExpress installs it only if you allow its new permissions."
+msgid_plural ""
+"openExpress installs them only if you allow their new permissions."
 msgstr[0] "openExpress provede instalaci pouze s vaším souhlasem."
 msgstr[1] "openExpress provede instalaci pouze s vaším souhlasem."
 msgstr[2] "openExpress provede instalaci pouze s vaším souhlasem."

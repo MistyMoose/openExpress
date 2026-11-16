@@ -191,8 +191,9 @@ connected device; no login is needed.
   by name and size; their contents are not read. It installs software updates and the time zone
   map there as Garmin Express writes them: the old file of that name is deleted first, and the
   new one is checked by its size and read back whole; after the device's own software, the
-  message says to keep the device powered while it installs it. **Check Again** reads the folder
-  anew. When the session cannot be opened (a Flatpak
+  message says to keep the device powered while it installs it. **Reinstall Components** writes
+  a component already there again the same way; as on a watch, the page then waits for nothing.
+  **Check Again** reads the folder anew. When the session cannot be opened (a Flatpak
   without access to USB devices), the page says why the folder could not be read. Voices and
   vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
 

@@ -1492,13 +1492,13 @@ def test_the_updates_page_offers_install_for_the_folder_read(navigator):
 # --- after a copy into the folder read: waiting for the device, as on a watch -----------------
 
 
-def _window_of(storage, offered):
+def _window_of(storage, offered, version="8.50"):
     """The stand-in window with the Updates page of the made-up Drive as it shows `offered`,
-    its server's offer, once the folder is read."""
+    its server's offer, once the folder is read; `version`: its software's."""
     s = types.SimpleNamespace(storage=storage, client=types.SimpleNamespace(http=None),
                               device=types.SimpleNamespace(unit_id=None,
                                                            description="Made-up Drive",
-                                                           software_version_str="8.50"),
+                                                           software_version_str=version),
                               mass_storage=False)
     win = stand_in(session=s, updates_cache=offered, updates_beta=False, progress=None,
                    sections={"updates": _Section()}, busy=False, _action_buttons=[],
@@ -1673,3 +1673,174 @@ def test_the_maps_row_counts_no_update_openexpress_cannot_install(navigator, lan
     finally:
         i18n.setup("en")
     assert (win.map_update_count, win.map_row.subtitle) == (0, text)
+
+
+# --- a component on the device installed again into the folder read, as an update ------------
+#
+# The made-up Drive at 9.00: the software and the time zone map it was offered are installed, and
+# the server offers them as reinstalls; their files are in .System at the size it gives.
+
+
+def reinstall_answer():
+    answer = drive_answer()
+    for entry in answer["updates"]:
+        entry["installation"]["isReinstall"] = True
+    return answer
+
+
+def drive_at_9(navigator):
+    fake = navigator_session(software=SYSTEM)
+    fake.objects[fake.handle(".System/gmaptz.img")].data = TZ_NEW
+    return fake, OverUsb(navigator, fake)
+
+
+def _reinstalls(storage, read=True):
+    if read:
+        hidden_folders.read(storage, [".System"], "test")
+    return _by_part(_offered_from(storage, reinstall_answer()))
+
+
+def test_a_reinstall_into_the_folder_read_is_placed_as_an_update(navigator):
+    _fake, storage = drive_at_9(navigator)
+    unread = _reinstalls(storage, read=False)
+    assert all(u.is_reinstall and u.hidden_folder == ".System" for u in unread.values())
+    assert updates.hidden_needed(list(unread.values())) == [".System"]  # read before a write
+    by = _reinstalls(storage)
+    assert all(u.hidden_read and u.hidden_size_same is True for u in by.values())
+    assert updates.hidden_needed(list(by.values())) == []
+
+
+@pytest.mark.needs_display
+def test_the_reinstall_row_and_its_question_say_what_is_replaced(navigator, in_the_window):
+    from gi.repository import Adw
+
+    from openexpress.gui.app import MainWindow
+
+    asked = []
+    in_the_window("confirm", lambda win, name, heading, body, *answers, **kw:
+                  asked.append((heading, body, _texts(kw["extra"]) if kw.get("extra") else [])))
+    _fake, storage = drive_at_9(navigator)
+    by = _reinstalls(storage)
+    win, _s = _window_of(storage, list(by.values()), version="9.00")
+    status, advanced = win.sections["updates"].groups
+    assert _texts(status.rows[0])[0] == "Software is up to date"
+    (components,) = [r for r in advanced.rows if isinstance(r, Adw.ExpanderRow)]
+    texts = _texts(components)
+    assert texts.count("Reinstall") == 2 * 2  # a button of each row (its label twice)
+    assert not any("cannot see" in t for t in texts)
+    for part in ("006-D9001-00", "006-B0000-00"):
+        MainWindow.confirm_update(win, by[part])
+    (tz_heading, tz_body, tz_below), (_heading, system_body, system_below) = asked
+    assert tz_heading == "Install Update?"
+    assert tz_body.endswith("\n\nThe update replaces the file gmaptz.img on the device.")
+    assert system_body.endswith("\n\nThe update replaces the file B000000.update on the device.")
+    assert updates.SYSTEM_UPDATE_WARNING in system_below
+    assert updates.SYSTEM_UPDATE_WARNING not in tz_below
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize(("part", "steps", "power"), [
+    ("006-D9001-00", TZ_STEPS, False), ("006-B0000-00", SYSTEM_STEPS, True)])
+def test_the_window_reinstalls_into_the_folder_read_as_it_installs_an_update(
+        navigator, drive_downloads, in_the_window, part, steps, power):
+    from openexpress.gui.updates_page import _install_task
+
+    said = []
+    in_the_window("inform", lambda win, name, heading, body, **kw:
+                  said.append((name, heading, body)))
+    fake, storage = drive_at_9(navigator)
+    by = _reinstalls(storage)
+    win, s = _window_of(storage, list(by.values()), version="9.00")
+    work, done, _failed = _install_task(win, s, [by[part]])
+    done(work())
+    assert fake.steps == steps  # the old file deleted, the new one written and read back
+    ((name, heading, body),) = said
+    assert (name, heading) == ("update-done", "Done")
+    assert body.startswith("Files copied to the device.\n")
+    assert body.endswith(POWER) == power and "Still available" not in body
+    assert "the software version stays the same" in body
+    assert "should no longer be listed" not in body
+    # The page after the copy: nothing waits for the device, nothing "not installed".
+    status, advanced = win.sections["updates"].groups
+    assert _texts(status.rows[0])[0] == "Software is up to date"
+    assert [g.title for g in win.sections["updates"].groups] == ["", "Advanced"]
+
+
+def test_after_a_reinstall_and_an_unplugging_nothing_waits_or_is_not_installed(
+        navigator, drive_downloads, monkeypatch):
+    from openexpress import history, known_devices, service
+
+    _fake, storage = drive_at_9(navigator)
+    device = service.read_device(storage, found_now=True)
+    by = _reinstalls(storage)
+    report = updates.install([by["006-D9001-00"]], storage, unit_id=device.unit_id)
+    assert [u.part_number for u in report.written] == ["006-D9001-00"]
+    # The next connection, begun after the copy, with the same offer: as for a watch, a
+    # reinstall is no update that waits or that the device did not install.
+    monkeypatch.setattr(history, "connection_started", lambda device, storage: 4e9)
+    hidden_folders.forget(storage)
+    hidden_folders.read(storage, [".System"], "test")
+    items = updates.offered(storage, lower_keys(reinstall_answer()), device)
+    assert updates.staged(items) == updates.not_installed(items) == updates.pending(items) == []
+    assert not known_devices.load()[device.unit_id].copied_updates
+    assert updates.state(updates.pending(items), updates.staged(items),
+                         updates.not_installed(items)) == "current"
+
+
+@pytest.mark.parametrize(("part", "steps", "power"), [
+    ("006-D9001-00", TZ_STEPS, False), ("006-B0000-00", SYSTEM_STEPS, True)])
+def test_the_command_line_reinstalls_into_the_folder_read(navigator, monkeypatch, capsys,
+                                                          drive_downloads, part, steps, power):
+    from openexpress import cli
+
+    fake, storage = drive_at_9(navigator)
+    monkeypatch.setattr(cli, "open_storage", lambda args: storage)
+    answer = lower_keys(reinstall_answer())
+    monkeypatch.setattr(GarminClient, "software_updates",
+                        lambda self, raw, include_reinstalls=False: answer)
+    monkeypatch.setattr(GarminClient, "unit_info", lambda self, unit_id, part_number: {})
+    assert main(["updates", "--reinstalls"]) == 0
+    assert "cannot see" not in capsys.readouterr().out
+    assert main(["updates", "--reinstalls", "--install", part, "--apply"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert "Copied 1 file." in out and (POWER in out) == power
+    # The same version stays on the device: the steps do not promise it leaves the list.
+    assert "  4. Plug it in again if you want to check it: the software version stays" in out
+    assert not any("should no longer be listed" in line for line in out)
+    assert fake.steps == steps
+
+
+def test_a_reinstall_into_a_folder_not_read_is_refused_and_says_why(navigator, monkeypatch,
+                                                                     capsys, drive_downloads):
+    from openexpress import cli
+
+    fake = navigator_session(software=SYSTEM)
+    storage = OverUsb(navigator, None)  # no session of its own can be opened here
+    monkeypatch.setattr(cli, "open_storage", lambda args: storage)
+    answer = lower_keys(reinstall_answer())
+    monkeypatch.setattr(GarminClient, "software_updates",
+                        lambda self, raw, include_reinstalls=False: answer)
+    monkeypatch.setattr(GarminClient, "unit_info", lambda self, unit_id, part_number: {})
+    assert main(["updates", "--reinstalls", "--install", "006-D9001-00", "--apply"]) == 1
+    captured = capsys.readouterr()
+    assert NOT_INSTALLED_TZ.strip() in captured.out + captured.err
+    assert fake.steps == [] and drive_downloads == []
+
+
+@pytest.mark.needs_display
+def test_a_second_reinstall_on_the_same_page_names_the_file_it_replaces(
+        navigator, drive_downloads, in_the_window):
+    from openexpress.gui.app import MainWindow
+    from openexpress.gui.updates_page import _install_task
+
+    bodies = []
+    in_the_window("inform", lambda *args, **kw: None)
+    in_the_window("confirm", lambda win, name, heading, body, *answers, **kw:
+                  bodies.append(body))
+    _fake, storage = drive_at_9(navigator)
+    by = _reinstalls(storage)
+    win, s = _window_of(storage, list(by.values()), version="9.00")
+    work, done, _failed = _install_task(win, s, [by["006-D9001-00"]])
+    done(work())
+    MainWindow.confirm_update(win, by["006-D9001-00"])  # Reinstall again, the page as it is
+    assert bodies[-1].endswith("\n\nThe update replaces the file gmaptz.img on the device.")

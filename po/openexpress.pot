@@ -11873,6 +11873,35 @@ msgstr ""
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
+"\n"
+"To finish the installation:\n"
+"  1. Unplug the device from the computer.\n"
+"  2. If the device does not turn on by itself, turn it on.\n"
+"  3. The device installs the update by itself. It may ask whether to install "
+"it:\n"
+"     choose to install now. It may also restart. Wait until it has "
+"finished.\n"
+"  4. Plug it in again if you want to check it: the software version stays\n"
+"     the same.\n"
+msgstr ""
+
+#. TRANSLATORS: in the message after a component already on the device was copied to it again:
+#. one line for each step, with no line break inside a sentence (the window wraps the words)
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
+"To finish the installation:\n"
+"1. Unplug the device from the computer.\n"
+"2. If the device does not turn on by itself, turn it on.\n"
+"3. The device installs the update by itself. It may ask whether to install "
+"it: choose to install now. It may also restart. Wait until it has finished.\n"
+"4. Plug it in again if you want to check it: the software version stays the "
+"same."
+msgstr ""
+
+#: openexpress/updates.py
+#, python-brace-format
+msgid ""
 "Warning: this is a device system update. Charge the device and do not unplug "
 "it while copying."
 msgstr ""

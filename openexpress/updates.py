@@ -69,6 +69,38 @@ FINISH_STEPS_WINDOW = N_("To finish the installation:\n"
                          "it has finished.\n"
                          "4. Plug it in again and check for updates again: the installed "
                          "update should no longer be listed.")
+# The same after a reinstall: the version on the device stays, so it does not leave the list.
+FINISH_STEPS_REINSTALL = N_("""
+To finish the installation:
+  1. Unplug the device from the computer.
+  2. If the device does not turn on by itself, turn it on.
+  3. The device installs the update by itself. It may ask whether to install it:
+     choose to install now. It may also restart. Wait until it has finished.
+  4. Plug it in again if you want to check it: the software version stays
+     the same.
+""")
+# TRANSLATORS: in the message after a component already on the device was copied to it again:
+# one line for each step, with no line break inside a sentence (the window wraps the words)
+FINISH_STEPS_REINSTALL_WINDOW = N_("To finish the installation:\n"
+                                   "1. Unplug the device from the computer.\n"
+                                   "2. If the device does not turn on by itself, turn it on.\n"
+                                   "3. The device installs the update by itself. It may ask "
+                                   "whether to install it: choose to install now. It may also "
+                                   "restart. Wait until it has finished.\n"
+                                   "4. Plug it in again if you want to check it: the software "
+                                   "version stays the same.")
+
+
+def finish_steps(written: list, window: bool = False) -> str:
+    """The steps after updates were copied (an untranslated constant: show it with _()), those
+    of a reinstall when all `written` are reinstalls: then the same version stays on the device
+    and the server goes on listing it, so the steps do not promise it leaves the list."""
+    reinstall = bool(written) and all(u.is_reinstall for u in written)
+    if window:
+        return FINISH_STEPS_REINSTALL_WINDOW if reinstall else FINISH_STEPS_WINDOW
+    return FINISH_STEPS_REINSTALL if reinstall else FINISH_STEPS
+
+
 # Said before an update the device installs once disconnected (installs_when_disconnected),
 # on the command line and in the window.
 SYSTEM_UPDATE_WARNING = N_("Warning: this is a device system update. Charge the device and do "
@@ -352,15 +384,17 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
     offered = [u for u in updates if u.is_offer]
     tops = top_folders(storage)
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
+    for u in updates:
+        place(u, tops, listing)
+        u.hidden_size_same = None  # compared anew below, from what this connection read
+        if u.hidden_read and not u.is_offer:
+            # A reinstall's file there, by name and size: the question names what it replaces.
+            presence_by_size(listing, u)
     found = []
     for u in offered:
-        u.hidden_folder = top_folder_not_seen(u, tops)
-        u.hidden_session = u.hidden_size_same = None
         if u.hidden_folder is None:
             found.append(presence(storage, u))
         else:
-            u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
-                                if listing is not None else None)
             found.append(presence_by_size(listing, u) if u.hidden_read
                          else Presence(TOP_FOLDER_NOT_SEEN))
         # The device's own software at the size offered is not taken for the same file: its
@@ -409,12 +443,25 @@ def top_folder_not_seen(u: SoftwareUpdate, tops: set[str] | None) -> str | None:
     return None if parts[0].casefold() in tops else parts[0]
 
 
+def place(u: SoftwareUpdate, tops: set[str] | None,
+          listing: hidden_folders.Listing | None) -> None:
+    """Where the file of `u` goes, the same for an update, a reinstall and a -META entry: the
+    folder of the device's top level the listing does not show (hidden_folder; `tops`:
+    top_folders), and what became of reading its folder through openExpress's own session in
+    this connection (hidden_session; `listing`: hidden_folders.kept). Decided here alone, for
+    the page, the command line and the write; what is in that folder is mark_present's."""
+    u.hidden_folder = top_folder_not_seen(u, tops)
+    u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
+                        if u.hidden_folder is not None and listing is not None else None)
+
+
 def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
-    """The folders the offered updates go to whose folder of the top level ordinary MTP does not
-    show, and that this connection has not tried to read yet (hidden_folders.read), each once."""
+    """The folders the updates and the reinstalls go to whose folder of the top level ordinary
+    MTP does not show, and that this connection has not tried to read yet
+    (hidden_folders.read), each once: what may be written there is read first."""
     out: dict[str, str] = {}
     for u in updates:
-        if u.is_offer and u.hidden_folder is not None and u.hidden_session is None:
+        if u.hidden_folder is not None and u.hidden_session is None:
             folder = posixpath.dirname(u.device_path)
             out.setdefault(folder.casefold(), folder)
     return sorted(out.values(), key=str.casefold)
@@ -810,8 +857,9 @@ def _install(
     # .System), unless that folder was read through openExpress's own session; nothing is
     # downloaded for an update refused.
     tops = top_folders(storage)
+    listing = hidden_folders.kept(storage)
     for u in updates:
-        u.hidden_folder = top_folder_not_seen(u, tops)
+        place(u, tops, listing)  # as the page and the command line placed it
         if u.hidden_folder is not None and not u.hidden_read:
             log.info("software update: %s %s not installed: its top folder %s is not seen",
                      u.part_number, u.version, u.hidden_folder)

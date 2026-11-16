@@ -179,9 +179,9 @@ changes anything only shows its plan until you add `--apply`. Every command:
   not to a memory card.
 - A car navigator that hides the folder of its software and maps (`.System`) from the ordinary USB
   connection, such as the Drive 53 EX ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)),
-  gets only its software updates and its time zone map installed there: openExpress reads that
-  folder through a USB session of its own and writes them as Garmin Express does, each checked
-  by its size and read back whole. Its maps there are shown but not installed or removed yet, and
+  gets only its software updates and its time zone map installed there, also again from
+  **Reinstall Components**: openExpress reads that folder through a USB session of its own and
+  writes them as Garmin Express does, each checked by its size and read back whole. Its maps there are shown but not installed or removed yet, and
   voices and vehicles Garmin offers to add are not installed either.
 - GPS satellite data is written only to watches that already keep it in a format openExpress
   knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8), and only when

@@ -42,8 +42,8 @@ log = logging.getLogger(__name__)
 
 SPACE_MARGIN = 50 * 1024 * 1024
 # How fast a map is written and read back whole into a folder a car navigator hides, at the
-# slowest seen (a software update of 64.7 MB on a Drive 53 EX, written and read back in 9.4 s,
-# its read then slowed by this program's own copying): only for the estimate of the trial.
+# slowest measured (a software update of 64.7 MB on a Drive 53 EX, written and read back in
+# 9.4 s): only for the estimate of the trial, which errs on the long side.
 TRIAL_PACE = 6_900_000  # bytes a second
 WAIT_INSTALL, WAIT_REMOVE = "install", "remove"
 # Writing an unlock file the device refused is tried again after a pause, as Garmin Express
@@ -763,7 +763,7 @@ def download_space(m: UniversalMap) -> tuple[int, int]:
 
 
 def trial_minutes(m: UniversalMap) -> int:
-    """At most how many minutes writing and reading back the files of `m` take (TRIAL_PACE)."""
+    """About how many minutes writing and reading back the files of `m` take, at TRIAL_PACE."""
     return max(1, -(-m.size // (TRIAL_PACE * 60)))
 
 
@@ -1117,7 +1117,7 @@ def _install_hidden(m: UniversalMap, removing: list[str], storage: Storage, acti
              len(removing))
     local = _download(m, session, progress, url_salt)
     unlocks = _activation(m, activate, say_to(progress), strict=True)
-    files = [hidden_folders.MapFile(f.device_path, local[f.device_path], f.size, f.md5)
+    files = [hidden_folders.FileToWrite(f.device_path, local[f.device_path], f.size, f.md5)
              for f in write_order(m)]
     try:
         done = hidden_folders.write_map(

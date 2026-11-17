@@ -5,7 +5,8 @@ session takes the device from the file manager for a moment, so what it read is 
 connection (kept) until the device is unplugged or the user asks again (forget: Check Again,
 Refresh); updates.mark_present, maps.mark_waiting and history.count take it from there. A file
 of an update is written there by write, as Garmin Express writes it, in a session of its own
-that lists its folder anew."""
+that lists its folder anew; the files of a map (the command line's trial) by write_map, all in
+one session."""
 
 from __future__ import annotations
 
@@ -441,7 +442,9 @@ def no_space_map_text(name: str, needed: int, free: int) -> str:
 
 
 @dataclass
-class MapFile:
+class FileToWrite:
+    """A file of a map, downloaded, that write_map writes."""
+
     path: str  # on the device, as the server gives it
     local: Path  # downloaded, checked against its MD5
     size: int
@@ -456,7 +459,7 @@ class MapWritten:
     unlocks: list[str] = field(default_factory=list)
 
 
-def write_map(storage: Storage, name: str, removing: list[str], files: list[MapFile],
+def write_map(storage: Storage, name: str, removing: list[str], files: list[FileToWrite],
               unlocks: list[tuple[str, bytes]], margin: int,
               progress: Callable[[str], None] | None = None, copying: str | None = None,
               checking: str | None = None, check: str = FULL,

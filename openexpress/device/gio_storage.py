@@ -2548,7 +2548,8 @@ def _exclusive(storage: Storage, node: Path | None = None):
             with ptp.Session(transport) as session:
                 log.info("PTP: session open after %.1f s%s", time.monotonic() - started,
                          " (through the device node)" if node is not None else "")
-                log.info("PTP: %s", ptp.operations_line(session))
+                operations = ptp.operations_line(session)  # asks the device (GetDeviceInfo)
+                log.info("PTP: %s", operations)
                 yield session
         except Exception as e:
             log.warning("PTP: session ended with %s: %s", type(e).__name__, e)

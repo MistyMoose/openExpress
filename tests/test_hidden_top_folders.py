@@ -2551,3 +2551,87 @@ def test_an_unlock_file_without_a_place_is_refused_before_the_device_changes(tri
             "the device its unlock file goes. Nothing on the device was changed."
             ) in capsys.readouterr().err
     assert trial_cli.order == ["activate"] and trial_cli.fake.steps == []
+
+
+# --- the operations sent to the device -----------------------------------------------------------
+
+
+def _commands(fake) -> str:
+    """The operations sent to `fake`, each named with its parameters in hex, in order, as one
+    line (the commands of the transfers, not the data)."""
+    import struct
+
+    sent = []
+    for t in fake.transfers:
+        if len(t) >= 12:
+            length, kind, code, _transaction = struct.unpack_from("<IHHI", t)
+            if kind == 1 and length == len(t):
+                params = struct.unpack_from(f"<{(length - 12) // 4}I", t, 12)
+                sent.append(" ".join([ptp.operation_name(code), *(f"{p:x}" for p in params)]))
+    return " | ".join(sent)
+
+
+# Reading .System through a session of its own, then a session for each of the two files of
+# the updates; the trial: the map's folders read, then one session that writes the map.
+UPDATES_OPERATIONS = (
+    "OpenSession 1 | GetStorageIDs | GetObjectHandles 10001 0 ffffffff | GetObjectInfo 100 | "
+    "GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | Garmin GetObjectIds 10001 "
+    "ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | Garmin GetObjectIds 10001 106 "
+    "| GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | GetObjectInfo 10a | "
+    "CloseSession | OpenSession 1 | GetStorageIDs | GetObjectHandles 10001 0 ffffffff | "
+    "GetObjectInfo 100 | GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | Garmin "
+    "GetObjectIds 10001 ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | Garmin "
+    "GetObjectIds 10001 106 | GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | "
+    "GetObjectInfo 10a | GetStorageInfo 10001 | DeleteObject 10a 0 | SendObjectInfo 10001 106 | "
+    "SendObject | GetObjectInfo 10d | GetObject 10d | CloseSession | OpenSession 1 | "
+    "GetStorageIDs | GetObjectHandles 10001 0 ffffffff | GetObjectInfo 100 | GetObjectInfo 102 | "
+    "GetObjectInfo 103 | GetObjectInfo 104 | Garmin GetObjectIds 10001 ffffffff | GetObjectInfo "
+    "106 | GetObjectHandles 10001 0 106 | GetObjectInfo 10d | Garmin GetObjectIds 10001 106 | "
+    "GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | GetStorageInfo 10001 | "
+    "DeleteObject 109 0 | SendObjectInfo 10001 106 | SendObject | GetObjectInfo 10e | GetObject "
+    "10e | CloseSession")
+TRIAL_OPERATIONS = (
+    "OpenSession 1 | GetStorageIDs | GetObjectHandles 10001 0 ffffffff | GetObjectInfo 100 | "
+    "GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | Garmin GetObjectIds 10001 "
+    "ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | Garmin GetObjectIds 10001 106 "
+    "| GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | GetObjectInfo 10a | "
+    "GetObjectInfo 10e | GetObjectHandles 10001 0 10e | Garmin GetObjectIds 10001 10e | "
+    "GetObjectHandles 10001 0 107 | Garmin GetObjectIds 10001 107 | GetObjectInfo 10b | "
+    "GetObjectInfo 10d | CloseSession | OpenSession 1 | GetStorageIDs | GetObjectHandles 10001 0 "
+    "ffffffff | GetObjectInfo 100 | GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | "
+    "Garmin GetObjectIds 10001 ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | "
+    "Garmin GetObjectIds 10001 106 | GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | "
+    "GetObjectInfo 10a | GetObjectInfo 10e | GetStorageIDs | GetObjectHandles 10001 0 ffffffff | "
+    "GetObjectInfo 100 | GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | Garmin "
+    "GetObjectIds 10001 ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | Garmin "
+    "GetObjectIds 10001 106 | GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | "
+    "GetObjectInfo 10a | GetObjectInfo 10e | GetObjectHandles 10001 0 10e | Garmin GetObjectIds "
+    "10001 10e | GetStorageIDs | GetObjectHandles 10001 0 ffffffff | GetObjectInfo 100 | "
+    "GetObjectInfo 102 | GetObjectInfo 103 | GetObjectInfo 104 | Garmin GetObjectIds 10001 "
+    "ffffffff | GetObjectInfo 106 | GetObjectHandles 10001 0 106 | Garmin GetObjectIds 10001 106 "
+    "| GetObjectInfo 107 | GetObjectInfo 108 | GetObjectInfo 109 | GetObjectInfo 10a | "
+    "GetObjectInfo 10e | GetObjectHandles 10001 0 107 | Garmin GetObjectIds 10001 107 | "
+    "GetObjectInfo 10b | GetObjectInfo 10d | GetStorageInfo 10001 | DeleteObject 10b 0 | "
+    "SendObjectInfo 10001 10e | SendObject | GetObjectInfo 10f | GetObject 10f | SendObjectInfo "
+    "10001 107 | SendObject | GetObjectInfo 110 | GetObject 110 | SendObjectInfo 10001 107 | "
+    "SendObject | GetObjectInfo 111 | GetObject 111 | SendObjectInfo 10001 106 | SendObject | "
+    "GetObjectInfo 112 | GetObject 112 | CloseSession")
+
+
+def test_the_operations_of_installing_updates_into_the_hidden_folder_stay_as_they_are(
+        navigator, drive_downloads):
+    """Reading .System, then installing the software and the time zone map there: every
+    operation sent and its parameters, in order, as written down here."""
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    updates.install(_both(_drive_offered(storage)), storage)
+    assert _commands(fake) == UPDATES_OPERATIONS
+
+
+def test_the_operations_of_the_map_trial_stay_as_they_are(navigator, map_downloads):
+    """Reading the map's folders, then the trial writing the map: every operation sent and its
+    parameters, in order, as written down here."""
+    fake = trial_navigator()
+    storage = OverUsb(navigator, fake)
+    _install_trial(storage, _trial_maps(storage))
+    assert _commands(fake) == TRIAL_OPERATIONS

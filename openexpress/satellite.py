@@ -542,6 +542,13 @@ def _old(known: dict, spec: RxFile, now: float) -> bool:
     return not isinstance(stamp, (int, float)) or now - stamp >= spec.fresh
 
 
+def _age(stamp, now: float) -> str:
+    """How old the data of the device's file are, for the log."""
+    if not isinstance(stamp, (int, float)):
+        return "not of the kind known"
+    return f"its data {(now - stamp) / 3600:.1f} h old"
+
+
 def _connection(device, storage) -> str | None:
     from openexpress import history
 
@@ -600,12 +607,20 @@ def _rx_update(unit_id: int, device, storage, state: State, apply: bool, http) -
                for s in specs):
         state.current, state.error = True, None
         save(unit_id, state)
+        log.info("satellite data: no session needed: nothing waits to be taken, all young enough "
+                 "by the program's record (%s)", "; ".join(
+                     f"{s.name}: {_age(state.files[s.name].get('time'), now)}" for s in specs))
         return Result("current")
     opener = storage.exclusive_ptp()
     if opener is None:
+        log.info("satellite data: no session of our own here: the hidden files cannot be "
+                 "reached, nothing checked")
         return _failed(unit_id, state, HIDDEN, apply)
     key = _connection(device, storage)
     written, reason = 0, None
+    # Of each file, what the session found and did: one line of the log, as each sync with the
+    # feature on has one line of satellite data, with a session or without.
+    said = []
     try:
         with opener as session:
             store, folder, items = _rx_items(session)
@@ -616,6 +631,7 @@ def _rx_update(unit_id: int, device, storage, state: State, apply: bool, http) -
                 found = _named(items, spec.name)
                 content = session.read_file(found[0].handle) if found else None
                 write = content is None
+                found_words = ["not there"] if content is None else []
                 if known.get("pending"):
                     rejected = any(_sha(session.read_file(i.handle)) in (known.get("sha"),
                                                                           known.get("raw"))
@@ -626,36 +642,46 @@ def _rx_update(unit_id: int, device, storage, state: State, apply: bool, http) -
                         known["gone"] = known.get("gone", 0) + 1
                         if known["gone"] >= 2:
                             return _stop(unit_id, state, GONE_TWICE, spec.name)
+                        found_words = ["ours gone"]
                     elif _sha(content) == known.get("sha"):  # ours, not unpacked yet
                         if key is None or known.get("connection") != key:
                             return _stop(unit_id, state, NOT_TAKEN, spec.name)
+                        said.append(f"{spec.name}: ours not unpacked yet, left until unplugged")
                         continue  # it is unpacked once the device is unplugged
                     else:  # taken (ours unpacked), or a newer one from the phone
                         known["pending"], known["gone"] = False, 0
+                        found_words = ["taken (ours unpacked)" if _sha(content) == known.get("raw")
+                                       else "another file in place of ours"]
                 if content is not None:
                     known["time"] = rx_time(content)
                     write = _old(known, spec, now)
+                    found_words.append(_age(known["time"], now))
+                said.append(f"{spec.name}: " + ", ".join(found_words))
                 if not write:
+                    said[-1] += ", young enough"
                     continue
                 try:
                     data = _fetch(spec.url, spec.name, lambda d, s=spec: rx_served(d, s), http)
                 except NotUpdated as e:
                     reason = reason or e.reason
+                    said[-1] += ", Garmin's file not had"
                     continue
                 theirs, ours = known.get("time"), rx_time(data)
                 if content is not None and isinstance(theirs, int) and ours <= theirs:
-                    continue  # Garmin has nothing newer than the device's
+                    said[-1] += ", Garmin's file not newer"
+                    continue
                 _rx_write(session, store, folder, items, spec, data)
                 known.update(time=ours, pending=True, sha=_sha(data),
                              raw=_sha(zlib.decompress(data, wbits=31)), connection=key)
                 written += len(data)
-                log.info("satellite data: %s written (%s), its first bytes read back",
-                         spec.name, applog.size(len(data)))
+                said[-1] += f", written ({applog.size(len(data))}, its first bytes read back)"
     except DeviceNotResponding:
         raise
     except DeviceError as e:
-        log.info("satellite data: not written (%s)", type(e).__name__)
+        said.append(f"stopped: not written ({type(e).__name__})")
+        log.info("satellite data: in a session of our own: %s", "; ".join(said))
         return _failed(unit_id, state, WRITE, apply)
+    log.info("satellite data: in a session of our own: %s", "; ".join(said))
     if written:
         state.written_at, state.error, state.current = time.time(), None, False
         save(unit_id, state)

@@ -49,11 +49,11 @@ public enum EngineError: Error, Sendable, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .remote(_, let message, _): message
-        case .terminated: String(localized: "The openExpress engine stopped unexpectedly.")
-        case .launchFailed(let why): String(localized: "The openExpress engine could not be started: \(why)")
-        case .notRunning: String(localized: "The openExpress engine is not running.")
+        case .terminated: String(localized: "The engine of openExpress for Mac stopped unexpectedly.")
+        case .launchFailed(let why): String(localized: "The engine of openExpress for Mac could not be started: \(why)")
+        case .notRunning: String(localized: "The engine of openExpress for Mac is not running.")
         case .unexpectedResult(let method, _):
-            String(localized: "The openExpress engine gave an answer this version does not understand (\(method)).")
+            String(localized: "The engine of openExpress for Mac gave an answer this version does not understand (\(method)).")
         case .cancelled: String(localized: "Cancelled.")
         }
     }

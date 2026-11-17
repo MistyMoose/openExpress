@@ -206,7 +206,7 @@ public actor EngineClient: EngineConnection {
         restarts = restarts.filter { now - $0 < configuration.restartWindow }
         guard configuration.restartOnCrash, restarts.count < configuration.maxRestarts else {
             gaveUp = true
-            broadcaster.yield(.engineStopped(String(localized: "The openExpress engine stopped unexpectedly.")))
+            broadcaster.yield(.engineStopped(String(localized: "The engine of openExpress for Mac stopped unexpectedly.")))
             return
         }
         restarts.append(now)

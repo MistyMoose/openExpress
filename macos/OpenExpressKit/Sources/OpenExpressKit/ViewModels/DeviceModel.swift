@@ -422,7 +422,7 @@ public final class DeviceModel: Identifiable {
         sync()
         await waitForOperation()
         if needsFirstSyncChoice {
-            lines.append(String(localized: "Open openExpress to choose what its first sync uploads."))
+            lines.append(String(localized: "Open openExpress for Mac to choose what its first sync uploads."))
         } else if errorMessage == nil, let o = lastOutcome {
             lines.append(o)
         }

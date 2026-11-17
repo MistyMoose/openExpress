@@ -1,10 +1,10 @@
 #!/bin/bash
-# Checks an openExpress .pkg without installing it: its signature, its installer rules, and the
+# Checks an openExpress for Mac .pkg without installing it: its signature, its installer rules, and the
 # app taken out of it (pkgutil --expand-full into macos/build/verify/) — its code signature, its
 # machine code, and its engine run as the app runs it, with no Homebrew on PATH. Read-only for
 # devices and the account (verify_engine.py). GPL-3.0-or-later.
 #
-#   macos/scripts/verify-pkg.sh [macos/build/openExpress-<version>.pkg]
+#   macos/scripts/verify-pkg.sh [macos/build/openExpress-for-Mac-<version>.pkg]
 #
 #   VERIFY_ACCOUNT=1  also account.status, which reads the Keychain: macOS may ask whether
 #                     this build's Python may read items another build saved (answer Deny or
@@ -17,7 +17,8 @@ SCRIPTS=$(cd "$(dirname "$0")" && pwd -P)
 MACOS=$(dirname "$SCRIPTS")
 ROOT=$(dirname "$MACOS")
 VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$ROOT/openexpress/__init__.py")
-PKG=${1:-"$MACOS/build/openExpress-$VERSION.pkg"}
+APP_NAME="openExpress for Mac"
+PKG=${1:-"$MACOS/build/openExpress-for-Mac-$VERSION.pkg"}
 OUT="$MACOS/build/verify"
 
 say() { printf '\n--> %s\n' "$*"; }
@@ -33,13 +34,18 @@ say "Expanding into ${OUT#"$ROOT"/}"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 pkgutil --expand-full "$PKG" "$OUT/expanded"
-APP="$OUT/expanded/openExpress-component.pkg/Payload/openExpress.app"
-[ -d "$APP" ] || die "no openExpress.app in the package"
+APP="$OUT/expanded/openExpress-component.pkg/Payload/$APP_NAME.app"
+[ -d "$APP" ] || die "no $APP_NAME.app in the package"
+PLIST_NAME=$(plutil -extract CFBundleName raw "$APP/Contents/Info.plist")
+[ "$PLIST_NAME" = "$APP_NAME" ] || die "the app is called $PLIST_NAME, not $APP_NAME"
+[ "$(plutil -extract CFBundleIdentifier raw "$APP/Contents/Info.plist")" = io.github.openexpress.mac ] \
+    || die "the bundle identifier changed (settings and Keychain items would not carry over)"
 DIST="$OUT/expanded/Distribution"
 grep -q 'hostArchitectures="arm64"' "$DIST" || die "the installer is not arm64-only"
 grep -q "compareVersions(system.version.ProductVersion, '26.0')" "$DIST" || die "no macOS 26 check"
 grep -q 'enable_anywhere="false"' "$DIST" || die "the installer may install elsewhere"
 PKGINFO="$OUT/expanded/openExpress-component.pkg/PackageInfo"
+grep -q "<title>$APP_NAME</title>" "$DIST" || die "the installer's title is not $APP_NAME"
 grep -q 'install-location="/Applications"' "$PKGINFO" || die "not installed into /Applications"
 grep -q 'relocatable="false"' "$PKGINFO" || die "the component is relocatable"
 for f in welcome.html LICENSE.txt; do
@@ -57,7 +63,7 @@ for f in "$ENGINE/bin/openexpress" "$ENGINE/bin/python3.13" "$ENGINE/bin/7zz" \
          "$APP/Contents/Resources/LICENSE.txt" "$APP/Contents/Resources/SOURCE.txt"; do
     [ -e "$f" ] || die "missing: ${f#"$APP"/}"
 done
-echo "openExpress.app $APP_VERSION, macOS $MIN_OS or later, $(du -sh "$APP" | cut -f1)"
+echo "$APP_NAME.app $APP_VERSION, macOS $MIN_OS or later, $(du -sh "$APP" | cut -f1)"
 
 say "Machine code: no Homebrew, /usr/local, venv or build paths"
 BAD=0
@@ -128,7 +134,7 @@ EOF
 
 if [ "${VERIFY_LAUNCH:-}" = 1 ]; then
     say "The app, started for a few seconds with its own engine"
-    pgrep -fl 'openExpress.app/Contents/MacOS/openExpress' && die "another openExpress is running; quit it first"
+    pgrep -fl "$APP_NAME.app/Contents/MacOS/openExpress" && die "another $APP_NAME is running; quit it first"
     LOG="$OUT/app-launch.log"
     log stream --level info --style compact \
         --predicate 'subsystem == "io.github.openexpress.mac" AND category == "engine"' > "$LOG" 2>&1 &

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Writes THIRD_PARTY_NOTICES.txt of openExpress.app to stdout: what is bundled besides
+# Writes THIRD_PARTY_NOTICES.txt of "openExpress for Mac.app" to stdout: what is bundled besides
 # openExpress itself, under which licence, where its source is, and each licence's text, taken
 # from the very files that are bundled. Called by build-pkg.sh. GPL-3.0-or-later.
 #
@@ -33,11 +33,11 @@ print(ssl.OPENSSL_VERSION.split()[1], sqlite3.sqlite_version, decimal.__libmpdec
 read -r OPENSSL_VERSION SQLITE_VERSION MPDEC_VERSION <<<"$VERSIONS"
 
 cat <<EOF
-openExpress for macOS: third-party software
+openExpress for Mac: third-party software
 ==========================================
 
 openExpress itself is under the GNU General Public License v3.0 or later (LICENSE.txt); where
-its source is: SOURCE.txt. openExpress.app also contains the programs and libraries below, each
+its source is: SOURCE.txt. openExpress for Mac.app also contains the programs and libraries below, each
 under its own licence, whose full text follows its entry. None of them was modified, except
 that the machine code was re-signed (and libusb's install name set) for this app.
 
@@ -68,7 +68,7 @@ Inside Contents/Frameworks:
   Source: https://github.com/libusb/libusb/releases/download/v${LIBUSB_VERSION}/libusb-${LIBUSB_VERSION}.tar.bz2
   A separate library the engine loads at run time (Contents/Frameworks/libusb-1.0.dylib):
   you may replace it with a version of your own (the app's signature then has to be renewed,
-  e.g. codesign --force --deep --sign - openExpress.app). The written offer in SOURCE.txt
+  e.g. codesign --force --deep --sign - "openExpress for Mac.app"). The written offer in SOURCE.txt
   covers its source too.
 EOF
 

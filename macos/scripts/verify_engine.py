@@ -1,10 +1,10 @@
-"""Checks the engine inside an openExpress.app, as the app runs it: its launcher with a scrubbed
+"""Checks the engine inside "openExpress for Mac.app", as the app runs it: its launcher with a scrubbed
 environment, over the engine protocol (docs/ENGINE.md). Read-only: hello, settings.get,
 devices.list, shutdown (and account.status with --account); nothing is written to a device or
 to the account. Run by verify-pkg.sh with the bundled Python itself (-I), so it needs nothing
 else.
 
-    python3.13 -I verify_engine.py /path/to/openExpress.app [--account] [--timeout SECONDS]
+    python3.13 -I verify_engine.py "/path/to/openExpress for Mac.app" [--account] [--timeout SECONDS]
 
 --account reads the sign-in from the Keychain. Items that another build of the engine saved
 (the development venv's Python, an earlier ad-hoc build) make macOS ask whether this one may

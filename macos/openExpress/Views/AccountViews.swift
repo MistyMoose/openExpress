@@ -36,7 +36,7 @@ struct AccountForm: View {
             } header: {
                 Text("Garmin Connect")
             } footer: {
-                Text("You type your password only on Garmin's own sign-in page. openExpress keeps a sign-in token in your Keychain.")
+                Text("You type your password only on Garmin's own sign-in page. openExpress for Mac keeps a sign-in token in your Keychain.")
                     .foregroundStyle(.secondary)
             }
 
@@ -278,9 +278,9 @@ struct SetupSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Set Up openExpress", systemImage: "key")
+            Label("Set Up openExpress for Mac", systemImage: "key")
                 .font(.title2.weight(.semibold))
-            Text("openExpress talks to Garmin's services as Garmin Express does. To do that it needs the application key inside Garmin Express for Windows. openExpress can download the installer from Garmin, read the key from it and delete it again. Nothing is installed, and nothing else of it is kept.")
+            Text("openExpress for Mac talks to Garmin's services as Garmin Express does. To do that it needs the application key inside Garmin Express for Windows. openExpress for Mac can download the installer from Garmin, read the key from it and delete it again. Nothing is installed, and nothing else of it is kept.")
                 .fixedSize(horizontal: false, vertical: true)
             Text("Already have GarminExpress.exe? Choose it instead.")
                 .foregroundStyle(.secondary)

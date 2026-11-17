@@ -1,4 +1,4 @@
-# Builds the macOS installer, openExpress-<version>.pkg (macos/scripts/build-pkg.sh), on a
+# Builds the macOS installer, openExpress-for-Mac-<version>.pkg (macos/scripts/build-pkg.sh), on a
 # GitHub-hosted Apple silicon runner, checks it without installing it (verify-pkg.sh), and keeps
 # it as an artifact. GPL-3.0-or-later.
 #
@@ -51,7 +51,7 @@ jobs:
             echo "::error::This runner is not Apple silicon; the package is arm64 only."; exit 1
           fi
           if [ "${sdk%%.*}" -lt 26 ]; then
-            echo "::error::The runner's newest SDK is macOS $sdk; openExpress needs the macOS 26 SDK (Xcode 26+). Choose a newer runner image in .github/workflows/macos-pkg.yml."
+            echo "::error::The runner's newest SDK is macOS $sdk; openExpress for Mac needs the macOS 26 SDK (Xcode 26+). Choose a newer runner image in .github/workflows/macos-pkg.yml."
             exit 1
           fi
 
@@ -96,8 +96,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: openExpress-pkg
-          path: macos/build/openExpress-*.pkg
+          name: openExpress-for-Mac-pkg
+          path: macos/build/openExpress-for-Mac-*.pkg
           if-no-files-found: error
 
       - name: Remove the signing keychain

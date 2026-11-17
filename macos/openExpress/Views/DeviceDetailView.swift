@@ -76,9 +76,9 @@ struct DeviceDetailView: View {
                 Button("Upload Everything on the Device") { model.sync(firstRun: .everything) }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("openExpress has not synced this device before. Upload only what the device records from now on, or everything still on it (activities Garmin Connect already has are recognised).")
+                Text("openExpress for Mac has not synced this device before. Upload only what the device records from now on, or everything still on it (activities Garmin Connect already has are recognised).")
             }
-            .alert("openExpress", isPresented: Binding(
+            .alert("openExpress for Mac", isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } })
             ) {
@@ -126,8 +126,8 @@ struct BusyView: View {
         ContentUnavailableView {
             Label("\(model.device.name) Is in Use", systemImage: "lock.circle")
         } description: {
-            Text("\(program) is using the device, so openExpress cannot read it.")
-            Text("Quit Garmin Express: choose Quit from its menu bar icon, so that Garmin Express Service stops too. Then try again. openExpress does not quit other apps for you.")
+            Text("\(program) is using the device, so openExpress for Mac cannot read it.")
+            Text("Quit Garmin Express: choose Quit from its menu bar icon, so that Garmin Express Service stops too. Then try again. openExpress for Mac does not quit other apps for you.")
                 .font(.callout)
         } actions: {
             Button("Try Again") { Task { await model.retryAfterBusy() } }

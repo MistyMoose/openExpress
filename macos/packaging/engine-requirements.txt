@@ -1,4 +1,4 @@
-# The engine's Python dependencies inside openExpress.app (macos/scripts/build-pkg.sh), pinned
+# The engine's Python dependencies inside "openExpress for Mac.app" (macos/scripts/build-pkg.sh), pinned
 # with their hashes: pip installs them with --require-hashes --only-binary=:all: --no-deps.
 # PyGObject is not one of them: it is only the Linux window's. All of these are pure Python.
 # To update: change a version and its wheel's sha256 (https://pypi.org/project/<name>/#files).

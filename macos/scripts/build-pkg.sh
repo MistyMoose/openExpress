@@ -1,5 +1,6 @@
 #!/bin/bash
-# Builds macos/build/openExpress-<version>.pkg: openExpress.app with its engine inside, for
+# Builds macos/build/openExpress-for-Mac-<version>.pkg: "openExpress for Mac.app" with its engine
+# inside, for
 # /Applications on Apple silicon Macs with macOS 26 or later. Nothing of Homebrew or of a
 # virtual environment is needed where it is installed. GPL-3.0-or-later.
 #
@@ -57,6 +58,8 @@ SEVENZIP_SHA256=b6f17920b4240940461dac8ef4009891881ac44d2a5ead625ede2ec8472185dd
 MIN_MACOS=26.0
 BUNDLE_ID=io.github.openexpress.mac
 SOURCE_REPO=https://github.com/bruring/openExpress-mac
+# The name people see, and the app's file name; the bundle identifier above stays.
+APP_NAME="openExpress for Mac"
 
 say() { printf '\n==> %s\n' "$*"; }
 die() { printf 'build-pkg: %s\n' "$*" >&2; exit 1; }
@@ -97,9 +100,9 @@ grep -q "^version = \"$VERSION\"" "$ROOT/pyproject.toml" \
 BUILD_NUMBER=$(git -C "$ROOT" rev-list --count HEAD)
 GIT_COMMIT=$(git -C "$ROOT" rev-parse HEAD)
 GIT_DESCRIBE=$(git -C "$ROOT" describe --tags --always --dirty)
-PKG="$BUILD/openExpress-$VERSION.pkg"
+PKG="$BUILD/openExpress-for-Mac-$VERSION.pkg"
 
-say "openExpress $VERSION (build $BUILD_NUMBER, $GIT_DESCRIBE), $([ $DISTRIBUTION = 1 ] && echo "Developer ID" || echo "ad-hoc") signing"
+say "$APP_NAME $VERSION (build $BUILD_NUMBER, $GIT_DESCRIBE), $([ $DISTRIBUTION = 1 ] && echo "Developer ID" || echo "ad-hoc") signing"
 [[ "$GIT_DESCRIBE" == *-dirty ]] && echo "warning: the working tree has uncommitted changes; they are built in"
 
 rm -rf "$WORK"
@@ -126,7 +129,7 @@ fetch "$PY_FULL_URL" "$PY_FULL_ASSET" "$PY_FULL_SHA256"
 fetch "$SEVENZIP_URL" "$SEVENZIP_ASSET" "$SEVENZIP_SHA256"
 
 # --- the app -----------------------------------------------------------------------------------
-say "openExpress.app (Release, arm64)"
+say "$APP_NAME.app (Release, arm64)"
 (cd "$MACOS" && xcodegen generate --quiet)
 xcodebuild -project "$MACOS/openExpress.xcodeproj" -scheme openExpress -configuration Release \
     -derivedDataPath "$DERIVED" -destination 'generic/platform=macOS' \
@@ -135,9 +138,9 @@ xcodebuild -project "$MACOS/openExpress.xcodeproj" -scheme openExpress -configur
     CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
     -quiet build
 STAGE="$WORK/root"
-APP="$STAGE/openExpress.app"
+APP="$STAGE/$APP_NAME.app"
 mkdir -p "$STAGE"
-ditto "$DERIVED/Build/Products/Release/openExpress.app" "$APP"
+ditto "$DERIVED/Build/Products/Release/$APP_NAME.app" "$APP"
 APP_VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")
 [ "$APP_VERSION" = "$VERSION" ] || die "the app's version is $APP_VERSION, the engine's $VERSION"
 
@@ -200,7 +203,7 @@ FOUND_MO=$(find "$SITE/openexpress/locale" -name '*.mo' | wc -l | tr -d ' ')
 
 # Bytecode, checked against nothing at run time: the sealed app cannot change under it, and the
 # launcher's -B keeps Python from writing any into the app.
-"$PY" -I -m compileall -q -j0 --invalidation-mode unchecked-hash -s "$ENGINE" -p /Applications/openExpress.app/Contents/Resources/engine \
+"$PY" -I -m compileall -q -j0 --invalidation-mode unchecked-hash -s "$ENGINE" -p "/Applications/$APP_NAME.app/Contents/Resources/engine" \
     -x '/(lib2to3|test)/' "$STDLIB" >/dev/null
 
 # --- the engine: launcher and 7-Zip ------------------------------------------------------------
@@ -230,9 +233,9 @@ say "Licences and the source offer"
 RES="$APP/Contents/Resources"
 install -m 0644 "$ROOT/LICENSE" "$RES/LICENSE.txt"
 cat > "$RES/SOURCE.txt" <<EOF
-openExpress $VERSION for macOS
+openExpress for Mac $VERSION, the macOS edition of openExpress
 
-openExpress is free software: you can redistribute it and/or modify it under the terms of the
+openExpress for Mac is free software: you can redistribute it and/or modify it under the terms of the
 GNU General Public License as published by the Free Software Foundation, either version 3 of
 the License, or (at your option) any later version (LICENSE.txt).
 
@@ -365,7 +368,7 @@ fi
 
 say "Done"
 printf '%s  %s\n' "$(du -sh "$PKG" | cut -f1)" "$PKG"
-printf '%s  %s\n' "$(du -sh "$APP" | cut -f1)" "openExpress.app (installed size)"
+printf '%s  %s\n' "$(du -sh "$APP" | cut -f1)" "$APP_NAME.app (installed size)"
 
 if [ "${SKIP_VERIFY:-}" != 1 ]; then
     "$SCRIPTS/verify-pkg.sh" "$PKG"

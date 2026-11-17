@@ -1,6 +1,6 @@
 # openExpress for Mac
 
-openExpress-mac is the macOS edition of [openExpress](https://github.com/TomaszBojanowski/openExpress):
+openExpress for Mac (the repository openExpress-mac) is the macOS edition of [openExpress](https://github.com/TomaszBojanowski/openExpress):
 a native app for Apple Silicon Macs that replaces Garmin Express. It keeps openExpress's Python
 code as its engine, adds a macOS device layer to it, and puts a SwiftUI app on top.
 
@@ -30,7 +30,7 @@ tested with in [devices.md](devices.md).
 ## How it fits together
 
 ```
-openExpress.app (SwiftUI)
+openExpress for Mac.app (SwiftUI)
    │  JSON Lines over stdin/stdout          docs/ENGINE.md
    ▼
 openexpress engine (Python, upstream's code)
@@ -64,15 +64,15 @@ MTP over libusb  ──►  the watch or bike computer
 
 ## Install
 
-`openExpress-<version>.pkg` installs `openExpress.app` into `/Applications`. It needs a Mac
+`openExpress-for-Mac-<version>.pkg` installs `openExpress for Mac.app` into `/Applications`. It needs a Mac
 with Apple silicon and macOS 26 or later, and nothing else: the app carries its engine (its
 own Python, libusb and 7-Zip). Quit Garmin Express first (also its "Garmin Express Service"
 in the menu bar): it holds the device while it runs. Then, once, in the app or in Terminal:
 
 ```bash
-engine=/Applications/openExpress.app/Contents/Resources/engine/bin/openexpress
-$engine setup --from-installer GarminExpress.exe   # Garmin's Windows installer, once
-$engine login --manual
+engine="/Applications/openExpress for Mac.app/Contents/Resources/engine/bin/openexpress"
+"$engine" setup --from-installer GarminExpress.exe   # Garmin's Windows installer, once
+"$engine" login --manual
 ```
 
 Until the package is signed with a Developer ID and notarized, macOS refuses to open a
@@ -113,7 +113,7 @@ cd macos
 xcodegen generate                      # writes openExpress.xcodeproj from project.yml
 (cd OpenExpressKit && swift test)      # engine client, models and view models
 xcodebuild -scheme openExpress -configuration Debug -derivedDataPath build/DerivedData build
-OPENEXPRESS_ENGINE=mock build/DerivedData/Build/Products/Debug/openExpress.app/Contents/MacOS/openExpress
+OPENEXPRESS_ENGINE=mock "build/DerivedData/Build/Products/Debug/openExpress for Mac.app/Contents/MacOS/openExpress"
 ```
 
 `OPENEXPRESS_ENGINE` chooses the engine:
@@ -129,7 +129,7 @@ The Xcode scheme sets it to `mock`.
 
 ```bash
 brew install xcodegen gettext libusb   # build-time only; the package needs none of them
-macos/scripts/build-pkg.sh             # → macos/build/openExpress-<version>.pkg
+macos/scripts/build-pkg.sh             # → macos/build/openExpress-for-Mac-<version>.pkg
 ```
 
 On an Apple silicon Mac with Xcode 26 or later. The script:
@@ -167,7 +167,7 @@ On an Apple silicon Mac with Xcode 26 or later. The script:
 
 Downloads are cached in `macos/build/cache/`; everything the script makes is under
 `macos/build/` (ignored by git). CI builds the same package on a GitHub-hosted Apple silicon
-runner: `.github/workflows/macos-pkg.yml`, the package as the artifact `openExpress-pkg`.
+runner: `.github/workflows/macos-pkg.yml`, the package as the artifact `openExpress-for-Mac-pkg`.
 
 ### Signing and notarization
 

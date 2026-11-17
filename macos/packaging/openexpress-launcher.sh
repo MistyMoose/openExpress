@@ -1,5 +1,5 @@
 #!/bin/sh
-# openExpress's engine inside openExpress.app: Contents/Resources/engine/bin/openexpress.
+# openExpress's engine inside "openExpress for Mac.app": Contents/Resources/engine/bin/openexpress.
 # Installed by macos/scripts/build-pkg.sh. GPL-3.0-or-later.
 #
 # Runs the Python bundled next to it with `-m openexpress`, isolated from the user's

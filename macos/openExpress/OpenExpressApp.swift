@@ -7,7 +7,7 @@ struct OpenExpressApp: App {
     @State private var app = AppBootstrap.app
 
     var body: some Scene {
-        Window("openExpress", id: WindowID.main) {
+        Window("openExpress for Mac", id: WindowID.main) {
             ContentView()
                 .environment(app)
                 .task {
@@ -72,6 +72,22 @@ enum AppBootstrap {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Development, for screenshots: `-OEShowAbout YES` opens the About box,
+        // `-OEShowAppMenu YES` opens the app menu, a moment after launch.
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "OEShowAbout") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { AboutPanel.show() }
+        }
+        if defaults.bool(forKey: "OEShowAppMenu"), let menu = NSApp.mainMenu?.item(at: 0)?.submenu {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                let window = NSApp.windows.first { $0.isVisible && $0.frame.width > 600 }
+                menu.popUp(positioning: nil, at: NSPoint(x: 20, y: (window?.contentView?.bounds.height ?? 400) - 10),
+                           in: window?.contentView)
+            }
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // The menu bar item keeps the automatic mode running.
         false

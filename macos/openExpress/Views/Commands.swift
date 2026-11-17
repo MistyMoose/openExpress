@@ -13,7 +13,7 @@ struct OpenExpressCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button("About openExpress") { AboutPanel.show() }
+            Button("About openExpress for Mac") { AboutPanel.show() }
         }
 
         CommandMenu("Device") {
@@ -52,18 +52,25 @@ struct OpenExpressCommands: Commands {
 }
 
 enum AboutPanel {
+    static let forkURL = URL(string: "https://github.com/bruring/openExpress-mac")!
+    static let upstreamURL = URL(string: "https://github.com/TomaszBojanowski/openExpress")!
+
     static func show() {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
-        let credits = NSAttributedString(
-            string: String(localized: "macOS edition of openExpress — not affiliated with Garmin.\nFree software under the GNU GPL v3.0 or later."),
-            attributes: [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .paragraphStyle: paragraph,
-            ])
+        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let base: [NSAttributedString.Key: Any] = [
+            .font: small, .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: paragraph,
+        ]
+        let credits = NSMutableAttributedString(
+            // The GPL line is the bundle's copyright (NSHumanReadableCopyright), shown below.
+            string: String(localized: "openExpress for Mac — the macOS edition of openExpress by Tomasz Bojanowski. Not affiliated with Garmin.\n"),
+            attributes: base)
+        var link = base
+        link[.link] = forkURL
+        credits.append(NSAttributedString(string: "github.com/bruring/openExpress-mac", attributes: link))
         NSApplication.shared.orderFrontStandardAboutPanel(options: [
-            .applicationName: "openExpress",
+            .applicationName: "openExpress for Mac",
             .credits: credits,
         ])
         NSApplication.shared.activate()

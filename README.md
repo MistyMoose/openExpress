@@ -5,10 +5,10 @@
 <h1 align="center">openExpress</h1>
 
 > [!NOTE]
-> **This is openExpress-mac**, the macOS edition of
+> **This is openExpress for Mac**, the macOS edition of
 > [openExpress](https://github.com/TomaszBojanowski/openExpress): a native app for Apple Silicon
 > Macs that replaces Garmin Express, built on openExpress's engine with a SwiftUI app on top.
-> Install it with `openExpress-<version>.pkg` (Apple silicon, macOS 26 or later, nothing else
+> Install it with `openExpress-for-Mac-<version>.pkg` (Apple silicon, macOS 26 or later, nothing else
 > needed). Status, setup, building the package and how it differs: **[docs/macos.md](docs/macos.md)**. Everything below is
 > upstream's README and describes the Linux app. Not affiliated with Garmin.
 

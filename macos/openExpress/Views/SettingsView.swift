@@ -39,7 +39,7 @@ struct GeneralSettings: View {
                     Text(loginError).font(.caption).foregroundStyle(.red)
                 }
             } footer: {
-                Text("openExpress stays in the menu bar, so it can back up and sync a device when you connect it.")
+                Text("openExpress for Mac stays in the menu bar, so it can back up and sync a device when you connect it.")
                     .foregroundStyle(.secondary)
             }
             Section {
@@ -167,7 +167,7 @@ struct AdvancedSettings: View {
             } header: {
                 Text("Debugging")
             } footer: {
-                Text("A path to an `openexpress` program, or `mock`. Takes effect the next time openExpress opens. The environment variable OPENEXPRESS_ENGINE overrides it.")
+                Text("A path to an `openexpress` program, or `mock`. Takes effect the next time openExpress for Mac opens. The environment variable OPENEXPRESS_ENGINE overrides it.")
                     .foregroundStyle(.secondary)
             }
         }

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The installer of openExpress.app (productbuild, macos/scripts/build-pkg.sh fills in
+<!-- The installer of "openExpress for Mac.app" (productbuild, macos/scripts/build-pkg.sh fills in
      @VERSION@ and @COMPONENT@). GPL-3.0-or-later. -->
 <installer-gui-script minSpecVersion="2">
-    <title>openExpress</title>
+    <title>openExpress for Mac</title>
     <welcome file="welcome.html" mime-type="text/html"/>
     <license file="LICENSE.txt" mime-type="text/plain"/>
     <!-- Apple silicon only; installed on the startup disk, for every user, in /Applications. -->
@@ -13,15 +13,15 @@
 function openExpressCanInstall() {
     if (system.compareVersions(system.version.ProductVersion, '26.0') < 0) {
         my.result.type = 'Fatal';
-        my.result.title = 'openExpress needs macOS 26 or later';
+        my.result.title = 'openExpress for Mac needs macOS 26 or later';
         my.result.message = 'This Mac runs macOS ' + system.version.ProductVersion +
             '. Update macOS (Apple menu > System Settings > General > Software Update), then open this installer again.';
         return false;
     }
     if (system.sysctl('hw.optional.arm64') != 1) {
         my.result.type = 'Fatal';
-        my.result.title = 'openExpress needs a Mac with Apple silicon';
-        my.result.message = 'This version of openExpress runs only on Macs with an Apple M-series chip.';
+        my.result.title = 'openExpress for Mac needs a Mac with Apple silicon';
+        my.result.message = 'This version of openExpress for Mac runs only on Macs with an Apple M-series chip.';
         return false;
     }
     return true;

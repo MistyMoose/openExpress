@@ -18,7 +18,7 @@ struct ContentView: View {
         .environment(\.windowWidth, windowWidth)
         .sheet(isPresented: $app.isShowingSetup) { SetupSheet() }
         .sheet(isPresented: $app.isShowingSignIn) { SignInSheet() }
-        .alert("openExpress", isPresented: Binding(
+        .alert("openExpress for Mac", isPresented: Binding(
             get: { app.alertMessage != nil },
             set: { if !$0 { app.alertMessage = nil } })
         ) {

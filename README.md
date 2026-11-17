@@ -183,7 +183,8 @@ changes anything only shows its plan until you add `--apply`. Every command:
   **Reinstall Components**: openExpress reads that folder through its own USB session and
   writes them as Garmin Express does, each checked by its size and read back whole. Its maps
   there are shown in the window; the command line can install one only as a trial
-  (`openexpress maps install NAME --hidden-folder-trial`), not yet tried on a real device.
+  (`openexpress maps install NAME --hidden-folder-trial`), tried once on a Drive 53 EX with a
+  map update of 8.3 GB.
   Voices and vehicles Garmin offers to add are not installed.
 - GPS satellite data is written only to devices that already keep it in a format openExpress
   knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8, `GPES.bin` of

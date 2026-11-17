@@ -244,8 +244,8 @@ is off for the same reason.
 ### Maps on a car navigator (a trial)
 
 `openexpress maps install NAME --hidden-folder-trial` installs a map into the folder a car
-navigator hides, through openExpress's own USB session; it has not yet been tried on a real
-device. Without `--apply` it changes nothing: it lists the old files it would remove (none that
+navigator hides, through openExpress's own USB session; it was tried once on a real device, a
+Drive 53 EX, with a map update of 8.3 GB. Without `--apply` it changes nothing: it lists the old files it would remove (none that
 other maps use) and the new ones it would write, with their sizes, the space on the device and on
 this computer, an estimate of the time and the largest file, and says what would refuse it (a
 folder not read or not on the device, a file over 4 GiB, a file without a checksum). With

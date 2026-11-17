@@ -1171,39 +1171,28 @@ def test_nothing_goes_into_a_hidden_folder_that_was_not_read(navigator, drive_do
     assert fake.steps == [] and drive_downloads == []
 
 
-def test_the_install_stops_at_the_first_file_that_is_not_written(navigator, drive_downloads):
+@pytest.mark.parametrize(("fault", "steps"), [
+    # Refused while sent, or of another size on the device: deleted before any reading back.
+    ("refused", TZ_STEPS[:3] + [("delete", ".System/gmaptz.img")]),
+    ("written short", TZ_STEPS[:3] + [("delete", ".System/gmaptz.img")]),
+    ("read back with other bytes", TZ_STEPS + [("delete", ".System/gmaptz.img")]),
+])
+def test_a_file_not_written_whole_is_removed_and_the_install_stops(navigator, drive_downloads,
+                                                                   fault, steps):
     fake = navigator_session()
-    fake.refuse[ptp.SEND_OBJECT] = ptp.GENERAL_ERROR
+    if fault == "refused":
+        fake.refuse[ptp.SEND_OBJECT] = ptp.GENERAL_ERROR
+    elif fault == "written short":
+        fake.truncate_written = 1
+    else:
+        fake.corrupt_reads = True
     storage = OverUsb(navigator, fake)
     with pytest.raises(updates.UpdateError) as failed:
         updates.install(_both(_drive_offered(storage)), storage)
     assert str(failed.value) == NOT_WRITTEN_TZ
-    # What was announced is deleted at once; the software is never touched.
-    assert fake.steps == TZ_STEPS[:3] + [("delete", ".System/gmaptz.img")]
+    assert fake.steps == steps
+    # The new file gone, and the software never touched.
     assert fake.data_at(".System/gmaptz.img") is None
-    assert fake.data_at(".System/B000000.update") == OLDER_SYSTEM
-
-
-def test_a_file_written_short_is_removed_and_the_install_stops(navigator, drive_downloads):
-    fake = navigator_session()
-    fake.truncate_written = 1
-    storage = OverUsb(navigator, fake)
-    with pytest.raises(updates.UpdateError) as failed:
-        updates.install(_both(_drive_offered(storage)), storage)
-    assert str(failed.value) == NOT_WRITTEN_TZ
-    assert fake.data_at(".System/gmaptz.img") is None
-    assert fake.data_at(".System/B000000.update") == OLDER_SYSTEM
-
-
-def test_a_file_read_back_with_other_bytes_is_removed_and_the_install_stops(navigator,
-                                                                         drive_downloads):
-    fake = navigator_session()
-    fake.corrupt_reads = True
-    storage = OverUsb(navigator, fake)
-    with pytest.raises(updates.UpdateError) as failed:
-        updates.install(_both(_drive_offered(storage)), storage)
-    assert str(failed.value) == NOT_WRITTEN_TZ
-    assert fake.steps == TZ_STEPS + [("delete", ".System/gmaptz.img")]
     assert fake.data_at(".System/B000000.update") == OLDER_SYSTEM
 
 
@@ -1267,8 +1256,7 @@ def test_the_log_keeps_the_sizes_of_a_write_whole(navigator, caplog, tmp_path):
     storage = OverUsb(navigator, fake)
     new = b"n" * 1_234_567
     with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
-        hidden_folders.write(storage, ".System/B000000.update", _on_the_computer(tmp_path, new),
-                             hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
+        _write(storage, tmp_path, new)
     lines = _hidden_folders_log(caplog)
     assert [line for line in lines if "<number>" in line] == []
     assert any("writing B000000.update (1_234_567 B)" in line for line in lines)
@@ -1285,8 +1273,7 @@ def test_the_log_keeps_the_sizes_of_a_write_refused_for_space(navigator, caplog,
     new = b"n" * 3_000_000
     with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"), \
             pytest.raises(hidden_folders.WriteRefused):
-        hidden_folders.write(storage, ".System/B000000.update", _on_the_computer(tmp_path, new),
-                             hashlib.md5(new).hexdigest(), "Made-up Drive", margin=0)
+        _write(storage, tmp_path, new)
     (refused,) = [line for line in _hidden_folders_log(caplog) if "not written" in line]
     assert "<number>" not in refused and "3_000_000 B needed" in refused
 

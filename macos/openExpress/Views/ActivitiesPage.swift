@@ -14,6 +14,8 @@ struct ActivitiesPage: View {
     @State private var columns = TableColumnCustomization<Activity>()
     /// The columns hidden to fit the width (see `fitColumns`).
     @State private var hiddenColumns: Set<String> = []
+    /// "13 Nov, 10:36" instead of "13 Nov 2026 at 10:36" when space is tight.
+    @State private var compactDate = false
 
     private var all: [Activity] { model.activities ?? [] }
 
@@ -45,7 +47,7 @@ struct ActivitiesPage: View {
                         table
                             // Only the columns that fit: no clipped number, no sideways scroller.
                             // A new set of columns lays the table out afresh at their widths.
-                            .id(hiddenColumns)
+                            .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, sportWidth: sportWidth))
                             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { fitColumns(to: $0) }
                     }
                 }
@@ -150,31 +152,66 @@ struct ActivitiesPage: View {
         }
     }
 
-    /// Column widths as the table lays them out (their ideal widths, in points) and the order
-    /// the less important ones give way in.
+    /// Column widths as the table lays them out (their ideal widths, in points); Sport's
+    /// follows its longest name (`sportWidth`), Date's its form.
     private static let columnWidth: [String: CGFloat] = [
-        "sport": 140, "date": 165, "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
+        "date": 165, "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
     ]
-    private static let givesWay = ["hr", "ascent", "date"]
+    private static let compactDateWidth: CGFloat = 118
 
-    /// Hides Avg HR, then Ascent, then Date when the table is too narrow for them (the
-    /// inspector open in a small window), and shows them again when there is room.
+    /// What lays the table out afresh when it changes.
+    struct TableLayout: Hashable {
+        var hidden: Set<String>
+        var compactDate: Bool
+        var sportWidth: CGFloat
+    }
+
+    /// Wide enough for the icon and the longest sport name in the list, within reason.
+    private var sportWidth: CGFloat {
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let longest = Set(all.map(\.sportName)).map {
+            ($0 as NSString).size(withAttributes: [.font: font]).width
+        }.max() ?? 60
+        // Icon (20) and its gap (8), the cell's insets; at least the header, at most 200.
+        return min(200, max(80, (longest + 20 + 8 + 12).rounded(.up)))
+    }
+
+    /// Makes the columns fit the width: first Avg HR and Ascent go, then Date takes its
+    /// compact form, then Duration and Distance go. Sport and Date always stay.
     private func fitColumns(to width: CGFloat) {
         // Cell spacing per column; the row insets and the vertical scroller.
         let spacing: CGFloat = 17, margins: CGFloat = 44
-        var visible = ["sport", "date", "distance", "duration", "ascent", "hr"]
+        var visible = ["date", "distance", "duration", "ascent", "hr"]
+        var compact = false
         func needed() -> CGFloat {
-            visible.reduce(margins) { $0 + (Self.columnWidth[$1] ?? 60) + spacing }
+            visible.reduce(margins + sportWidth + spacing) { total, id in
+                total + spacing + (id == "date" && compact ? Self.compactDateWidth : Self.columnWidth[id] ?? 60)
+            }
         }
-        for id in Self.givesWay where needed() > width {
-            visible.removeAll { $0 == id }
-        }
-        let hidden = Set(Self.givesWay.filter { !visible.contains($0) })
-        guard hidden != hiddenColumns else { return }
-        for id in Self.givesWay {
+        let steps: [() -> Void] = [
+            { visible.removeAll { $0 == "hr" } },
+            { visible.removeAll { $0 == "ascent" } },
+            { compact = true },
+            { visible.removeAll { $0 == "duration" } },
+            { visible.removeAll { $0 == "distance" } },
+        ]
+        for step in steps where needed() > width { step() }
+        let hidden = Set(["hr", "ascent", "duration", "distance"].filter { !visible.contains($0) })
+        guard hidden != hiddenColumns || compact != compactDate else { return }
+        for id in ["hr", "ascent", "duration", "distance"] {
             columns[visibility: id] = hidden.contains(id) ? .hidden : .automatic
         }
         hiddenColumns = hidden
+        compactDate = compact
+    }
+
+    /// The date of a row: full, or compact (the year only when it is not this year).
+    private func dateText(_ date: Date) -> String {
+        guard compactDate else { return date.formatted(date: .abbreviated, time: .shortened) }
+        let thisYear = Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
+        return thisYear
+            ? date.formatted(.dateTime.day().month(.abbreviated).hour().minute())
+            : date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute())
     }
 
     private func resetSearch() {
@@ -193,14 +230,15 @@ struct ActivitiesPage: View {
             TableColumn("Sport", value: \.sportName) { a in
                 SportLabel(activity: a)
             }
-            .width(min: 110, ideal: 140)
+            .width(min: 80, ideal: sportWidth, max: 260)
             .customizationID("sport")
             .disabledCustomizationBehavior(.visibility)
             TableColumn("Date", value: \.start) { a in
-                Text(a.start.formatted(date: .abbreviated, time: .shortened))
+                Text(dateText(a.start))
                     .monospacedDigit()
+                    .lineLimit(1)
             }
-            .width(min: 150, ideal: 165)
+            .width(min: compactDate ? 100 : 150, ideal: compactDate ? Self.compactDateWidth : 165)
             .customizationID("date")
             TableColumn("Distance", value: \.distance.sortKey) { a in
                 NumberCell(text: a.distance.map(Format.distance))

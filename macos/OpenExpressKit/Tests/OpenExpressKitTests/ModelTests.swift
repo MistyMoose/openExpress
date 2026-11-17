@@ -197,4 +197,47 @@ struct ModelTests {
         #expect(app.account?.signedIn == true)
         #expect(app.alertMessage == nil)
     }
+
+    /// Switching pages cancels the view's task, never the load: no "Cancelled." error, one
+    /// request, and coming back joins the load in flight.
+    @Test func pageLoadSurvivesTheViewGoingAway() async throws {
+        let engine = MockEngine(stepDelay: .milliseconds(20))
+        let app = AppModel(engine: engine, settings: AppSettings(defaults: UserDefaults(suiteName: "oe-\(UUID())")!))
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        let view = Task { await model.load(.activities) }
+        try await Task.sleep(for: .milliseconds(60))
+        view.cancel()                                          // the user switched tabs
+        #expect(model.loading.contains(.activities))
+        let progress = try #require(model.loadProgress[.activities])
+        #expect(progress.phase == "reading_activities" && progress.total == 24)
+        #expect(progress.detail.hasPrefix("Reading activities from the device"))
+        await model.loadIfNeeded(.activities)                  // the user came back: joins
+        #expect(model.activities?.count == 24)
+        #expect(model.errorMessage == nil)
+        #expect(model.loadProgress[.activities] == nil)
+        await model.loadIfNeeded(.activities)                  // loaded: not read again
+        let reads = await engine.calls.filter { $0.method == "activities.list" }.count
+        #expect(reads == 1)
+    }
+
+    /// The engine runs one request per device at a time: a page asked for during a long
+    /// load waits, and says so.
+    @Test func pageWaitsBehindAnotherLoad() async throws {
+        let engine = MockEngine(stepDelay: .milliseconds(20))
+        let app = AppModel(engine: engine, settings: AppSettings(defaults: UserDefaults(suiteName: "oe-\(UUID())")!))
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        for _ in 0..<200 where !model.loading.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
+        let activities = Task { await model.load(.activities) }
+        try await Task.sleep(for: .milliseconds(30))
+        let apps = Task { await model.load(.apps) }
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(model.isWaiting(.apps))
+        #expect(!model.isWaiting(.activities))
+        await activities.value
+        await apps.value
+        #expect(model.apps != nil)
+        #expect(!model.isWaiting(.apps))
+    }
 }

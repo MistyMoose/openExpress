@@ -97,8 +97,9 @@ extension EngineConnection {
 
     // MARK: Updates and maps
 
-    public func updates(_ unitID: String) async throws -> UpdatesList {
-        try await call("updates.list", params: ["device": .string(unitID)], as: UpdatesList.self)
+    public func updates(_ unitID: String,
+                        progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> UpdatesList {
+        try await call("updates.list", params: ["device": .string(unitID)], as: UpdatesList.self, progress: progress)
     }
 
     /// `parts`: nil installs all.
@@ -111,8 +112,10 @@ extension EngineConnection {
             progress: progress))
     }
 
-    public func maps(_ unitID: String, all: Bool = true) async throws -> MapsList {
-        try await call("maps.list", params: ["device": .string(unitID), "all": .bool(all)], as: MapsList.self)
+    public func maps(_ unitID: String, all: Bool = true,
+                     progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> MapsList {
+        try await call("maps.list", params: ["device": .string(unitID), "all": .bool(all)], as: MapsList.self,
+                       progress: progress)
     }
 
     /// `maps.install` / `maps.remove`, one map after the other.
@@ -133,15 +136,19 @@ extension EngineConnection {
 
     // MARK: Apps, activities, backups
 
-    public func apps(_ unitID: String) async throws -> AppsList {
-        try await call("apps.list", params: ["device": .string(unitID)], as: AppsList.self)
+    public func apps(_ unitID: String,
+                     progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> AppsList {
+        try await call("apps.list", params: ["device": .string(unitID)], as: AppsList.self, progress: progress)
     }
 
-    public func activities(_ unitID: String?, limit: Int? = 200) async throws -> [Activity] {
+    /// The first read of a device takes a while (every FIT file over MTP); it reports
+    /// `progress` with phase `reading_activities`, done/total in files.
+    public func activities(_ unitID: String?, limit: Int? = 200,
+                           progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> [Activity] {
         var p: [String: JSONValue] = [:]
         if let unitID { p["device"] = .string(unitID) }
         if let limit { p["limit"] = .number(Double(limit)) }
-        return try await call("activities.list", params: .object(p), as: ActivitiesList.self).activities
+        return try await call("activities.list", params: .object(p), as: ActivitiesList.self, progress: progress).activities
     }
 
     /// Not in docs/ENGINE.md yet (see ActivityTrack).

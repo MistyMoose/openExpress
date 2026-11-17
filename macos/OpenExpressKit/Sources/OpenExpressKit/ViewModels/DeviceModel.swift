@@ -98,7 +98,17 @@ public final class DeviceModel: Identifiable {
     /// The outcome of the last operation, for the page's status line.
     public private(set) var lastOutcome: String?
     public var errorMessage: String?
+    /// Pages whose load is in flight.
     public private(set) var loading: Set<DevicePage> = []
+    /// Progress of a page load that reports it (`activities.list`: `reading_activities`).
+    public private(set) var loadProgress: [DevicePage: EngineProgress] = [:]
+    /// Pages loaded at least once (a visit then shows them without reading the device again).
+    public private(set) var loaded: Set<DevicePage> = []
+    /// The page loads, owned here and not by the views: switching pages never cancels one,
+    /// and coming back joins the load in flight.
+    @ObservationIgnored private var loadTasks: [DevicePage: Task<Void, Never>] = [:]
+    /// When each load in flight started, to tell which wait behind another.
+    @ObservationIgnored private var loadStarted: [DevicePage: ContinuousClock.Instant] = [:]
     /// An install waiting for the user's confirmation.
     public var pendingPlan: InstallPlan?
     /// The first sync of this device waits for the choice: everything, or new data only.
@@ -159,29 +169,67 @@ public final class DeviceModel: Identifiable {
         await load(.overview)
     }
 
+    /// Loads a page the first time it is shown; later visits show what was read (Refresh
+    /// reads again).
+    public func loadIfNeeded(_ page: DevicePage) async {
+        if loaded.contains(page), loadTasks[page] == nil { return }
+        await load(page)
+    }
+
+    /// Reads a page from the engine, or joins the read already in flight. The read runs in a
+    /// task of its own: cancelling the caller (a view going away) leaves it running.
     public func load(_ page: DevicePage) async {
-        guard !loading.contains(page) else { return }
+        if let running = loadTasks[page] {
+            await running.value
+            return
+        }
+        let task = Task { await self.performLoad(page) }
+        loadTasks[page] = task
+        await task.value
+    }
+
+    /// The engine runs one request per device at a time: a page whose load started after
+    /// another page's (or during an operation) and reports nothing yet is waiting its turn.
+    public func isWaiting(_ page: DevicePage) -> Bool {
+        guard loading.contains(page), loadProgress[page] == nil, let mine = loadStarted[page] else { return false }
+        if operation != nil { return true }
+        return loadStarted.contains { $0.key != page && $0.value < mine }
+    }
+
+    private func performLoad(_ page: DevicePage) async {
         loading.insert(page)
-        defer { loading.remove(page) }
+        loadStarted[page] = .now
+        loadProgress[page] = nil
+        defer {
+            loading.remove(page)
+            loadStarted[page] = nil
+            loadProgress[page] = nil
+            loadTasks[page] = nil
+        }
+        let progress: @Sendable (EngineProgress) -> Void = { p in
+            Task { @MainActor in
+                if self.loading.contains(page) { self.loadProgress[page] = p }
+            }
+        }
         do {
             switch page {
             case .overview:
                 if device.connected {
                     update(device: try await engine.deviceInfo(unitID))
                     if device.busyBy == nil {
-                        if updatesChecked == nil { try await loadUpdates() }
-                        if maps == nil { maps = try await engine.maps(unitID, all: true) }
+                        if updatesChecked == nil { try await loadUpdates(progress) }
+                        if maps == nil { maps = try await engine.maps(unitID, all: true, progress: progress) }
                     }
                 }
             case .updates:
-                try await loadUpdates()
-                maps = try await engine.maps(unitID, all: true)
+                try await loadUpdates(progress)
+                maps = try await engine.maps(unitID, all: true, progress: progress)
             case .maps:
-                maps = try await engine.maps(unitID, all: true)
+                maps = try await engine.maps(unitID, all: true, progress: progress)
             case .apps:
-                apps = try await engine.apps(unitID)
+                apps = try await engine.apps(unitID, progress: progress)
             case .activities:
-                activities = try await engine.activities(unitID)
+                activities = try await engine.activities(unitID, progress: progress)
             case .backups:
                 if context.supports("backups.list") {
                     backups = try await engine.backups(unitID, destination: nil)
@@ -189,15 +237,18 @@ public final class DeviceModel: Identifiable {
                     backups = BackupFolder.snapshots(root: context.backupFolder(), unitID: unitID)
                 }
             }
+            loaded.insert(page)
             // A request that went through: nobody holds the device (device.info says itself).
             if page != .backups, page != .overview || !device.connected { device.busyBy = nil }
+        } catch EngineError.cancelled, is CancellationError {
+            // A page load is never an error the user caused or needs to see.
         } catch {
             handle(error)
         }
     }
 
-    private func loadUpdates() async throws {
-        let list = try await engine.updates(unitID)
+    private func loadUpdates(_ progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws {
+        let list = try await engine.updates(unitID, progress: progress)
         updates = list.updates
         betaOffered = list.betaOffered
         updatesChecked = .now

@@ -41,8 +41,10 @@ struct DeviceDetailView: View {
                     .disabled(model.loading.contains(app.page) || (app.page.needsConnection && !model.device.connected))
                 }
             }
+            // The model owns the load: leaving the page never cancels it, and a page read
+            // once is shown again without reading the device (Refresh reads it again).
             .task(id: app.page) {
-                await model.load(app.page)
+                await model.loadIfNeeded(app.page)
                 // Development: `-OEInitialPage updates -OEShowInstallPlan YES` opens the confirmation.
                 if app.page == .updates, UserDefaults.standard.bool(forKey: "OEShowInstallPlan") {
                     model.requestInstallAll()
@@ -290,5 +292,50 @@ struct InstallConfirmationSheet: View {
         }
         .padding(24)
         .frame(width: 500)
+    }
+}
+
+/// A page while it is read: counted progress when the engine reports it (the first read of
+/// the activities goes through every FIT file), "Waiting for the device…" while the request
+/// waits behind another for the same device, else a plain spinner.
+struct PageLoadingView: View {
+    let model: DeviceModel
+    let page: DevicePage
+    var label: LocalizedStringKey? = nil
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if let progress = model.loadProgress[page] {
+                if let fraction = progress.fraction {
+                    ProgressView(value: fraction)
+                        .frame(width: 280)
+                } else {
+                    ProgressView()
+                }
+                Text(progress.detail)
+                    .font(.headline)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                if progress.phase == "reading_activities" {
+                    Text("The first time, every activity file is read from the device; this takes a while. Later it is quick.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 340)
+                }
+            } else if model.isWaiting(page) {
+                ProgressView()
+                Text("Waiting for the device…")
+                    .font(.headline)
+                Text("The device answers one request at a time; this page is next.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                if let label { Text(label).foregroundStyle(.secondary) }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -155,6 +155,7 @@ public struct EngineProgress: Codable, Sendable, Hashable {
         case "backup": String(localized: "Backing up")
         case "sync": String(localized: "Syncing")
         case "reading": String(localized: "Reading the device")
+        case "reading_activities": String(localized: "Reading activities from the device")
         default: String(localized: "Working")
         }
     }
@@ -164,6 +165,10 @@ public struct EngineProgress: Codable, Sendable, Hashable {
         switch phase {
         case "downloading", "copying", "writing", "checking", "waiting":
             return [phaseText, item].compactMap { $0 }.joined(separator: " · ")
+        case "reading_activities":
+            // Counted in files: "Reading activities from the device… 120 of 200".
+            guard let total else { return phaseText + "…" }
+            return String(localized: "\(phaseText)… \(done) of \(total)")
         default:
             return item ?? phaseText
         }

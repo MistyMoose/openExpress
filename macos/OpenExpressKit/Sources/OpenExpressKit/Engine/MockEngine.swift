@@ -32,6 +32,10 @@ public actor MockEngine: EngineConnection {
         "backup_dir": "~/Documents/Garmin/Backups", "backup_keep": 3,
     ]
     private var stravaConfigured = false
+    /// Devices with a request running: the engine runs one request per device at a time.
+    private var deviceInUse: Set<String> = []
+    /// Devices whose activities were read once (later reads come from the engine's cache).
+    private var activitiesCached: Set<String> = []
     /// Devices whose next sync is their first: it needs `first_run`.
     private var firstSyncPending: Set<String> = []
     private var backups: [String: [BackupSnapshot]] = [:]
@@ -142,6 +146,13 @@ public actor MockEngine: EngineConnection {
             }
             unit = connected[0].unitID
         }
+        // One request per device at a time, as the engine: the others wait their turn.
+        let queued = unit.flatMap { u in devices.contains { $0.unitID == u } ? u : nil }
+        if let queued {
+            while deviceInUse.contains(queued) { try await Task.sleep(for: .milliseconds(5)) }
+            deviceInUse.insert(queued)
+        }
+        defer { if let queued { deviceInUse.remove(queued) } }
         if let unit, let d = devices.first(where: { $0.unitID == unit }) {
             if let busy = d.busyBy, method != "device.info" {
                 throw EngineError.remote(
@@ -279,6 +290,18 @@ public actor MockEngine: EngineConnection {
             ]]
         case "activities.list":
             let all = Self.sampleActivities(unit: unit)
+            if let unit, !activitiesCached.contains(unit) {
+                // The first read goes through every FIT file on the device.
+                for (i, a) in all.enumerated() {
+                    try Task.checkCancellation()
+                    let ev = EngineProgress(request: id, phase: "reading_activities", done: Int64(i), total: Int64(all.count),
+                                            item: a.start.formatted(date: .abbreviated, time: .omitted))
+                    progress?(ev)
+                    broadcaster.yield(.progress(ev))
+                    try await Task.sleep(for: stepDelay / 2)
+                }
+                activitiesCached.insert(unit)
+            }
             return ["activities": .array(try all.map { try JSONValue(encoding: $0) }), "total": .number(Double(all.count)),
                     "only_in_backups": 0]
         case "activities.track":

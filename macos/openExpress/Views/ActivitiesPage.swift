@@ -23,7 +23,7 @@ struct ActivitiesPage: View {
     var body: some View {
         Group {
             if model.activities == nil {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                PageLoadingView(model: model, page: .activities)
             } else if model.activities?.isEmpty == true {
                 ContentUnavailableView("No Activities", systemImage: "figure.run",
                                        description: Text("Activities recorded on the device appear here."))

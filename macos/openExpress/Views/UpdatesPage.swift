@@ -11,8 +11,7 @@ struct UpdatesPage: View {
     var body: some View {
         Group {
             if model.updatesChecked == nil, model.loading.contains(.updates) {
-                ProgressView("Checking for updates…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                PageLoadingView(model: model, page: .updates, label: "Checking for updates…")
             } else if model.updates.isEmpty, mapUpdates.isEmpty {
                 ContentUnavailableView {
                     Label("Up to Date", systemImage: "checkmark.seal")

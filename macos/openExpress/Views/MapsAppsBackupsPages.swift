@@ -15,7 +15,7 @@ struct MapsPage: View {
             if let maps = model.maps {
                 list(maps)
             } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                PageLoadingView(model: model, page: .maps)
             }
         }
         .searchable(text: $search, placement: .toolbar, prompt: "Search Maps")
@@ -144,7 +144,7 @@ struct AppsPage: View {
                 }
             }
         } else {
-            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            PageLoadingView(model: model, page: .apps)
         }
     }
 
@@ -197,7 +197,7 @@ struct BackupsPage: View {
                     .safeAreaInset(edge: .bottom) { footer }
                 }
             } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                PageLoadingView(model: model, page: .backups)
             }
         }
         .toolbar {

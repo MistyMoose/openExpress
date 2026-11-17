@@ -4,6 +4,13 @@
 
 <h1 align="center">openExpress</h1>
 
+> [!NOTE]
+> **This is openExpress-mac**, the macOS edition of
+> [openExpress](https://github.com/TomaszBojanowski/openExpress): a native app for Apple Silicon
+> Macs that replaces Garmin Express, built on openExpress's engine with a SwiftUI app on top.
+> Status, setup and how it differs: **[docs/macos.md](docs/macos.md)**. Everything below is
+> upstream's README and describes the Linux app. Not affiliated with Garmin.
+
 <p align="center">
   An unofficial Linux app for Garmin watches and bike computers: sync with Garmin Connect,
   software updates, maps, Connect IQ apps and music over USB.
@@ -270,24 +277,3 @@ release, see [Trying a translation in the window](docs/translating.md#trying-a-t
 ## License
 
 openExpress is free software under the [GNU General Public License v3.0 or later](LICENSE).
-
-## macOS app
-
-`macos/` holds a native SwiftUI app for macOS 26 (Apple Silicon) that replaces Garmin
-Express: it runs `openexpress engine` and speaks to it over JSON Lines
-([the engine protocol](docs/ENGINE.md)). It is a work in progress; the engine is not bundled
-yet.
-
-```bash
-brew install xcodegen
-cd macos
-xcodegen generate                      # writes openExpress.xcodeproj from project.yml
-(cd OpenExpressKit && swift test)      # engine client, models and view models
-xcodebuild -scheme openExpress -configuration Debug -derivedDataPath build/DerivedData build
-OPENEXPRESS_ENGINE=mock build/DerivedData/Build/Products/Debug/openExpress.app/Contents/MacOS/openExpress
-```
-
-`OPENEXPRESS_ENGINE` chooses the engine: a path to `openexpress`, `mock` (an engine in
-memory, no device or network; `mock:busy`, `mock:firstRun`, `mock:signedOut` and `mock:empty`
-show other states), or, when unset, the engine inside the app and then
-`~/.venvs/openexpress-mac/bin/openexpress`. The Xcode scheme sets it to `mock`.

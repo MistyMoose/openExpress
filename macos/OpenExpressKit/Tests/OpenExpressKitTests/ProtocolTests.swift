@@ -26,6 +26,19 @@ struct ProtocolTests {
         #expect(EngineIncoming.parse("Traceback (most recent call last):") == nil)
     }
 
+    /// Points in the engine's format (activities.track): short names, ISO time. Made-up place.
+    @Test func trackPointsAsTheEngineSendsThem() throws {
+        let json = #"{"points": [{"lat": 51.5007, "lon": -0.1246, "time": "2030-01-01T12:00:00+01:00", "hr": 72, "alt": -7.0, "speed": 0.898}, {"lat": 51.5008, "lon": -0.1247, "time": "2030-01-01T12:00:05.500000+01:00"}]}"#
+        let track = try EngineCoding.decoder().decode(ActivityTrack.self, from: Data(json.utf8))
+        #expect(track.points.count == 2)
+        #expect(track.points[0].latitude == 51.5007)
+        #expect(track.points[0].heartRate == 72)
+        #expect(track.points[0].elevation == -7.0)
+        #expect(track.points[0].time == 0)
+        #expect(track.points[1].time == 5.5)
+        #expect(track.points[1].heartRate == nil)
+    }
+
     @Test func busyEvent() {
         let ev = EngineIncoming.parse(#"{"event": "device.busy", "params": {"device": "1", "program": "Garmin Express Service"}}"#)
         #expect(ev == .event(.deviceBusy(DeviceBusy(device: "1", program: "Garmin Express Service", name: nil))))

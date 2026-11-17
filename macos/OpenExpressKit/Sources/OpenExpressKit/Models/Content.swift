@@ -385,8 +385,9 @@ public struct ActivitiesList: Codable, Sendable, Hashable {
     }
 }
 
-/// The track of an activity, for its map and charts. Not in docs/ENGINE.md yet: asked with
-/// `activities.track {"fit": path}` once the engine lists that method in `hello`.
+/// The track of an activity, for its map and charts: `activities.track {"fit": path}` (once the
+/// engine lists that method in `hello`). The engine sends each point as docs/ENGINE.md says:
+/// `{"lat", "lon", "time" (ISO 8601), "hr"?, "alt"?, "speed"?}`.
 public struct ActivityTrack: Codable, Sendable, Hashable {
     public struct Point: Codable, Sendable, Hashable {
         public var latitude: Double
@@ -406,11 +407,65 @@ public struct ActivityTrack: Codable, Sendable, Hashable {
             self.heartRate = heartRate
             self.speed = speed
         }
+
+        // The engine's short names; the long ones are still read (older mocks, tests).
+        private enum CodingKeys: String, CodingKey {
+            case lat, lon, alt, hr, speed, time
+            case latitude, longitude, elevation, heartRate
+        }
+
+        /// The point's moment as the engine sends it (ISO 8601); `time` is made from it by
+        /// ActivityTrack, relative to the first point.
+        fileprivate var date: Date?
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            func number(_ keys: CodingKeys...) -> Double? {
+                keys.lazy.compactMap { try? c.decodeIfPresent(Double.self, forKey: $0) }.first
+            }
+            guard let lat = number(.lat, .latitude), let lon = number(.lon, .longitude) else {
+                throw DecodingError.dataCorruptedError(forKey: .lat, in: c,
+                                                       debugDescription: "a point without a position")
+            }
+            latitude = lat
+            longitude = lon
+            elevation = number(.alt, .elevation)
+            heartRate = number(.hr, .heartRate)
+            speed = number(.speed)
+            if let seconds = try? c.decodeIfPresent(Double.self, forKey: .time) {
+                time = seconds
+            } else if let text = try? c.decodeIfPresent(String.self, forKey: .time) {
+                date = EngineCoding.parseDate(text)
+            }
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(latitude, forKey: .lat)
+            try c.encode(longitude, forKey: .lon)
+            try c.encodeIfPresent(elevation, forKey: .alt)
+            try c.encodeIfPresent(heartRate, forKey: .hr)
+            try c.encodeIfPresent(speed, forKey: .speed)
+            try c.encodeIfPresent(time, forKey: .time)
+        }
     }
 
     public var points: [Point]
 
     public init(points: [Point]) { self.points = points }
+
+    private enum CodingKeys: String, CodingKey { case points }
+
+    public init(from decoder: any Decoder) throws {
+        var points = try decoder.container(keyedBy: CodingKeys.self).decode([Point].self, forKey: .points)
+        // Seconds since the first point, for the charts' axis.
+        if let first = points.lazy.compactMap(\.date).first {
+            for i in points.indices where points[i].time == nil {
+                points[i].time = points[i].date.map { $0.timeIntervalSince(first) }
+            }
+        }
+        self.points = points
+    }
 }
 
 /// One backup of a device: a folder named "YYYY-MM-DD (HH.MM.SS)" under

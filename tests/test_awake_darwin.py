@@ -17,7 +17,7 @@ from openexpress import awake
 def no_sleep_blocked():
     """Overrides conftest's: this file is about the real darwin _inhibit/_release, not a
     stand-in for them."""
-    return None
+    return
 
 
 @pytest.fixture(autouse=True)

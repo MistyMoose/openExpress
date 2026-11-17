@@ -96,8 +96,25 @@ def write_template(out: Path = TEMPLATE) -> Path:
     _run([_tool("xgettext"), "--from-code=UTF-8", *KEYWORDS, *FLAGS, "--add-comments=TRANSLATORS",
           "--add-location=file", f"--package-name={i18n.DOMAIN}",
           f"--package-version={__version__}", f"--output={out}", *files])
+    _drop_not_to_translate(out)
     add_flags(out)
     return out
+
+
+def _drop_not_to_translate(pot: Path) -> None:
+    """The texts of the metainfo's elements marked translate="no" (the name, the developer)
+    taken out of the template again: gettext 1.0 (Homebrew's, on macOS) lists them anyway,
+    where older versions follow AppStream's rules and leave them out."""
+    keep_out = set(re.findall(r'<[^>]*\btranslate="no"[^>]*>([^<]+)<',
+                              METAINFO_TEMPLATE.read_text(encoding="utf-8")))
+    reference = f"#: {METAINFO_TEMPLATE.relative_to(ROOT)}"
+    blocks = pot.read_text(encoding="utf-8").split("\n\n")
+    kept = [b for b in blocks
+            if not any(line == reference for line in b.splitlines())
+            or not any(f'msgid "{text}"' in b.splitlines() for text in keep_out)
+            or sum(line.startswith("#: ") for line in b.splitlines()) > 1]
+    if len(kept) != len(blocks):
+        pot.write_text("\n\n".join(kept), encoding="utf-8")
 
 
 # --- the flags of Weblate ---------------------------------------------------------------------

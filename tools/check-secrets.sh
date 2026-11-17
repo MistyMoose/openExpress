@@ -18,7 +18,7 @@ if [[ ! -f $patterns ]]; then
     echo "Missing $patterns – cannot check for secrets." >&2
     exit 2
 fi
-regex=$(grep -v '^\s*#' "$patterns" | grep -v '^\s*$' | paste -sd'|')
+regex=$(grep -v '^\s*#' "$patterns" | grep -v '^\s*$' | paste -sd'|' -)
 if [[ -n $path ]]; then
     found=$(grep -r -l -a -i -E -- "$regex" "$path" || true)
     if [[ -n $found ]]; then
@@ -31,7 +31,8 @@ if [[ -n $path ]]; then
 fi
 commit=${1:-HEAD}
 in_files=$(git grep -z -n -I -i -E "$regex" "$commit" -- . \
-    | awk -F'\0' -v rev="$commit:" 'index($1, rev) == 1 { print substr($1, length(rev) + 1) ":" $2 }' \
+    | tr '\000' '\037' \
+    | awk -F$'\037' -v rev="$commit:" 'index($1, rev) == 1 { print substr($1, length(rev) + 1) ":" $2 }' \
     || true)
 in_history=$(git log --format=%h -i -E -G "$regex" "$commit" -- . ':!*.png' ':!*.mo')
 if [[ -n $in_files || -n $in_history ]]; then

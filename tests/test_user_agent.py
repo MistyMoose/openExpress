@@ -7,6 +7,7 @@ account, addresses and files are made up."""
 import ast
 import hashlib
 import io
+import platform
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ from openexpress.auth.store import ConnectAuth
 from openexpress.connect import GarminClient
 from openexpress.settings import Consumer, Settings
 
-OURS = f"openexpress/{openexpress.__version__} (Linux)"
+OURS = f"openexpress/{openexpress.__version__} ({platform.system()})"
 UNIT = 3_000_000_001  # made up
 
 

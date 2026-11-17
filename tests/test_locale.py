@@ -61,6 +61,9 @@ def test_without_glib_the_locale_of_the_c_library_is_used(monkeypatch):
 
     monkeypatch.setattr(i18n, "_glib", lambda: None, raising=False)
     monkeypatch.setattr(i18n, "chosen_language", lambda: None, raising=False)
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):  # read first, as GLib does
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(i18n, "_apple_locale", list)  # macOS: the region, before it
     monkeypatch.setattr(locale, "getlocale", lambda *a: ("de_DE", "UTF-8"))
     assert Settings().locale == "de_DE"
     monkeypatch.setattr(locale, "getlocale", lambda *a: (None, None))

@@ -22,6 +22,8 @@ import gettext
 import json
 import locale
 import os
+import subprocess
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -255,8 +257,40 @@ def system_language_names() -> list[str]:
     glib = _glib()
     if glib is not None:
         return list(glib.get_language_names())
-    name = locale.getlocale()[0]
-    return [name] if name else []
+    return _language_names_without_glib()
+
+
+def _language_names_without_glib() -> list[str]:
+    """What GLib would list, read the way it reads them: LANGUAGE (a list), else the first of
+    LC_ALL, LC_MESSAGES, LANG; each with its variants ("de_DE.UTF-8", "de_DE", "de"), and "C"
+    last. macOS starts an app with none of them: there the user's region (AppleLocale), else
+    the locale of the C library."""
+    wanted = [n for n in os.environ.get("LANGUAGE", "").split(":") if n]
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        if os.environ.get(var):
+            wanted.append(os.environ[var])
+            break
+    if not wanted and sys.platform == "darwin":
+        wanted.extend(_apple_locale())
+    if not wanted and locale.getlocale()[0]:
+        wanted.append(locale.getlocale()[0])
+    names: list[str] = []
+    for name in wanted:
+        base = name.split("@")[0]
+        for variant in (name, base, base.split(".")[0], base.split(".")[0].split("_")[0]):
+            if variant and variant not in names and variant not in ("C", "POSIX"):
+                names.append(variant)
+    return [*names, "C"]
+
+
+def _apple_locale() -> list[str]:
+    """The region the user chose in System Settings ("nl_NL"), [] when it cannot be read."""
+    try:
+        out = subprocess.run(["defaults", "read", "-g", "AppleLocale"], capture_output=True,
+                             text=True, timeout=5, check=False).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [out.split("@")[0]] if out else []
 
 
 def codeset() -> str:

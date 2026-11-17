@@ -21,7 +21,7 @@ def darwin(monkeypatch):
 def backups():
     """Overrides conftest's (which stubs default_backup_dir() for every other test): the one
     test below that calls it wants the real darwin implementation."""
-    return None
+    return
 
 
 def test_config_and_data_live_under_application_support(monkeypatch, tmp_path):

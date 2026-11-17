@@ -6,6 +6,7 @@ only; all a User-Agent naming openExpress. Requests are caught before they leave
 and device are made up."""
 
 import io
+import platform
 
 import pytest
 import requests
@@ -19,7 +20,7 @@ from openexpress.device.xmldevice import parse
 from openexpress.settings import Consumer, Settings, language_tag
 
 UNIT = 1234567890  # the Id of DEVICE_XML
-OURS = f"openexpress/{openexpress.__version__} (Linux)"
+OURS = f"openexpress/{openexpress.__version__} ({platform.system()})"
 
 
 @pytest.fixture

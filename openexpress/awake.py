@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 _SUSPEND, _IDLE = 4, 8  # the portal's flags
 _ANSWER_MS = 5000  # how long the portal or logind may take to answer
 
-_IOPM_PREVENT_IDLE_SLEEP = "PreventUserIdleSystemSleep"  # kIOPMAssertionTypePreventUserIdleSystemSleep
+# kIOPMAssertionTypePreventUserIdleSystemSleep
+_IOPM_PREVENT_IDLE_SLEEP = "PreventUserIdleSystemSleep"
 _IOPM_ASSERTION_LEVEL_ON = 255  # kIOPMAssertionLevelOn
 _CF_STRING_ENCODING_UTF8 = 0x08000100
 

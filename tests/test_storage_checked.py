@@ -153,6 +153,8 @@ def test_a_file_read_back_is_compared_with_the_servers_md5(tmp_path):
     assert not (drive.root / "GARMIN" / "other.gcd").exists()
 
 
+@pytest.mark.skipif(not hasattr(os, "posix_fadvise"),
+                    reason="no posix_fadvise here (macOS): the system's cache cannot be dropped")
 def test_what_is_read_back_comes_from_the_medium_not_the_cache(tmp_path, monkeypatch):
     """The system's cache of a file written and synced is dropped before the file is read back,
     so that its bytes come from the drive."""

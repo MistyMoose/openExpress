@@ -1,5 +1,7 @@
 """A device that hides a folder of its top level from MTP (a car navigator's .System): what
-openExpress cannot see it does not take for missing, and it writes nothing there.
+openExpress cannot see it does not take for missing; it reads that folder through its own USB
+session and writes there software updates and the time zone map as Garmin Express does, and a
+map only through the trial of the command line.
 
 The made-up device (device_root) has no .System at all, as ordinary MTP shows a navigator, and
 visible Voice and Vehicle folders. Garmin's update server offers its software and a time-zone
@@ -440,7 +442,7 @@ class OverUsb(LocalStorage):
         return opened()
 
 
-CITY_NAVIGATOR = (".System/Map/D0000001A.img",)
+CITY_NAVIGATOR = ".System/Map/D0000001A.img"
 
 
 def _offered_from(storage, answer=None):
@@ -453,7 +455,7 @@ def _offered_from(storage, answer=None):
 
 def _maps_from(storage, *entries):
     found, _count = maps.read_maps({"maps": list(entries) or [
-        _map("Made-up City Navigator", CITY_NAVIGATOR[0])]})
+        _map("Made-up City Navigator", CITY_NAVIGATOR)]})
     maps.mark_waiting(storage, found)
     return found
 
@@ -622,7 +624,7 @@ def test_the_window_reads_once_both_first_checks_are_done(navigator, monkeypatch
     counted = []
     in_the_window("count_again", lambda win, s: counted.append(s))
     win, s, shown = _window(monkeypatch, storage, server_answer(),
-                            [_map("Made-up City Navigator", CITY_NAVIGATOR[0])])
+                            [_map("Made-up City Navigator", CITY_NAVIGATOR)])
     # The update check ends while the map check still runs: nothing read yet.
     win._map_check_session = s
     win._check_updates_quietly()
@@ -656,7 +658,7 @@ def test_check_again_reads_the_folders_anew(navigator, monkeypatch, in_the_windo
     storage = OverUsb(navigator, fake)
     in_the_window("count_again", lambda win, s: None)
     win, _s, shown = _window(monkeypatch, storage, server_answer(),
-                             [_map("Made-up City Navigator", CITY_NAVIGATOR[0])])
+                             [_map("Made-up City Navigator", CITY_NAVIGATOR)])
     _first_checks(win)
     assert storage.sessions == 1
     win.sections["updates"].loaded = True  # the page is shown
@@ -680,7 +682,7 @@ def test_the_window_shows_nothing_of_a_reading_ended_by_an_unplug(navigator, mon
     holder = {}
     run = RunNow(before_done=lambda: setattr(holder["win"], "session", None))  # unplugged
     win, _s, shown = _window(monkeypatch, storage, server_answer(),
-                             [_map("Made-up City Navigator", CITY_NAVIGATOR[0])], run=run)
+                             [_map("Made-up City Navigator", CITY_NAVIGATOR)], run=run)
     holder["win"] = win
     _first_checks(win)
     assert storage.sessions == 1 and run.errors == []
@@ -702,7 +704,7 @@ def test_the_flatpak_without_usb_says_why_it_cannot_read(navigator):
 # --- maps in a folder read ------------------------------------------------------------------------
 
 
-def test_a_map_in_a_folder_read_has_its_state_and_is_never_written(navigator):
+def test_a_map_in_a_folder_read_has_its_state_and_is_not_written_without_the_trial(navigator):
     fake = navigator_session()
     storage = OverUsb(navigator, fake)
     found = _maps_from(storage)
@@ -765,7 +767,7 @@ def test_device_status_counts_what_was_read_in_the_folders_not_seen(navigator):
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
-def test_the_new_words_in_both_languages(language):
+def test_the_words_of_a_folder_not_seen_in_both_languages(language):
     from openexpress import i18n
 
     i18n.setup(language)
@@ -836,7 +838,7 @@ def test_the_maps_page_shows_a_map_read_with_its_state_and_no_buttons(navigator)
     storage = OverUsb(navigator, navigator_session())
     hidden_folders.read(storage, [".System/Map"], "test")
     win, _reloads = maps_window(storage)
-    found, count = maps.read_maps({"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR[0])]})
+    found, count = maps.read_maps({"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR)]})
     maps.mark_waiting(storage, found)
     MainWindow.show_maps(win, (found, count))
     (on_device,) = win.sections["maps"].groups
@@ -875,7 +877,7 @@ def test_the_command_line_lists_a_map_read_and_never_removes_it(navigator, monke
     storage = OverUsb(navigator, navigator_session())
     monkeypatch.setattr(cli, "open_storage", lambda args: storage)
     monkeypatch.setattr(maps, "check", lambda *a, **kw: maps.read_maps(
-        {"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR[0])]}))
+        {"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR)]}))
     assert main(["maps"]) == 0
     out = capsys.readouterr().out.splitlines()
     assert "    openExpress does not install maps into the folder .System yet." in out
@@ -895,7 +897,7 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
     try:
         u = updates.parse_updates(lower_keys(server_answer()))[0]
         u.hidden_folder, u.hidden_session = ".System", hidden_folders.READ
-        m = maps.read_maps({"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR[0])]})[0][0]
+        m = maps.read_maps({"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR)]})[0][0]
         m.hidden_folder = ".System"
         texts = [hidden_folders.reading_text([".System"]),
                  hidden_folders.no_session_text(".System", hidden_folders.NO_SESSION),
@@ -1782,7 +1784,7 @@ def test_the_maps_row_counts_no_update_openexpress_cannot_install(navigator, lan
     from openexpress.gui.app import MainWindow
 
     storage = OverUsb(navigator, navigator_session())
-    newer = _map("Made-up City Navigator", CITY_NAVIGATOR[0])
+    newer = _map("Made-up City Navigator", CITY_NAVIGATOR)
     newer["isreinstall"] = False  # a newer version than the one installed
     hidden_folders.read(storage, [".System/Map"], "test")
     found = _maps_from(storage, newer)

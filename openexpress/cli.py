@@ -2380,7 +2380,7 @@ def cmd_maps(args) -> int:
         for f in mp.write_order(m):
             print(f"  + {f.device_path}  {human_size(f.size)}")
         sizes = m.device_sizes or {}
-        for p in removing:
+        for p in mp.on_the_device(m, removing) if hidden else removing:
             # In a folder the device hides, with the size its own session read there.
             there = sizes.get(p.casefold()) if hidden else None
             print(f"  - {p}" + (f"  {human_size(there)}" if there is not None else ""))

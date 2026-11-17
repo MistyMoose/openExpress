@@ -738,6 +738,15 @@ def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str
     return old_gone or (any(here) and not m.installed)
 
 
+def on_the_device(m: UniversalMap, paths: list[str]) -> list[str]:
+    """Those of `paths` that are on the device as mark_waiting found its files (device_sizes):
+    a file Garmin lists among the old ones that the device does not have is not removed. All of
+    them when its files are not known."""
+    if m.device_sizes is None:
+        return list(paths)
+    return [p for p in paths if p.casefold() in m.device_sizes]
+
+
 def hidden_space(storage: Storage, m: UniversalMap, removing: list[str]) -> tuple[int, int | None]:
     """(needed, free): the space a map going into a folder the device hides needs there, its old
     files and those it writes over counted as they are removed first, from what openExpress's
@@ -1116,7 +1125,7 @@ def _install_hidden(m: UniversalMap, removing: list[str], storage: Storage, acti
         raise MapError(no_room_on_computer_text(m.name, need_here + SPACE_MARGIN, free_here))
     log.info("map install: %s %s into %s (the trial): %d files (%s), %d old files to remove",
              m.name, m.version, m.hidden_folder, len(m.files), applog.size(m.size),
-             len(removing))
+             len(on_the_device(m, removing)))
     local = _download(m, session, progress, url_salt)
     unlocks = _activation(m, activate, say_to(progress), strict=True)
     files = [hidden_folders.FileToWrite(f.device_path, local[f.device_path], f.size, f.md5)

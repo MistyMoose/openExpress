@@ -2330,6 +2330,26 @@ def test_the_command_line_trial_dry_run_says_what_would_be_done(trial_cli, capsy
     assert trial_cli.fake.steps == [] and map_downloads == [] and trial_cli.order == []
 
 
+def test_an_old_file_garmin_lists_that_is_not_on_the_device_is_not_shown_as_removed(
+        trial_cli, capsys, caplog):
+    """Garmin's list of old files may name one the device does not have (on a Drive 53 EX an
+    unlock file of the old version): the dry run lists only the old files there, each with its
+    size, and the log counts only those."""
+    import logging
+
+    absent = ".System/Map/D0000001A.gma"
+    trial_cli.answer = {"maps": [
+        _trial_map(remove=(".System/Map/D0000001A.img", absent, SHARED)), _other_map()]}
+    assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial"]) == 0
+    removed = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  - ")]
+    assert removed == ["  - .System/Map/D0000001A.img  4 B"]
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="openexpress.maps"):
+        assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
+    planned = [r.getMessage() for r in caplog.records if "(the trial)" in r.getMessage()]
+    assert len(planned) == 1 and planned[0].endswith(", 1 old files to remove")
+
+
 def test_the_command_line_trial_writes_with_apply(trial_cli, capsys):
     assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
     out = capsys.readouterr().out

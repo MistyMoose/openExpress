@@ -283,6 +283,8 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
     public var ascent: Double?
     public var calories: Double?
     public var averageHeartRate: Double?
+    /// The FIT profile's sport number (1 running, 2 cycling, 38 surfing, …); picks the icon.
+    public var sportID: Int?
     /// "device" or "backup".
     public var source: String?
     /// "complete", "still_being_written", "damaged" or "unreadable".
@@ -297,12 +299,14 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case start, sport, distance, duration, fitPath, fit, path, name, ascent, calories
         case averageHeartRate, avgHeartRate, source, state, size
+        case sportID = "sportId"
     }
 
     public init(start: Date, sport: String, distance: Double? = nil, duration: Double? = nil,
                 fitPath: String? = nil, name: String? = nil, ascent: Double? = nil,
                 calories: Double? = nil, averageHeartRate: Double? = nil, source: String? = nil,
-                state: String? = nil, size: Int64? = nil) {
+                state: String? = nil, size: Int64? = nil, sportID: Int? = nil) {
+        self.sportID = sportID
         self.source = source
         self.state = state
         self.size = size
@@ -332,6 +336,7 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         calories = try? c.decodeIfPresent(Double.self, forKey: .calories)
         averageHeartRate = (try? c.decodeIfPresent(Double.self, forKey: .averageHeartRate))
             ?? (try? c.decodeIfPresent(Double.self, forKey: .avgHeartRate))
+        sportID = try? c.decodeIfPresent(Int.self, forKey: .sportID)
         source = try? c.decodeIfPresent(String.self, forKey: .source)
         state = try? c.decodeIfPresent(String.self, forKey: .state)
         size = try? c.decodeIfPresent(Int64.self, forKey: .size)
@@ -348,14 +353,41 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         try c.encodeIfPresent(ascent, forKey: .ascent)
         try c.encodeIfPresent(calories, forKey: .calories)
         try c.encodeIfPresent(averageHeartRate, forKey: .averageHeartRate)
+        try c.encodeIfPresent(sportID, forKey: .sportID)
         try c.encodeIfPresent(source, forKey: .source)
         try c.encodeIfPresent(state, forKey: .state)
         try c.encodeIfPresent(size, forKey: .size)
     }
 
     /// Sport names as the FIT profile has them ("running", "cycling", "hiking", …).
-    public var systemImage: String {
-        switch sport.lowercased() {
+    public var systemImage: String { Self.systemImage(sportID: sportID, sport: sport) }
+
+    /// SF Symbols by FIT sport number (the engine's table in activities.py).
+    public static let sportSymbols: [Int: String] = [
+        0: "figure.mixed.cardio", 1: "figure.run", 2: "figure.outdoor.cycle", 4: "figure.elliptical",
+        5: "figure.pool.swim", 10: "figure.strengthtraining.traditional", 11: "figure.walk",
+        12: "figure.skiing.crosscountry", 13: "figure.skiing.downhill", 14: "figure.snowboarding",
+        15: "figure.outdoor.rowing", 16: "mountain.2", 17: "figure.hiking", 18: "figure.cross.training",
+        19: "figure.outdoor.rowing", 21: "bicycle", 23: "ferry", 25: "figure.golf",
+        27: "figure.equestrian.sports", 29: "figure.fishing", 30: "figure.skating", 31: "figure.climbing",
+        32: "figure.sailing", 33: "figure.ice.skating", 35: "snowflake", 37: "figure.surfing",
+        38: "figure.surfing", 39: "figure.surfing", 40: "figure.water.fitness", 41: "figure.outdoor.rowing",
+        42: "figure.outdoor.rowing", 43: "figure.sailing", 44: "figure.surfing", 47: "figure.boxing",
+        53: "figure.open.water.swim", 62: "figure.highintensity.intervaltraining", 67: "figure.mind.and.body",
+    ]
+
+    /// Every symbol the app may draw for a sport (checked to exist by a test: an unknown
+    /// name draws nothing).
+    public static var allSportSymbols: Set<String> {
+        Set(sportSymbols.values).union(["running", "cycling", "hiking", "walking", "swimming", "open_water",
+                                        "training", "alpine_skiing", "mountaineering", "surfing", ""]
+            .map { systemImage(sportID: nil, sport: $0) })
+    }
+
+    public static func systemImage(sportID: Int?, sport: String) -> String {
+        if let sportID, let symbol = sportSymbols[sportID] { return symbol }
+        // Without a number: the names of older engines and of FIT's profile.
+        return switch sport.lowercased().replacingOccurrences(of: " ", with: "_") {
         case "running", "trail_running", "treadmill_running": "figure.run"
         case "cycling", "road_cycling", "mountain_biking", "gravel_cycling", "e_biking": "figure.outdoor.cycle"
         case "hiking": "figure.hiking"
@@ -365,14 +397,14 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         case "training", "strength_training": "figure.strengthtraining.traditional"
         case "alpine_skiing", "skiing": "figure.skiing.downhill"
         case "mountaineering": "mountain.2"
+        case "surfing": "figure.surfing"
         default: "figure.mixed.cardio"
         }
     }
 
     /// "trail_running" → "Trail Running".
-    public var sportName: String {
-        sport.split(separator: "_").map { $0.capitalized }.joined(separator: " ")
-    }
+    /// The engine's `sport` is already the translated display name ("Surfing", "Sport 99").
+    public var sportName: String { sport }
 }
 
 public struct ActivitiesList: Codable, Sendable, Hashable {

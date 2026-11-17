@@ -305,6 +305,9 @@ public actor MockEngine: EngineConnection {
             return ["activities": .array(try all.map { try JSONValue(encoding: $0) }), "total": .number(Double(all.count)),
                     "only_in_backups": 0]
         case "activities.track":
+            // Indoor activities (training, pool swims) have no GPS points.
+            if p["fit"]?.stringValue?.contains("-indoor") == true { return ["points": []] }
+            try await Task.sleep(for: stepDelay)
             return try JSONValue(encoding: Self.sampleTrack())
         case "backups.list":
             return ["backups": .array(try (backups[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) })]
@@ -388,29 +391,31 @@ public actor MockEngine: EngineConnection {
     }
 
     public static func sampleActivities(unit: String? = fenixID) -> [Activity] {
-        let sports = ["running", "cycling", "hiking", "trail_running", "lap_swimming", "walking", "strength_training"]
+        // Display names and FIT sport numbers, as the engine sends them.
+        let sports: [(String, Int, Double)] = [   // name, sport_id, speed m/s (0: no distance)
+            ("Running", 1, 3.1), ("Cycling", 2, 8.1), ("Hiking", 17, 1.3), ("Surfing", 38, 0.4),
+            ("Swimming", 5, 0.8), ("Walking", 11, 1.4), ("Training", 10, 0), ("Running", 1, 2.9),
+        ]
         let now = Date()
         return (0..<24).map { i in
-            let sport = sports[(i * 5 + 3) % sports.count]
-            let duration = Double(1800 + (i * 977) % 5400)
-            let speed: Double = switch sport {
-            case "cycling": 8.1
-            case "running", "trail_running": 3.1
-            case "lap_swimming": 0.8
-            case "strength_training": 0
-            default: 1.4
-            }
+            let (sport, id, speed) = sports[(i * 5 + 3) % sports.count]
+            // 15 min to 2 h 45: short walks to long rides.
+            let duration = Double(900 + (i * 1777) % 9000)
+            let onDevice = i < 12
             return Activity(
-                start: now.addingTimeInterval(-Double(i) * 86400 * 1.3 - 7200),
+                start: now.addingTimeInterval(-Double(i) * 86400 * 1.7 - 7200),
                 sport: sport,
                 distance: speed > 0 ? duration * speed : nil,
                 duration: duration,
-                fitPath: i < 12 ? "GARMIN/Activity/2026-\(i).fit" : "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/2026-\(i).fit",
-                ascent: sport == "lap_swimming" || speed == 0 ? nil : Double(40 + (i * 37) % 600),
+                fitPath: (onDevice ? "GARMIN/Activity/2026-\(i)" : "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/2026-\(i)")
+                    + ([10, 5].contains(id) ? "-indoor.fit" : ".fit"),
+                name: "\(sport) \(i)",
+                ascent: [2, 17, 1].contains(id) ? Double(40 + (i * 37) % 600) : nil,
                 calories: duration / 6,
-                averageHeartRate: Double(118 + (i * 7) % 40),
-                source: i < 12 ? "device" : "backup",
-                state: "complete")
+                averageHeartRate: id == 38 ? nil : Double(118 + (i * 7) % 40),
+                source: onDevice ? "device" : "backup",
+                state: "complete",
+                sportID: id)
         }
     }
 

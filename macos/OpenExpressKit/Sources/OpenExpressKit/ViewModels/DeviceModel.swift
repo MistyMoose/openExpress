@@ -102,6 +102,9 @@ public final class DeviceModel: Identifiable {
     public private(set) var loading: Set<DevicePage> = []
     /// Progress of a page load that reports it (`activities.list`: `reading_activities`).
     public private(set) var loadProgress: [DevicePage: EngineProgress] = [:]
+    /// The Activities page's filters and sort, kept for the session.
+    public var activityFilter = ActivityFilter()
+    public var activitySort = [KeyPathComparator(\Activity.start, order: .reverse)]
     /// Pages loaded at least once (a visit then shows them without reading the device again).
     public private(set) var loaded: Set<DevicePage> = []
     /// The page loads, owned here and not by the views: switching pages never cancels one,

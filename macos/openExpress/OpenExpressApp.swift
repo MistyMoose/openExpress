@@ -10,9 +10,17 @@ struct OpenExpressApp: App {
         Window("openExpress", id: WindowID.main) {
             ContentView()
                 .environment(app)
-                .task { await app.start() }
+                .task {
+                    // Development: `-OEAppearance light|dark` for screenshots of both.
+                    switch UserDefaults.standard.string(forKey: "OEAppearance") {
+                    case "light": NSApplication.shared.appearance = NSAppearance(named: .aqua)
+                    case "dark": NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+                    default: break
+                    }
+                    await app.start()
+                }
         }
-        .defaultSize(width: 1040, height: 700)
+        .defaultSize(width: 1200, height: 760)
         .commands { OpenExpressCommands(app: app) }
 
         Settings {

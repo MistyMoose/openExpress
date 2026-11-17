@@ -95,7 +95,7 @@ struct ProtocolTests {
             o[key] = "/a.fit"
             let a = try JSONValue.object(o).decode(Activity.self)
             #expect(a.fitPath == "/a.fit")
-            #expect(a.sportName == "Trail Running")
+            #expect(a.sportName == "trail_running")   // the engine's name, as it is
         }
     }
 

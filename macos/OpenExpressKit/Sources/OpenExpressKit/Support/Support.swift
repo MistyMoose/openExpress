@@ -71,6 +71,27 @@ public enum Format {
                                     numberFormatStyle: .number.precision(.fractionLength(0...1))))
     }
 
+    /// Elevation and ascent in the user's units: metres, or feet where roads are in miles.
+    public static var elevationUnit: UnitLength {
+        Locale.current.measurementSystem == .us ? .feet : .meters
+    }
+
+    public static func elevationValue(_ metres: Double) -> Double {
+        Measurement(value: metres, unit: UnitLength.meters).converted(to: elevationUnit).value
+    }
+
+    /// "1,234 m".
+    public static func elevation(_ metres: Double) -> String {
+        Measurement(value: elevationValue(metres), unit: elevationUnit)
+            .formatted(.measurement(width: .abbreviated, usage: .asProvided,
+                                    numberFormatStyle: .number.precision(.fractionLength(0))))
+    }
+
+    /// "142".
+    public static func heartRate(_ bpm: Double) -> String {
+        bpm.formatted(.number.precision(.fractionLength(0)))
+    }
+
     public static func relative(_ date: Date, now: Date = .now) -> String {
         date.formatted(.relative(presentation: .named, unitsStyle: .wide))
     }

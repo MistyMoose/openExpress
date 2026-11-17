@@ -26,7 +26,7 @@ from pathlib import Path
 
 from openexpress import answers, applog, awake, cache, download, hidden_folders, paths
 from openexpress.connect import ApiError, unexpected_answer_text
-from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
+from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage, connection
 from openexpress.errors import UserFacingError
 from openexpress.i18n import _, country_name
 from openexpress.progress import (
@@ -683,7 +683,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     except Exception as e:  # noqa: BLE001 - only shown: the map check goes on without it
         log.warning("maps: cannot read the map files on the device, none is marked as "
                     "waiting for unplugging: %s", e)
-        log_states(maps)
+        log_states(storage, maps)
         return
     for m in maps:
         paths = {p.casefold() for p in m.all_paths}
@@ -717,7 +717,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
             removed.append(m)
     for m in removed:
         m.waiting = WAIT_REMOVE
-    log_states(maps)
+    log_states(storage, maps)
 
 
 def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str, int]) -> bool:
@@ -903,12 +903,16 @@ def _state_words(m: UniversalMap) -> str:
     return "current"
 
 
-def log_states(maps: list[UniversalMap]) -> None:
+def log_states(storage: Storage, maps: list[UniversalMap]) -> None:
     """One line of the log after the list was matched with the device: each map the device
-    has or takes in when unplugged, with its state (maps only offered are left out)."""
+    has or takes in when unplugged, with its state (maps only offered are left out); a short
+    line when this connection logged the same before."""
     shown = [m for m in maps if m.listed or m.waiting]
-    log.info("maps: states: %s", "; ".join(f"{m.name} {_state_words(m)}" for m in shown)
-             or "no map on the device")
+    states = "; ".join(f"{m.name} {_state_words(m)}" for m in shown) or "no map on the device"
+    if applog.unchanged("maps", connection(storage), states):
+        log.info("maps: the same states as before")
+    else:
+        log.info("maps: states: %s", states)
 
 
 def waiting_message(m: UniversalMap) -> str:

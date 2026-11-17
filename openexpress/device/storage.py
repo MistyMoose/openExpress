@@ -82,6 +82,14 @@ def refresh_to_read_again(storage: Storage, progress=None) -> bool:
         raise RemountFailed(replug_text(e)) from e
 
 
+def connection(storage: Storage) -> tuple:
+    """One connection of a device: its address and its place on USB (new at each plugging
+    in); a folder (a drive, the tests) by its path."""
+    usb = getattr(storage, "usb", None)
+    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
+    return where, getattr(usb, "bus", None), getattr(usb, "address", None)
+
+
 @dataclass(frozen=True)
 class Entry:
     name: str

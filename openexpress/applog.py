@@ -103,6 +103,8 @@ _user = _user_rule(_system_user())  # asked once
 _hidden: dict[str, str] = {}
 _media: dict[str, re.Pattern] = {}  # media folders declared by the devices seen
 _handlers: list[logging.Handler] = []
+# What was last logged of each kind for each connection of a device (unchanged).
+_last_said: dict[tuple, object] = {}
 
 
 def hide(value, label: str) -> None:
@@ -260,6 +262,18 @@ def counts(names) -> str:
     for name in names:
         seen[str(name)] = seen.get(str(name), 0) + 1
     return ", ".join(f"{k}×{v}" for k, v in sorted(seen.items())) or "-"
+
+
+def unchanged(kind: str, connection: tuple, said) -> bool:
+    """Whether `said` is what was last logged as `kind` for this connection of a device
+    (storage.connection): then a short line says so instead of the same lines again, as
+    the window looks at a device several times a connection. When not, `said` becomes
+    the last."""
+    key = (kind, *connection)
+    if _last_said.get(key) == said:
+        return True
+    _last_said[key] = said
+    return False
 
 
 def _packaging() -> str:

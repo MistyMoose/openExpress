@@ -28,6 +28,7 @@ from openexpress.device.storage import (
     Entry,
     RemountFailed,
     Storage,
+    connection,
     named_in_any_case,
 )
 from openexpress.i18n import _, ngettext
@@ -96,26 +97,18 @@ def _key(folder: str) -> str:
     return folder.strip("/").casefold()
 
 
-# What each connection read, by the connection (_connection).
+# What each connection read, by the connection (storage.connection).
 _kept: dict[tuple, Listing] = {}
-
-
-def _connection(storage: Storage) -> tuple:
-    """The device's address and its place on USB (new at each plugging in); a folder (a drive,
-    the tests) by its path."""
-    usb = getattr(storage, "usb", None)
-    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
-    return where, getattr(usb, "bus", None), getattr(usb, "address", None)
 
 
 def kept(storage: Storage) -> Listing | None:
     """What a session read of this connection; None when none was opened for it."""
-    return _kept.get(_connection(storage))
+    return _kept.get(connection(storage))
 
 
 def forget(storage: Storage) -> None:
     """The next look at the device reads its hidden folders anew ("Check Again")."""
-    _kept.pop(_connection(storage), None)
+    _kept.pop(connection(storage), None)
 
 
 def reading_text(folders: Iterable[str]) -> str:
@@ -180,7 +173,7 @@ def read(storage: Storage, folders: Iterable[str], why: str,
         listing.state = NO_USB if wanted and storage.usb_blocked() else NO_SESSION
         if wanted:
             log.info("hidden folders: %s not read: %s", ", ".join(wanted), listing.state)
-        _kept[_connection(storage)] = listing
+        _kept[connection(storage)] = listing
         return listing
     log.info("hidden folders: opening a USB session of its own to read %s: %s",
              ", ".join(wanted), why)
@@ -206,7 +199,7 @@ def read(storage: Storage, folders: Iterable[str], why: str,
             f"{real}: {len(entries)} entries" for real, entries in listing.folders.values())
             + "".join(f"; {m}: not on the device"
                       for m in sorted(listing.missing.values(), key=str.casefold)))
-    _kept[_connection(storage)] = listing
+    _kept[connection(storage)] = listing
     return listing
 
 

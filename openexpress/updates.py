@@ -29,7 +29,13 @@ from openexpress import (
     known_devices,
     paths,
 )
-from openexpress.device.storage import MAIN_FOLDERS, DeviceError, DeviceNotResponding, Storage
+from openexpress.device.storage import (
+    MAIN_FOLDERS,
+    DeviceError,
+    DeviceNotResponding,
+    Storage,
+    connection,
+)
 from openexpress.errors import UserFacingError
 from openexpress.i18n import N_, _, ngettext
 from openexpress.progress import (
@@ -536,11 +542,6 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
             presence_by_size(listing, u)
         # An older version than the device's: by its file, never by the numbers alone.
         u.older_offer = _older_offer(storage, listing, u) if offers_older(u) else None
-    older = [u for u in updates if u.older_offer is not None]
-    if older:
-        log.info("updates: %d reinstalls of an older version than the device's (%s)",
-                 len(older), ", ".join(f"{u.part_number} {u.installed_version} on the device, "
-                                       f"{u.version} offered: {u.older_offer}" for u in older))
     found = []
     for u in offered:
         if u.hidden_folder is None:
@@ -553,23 +554,44 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
         u.on_device = found[-1].why == MATCHES or (found[-1].why == SAME_SIZE
                                                    and not u.is_system)
         u.changed_on_device = found[-1].why == MD5_DIFFERS
+    _log_offered(storage, updates, offered, found, components)
+    return updates
+
+
+def _log_offered(storage: Storage, updates: list[SoftwareUpdate], offered: list[SoftwareUpdate],
+                 found: list[Presence], components: int | None) -> None:
+    """What mark_present found, in full the first time for this connection and when it
+    changes, else one short line."""
+    said = []
+    older = [u for u in updates if u.older_offer is not None]
+    if older:
+        said.append(("updates: %d reinstalls of an older version than the device's (%s)",
+                     len(older), ", ".join(f"{u.part_number} {u.installed_version} on the "
+                                           f"device, {u.version} offered: {u.older_offer}"
+                                           for u in older)))
     # For each: where its file goes on the device, from the device's folder, and whether it
     # is there; never an address (a download address carries a token).
     named = ", ".join(f"{u.part_number} {u.version} at {_where(u, p)}: {p.why}"
                       for u, p in zip(offered[:LOG_ITEMS], found, strict=False))
     if len(offered) > LOG_ITEMS:
         named += f", … and {len(offered) - LOG_ITEMS} more"
-    log.info("updates: %d offered%s, %d of them already on the device%s", len(offered),
-             f" ({named})" if named else "", sum(1 for u in offered if u.on_device),
-             f"; {components} components listed" if components is not None else "")
+    present = sum(1 for u in offered if u.on_device)
+    said.append(("updates: %d offered%s, %d of them already on the device%s", len(offered),
+                 f" ({named})" if named else "", present,
+                 f"; {components} components listed" if components is not None else ""))
     hidden = sorted({u.hidden_folder for u in offered if u.hidden_folder})
     extra = [u for u in offered if u.is_add_on]
     if hidden or extra:
-        log.info("updates: %d in a top folder not seen (%s), %d add-ons (not installed: %s)",
-                 sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
-                 len(extra), ", ".join(sorted({u.severity or "no importance" for u in extra}))
-                 or "none")
-    return updates
+        said.append(("updates: %d in a top folder not seen (%s), %d add-ons (not installed: %s)",
+                     sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
+                     len(extra), ", ".join(sorted({u.severity or "no importance"
+                                                   for u in extra})) or "none"))
+    if applog.unchanged("updates", connection(storage), said):
+        log.info("updates: %d offered as before, %d of them already on the device",
+                 len(offered), present)
+        return
+    for line in said:
+        log.info(*line)
 
 
 def top_folders(storage: Storage) -> set[str] | None:

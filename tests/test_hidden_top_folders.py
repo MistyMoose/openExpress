@@ -1301,6 +1301,32 @@ def test_the_log_names_a_folder_not_on_the_device_as_it_was_asked(navigator, cap
     assert listing.knows(".system/md2") and listing.state_of(".SYSTEM/MD2") == hidden_folders.READ
 
 
+def test_the_updates_and_maps_are_logged_in_full_once_a_connection(navigator, caplog):
+    """The window looks at the device three or four times a connection: the updates and the
+    maps go to the log in full the first time and when they change, else one short line each;
+    a new connection (another place on USB) logs them in full again."""
+    import logging
+
+    storage = OverUsb(navigator, navigator_session())
+    said = []
+    for address in (7, 7, 8):
+        storage.usb.address = address
+        hidden_folders.read(storage, [".System"], "test")
+        with caplog.at_level(logging.INFO, logger="openexpress"):
+            caplog.clear()
+            _offered_from(storage)
+            _maps_from(storage)
+        said.append([r.getMessage() for r in caplog.records
+                     if r.getMessage().startswith(("updates:", "maps: states", "maps: the same"))])
+    first, again, anew = said
+    assert any(line.startswith("updates: 5 offered (") for line in first)
+    assert any(line.startswith("updates: 2 in a top folder not seen (.System)") for line in first)
+    assert any(line.startswith("maps: states: Made-up City Navigator") for line in first)
+    assert again == ["updates: 5 offered as before, 1 of them already on the device",
+                     "maps: the same states as before"]
+    assert anew == first
+
+
 def test_after_the_install_the_software_waits_for_the_device_then_is_said_not_installed(
         navigator, drive_downloads, monkeypatch):
     from openexpress import history, known_devices, service

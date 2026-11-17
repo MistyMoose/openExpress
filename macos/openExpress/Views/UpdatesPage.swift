@@ -6,7 +6,7 @@ struct UpdatesPage: View {
     @Environment(AppModel.self) private var app
     let model: DeviceModel
 
-    private var mapUpdates: [DeviceMap] { model.maps?.updatable ?? [] }
+    private var mapUpdates: [DeviceMap] { model.mapUpdates }
 
     var body: some View {
         Group {
@@ -61,24 +61,29 @@ struct UpdatesPage: View {
                             beta: update.beta,
                             waiting: update.waitingOnDevice,
                             disabled: model.isBusy
-                        ) { model.install([update]) }
+                        ) { model.install(update) }
                     }
                 }
             }
 
             if !mapUpdates.isEmpty {
-                Section("Maps") {
+                Section {
                     ForEach(mapUpdates) { map in
                         UpdateRow(
                             systemImage: "map",
                             title: map.name,
-                            detail: [map.version, Format.bytes(map.size)].compactMap { $0 }.joined(separator: " · "),
+                            detail: [map.versionChange, Format.bytes(map.size)].compactMap { $0 }.joined(separator: " · "),
                             beta: false,
                             waiting: false,
-                            actionTitle: "Update",
-                            disabled: model.isBusy
-                        ) { model.maps(.update, [map.name]) }
+                            disabled: model.isBusy,
+                            install: nil)
                     }
+                } header: {
+                    Text("Maps")
+                } footer: {
+                    Text("Maps are updated together, with Install All or Update All Maps.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -90,7 +95,6 @@ struct UpdatesPage: View {
                 }
             }
         }
-        .contentMargins(.bottom, 80, for: .scrollContent)
     }
 }
 
@@ -100,9 +104,9 @@ struct UpdateRow: View {
     let detail: String
     let beta: Bool
     let waiting: Bool
-    var actionTitle: LocalizedStringKey = "Install"
     let disabled: Bool
-    let install: () -> Void
+    /// nil: no button of its own (map updates go together).
+    let install: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -126,8 +130,8 @@ struct UpdateRow: View {
                 Label("Unplug to install", systemImage: "cable.connector.slash")
                     .font(.callout)
                     .foregroundStyle(.orange)
-            } else {
-                Button(actionTitle, action: install)
+            } else if let install {
+                Button("Install", action: install)
                     .buttonStyle(.glass)
                     .disabled(disabled)
                     .accessibilityLabel("Install \(title)")

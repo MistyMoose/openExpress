@@ -57,11 +57,20 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
     private var noSelection: some View {
-        ContentUnavailableView {
-            Label("Connect a Device", systemImage: "cable.connector")
-        } description: {
-            Text("Connect your Garmin watch or bike computer with its USB cable.")
+        if let busy = app.unassignedBusy {
+            ContentUnavailableView {
+                Label("\(busy.name ?? String(localized: "A Garmin device")) Is in Use", systemImage: "lock.circle")
+            } description: {
+                Text("\(busy.program) is using the device. Quit Garmin Express: choose Quit from its menu bar icon, so that Garmin Express Service stops too. The device appears here once it is free.")
+            }
+        } else {
+            ContentUnavailableView {
+                Label("Connect a Device", systemImage: "cable.connector")
+            } description: {
+                Text("Connect your Garmin watch or bike computer with its USB cable.")
+            }
         }
     }
 }

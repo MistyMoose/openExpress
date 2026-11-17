@@ -27,7 +27,13 @@ public actor MockEngine: EngineConnection {
     private var devices: [Device]
     private var updates: [String: [SoftwareUpdate]]
     private var maps: [String: [DeviceMap]]
-    private var settings: [String: JSONValue] = ["copy_fit_to": "", "copy_fit_types": ""]
+    private var settings: [String: JSONValue] = [
+        "copy_fit_to": "", "copy_fit_types": "", "environment": "production", "locale": "",
+        "backup_dir": "~/Documents/Garmin/Backups", "backup_keep": 3,
+    ]
+    private var stravaConfigured = false
+    /// Devices whose next sync is their first: it needs `first_run`.
+    private var firstSyncPending: Set<String> = []
     private var backups: [String: [BackupSnapshot]] = [:]
 
     public static let fenixID = "3491967800"
@@ -48,7 +54,8 @@ public actor MockEngine: EngineConnection {
             busyBy: scenario == .busy ? "Garmin Express Service" : nil,
             storage: .init(free: 18_740_000_000, capacity: 31_200_000_000),
             lastSync: now.addingTimeInterval(-3600 * 26), lastBackup: now.addingTimeInterval(-3600 * 26),
-            battery: 76)
+            // Garmin devices answer MTP BatteryLevel with a placeholder: the engine sends null.
+            battery: nil)
         let edge = Device(
             unitID: Self.edgeID, name: "Edge 1050", partNumber: "006-B4440-00", software: "33.20",
             connected: false, storage: .init(free: 41_000_000_000, capacity: 59_600_000_000),
@@ -70,7 +77,7 @@ public actor MockEngine: EngineConnection {
         ]
         maps = [
             Self.fenixID: [
-                DeviceMap(name: "TopoActive Europe", version: "2025.20", size: 9_800_000_000, installed: true, status: .update, region: "Europe"),
+                DeviceMap(name: "TopoActive Europe", version: "2025.20", size: 9_800_000_000, installed: true, status: .update, region: "Europe", installedVersion: "2025.10"),
                 DeviceMap(name: "Ski Resorts", version: "2025.10", size: 120_000_000, installed: true, status: .upToDate),
                 DeviceMap(name: "CourseView Golf", version: "2025.30", size: 1_300_000_000, installed: true, status: .upToDate),
                 DeviceMap(name: "TopoActive North America", version: "2025.20", size: 11_200_000_000, installed: false, status: .available, region: "North America"),
@@ -108,10 +115,15 @@ public actor MockEngine: EngineConnection {
         broadcaster.yield(.deviceDetached(devices[i]))
     }
 
-    public func simulateBusy(_ unitID: String, program: String = "Garmin Express Service") {
+    public func simulateBusy(_ unitID: String, program: String = "Garmin Express Service", knownSerial: Bool = true) {
         guard let i = devices.firstIndex(where: { $0.unitID == unitID }) else { return }
         devices[i].busyBy = program
-        broadcaster.yield(.deviceBusy(DeviceBusy(device: unitID, program: program)))
+        broadcaster.yield(.deviceBusy(DeviceBusy(device: knownSerial ? unitID : nil, program: program, name: devices[i].name)))
+    }
+
+    /// The next sync of this device is its first: it answers `first_sync_choice`.
+    public func requireFirstSyncChoice(_ unitID: String) {
+        firstSyncPending.insert(unitID)
     }
 
     public func call(_ method: String, params: JSONValue?,
@@ -120,7 +132,16 @@ public actor MockEngine: EngineConnection {
         nextID += 1
         calls.append(EngineRequest(id: id, method: method, params: params))
         let p = params ?? .object([:])
-        let unit = p["device"]?.stringValue
+        // `device` may be left out when exactly one device is connected.
+        var unit = p["device"]?.stringValue
+        if unit == nil, method.hasPrefix("device.") || method.hasPrefix("updates.") || method.hasPrefix("maps.") || method == "apps.list" {
+            let connected = devices.filter(\.connected)
+            guard connected.count == 1 else {
+                throw EngineError.remote(code: connected.isEmpty ? "no_device" : "several_devices",
+                                         message: connected.isEmpty ? "No device is connected." : "Several devices are connected: say which.", data: nil)
+            }
+            unit = connected[0].unitID
+        }
         if let unit, let d = devices.first(where: { $0.unitID == unit }) {
             if let busy = d.busyBy, method != "device.info" {
                 throw EngineError.remote(
@@ -130,13 +151,13 @@ public actor MockEngine: EngineConnection {
             }
             if !d.connected, ["device.backup", "device.sync", "updates.install", "maps.install",
                               "maps.update", "maps.remove", "apps.list"].contains(method) {
-                throw EngineError.remote(code: "device_not_connected",
+                throw EngineError.remote(code: "no_device",
                                          message: "\(d.name) is not connected.", data: nil)
             }
         }
         switch method {
         case "hello":
-            return try JSONValue(encoding: EngineHello(engine: "0.0-mock", platform: "darwin", methods: Self.methods))
+            return try JSONValue(encoding: EngineHello(engine: "0.0-mock", protocolVersion: 1, platform: "darwin", methods: Self.methods))
         case "account.status":
             return try JSONValue(encoding: account)
         case "account.setup":
@@ -146,15 +167,16 @@ public actor MockEngine: EngineConnection {
             return ["url": "https://sso.garmin.com/sso/embed?mock=1"]
         case "account.sign_in":
             guard p["ticket_url"]?.stringValue?.contains("ticket=ST-") == true else {
-                throw EngineError.remote(code: "bad_ticket", message: "That is not a sign-in ticket.", data: nil)
+                throw EngineError.remote(code: "invalid_ticket", message: "That address has no sign-in ticket.", data: nil)
             }
             account.signedIn = true
             account.account = "j***@b***.net"
             return ["account": .string(account.account!)]
         case "account.sign_out":
+            let was = account.signedIn
             account.signedIn = false
             account.account = nil
-            return [:]
+            return ["removed": .bool(was)]
         case "devices.list":
             return ["devices": .array(try devices.map { try JSONValue(encoding: $0) })]
         case "device.info":
@@ -168,38 +190,69 @@ public actor MockEngine: EngineConnection {
                 backups[unit, default: []].insert(BackupSnapshot(path: path, created: now, size: 1_210_000_000, files: 4260), at: 0)
                 if let i = devices.firstIndex(where: { $0.unitID == unit }) { devices[i].lastBackup = now }
             }
-            return try JSONValue(encoding: BackupResult(path: path, copied: 37, copiedBytes: 18_400_000,
-                                                        linked: 4223, linkedBytes: 1_191_600_000))
+            var r = try JSONValue(encoding: BackupResult(path: path, copied: 37, copiedBytes: 18_400_000,
+                                                         linked: 4223, linkedBytes: 1_191_600_000)).objectValue ?? [:]
+            r["dry_run"] = false
+            r["files"] = 4260
+            r["bytes"] = 1_210_000_000
+            return .object(r)
         case "device.sync":
-            try await simulate(id, phases: [("uploading", 6), ("downloading", 3)], item: nil, progress: progress)
+            if let unit, firstSyncPending.contains(unit) {
+                guard p["first_run"]?.stringValue != nil else {
+                    throw EngineError.remote(code: "first_sync_choice",
+                                             message: "This is the first sync of the device: choose what to upload.", data: nil)
+                }
+                firstSyncPending.remove(unit)
+            }
+            try await simulate(id, phases: [("sync", 6)], item: "Uploading activities", progress: progress)
+            broadcaster.yield(.log(EngineLogLine(level: "info", message: "4 files uploaded.", request: id)))
             if p["apply"]?.boolValue == true, let i = devices.firstIndex(where: { $0.unitID == unit }) {
                 devices[i].lastSync = Date()
             }
-            return ["uploaded": 4, "downloaded": 1, "drop_folder": 2, "strava": stravaConnected ? 1 : 0]
+            return ["dry_run": false, "uploaded": 4, "downloaded": 1, "skipped_known": 120, "rejected": 0,
+                    "errors": 0, "not_confirmed": 0, "steps": ["4 files uploaded.", "1 course written."],
+                    "sentence": "Synced: 4 files uploaded, 1 written to the device.",
+                    "drop_folder": ["path": "~/Desktop/FIT", "copied": 2, "bytes": 412_000, "incomplete": 0],
+                    "strava": stravaConnected ? ["uploaded": 1, "duplicates": 0, "failed": 0] : .null]
         case "updates.list":
-            return ["updates": .array(try (updates[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) }),
-                    "beta_offered": .bool(updates[unit ?? ""]?.contains(where: \.beta) == true)]
+            let list = updates[unit ?? ""] ?? []
+            let state = list.contains(where: \.waitingOnDevice) ? "ready" : list.isEmpty ? "current" : "available"
+            return ["updates": .array(try list.map { try JSONValue(encoding: $0) }),
+                    "beta_offered": .bool(list.contains(where: \.beta)), "state": .string(state), "add_ons": []]
         case "updates.install":
             guard let unit else { throw Self.noDevice }
             let wanted: [String]? = p["parts"]?.arrayValue?.compactMap(\.stringValue)
-            var done: [String: JSONValue] = [:]
+            var lines: [JSONValue] = []
             for (i, u) in (updates[unit] ?? []).enumerated() where wanted?.contains(u.part) ?? !u.beta {
                 try await simulate(id, phases: [("downloading", 8), ("copying", 4)], item: u.name,
                                    total: u.size, progress: progress)
                 updates[unit]?[i].waitingOnDevice = true
-                done[u.part] = ["done": true]
+                lines.append(.string("\(u.name) \(u.version) copied; unplug the device to install it."))
             }
-            return .object(done)
+            return ["exit_code": 0, "lines": .array(lines)]
         case "maps.list":
             return ["maps": .array(try (maps[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) }),
-                    "own_maps": [["name": "Alps-Contours.img", "size": 245_000_000]],
+                    "own_maps": [["file": "Alps-Contours.img", "title": "Alps contours", "size": 245_000_000,
+                                  "path": "Garmin/Alps-Contours.img"]],
+                    "more_available": 0,
                     "free": .number(Double(devices.first { $0.unitID == unit }?.storage?.free ?? 0))]
-        case "maps.install", "maps.update", "maps.remove":
+        case "maps.update":
             guard let unit else { throw Self.noDevice }
-            var done: [String: JSONValue] = [:]
+            var lines: [JSONValue] = []
+            for (i, m) in (maps[unit] ?? []).enumerated() where m.installed && m.status == .update {
+                try await simulate(id, phases: [("downloading", 10), ("copying", 4)], item: m.name,
+                                   total: m.size, progress: progress)
+                maps[unit]?[i].status = .upToDate
+                maps[unit]?[i].installedVersion = m.version
+                lines.append(.string("\(m.name) updated."))
+            }
+            return ["exit_code": 0, "lines": .array(lines)]
+        case "maps.install", "maps.remove":
+            guard let unit else { throw Self.noDevice }
+            var done: [JSONValue] = []
             for name in p["maps"]?.arrayValue?.compactMap(\.stringValue) ?? [] {
                 guard let i = maps[unit]?.firstIndex(where: { $0.name == name }) else {
-                    done[name] = ["refused": "No such map."]
+                    done.append(["name": .string(name), "done": false, "code": "failed", "reason": "No such map."])
                     continue
                 }
                 if method == "maps.remove" {
@@ -210,43 +263,73 @@ public actor MockEngine: EngineConnection {
                                        total: maps[unit]?[i].size, progress: progress)
                     maps[unit]?[i].installed = true
                     maps[unit]?[i].status = .upToDate
+                    let version = maps[unit]?[i].version
+                    maps[unit]?[i].installedVersion = version
                 }
-                done[name] = ["done": true]
+                done.append(["name": .string(name), "done": true, "exit_code": 0, "lines": []])
             }
-            return .object(done)
+            return ["dry_run": false, "maps": .array(done)]
         case "apps.list":
-            return ["apps": [
-                ["name": "Strava Live Segments", "version": "2.4.1", "type": "datafield", "size": 180_000],
-                ["name": "Spotify", "version": "3.0.0", "type": "audio-content-provider", "size": 2_100_000],
-                ["name": "Klimat", "version": "1.2", "type": "widget", "size": 64_000],
-                ["name": "Crystal Face", "version": "2.13", "type": "watchface", "size": 120_000, "update_available": true],
+            return ["exit_code": 0, "lines": [
+                "Connect IQ apps on fēnix 8 – 47 mm, AMOLED:",
+                "  Strava Live Segments   data field   2.4.1   on",
+                "  Spotify                music        3.0.0   on",
+                "  Klimat                 widget       1.2     on",
+                "  Crystal Face           watch face   2.13    on   (update available)",
             ]]
         case "activities.list":
-            return ["activities": .array(try Self.sampleActivities(unit: unit).map { try JSONValue(encoding: $0) })]
+            let all = Self.sampleActivities(unit: unit)
+            return ["activities": .array(try all.map { try JSONValue(encoding: $0) }), "total": .number(Double(all.count)),
+                    "only_in_backups": 0]
         case "activities.track":
             return try JSONValue(encoding: Self.sampleTrack())
         case "backups.list":
             return ["backups": .array(try (backups[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) })]
         case "settings.get":
-            let key = p["key"]?.stringValue ?? ""
-            return ["key": .string(key), "value": settings[key] ?? .null]
+            guard let key = p["key"]?.stringValue else { return ["settings": .object(settings)] }
+            guard let value = settings[key] else {
+                throw EngineError.remote(code: "unknown_setting", message: "No setting \(key).", data: nil)
+            }
+            return ["key": .string(key), "value": value]
         case "settings.set":
             let key = p["key"]?.stringValue ?? ""
             settings[key] = p["value"] ?? .null
             return ["key": .string(key), "value": settings[key] ?? .null]
         case "strava.status":
-            return ["connected": .bool(stravaConnected), "athlete": stravaConnected ? "Demo Athlete" : .null]
+            return stravaStatus
         case "strava.connect":
-            stravaConnected = true
-            return ["connected": true]
+            if p["client_id"]?.stringValue != nil, p["client_secret"]?.stringValue != nil { stravaConfigured = true }
+            guard stravaConfigured else {
+                throw EngineError.remote(code: "failed", message: "Enter the client ID and secret of your Strava API application.", data: nil)
+            }
+            if p["code"]?.stringValue != nil {
+                stravaConnected = true
+                return stravaStatus
+            }
+            var r = stravaStatus.objectValue ?? [:]
+            let redirect = p["redirect_uri"]?.stringValue ?? ""
+            r["authorize_url"] = .string("https://www.strava.com/oauth/authorize?client_id=1&response_type=code&redirect_uri=\(redirect)&scope=activity:write")
+            return .object(r)
         case "strava.disconnect":
+            let was = stravaConnected
             stravaConnected = false
-            return [:]
-        case "cancel", "shutdown":
+            return ["removed": .bool(was)]
+        case "strava.upload":
+            let n = p["files"]?.arrayValue?.count ?? 0
+            return ["uploaded": .number(Double(n)), "duplicates": 0, "failed": 0, "skipped": 0, "rate_limited": false]
+        case "cancel":
+            return ["cancelling": true]
+        case "shutdown":
             return [:]
         default:
             throw EngineError.remote(code: "unknown_method", message: "Unknown method \(method).", data: nil)
         }
+    }
+
+    private var stravaStatus: JSONValue {
+        ["configured": .bool(stravaConfigured), "connected": .bool(stravaConnected),
+         "athlete_id": stravaConnected ? 12345 : .null, "athlete_name": stravaConnected ? "Demo Athlete" : .null,
+         "scope": stravaConnected ? "activity:write" : .null, "expires_at": .null]
     }
 
     public static let methods = [
@@ -254,7 +337,7 @@ public actor MockEngine: EngineConnection {
         "account.sign_out", "devices.list", "device.info", "device.backup", "device.sync",
         "updates.list", "updates.install", "maps.list", "maps.install", "maps.update", "maps.remove",
         "apps.list", "activities.list", "activities.track", "backups.list", "settings.get",
-        "settings.set", "strava.status", "strava.connect", "strava.disconnect", "cancel", "shutdown",
+        "settings.set", "strava.status", "strava.connect", "strava.disconnect", "strava.upload", "cancel", "shutdown",
     ]
 
     private static let noDevice = EngineError.remote(code: "no_device", message: "No such device.", data: nil)
@@ -299,10 +382,12 @@ public actor MockEngine: EngineConnection {
                 sport: sport,
                 distance: speed > 0 ? duration * speed : nil,
                 duration: duration,
-                fitPath: "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/2026-\(i).fit",
+                fitPath: i < 12 ? "GARMIN/Activity/2026-\(i).fit" : "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/2026-\(i).fit",
                 ascent: sport == "lap_swimming" || speed == 0 ? nil : Double(40 + (i * 37) % 600),
                 calories: duration / 6,
-                averageHeartRate: Double(118 + (i * 7) % 40))
+                averageHeartRate: Double(118 + (i * 7) % 40),
+                source: i < 12 ? "device" : "backup",
+                state: "complete")
         }
     }
 

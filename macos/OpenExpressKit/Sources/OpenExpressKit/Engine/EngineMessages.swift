@@ -114,13 +114,17 @@ public enum EngineEvent: Sendable, Equatable {
     }
 }
 
+/// `device.busy`: another program holds a device. `device` is nil unless its USB serial
+/// names a remembered device; `name` is its product name.
 public struct DeviceBusy: Codable, Sendable, Hashable {
-    public var device: String
+    public var device: String?
     public var program: String
+    public var name: String?
 
-    public init(device: String, program: String) {
+    public init(device: String?, program: String, name: String? = nil) {
         self.device = device
         self.program = program
+        self.name = name
     }
 }
 
@@ -139,6 +143,32 @@ public struct EngineProgress: Codable, Sendable, Hashable {
         self.item = item
     }
 
+    /// The phase in words: the transfer phases are named, the method's own steps
+    /// (`backup`, `sync`, `reading`, `working`) carry their words in `item`.
+    public var phaseText: String {
+        switch phase {
+        case "downloading": String(localized: "Downloading")
+        case "copying": String(localized: "Copying to the device")
+        case "writing": String(localized: "Writing")
+        case "checking": String(localized: "Checking")
+        case "waiting": String(localized: "Waiting for Garmin Connect")
+        case "backup": String(localized: "Backing up")
+        case "sync": String(localized: "Syncing")
+        case "reading": String(localized: "Reading the device")
+        default: String(localized: "Working")
+        }
+    }
+
+    /// "Downloading · TopoActive Europe"; for the method's own steps just the step's words.
+    public var detail: String {
+        switch phase {
+        case "downloading", "copying", "writing", "checking", "waiting":
+            return [phaseText, item].compactMap { $0 }.joined(separator: " · ")
+        default:
+            return item ?? phaseText
+        }
+    }
+
     /// 0…1, or nil while the total is not known.
     public var fraction: Double? {
         guard let total, total > 0 else { return nil }
@@ -149,9 +179,12 @@ public struct EngineProgress: Codable, Sendable, Hashable {
 public struct EngineLogLine: Codable, Sendable, Hashable {
     public var level: String
     public var message: String
+    /// The request it belongs to.
+    public var request: Int?
 
-    public init(level: String, message: String) {
+    public init(level: String, message: String, request: Int? = nil) {
         self.level = level
         self.message = message
+        self.request = request
     }
 }

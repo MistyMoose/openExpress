@@ -2,15 +2,14 @@ import Foundation
 import Observation
 
 /// The app's own settings, kept in UserDefaults. Settings the engine keeps (the FIT drop
-/// folder) are read and written through `settings.get` / `settings.set` instead.
+/// folder, the backup folder and how many backups to keep) live in the engine: see
+/// `AppModel.engineSettings`.
 @MainActor
 @Observable
 public final class AppSettings {
     enum Key {
         static let autoSync = "automaticBackupAndSync"
         static let notifications = "notificationsEnabled"
-        static let backupFolder = "backupFolder"
-        static let keepBackups = "keepBackups"
         static let engineOverride = "engineOverride"
     }
 
@@ -25,15 +24,6 @@ public final class AppSettings {
         didSet { defaults.set(notificationsEnabled, forKey: Key.notifications) }
     }
 
-    public var backupFolder: URL {
-        didSet { defaults.set(backupFolder.path, forKey: Key.backupFolder) }
-    }
-
-    /// How many backups of each device are kept; 0 keeps all.
-    public var keepBackups: Int {
-        didSet { defaults.set(keepBackups, forKey: Key.keepBackups) }
-    }
-
     /// Debug: the engine to run instead of the bundled one (a path, or "mock").
     public var engineOverride: String {
         didSet { defaults.set(engineOverride, forKey: Key.engineOverride) }
@@ -43,9 +33,6 @@ public final class AppSettings {
         self.defaults = defaults
         automaticBackupAndSync = defaults.object(forKey: Key.autoSync) as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: Key.notifications) as? Bool ?? true
-        backupFolder = (defaults.string(forKey: Key.backupFolder)).map { URL(fileURLWithPath: $0, isDirectory: true) }
-            ?? BackupFolder.defaultRoot
-        keepBackups = defaults.object(forKey: Key.keepBackups) as? Int ?? 3
         engineOverride = defaults.string(forKey: Key.engineOverride) ?? ""
     }
 }

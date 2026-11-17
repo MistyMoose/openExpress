@@ -30,6 +30,12 @@ struct MapsPage: View {
 
     private func list(_ maps: MapsList) -> some View {
         List {
+            if let message = maps.message {
+                Section {
+                    Label(message, systemImage: "info.circle")
+                        .foregroundStyle(.secondary)
+                }
+            }
             if let storage = model.device.storage {
                 Section {
                     Gauge(value: storage.usedFraction) {
@@ -46,16 +52,16 @@ struct MapsPage: View {
                     ForEach(installed) { map in
                         MapRow(map: map) {
                             if map.status == .update {
-                                Button("Update") { model.maps(.update, [map.name]) }
-                                    .buttonStyle(.glass)
-                                    .disabled(model.isBusy)
+                                Text(map.versionChange ?? String(localized: "Update available"))
+                                    .foregroundStyle(.orange)
+                                    .monospacedDigit()
                             } else {
-                                Text("Up to date").foregroundStyle(.secondary)
+                                Text(map.statusText ?? String(localized: "Up to date")).foregroundStyle(.secondary)
                             }
                         }
                         .contextMenu {
                             Button("Remove…", role: .destructive) { removing = map }
-                                .disabled(model.isBusy)
+                                .disabled(model.isBusy || map.canRemove == false)
                         }
                     }
                 }
@@ -66,10 +72,10 @@ struct MapsPage: View {
                     ForEach(available) { map in
                         let fits = map.size <= (maps.free ?? model.device.storage?.free ?? .max)
                         MapRow(map: map) {
-                            Button("Install") { model.maps(.install, [map.name]) }
+                            Button(map.size >= InstallPlan.largeMap ? "Install…" : "Install") { model.requestInstall(map: map) }
                                 .buttonStyle(.glass)
-                                .disabled(model.isBusy || !fits)
-                                .help(fits ? "" : String(localized: "Not enough free space on the device."))
+                                .disabled(model.isBusy || !fits || map.canInstall == false)
+                                .help(fits ? (map.statusText ?? "") : String(localized: "Not enough free space on the device."))
                         }
                     }
                 }
@@ -87,7 +93,6 @@ struct MapsPage: View {
                 }
             }
         }
-        .contentMargins(.bottom, 80, for: .scrollContent)
     }
 }
 
@@ -104,7 +109,8 @@ struct MapRow<Trailing: View>: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(map.name)
-                Text([map.region, map.version, Format.bytes(map.size)].compactMap { $0 }.joined(separator: " · "))
+                Text([map.region, map.installed ? map.installedVersion ?? map.version : map.version, Format.bytes(map.size)]
+                        .compactMap { $0 }.joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -122,38 +128,47 @@ struct AppsPage: View {
     let model: DeviceModel
 
     var body: some View {
-        if let apps = model.apps {
-            if apps.isEmpty {
+        if let list = model.apps {
+            if let apps = list.apps {
+                structured(apps)
+            } else if list.lines.isEmpty {
                 ContentUnavailableView("No Connect IQ Apps", systemImage: "square.grid.2x2",
                                        description: Text("Apps, watch faces and data fields installed on the device appear here."))
             } else {
-                List(apps) { app in
-                    HStack(spacing: 12) {
-                        Image(systemName: app.systemImage)
-                            .font(.title3)
-                            .foregroundStyle(.tint)
-                            .frame(width: 24)
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(app.name)
-                            Text([app.type?.replacingOccurrences(of: "-", with: " ").capitalized, app.version,
-                                  app.size.map(Format.bytes)].compactMap { $0 }.joined(separator: " · "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if app.updateAvailable == true {
-                            Text("Update available").font(.callout).foregroundStyle(.orange)
-                        }
-                        if app.enabled == false {
-                            Text("Off").font(.callout).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 2)
+                // `apps.list` answers as the command line: its lines, as they are.
+                List(Array(list.lines.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.body.monospaced())
+                        .textSelection(.enabled)
+                        .lineLimit(1)
                 }
             }
         } else {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func structured(_ apps: [ConnectIQApp]) -> some View {
+        List(apps) { app in
+            HStack(spacing: 12) {
+                Image(systemName: app.systemImage)
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(app.name)
+                    Text([app.type?.replacingOccurrences(of: "-", with: " ").capitalized, app.version,
+                          app.size.map(Format.bytes)].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if app.updateAvailable == true {
+                    Text("Update available").font(.callout).foregroundStyle(.orange)
+                }
+            }
+            .padding(.vertical, 2)
         }
     }
 }
@@ -188,9 +203,9 @@ struct BackupsPage: View {
         .toolbar {
             ToolbarItem {
                 Button("Show in Finder", systemImage: "folder") {
-                    let folder = app.settings.backupFolder.appending(path: model.device.unitID)
+                    let folder = app.backupFolder.appending(path: model.device.unitID)
                     let target = selection.map { URL(fileURLWithPath: $0) }
-                        ?? (FileManager.default.fileExists(atPath: folder.path) ? folder : app.settings.backupFolder)
+                        ?? (FileManager.default.fileExists(atPath: folder.path) ? folder : app.backupFolder)
                     reveal(target)
                 }
                 .help("Show the backup in Finder")
@@ -199,15 +214,14 @@ struct BackupsPage: View {
     }
 
     private var footer: some View {
-        Text(app.settings.keepBackups > 0
-             ? "Backups are kept in \(app.settings.backupFolder.path(percentEncoded: false)); the newest \(app.settings.keepBackups) are kept."
-             : "Backups are kept in \(app.settings.backupFolder.path(percentEncoded: false)).")
+        Text(app.backupKeep > 0
+             ? "Backups are kept in \(app.backupFolder.path(percentEncoded: false)); the newest \(app.backupKeep) are kept."
+             : "Backups are kept in \(app.backupFolder.path(percentEncoded: false)).")
             .font(.caption)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
-            .padding(.bottom, 80)
-            .padding(.top, 8)
+            .padding(.vertical, 8)
     }
 
     private func revealButton(_ url: URL) -> some View {

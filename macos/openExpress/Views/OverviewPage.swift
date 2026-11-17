@@ -68,8 +68,6 @@ struct OverviewPage: View {
             }
         }
         .formStyle(.grouped)
-        // Room for the floating Sync Now button.
-        .contentMargins(.bottom, 80, for: .scrollContent)
     }
 
     private func batterySymbol(_ level: Int) -> String {

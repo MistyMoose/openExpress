@@ -30,11 +30,11 @@ struct OpenExpressCommands: Commands {
                 .keyboardShortcut("b")
                 .disabled(!canAct)
             Divider()
-            Button("Install All Updates", systemImage: "arrow.down.circle.fill") {
+            Button("Install All Updates…", systemImage: "arrow.down.circle.fill") {
                 app.page = .updates
-                model?.install()
+                model?.requestInstallAll()
             }
-            .disabled(!canAct || model?.installAllParts.isEmpty != false)
+            .disabled(!canAct || (model?.badgeCount ?? 0) == 0)
             Button("Cancel Operation") { model?.cancelOperation() }
                 .keyboardShortcut(".")
                 .disabled(model?.operation == nil)

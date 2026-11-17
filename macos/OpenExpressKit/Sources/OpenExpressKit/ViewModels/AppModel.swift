@@ -25,6 +25,12 @@ public final class AppModel {
     public private(set) var strava: StravaStatus?
     public private(set) var devices: [Device] = []
     public private(set) var log: [EngineLogLine] = []
+    /// The engine's settings (`settings.get` without a key): `copy_fit_to`, `copy_fit_types`,
+    /// `backup_dir`, `backup_keep`, …
+    public private(set) var engineSettings: [String: JSONValue] = [:]
+    /// A device held by another program before openExpress could tell which it is
+    /// (`device.busy` with `device` null). Cleared when a device is attached.
+    public private(set) var unassignedBusy: DeviceBusy?
     /// Devices whose automatic backup and sync is running.
     public private(set) var automaticRuns: Set<String> = []
     private var models: [String: DeviceModel] = [:]
@@ -85,6 +91,7 @@ public final class AppModel {
                     ?? devices.first.map { .device($0.unitID) } ?? .account
             }
             if hello?.supports("strava.status") == true { strava = try? await engine.stravaStatus() }
+            await reloadEngineSettings()
             for d in connectedDevices { Task { await model(for: d.unitID)?.refresh() } }
         } catch {
             engineState = .failed(error.localizedDescription)
@@ -111,8 +118,25 @@ public final class AppModel {
         if let m = models[d.unitID] {
             m.update(device: d)
         } else {
-            models[d.unitID] = DeviceModel(device: d, engine: engine, settings: settings,
-                                           supports: { [weak self] in self?.supports($0) ?? false })
+            models[d.unitID] = DeviceModel(device: d, engine: engine, context: .init(
+                supports: { [weak self] in self?.supports($0) ?? false },
+                backupFolder: { [weak self] in self?.backupFolder ?? BackupFolder.defaultRoot },
+                accountProblem: { [weak self] in self?.handleAccountProblem($0) ?? false }))
+        }
+    }
+
+    /// `setup_needed` and `not_signed_in` open the sheet that fixes them.
+    private func handleAccountProblem(_ error: EngineError) -> Bool {
+        switch error.code {
+        case "setup_needed":
+            isShowingSetup = true
+            return true
+        case "not_signed_in", "unauthorized":
+            isShowingSignIn = account?.setupDone != false
+            isShowingSetup = account?.setupDone == false
+            return true
+        default:
+            return false
         }
     }
 
@@ -140,6 +164,7 @@ public final class AppModel {
     func handle(_ event: EngineEvent) {
         switch event {
         case .deviceAttached(let d):
+            unassignedBusy = nil
             upsert(d)
             if selection == nil || selection == .account { selection = .device(d.unitID) }
             if settings.automaticBackupAndSync, account?.signedIn == true {
@@ -152,8 +177,17 @@ public final class AppModel {
             d.connected = false
             upsert(d)
         case .deviceBusy(let b):
-            model(for: b.device)?.markBusy(b.program)
-            if let i = devices.firstIndex(where: { $0.unitID == b.device }) { devices[i].busyBy = b.program }
+            // `device` is null unless the USB serial names a remembered device: then match
+            // the product name among the connected devices, else say so without a device.
+            let unit = b.device
+                ?? connectedDevices.first(where: { $0.name == b.name })?.unitID
+                ?? (connectedDevices.count == 1 && b.name == nil ? connectedDevices.first?.unitID : nil)
+            if let unit, let i = devices.firstIndex(where: { $0.unitID == unit }) {
+                devices[i].busyBy = b.program
+                model(for: unit)?.markBusy(b.program)
+            } else {
+                unassignedBusy = b
+            }
         case .log(let line):
             log.append(line)
             if log.count > 500 { log.removeFirst(log.count - 500) }
@@ -212,19 +246,34 @@ public final class AppModel {
         await refreshAccount()
     }
 
-    public func connectStrava() async {
+    /// Where Strava sends the browser back to; the sign-in sheet catches it, nothing listens.
+    public static let stravaRedirectURI = "http://localhost/openexpress-strava"
+
+    /// Step one: the page to authorise openExpress on Strava (client ID and secret saved first
+    /// when given). The sheet showing it calls `finishStrava(code:)`.
+    public func startStrava(clientID: String? = nil, clientSecret: String? = nil) async {
         do {
-            let r = try await engine.stravaConnect()
-            // The engine may answer with a page to open to authorise.
-            if let s = r["url"]?.stringValue, let url = URL(string: s) { pendingStravaURL = url }
+            let r = try await engine.stravaConnect(redirectURI: Self.stravaRedirectURI,
+                                                   clientID: clientID, clientSecret: clientSecret)
+            if let s = r.authorizeURL, let url = URL(string: s) { stravaAuthorizeURL = url }
+            strava = r
+        } catch {
+            alertMessage = error.localizedDescription
+        }
+    }
+
+    public func finishStrava(code: String) async {
+        stravaAuthorizeURL = nil
+        do {
+            strava = try await engine.stravaConnect(redirectURI: Self.stravaRedirectURI, code: code)
         } catch {
             alertMessage = error.localizedDescription
         }
         await refreshAccount()
     }
 
-    /// A page the user must open to finish connecting Strava, if the engine gave one.
-    public var pendingStravaURL: URL?
+    /// The Strava page to authorise on, while connecting.
+    public var stravaAuthorizeURL: URL?
 
     public func disconnectStrava() async {
         do { try await engine.stravaDisconnect() } catch { alertMessage = error.localizedDescription }
@@ -233,11 +282,29 @@ public final class AppModel {
 
     // MARK: Engine settings
 
+    public func reloadEngineSettings() async {
+        if let all = try? await engine.settings() { engineSettings = all }
+    }
+
     public func engineSetting(_ key: String) async -> JSONValue? {
         try? await engine.setting(key)
     }
 
     public func setEngineSetting(_ key: String, _ value: JSONValue) async {
-        do { try await engine.setSetting(key, value) } catch { alertMessage = error.localizedDescription }
+        do {
+            try await engine.setSetting(key, value)
+            engineSettings[key] = value
+        } catch {
+            alertMessage = error.localizedDescription
+        }
     }
+
+    /// The engine's `backup_dir` (where `device.backup` writes when given no `dest`).
+    public var backupFolder: URL {
+        guard let path = engineSettings["backup_dir"]?.stringValue, !path.isEmpty else { return BackupFolder.defaultRoot }
+        return URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
+    }
+
+    /// The engine's `backup_keep`: how many backups of a device are kept; 0 keeps all.
+    public var backupKeep: Int { engineSettings["backup_keep"]?.intValue ?? 3 }
 }

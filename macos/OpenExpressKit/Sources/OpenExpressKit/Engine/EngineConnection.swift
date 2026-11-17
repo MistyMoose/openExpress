@@ -87,10 +87,11 @@ extension EngineConnection {
         return try await call("device.backup", params: .object(p), as: BackupResult.self, progress: progress)
     }
 
-    public func sync(_ unitID: String, apply: Bool = true, types: [String]? = nil,
+    public func sync(_ unitID: String, apply: Bool = true, types: [String]? = nil, firstRun: FirstSync? = nil,
                      progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> SyncResult {
         var p: [String: JSONValue] = ["device": .string(unitID), "apply": .bool(apply)]
         if let types { p["types"] = .array(types.map { .string($0) }) }
+        if let firstRun { p["first_run"] = .string(firstRun.rawValue) }
         return SyncResult(raw: try await call("device.sync", params: .object(p), progress: progress))
     }
 
@@ -114,6 +115,7 @@ extension EngineConnection {
         try await call("maps.list", params: ["device": .string(unitID), "all": .bool(all)], as: MapsList.self)
     }
 
+    /// `maps.install` / `maps.remove`, one map after the other.
     public func maps(_ action: MapAction, _ unitID: String, names: [String], apply: Bool = true,
                      progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> OperationResult {
         OperationResult(raw: try await call(
@@ -122,13 +124,20 @@ extension EngineConnection {
             progress: progress))
     }
 
-    // MARK: Apps, activities, backups
-
-    public func apps(_ unitID: String) async throws -> [ConnectIQApp] {
-        try await call("apps.list", params: ["device": .string(unitID)], as: AppsList.self).apps
+    /// `maps.update`: every installed map that has an update.
+    public func updateAllMaps(_ unitID: String, apply: Bool = true,
+                              progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> OperationResult {
+        OperationResult(raw: try await call(
+            "maps.update", params: ["device": .string(unitID), "apply": .bool(apply)], progress: progress))
     }
 
-    public func activities(_ unitID: String?, limit: Int? = nil) async throws -> [Activity] {
+    // MARK: Apps, activities, backups
+
+    public func apps(_ unitID: String) async throws -> AppsList {
+        try await call("apps.list", params: ["device": .string(unitID)], as: AppsList.self)
+    }
+
+    public func activities(_ unitID: String?, limit: Int? = 200) async throws -> [Activity] {
         var p: [String: JSONValue] = [:]
         if let unitID { p["device"] = .string(unitID) }
         if let limit { p["limit"] = .number(Double(limit)) }
@@ -159,17 +168,40 @@ extension EngineConnection {
         _ = try await call("settings.set", params: ["key": .string(key), "value": value])
     }
 
+    /// `settings.get` without a key: every setting.
+    public func settings() async throws -> [String: JSONValue] {
+        try await call("settings.get")["settings"]?.objectValue ?? [:]
+    }
+
     public func stravaStatus() async throws -> StravaStatus {
         try await call("strava.status", as: StravaStatus.self)
     }
 
-    public func stravaConnect() async throws -> JSONValue { try await call("strava.connect") }
+    /// Without `code`: the status and the `authorize_url` to open (client ID and secret saved
+    /// first when given). With the `code` Strava's redirect brought: connects.
+    public func stravaConnect(redirectURI: String, code: String? = nil, clientID: String? = nil,
+                              clientSecret: String? = nil) async throws -> StravaStatus {
+        var p: [String: JSONValue] = ["redirect_uri": .string(redirectURI)]
+        if let code { p["code"] = .string(code) }
+        if let clientID, !clientID.isEmpty { p["client_id"] = .string(clientID) }
+        if let clientSecret, !clientSecret.isEmpty { p["client_secret"] = .string(clientSecret) }
+        return try await call("strava.connect", params: .object(p), as: StravaStatus.self)
+    }
 
     public func stravaDisconnect() async throws {
         _ = try await call("strava.disconnect")
+    }
+
+    /// `strava.upload`: `{"uploaded", "duplicates", "failed", "skipped", "rate_limited"}`.
+    public func stravaUpload(files: [String], apply: Bool = true) async throws -> JSONValue {
+        try await call("strava.upload", params: ["files": .array(files.map { .string($0) }), "apply": .bool(apply)])
     }
 }
 
 public enum MapAction: String, Sendable { case install, update, remove }
 
 struct DevicesList: Decodable { var devices: [Device] }
+
+/// The first sync of a device must say what to upload (`first_sync_choice` otherwise):
+/// everything on it, or only what is new from now on.
+public enum FirstSync: String, Sendable { case all, baseline }

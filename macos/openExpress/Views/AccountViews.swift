@@ -41,28 +41,79 @@ struct AccountForm: View {
             }
 
             if app.supports("strava.status") {
-                Section {
-                    LabeledContent("Strava") {
-                        Text(app.strava?.connected == true
-                             ? (app.strava?.athlete ?? String(localized: "Connected"))
-                             : String(localized: "Not connected"))
-                    }
-                    if app.strava?.connected == true {
-                        Button("Disconnect Strava", role: .destructive) { Task { await app.disconnectStrava() } }
-                    } else {
-                        Button("Connect Strava…") { Task { await app.connectStrava() } }
-                    }
-                } footer: {
-                    Text("New activities are also sent to Strava when you sync.")
-                        .foregroundStyle(.secondary)
-                }
+                StravaSection()
             }
         }
         .formStyle(.grouped)
-        .onChange(of: app.pendingStravaURL) { _, url in
-            if let url {
-                NSWorkspace.shared.open(url)
-                app.pendingStravaURL = nil
+    }
+}
+
+/// Strava: the client ID and secret of the user's own Strava API application (once), then
+/// Strava's authorisation page in a sheet; its redirect brings the code.
+struct StravaSection: View {
+    @Environment(AppModel.self) private var app
+    @State private var clientID = ""
+    @State private var clientSecret = ""
+
+    var body: some View {
+        @Bindable var app = app
+        Section {
+            LabeledContent("Strava") {
+                Text(app.strava?.connected == true
+                     ? (app.strava?.athlete ?? String(localized: "Connected"))
+                     : String(localized: "Not connected"))
+            }
+            if app.strava?.connected == true {
+                Button("Disconnect Strava", role: .destructive) { Task { await app.disconnectStrava() } }
+            } else {
+                if app.strava?.configured != true {
+                    TextField("Client ID", text: $clientID)
+                    SecureField("Client secret", text: $clientSecret)
+                }
+                Button("Connect Strava…") {
+                    Task { await app.startStrava(clientID: clientID, clientSecret: clientSecret) }
+                }
+                .disabled(app.strava?.configured != true && (clientID.isEmpty || clientSecret.isEmpty))
+            }
+        } header: {
+            Text("Strava")
+        } footer: {
+            Text(app.strava?.configured == true
+                 ? "New activities are also sent to Strava when you sync."
+                 : "Create an API application on strava.com/settings/api with “localhost” as its callback domain, then enter its client ID and secret.")
+                .foregroundStyle(.secondary)
+        }
+        .sheet(item: Binding(get: { app.stravaAuthorizeURL.map(IdentifiedURL.init) },
+                             set: { if $0 == nil { app.stravaAuthorizeURL = nil } })) { item in
+            StravaAuthorizeSheet(url: item.url)
+        }
+    }
+}
+
+struct IdentifiedURL: Identifiable {
+    let url: URL
+    var id: URL { url }
+}
+
+struct StravaAuthorizeSheet: View {
+    let url: URL
+    @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        SignInWebView(url: url, extract: { url in
+            guard url.absoluteString.hasPrefix(AppModel.stravaRedirectURI),
+                  let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "code" })?.value
+            else { return nil }
+            return code
+        }, readsPageText: false) { code in
+            Task { await app.finishStrava(code: code) }
+        }
+        .frame(minWidth: 480, idealWidth: 520, minHeight: 600, idealHeight: 660)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { app.stravaAuthorizeURL = nil; dismiss() }
             }
         }
     }
@@ -117,9 +168,13 @@ struct SignInSheet: View {
 
 struct SignInWebView: NSViewRepresentable {
     let url: URL
+    /// What a navigation brings back (a ticket URL, an OAuth code); nil: keep browsing.
+    var extract: (URL) -> String? = SignInTicket.fromURL
+    /// Also look for a ticket in the page's text (Garmin's JSON answer).
+    var readsPageText = true
     let onTicket: (String) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onTicket: onTicket) }
+    func makeCoordinator() -> Coordinator { Coordinator(extract: extract, readsPageText: readsPageText, onTicket: onTicket) }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -134,10 +189,14 @@ struct SignInWebView: NSViewRepresentable {
     func updateNSView(_ nsView: WKWebView, context: Context) {}
 
     final class Coordinator: NSObject, WKNavigationDelegate {
+        let extract: (URL) -> String?
+        let readsPageText: Bool
         let onTicket: (String) -> Void
         private var done = false
 
-        init(onTicket: @escaping (String) -> Void) {
+        init(extract: @escaping (URL) -> String?, readsPageText: Bool, onTicket: @escaping (String) -> Void) {
+            self.extract = extract
+            self.readsPageText = readsPageText
             self.onTicket = onTicket
         }
 
@@ -148,7 +207,7 @@ struct SignInWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
-            if let url = navigationAction.request.url, let ticket = SignInTicket.fromURL(url) {
+            if let url = navigationAction.request.url, let ticket = extract(url) {
                 deliver(ticket)
                 return .cancel
             }
@@ -156,18 +215,19 @@ struct SignInWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-            if let url = webView.url, let ticket = SignInTicket.fromURL(url) {
+            if let url = webView.url, let ticket = extract(url) {
                 webView.stopLoading()
                 deliver(ticket)
             }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            if let url = webView.url, let ticket = SignInTicket.fromURL(url) {
+            if let url = webView.url, let ticket = extract(url) {
                 deliver(ticket)
                 return
             }
             // Garmin's embed page may answer with the ticket as page content (JSON).
+            guard readsPageText else { return }
             Task {
                 let text = try? await webView.evaluateJavaScript("document.body ? document.body.innerText : ''") as? String
                 if let text, let ticket = SignInTicket.fromPageText(text) {

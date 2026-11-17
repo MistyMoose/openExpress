@@ -1,6 +1,40 @@
 import Foundation
 import Observation
 
+/// What an install will do, shown for confirmation before anything is downloaded.
+public struct InstallPlan: Identifiable, Sendable, Hashable {
+    public struct Item: Identifiable, Sendable, Hashable {
+        public enum Kind: Sendable, Hashable { case software, map }
+        public var id: String
+        public var kind: Kind
+        public var name: String
+        /// "21.19 → 21.22", "new · 2025.20".
+        public var change: String?
+        public var size: Int64
+    }
+
+    public enum Action: Sendable, Hashable {
+        /// Install All: these software parts, then every map update.
+        case installAll(parts: [String], updateMaps: Bool)
+        /// One map not yet on the device.
+        case installMap(String)
+    }
+
+    public var id: String { items.map(\.id).joined(separator: "|") }
+    public var items: [Item]
+    public var action: Action
+    /// Free space on the device now, when known.
+    public var freeNow: Int64?
+
+    public var totalBytes: Int64 { items.reduce(0) { $0 + $1.size } }
+    public var freeAfter: Int64? { freeNow.map { $0 - totalBytes } }
+    public var fits: Bool { (freeAfter ?? 0) >= 0 }
+    public var hasSoftware: Bool { items.contains { $0.kind == .software } }
+
+    /// Maps from this size on are confirmed before they are installed.
+    public static let largeMap: Int64 = 1_000_000_000
+}
+
 /// One device and what its pages show; runs its long operations one at a time.
 @MainActor
 @Observable
@@ -27,15 +61,29 @@ public final class DeviceModel: Identifiable {
 
         /// "Downloading · TopoActive Europe".
         public var detail: String {
-            guard let progress else { return String(localized: "Starting…") }
-            let phase = progress.phase.prefix(1).uppercased() + progress.phase.dropFirst()
-            return [phase, progress.item].compactMap { $0 }.joined(separator: " · ")
+            progress?.detail ?? String(localized: "Starting…")
+        }
+    }
+
+    /// What the device model needs from the app.
+    public struct Context {
+        public var supports: @MainActor (String) -> Bool
+        /// Where backups are (the engine's `backup_dir`).
+        public var backupFolder: @MainActor () -> URL
+        /// Errors about the account (`setup_needed`, `not_signed_in`); true when handled.
+        public var accountProblem: @MainActor (EngineError) -> Bool
+
+        public init(supports: @escaping @MainActor (String) -> Bool = { _ in true },
+                    backupFolder: @escaping @MainActor () -> URL = { BackupFolder.defaultRoot },
+                    accountProblem: @escaping @MainActor (EngineError) -> Bool = { _ in false }) {
+            self.supports = supports
+            self.backupFolder = backupFolder
+            self.accountProblem = accountProblem
         }
     }
 
     @ObservationIgnored private let engine: any EngineConnection
-    @ObservationIgnored private let settings: AppSettings
-    @ObservationIgnored private let supports: @MainActor (String) -> Bool
+    @ObservationIgnored private let context: Context
     @ObservationIgnored private var operationTask: Task<Void, Never>?
 
     public private(set) var device: Device
@@ -43,7 +91,7 @@ public final class DeviceModel: Identifiable {
     public private(set) var betaOffered = false
     public private(set) var updatesChecked: Date?
     public private(set) var maps: MapsList?
-    public private(set) var apps: [ConnectIQApp]?
+    public private(set) var apps: AppsList?
     public private(set) var activities: [Activity]?
     public private(set) var backups: [BackupSnapshot]?
     public private(set) var operation: Operation?
@@ -51,17 +99,19 @@ public final class DeviceModel: Identifiable {
     public private(set) var lastOutcome: String?
     public var errorMessage: String?
     public private(set) var loading: Set<DevicePage> = []
+    /// An install waiting for the user's confirmation.
+    public var pendingPlan: InstallPlan?
+    /// The first sync of this device waits for the choice: everything, or new data only.
+    public var needsFirstSyncChoice = false
 
     public nonisolated var id: String { unitID }
     private nonisolated let unitID: String
 
-    public init(device: Device, engine: any EngineConnection, settings: AppSettings,
-                supports: @escaping @MainActor (String) -> Bool = { _ in true }) {
+    public init(device: Device, engine: any EngineConnection, context: Context = Context()) {
         self.device = device
         self.unitID = device.unitID
         self.engine = engine
-        self.settings = settings
-        self.supports = supports
+        self.context = context
     }
 
     // MARK: State
@@ -73,9 +123,14 @@ public final class DeviceModel: Identifiable {
     public var pendingUpdates: [SoftwareUpdate] { updates.filter { !$0.waitingOnDevice } }
     /// Copied: the device installs them once unplugged.
     public var waitingUpdates: [SoftwareUpdate] { updates.filter(\.waitingOnDevice) }
-    /// What Install All installs: everything not yet copied, betas only when chosen one by one.
+    /// The software Install All installs: not yet copied, no betas (those one by one).
     public var installAllParts: [SoftwareUpdate] { pendingUpdates.filter { !$0.beta } }
-    public var badgeCount: Int { pendingUpdates.filter { !$0.beta }.count + (maps?.updatable.count ?? 0) }
+    /// Installed maps with an update.
+    public var mapUpdates: [DeviceMap] { maps?.updatable ?? [] }
+
+    /// The one count of what waits for this device: software (no betas) and map updates.
+    /// The sidebar badge, the menu bar and Install All all use it.
+    public var badgeCount: Int { installAllParts.count + mapUpdates.count }
 
     func update(device new: Device) {
         // Keep what device.info knew (storage, software) when an event brings less.
@@ -99,6 +154,7 @@ public final class DeviceModel: Identifiable {
 
     // MARK: Loading
 
+    /// Device info, then what waits for it (updates and maps), so every count agrees.
     public func refresh() async {
         await load(.overview)
     }
@@ -110,10 +166,16 @@ public final class DeviceModel: Identifiable {
         do {
             switch page {
             case .overview:
-                if device.connected { update(device: try await engine.deviceInfo(unitID)) }
-                if device.connected, updatesChecked == nil { try await loadUpdates() }
+                if device.connected {
+                    update(device: try await engine.deviceInfo(unitID))
+                    if device.busyBy == nil {
+                        if updatesChecked == nil { try await loadUpdates() }
+                        if maps == nil { maps = try await engine.maps(unitID, all: true) }
+                    }
+                }
             case .updates:
                 try await loadUpdates()
+                maps = try await engine.maps(unitID, all: true)
             case .maps:
                 maps = try await engine.maps(unitID, all: true)
             case .apps:
@@ -121,10 +183,10 @@ public final class DeviceModel: Identifiable {
             case .activities:
                 activities = try await engine.activities(unitID)
             case .backups:
-                if supports("backups.list") {
-                    backups = try await engine.backups(unitID, destination: settings.backupFolder)
+                if context.supports("backups.list") {
+                    backups = try await engine.backups(unitID, destination: nil)
                 } else {
-                    backups = BackupFolder.snapshots(root: settings.backupFolder, unitID: unitID)
+                    backups = BackupFolder.snapshots(root: context.backupFolder(), unitID: unitID)
                 }
             }
             // A request that went through: nobody holds the device (device.info says itself).
@@ -142,25 +204,29 @@ public final class DeviceModel: Identifiable {
     }
 
     public func track(for activity: Activity) async -> ActivityTrack? {
-        guard let path = activity.fitPath, supports("activities.track") else { return nil }
+        guard let path = activity.fitPath, context.supports("activities.track") else { return nil }
         return try? await engine.activityTrack(fitPath: path)
     }
 
     // MARK: Operations
 
-    public func sync() {
+    public func sync(firstRun: FirstSyncChoice? = nil) {
+        needsFirstSyncChoice = false
+        let choice: FirstSync? = firstRun.map { $0 == .everything ? .all : .baseline }
         run(.sync) { [engine, unitID] progress in
-            let r = try await engine.sync(unitID, apply: true, progress: progress)
+            let r = try await engine.sync(unitID, apply: true, firstRun: choice, progress: progress)
             return Self.summary(of: r)
         } then: { [weak self] in
             await self?.load(.overview)
         }
     }
 
+    public enum FirstSyncChoice: Sendable { case everything, newOnly }
+
     public func backUp() {
-        run(.backup) { [engine, unitID, settings] progress in
-            let r = try await engine.backup(unitID, destination: settings.backupFolder,
-                                            keep: settings.keepBackups, apply: true, progress: progress)
+        // Folder and number kept: the engine's `backup_dir` and `backup_keep`.
+        run(.backup) { [engine, unitID] progress in
+            let r = try await engine.backup(unitID, apply: true, progress: progress)
             return Self.summary(of: r)
         } then: { [weak self] in
             self?.device.lastBackup = .now
@@ -168,29 +234,84 @@ public final class DeviceModel: Identifiable {
         }
     }
 
-    /// `parts`: nil installs all (as Install All: no betas).
-    public func install(_ parts: [SoftwareUpdate]? = nil) {
-        let chosen = (parts ?? installAllParts).map(\.part)
-        guard !chosen.isEmpty else { return }
+    /// Asks for confirmation of Install All (software without betas, and every map update).
+    public func requestInstallAll() {
+        let software = installAllParts
+        let mapsToUpdate = mapUpdates
+        guard !software.isEmpty || !mapsToUpdate.isEmpty else { return }
+        let items = software.map {
+            InstallPlan.Item(id: "sw:" + $0.part, kind: .software, name: $0.name,
+                             change: $0.installed.map { [version = $0.version] in "\($0) → \(version)" } ?? $0.version,
+                             size: $0.size)
+        } + mapsToUpdate.map {
+            InstallPlan.Item(id: "map:" + $0.name, kind: .map, name: $0.name, change: $0.versionChange, size: $0.size)
+        }
+        pendingPlan = InstallPlan(items: items,
+                                  action: .installAll(parts: software.map(\.part), updateMaps: !mapsToUpdate.isEmpty),
+                                  freeNow: maps?.free ?? device.storage?.free)
+    }
+
+    /// Installs a map not yet on the device; a large one is confirmed first.
+    public func requestInstall(map: DeviceMap) {
+        let plan = InstallPlan(
+            items: [.init(id: "map:" + map.name, kind: .map, name: map.name, change: map.versionChange, size: map.size)],
+            action: .installMap(map.name), freeNow: maps?.free ?? device.storage?.free)
+        if map.size >= InstallPlan.largeMap {
+            pendingPlan = plan
+        } else {
+            perform(plan)
+        }
+    }
+
+    /// Runs a confirmed plan.
+    public func perform(_ plan: InstallPlan) {
+        pendingPlan = nil
+        switch plan.action {
+        case .installAll(let parts, let updateMaps):
+            run(.installUpdates) { [engine, unitID] progress in
+                var problems: [String] = []
+                if !parts.isEmpty {
+                    let r = try await engine.installUpdates(unitID, parts: parts, apply: true, progress: progress)
+                    if let m = r.failureMessage { problems.append(m) }
+                }
+                if updateMaps {
+                    let r = try await engine.updateAllMaps(unitID, apply: true, progress: progress)
+                    if let m = r.failureMessage { problems.append(m) }
+                }
+                if !problems.isEmpty { return problems.joined(separator: "\n") }
+                return parts.isEmpty ? String(localized: "Maps updated.")
+                    : String(localized: "Unplug the device to install the software.")
+            } then: { [weak self] in
+                await self?.load(.updates)
+            }
+        case .installMap(let name):
+            maps(.install, [name])
+        }
+    }
+
+    /// Installs one software part (a beta, chosen by itself) without asking.
+    public func install(_ update: SoftwareUpdate) {
         run(.installUpdates) { [engine, unitID] progress in
-            let r = try await engine.installUpdates(unitID, parts: chosen, apply: true, progress: progress)
-            if let refused = r.refused.first { return refused.value }
-            return String(localized: "Unplug the device to install the update.")
+            let r = try await engine.installUpdates(unitID, parts: [update.part], apply: true, progress: progress)
+            return r.failureMessage ?? String(localized: "Unplug the device to install the software.")
         } then: { [weak self] in
             await self?.load(.updates)
         }
     }
 
+    public func updateAllMaps() {
+        run(.mapsUpdate) { [engine, unitID] progress in
+            try await engine.updateAllMaps(unitID, apply: true, progress: progress).failureMessage
+        } then: { [weak self] in
+            await self?.load(.maps)
+        }
+    }
+
     public func maps(_ action: MapAction, _ names: [String]) {
         guard !names.isEmpty else { return }
-        let kind: OperationKind = switch action {
-        case .install: .mapsInstall
-        case .update: .mapsUpdate
-        case .remove: .mapsRemove
-        }
-        run(kind) { [engine, unitID] progress in
-            let r = try await engine.maps(action, unitID, names: names, apply: true, progress: progress)
-            return r.refused.first?.value
+        if action == .update { return updateAllMaps() }
+        run(action == .install ? .mapsInstall : .mapsRemove) { [engine, unitID] progress in
+            try await engine.maps(action, unitID, names: names, apply: true, progress: progress).failureMessage
         } then: { [weak self] in
             await self?.load(.maps)
         }
@@ -213,6 +334,7 @@ public final class DeviceModel: Identifiable {
         guard operation == nil else { return }
         operation = Operation(kind: kind)
         errorMessage = nil
+        lastOutcome = nil
         operationTask = Task {
             let progress: @Sendable (EngineProgress) -> Void = { p in
                 Task { @MainActor in
@@ -245,11 +367,14 @@ public final class DeviceModel: Identifiable {
         if errorMessage == nil, let o = lastOutcome { lines.append(o) }
         sync()
         await waitForOperation()
-        if errorMessage == nil, let o = lastOutcome { lines.append(o) }
+        if needsFirstSyncChoice {
+            lines.append(String(localized: "Open openExpress to choose what its first sync uploads."))
+        } else if errorMessage == nil, let o = lastOutcome {
+            lines.append(o)
+        }
         await load(.updates)
-        await load(.maps)
         let n = installAllParts.count
-        let m = maps?.updatable.count ?? 0
+        let m = mapUpdates.count
         if n > 0 { lines.append(String(localized: "\(n) software update(s) available.")) }
         if m > 0 { lines.append(String(localized: "\(m) map update(s) available.")) }
         if let errorMessage { lines.append(errorMessage) }
@@ -257,23 +382,37 @@ public final class DeviceModel: Identifiable {
     }
 
     private func handle(_ error: any Error) {
-        if let engineError = error as? EngineError, let program = engineError.busyProgram {
+        guard let engineError = error as? EngineError else {
+            errorMessage = error.localizedDescription
+            return
+        }
+        if let program = engineError.busyProgram {
             device.busyBy = program.isEmpty ? String(localized: "Another program") : program
             return
         }
-        errorMessage = error.localizedDescription
+        if engineError.code == "first_sync_choice" {
+            needsFirstSyncChoice = true
+            return
+        }
+        if context.accountProblem(engineError) { return }
+        errorMessage = engineError.localizedDescription
     }
 
     // MARK: Summaries
 
     static func summary(of r: SyncResult) -> String {
-        var parts = [String(localized: "Synced: \(r.uploaded) uploaded, \(r.downloaded) downloaded.")]
+        var parts = [r.sentence ?? String(localized: "Synced: \(r.uploaded) uploaded, \(r.downloaded) downloaded.")]
         if r.dropFolderCopies > 0 { parts.append(String(localized: "\(r.dropFolderCopies) copied to the FIT drop folder.")) }
         if r.stravaUploads > 0 { parts.append(String(localized: "\(r.stravaUploads) sent to Strava.")) }
+        if let e = r.stravaError { parts.append(String(localized: "Strava: \(e)")) }
         return parts.joined(separator: " ")
     }
 
     static func summary(of r: BackupResult) -> String {
-        String(localized: "Backed up: \(r.copied) files read (\(Format.bytes(r.copiedBytes))), \(r.linked) unchanged.")
+        var s = String(localized: "Backed up: \(r.copied) files read (\(Format.bytes(r.copiedBytes))), \(r.linked) unchanged.")
+        if r.incomplete > 0 {
+            s += " " + String(localized: "\(r.incomplete) file(s) still being written were left out: unplug the device, plug it in again and back up again.")
+        }
+        return s
     }
 }

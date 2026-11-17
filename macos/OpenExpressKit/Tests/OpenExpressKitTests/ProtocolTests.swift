@@ -28,7 +28,7 @@ struct ProtocolTests {
 
     @Test func busyEvent() {
         let ev = EngineIncoming.parse(#"{"event": "device.busy", "params": {"device": "1", "program": "Garmin Express Service"}}"#)
-        #expect(ev == .event(.deviceBusy(DeviceBusy(device: "1", program: "Garmin Express Service"))))
+        #expect(ev == .event(.deviceBusy(DeviceBusy(device: "1", program: "Garmin Express Service", name: nil))))
     }
 
     @Test func device() throws {
@@ -86,12 +86,59 @@ struct ProtocolTests {
         }
     }
 
-    @Test func syncResultIsLenient() {
-        let r = SyncResult(raw: ["uploaded": ["a.fit", "b.fit"], "downloaded": 1, "strava": 2])
+    @Test func syncResult() {
+        let r = SyncResult(raw: ["dry_run": false, "uploaded": ["a.fit", "b.fit"], "downloaded": 1,
+                                 "sentence": "Synced.", "drop_folder": ["path": "/x", "copied": 3, "bytes": 1, "incomplete": 0],
+                                 "strava": ["uploaded": 2, "duplicates": 0]])
         #expect(r.uploaded == 2)
         #expect(r.downloaded == 1)
+        #expect(r.sentence == "Synced.")
         #expect(r.stravaUploads == 2)
-        #expect(r.dropFolderCopies == 0)
+        #expect(r.dropFolderCopies == 3)
+        #expect(SyncResult(raw: ["strava": ["error": "rate limited"], "drop_folder": nil]).stravaError == "rate limited")
+    }
+
+    @Test func commandLineAndMapResults() {
+        #expect(OperationResult(raw: ["exit_code": 0, "lines": ["ok"]]).failureMessage == nil)
+        #expect(OperationResult(raw: ["exit_code": 1, "lines": ["a", "No room on the device."]]).failureMessage == "a\nNo room on the device.")
+        let maps = OperationResult(raw: ["dry_run": false, "maps": [
+            ["name": "A", "done": true, "exit_code": 0, "lines": []],
+            ["name": "B", "done": false, "code": "failed", "reason": "Not enough space."]]])
+        #expect(maps.refused == ["B": "Not enough space."])
+        #expect(maps.failureMessage == "B: Not enough space.")
+    }
+
+    @Test func finalProtocolShapes() throws {
+        let hello = try JSONValue(["engine": "1.0", "protocol": 1, "platform": "darwin", "methods": ["hello"]]).decode(EngineHello.self)
+        #expect(hello.protocolVersion == 1)
+        let busy = EngineIncoming.parse(#"{"event": "device.busy", "params": {"device": null, "program": "Garmin Express Service", "name": "fēnix 8"}}"#)
+        #expect(busy == .event(.deviceBusy(DeviceBusy(device: nil, program: "Garmin Express Service", name: "fēnix 8"))))
+        let log = EngineIncoming.parse(#"{"event": "log", "params": {"level": "info", "message": "x", "request": 4}}"#)
+        #expect(log == .event(.log(EngineLogLine(level: "info", message: "x", request: 4))))
+        let strava = try JSONValue(["configured": true, "connected": false, "athlete_id": nil, "athlete_name": nil,
+                                    "authorize_url": "https://www.strava.com/oauth/authorize?x=1"]).decode(StravaStatus.self)
+        #expect(strava.configured && !strava.connected)
+        #expect(strava.authorizeURL == "https://www.strava.com/oauth/authorize?x=1")
+        let apps = try JSONValue(["exit_code": 0, "lines": ["Klimat"]]).decode(AppsList.self)
+        #expect(apps.apps == nil && apps.lines == ["Klimat"])
+        let a = try JSONValue(["name": "Morning Run", "source": "backup", "path": "/b/x.fit", "size": 10,
+                               "start": "2026-11-17T09:41:00+01:00", "sport": "running", "sport_id": 1,
+                               "distance": 5000, "duration": 1500, "ascent": nil, "state": "complete"]).decode(Activity.self)
+        #expect(a.fitPath == "/b/x.fit" && a.isOnThisMac && a.state == "complete")
+        let own = try JSONValue(["maps": [], "own_maps": [["file": "a.img", "size": 5, "title": "Alps", "path": "Garmin/a.img"]],
+                                 "free": 1, "message": "No maps service."]).decode(MapsList.self)
+        #expect(own.ownMaps.first?.name == "Alps" && own.message == "No maps service.")
+    }
+
+    @Test func mapVersionChange() {
+        #expect(DeviceMap(name: "A", version: "2025.20", size: 1, installed: true, status: .update, installedVersion: "2025.10").versionChange == "2025.10 → 2025.20")
+        #expect(DeviceMap(name: "A", version: "2025.20", size: 1, installed: false, status: .available).versionChange == "new · 2025.20")
+    }
+
+    @Test func shortName() {
+        #expect(Device(unitID: "1", name: "fēnix 8 – 47 mm, AMOLED", connected: true).shortName == "fēnix 8")
+        #expect(Device(unitID: "1", name: "Edge 1050", connected: true).shortName == "Edge 1050")
+        #expect(Device(unitID: "1", name: "Instinct 3 - 45mm Tactical", connected: true).shortName == "Instinct 3")
     }
 }
 

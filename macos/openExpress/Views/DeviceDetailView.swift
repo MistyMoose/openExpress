@@ -8,14 +8,18 @@ struct DeviceDetailView: View {
 
     var body: some View {
         @Bindable var app = app
+        @Bindable var model = model
         page
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .bottom) {
+            // An inset, not an overlay: lists and forms scroll their last rows clear of the
+            // floating action, under the scroll edge effect.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 if model.busyBy == nil {
                     FloatingActionBar(model: model, page: app.page)
                 }
             }
-            .navigationTitle(model.device.name)
+            // The short name: the full one is on Overview.
+            .navigationTitle(model.device.shortName)
             .navigationSubtitle(subtitle)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -37,7 +41,25 @@ struct DeviceDetailView: View {
                     .disabled(model.loading.contains(app.page) || (app.page.needsConnection && !model.device.connected))
                 }
             }
-            .task(id: app.page) { await model.load(app.page) }
+            .task(id: app.page) {
+                await model.load(app.page)
+                // Development: `-OEInitialPage updates -OEShowInstallPlan YES` opens the confirmation.
+                if app.page == .updates, UserDefaults.standard.bool(forKey: "OEShowInstallPlan") {
+                    model.requestInstallAll()
+                }
+            }
+            .sheet(item: $model.pendingPlan) { plan in
+                InstallConfirmationSheet(plan: plan, deviceName: model.device.shortName) {
+                    model.perform(plan)
+                }
+            }
+            .confirmationDialog("First Sync of \(model.device.shortName)", isPresented: $model.needsFirstSyncChoice) {
+                Button("Upload New Data Only") { model.sync(firstRun: .newOnly) }
+                Button("Upload Everything on the Device") { model.sync(firstRun: .everything) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("openExpress has not synced this device before. Upload only what the device records from now on, or everything still on it (activities Garmin Connect already has are recognised).")
+            }
             .alert("openExpress", isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } })
@@ -117,13 +139,13 @@ struct FloatingActionBar: View {
         case .overview:
             return Action(title: "Sync Now", systemImage: "arrow.triangle.2.circlepath") { model.sync() }
         case .updates:
-            let n = model.installAllParts.count
-            guard n > 0 else { return nil }
-            return Action(title: n == 1 ? "Install" : "Install All", systemImage: "arrow.down.circle") { model.install() }
+            guard model.badgeCount > 0 else { return nil }
+            return Action(title: model.badgeCount == 1 ? "Install…" : "Install All…", systemImage: "arrow.down.circle") {
+                model.requestInstallAll()
+            }
         case .maps:
-            let names = model.maps?.updatable.map(\.name) ?? []
-            guard !names.isEmpty else { return nil }
-            return Action(title: "Update All Maps", systemImage: "map") { model.maps(.update, names) }
+            guard !model.mapUpdates.isEmpty else { return nil }
+            return Action(title: "Update All Maps", systemImage: "map") { model.updateAllMaps() }
         case .backups:
             return Action(title: "Back Up Now", systemImage: "externaldrive.badge.timemachine") { model.backUp() }
         case .activities, .apps:
@@ -147,7 +169,8 @@ struct FloatingActionBar: View {
                 .glassEffectID("action", in: glass)
             }
         }
-        .padding(.bottom, 20)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .bouncy, value: model.operation?.kind)
     }
 }
@@ -191,5 +214,81 @@ struct OperationCapsule: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("\(operation.kind.title), \(operation.detail)"))
         .accessibilityValue(operation.progress?.fraction.map { Text($0, format: .percent.precision(.fractionLength(0))) } ?? Text(""))
+    }
+}
+
+/// Install All (and a large map) asks first: what, how much, the space left, and that the
+/// software installs only once the device is unplugged.
+struct InstallConfirmationSheet: View {
+    let plan: InstallPlan
+    let deviceName: String
+    let install: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label(plan.items.count == 1 ? "Install \(plan.items[0].name)?" : "Install \(plan.items.count) Updates on \(deviceName)?",
+                  systemImage: "arrow.down.circle")
+                .font(.title2.weight(.semibold))
+
+            Form {
+                Section {
+                    ForEach(plan.items) { item in
+                        LabeledContent {
+                            Text(Format.bytes(item.size)).monospacedDigit()
+                        } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(item.name)
+                                    if let change = item.change {
+                                        Text(change).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                                    }
+                                }
+                            } icon: {
+                                Image(systemName: item.kind == .software ? "cpu" : "map")
+                            }
+                        }
+                    }
+                }
+                Section {
+                    LabeledContent("Download", value: Format.bytes(plan.totalBytes))
+                    if let after = plan.freeAfter {
+                        LabeledContent("Free on the device afterwards") {
+                            Text(after >= 0 ? Format.bytes(after) : String(localized: "\(Format.bytes(-after)) too little"))
+                                .foregroundStyle(after >= 0 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                        }
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .scrollDisabled(plan.items.count < 6)
+            .frame(minHeight: 140, maxHeight: 360)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Keep the device connected while the files are copied.", systemImage: "cable.connector")
+                if plan.hasSoftware {
+                    Label("Then unplug the device: it installs the software by itself and restarts. Keep it charged.",
+                          systemImage: "cable.connector.slash")
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Install") {
+                    dismiss()
+                    install()
+                }
+                .buttonStyle(.glassProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(!plan.fits)
+            }
+        }
+        .padding(24)
+        .frame(width: 500)
     }
 }

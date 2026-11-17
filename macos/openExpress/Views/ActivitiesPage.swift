@@ -96,6 +96,8 @@ private extension Optional where Wrapped == Double {
 
 /// An activity: its route on a map and its charts when the engine can read its FIT file.
 struct ActivityDetailView: View {
+    @Environment(AppModel.self) private var app
+    @State private var stravaSent = false
     let model: DeviceModel
     let activity: Activity
     @State private var track: ActivityTrack?
@@ -165,10 +167,20 @@ struct ActivityDetailView: View {
                 }
             }
 
-            if let path = activity.fitPath, FileManager.default.fileExists(atPath: path) {
+            if let path = activity.fitPath, activity.isOnThisMac {
                 Section {
-                    Button("Show FIT File in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                    if FileManager.default.fileExists(atPath: path) {
+                        Button("Show FIT File in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                        }
+                    }
+                    if app.strava?.connected == true, app.supports("strava.upload") {
+                        Button(stravaSent ? "Sent to Strava" : "Send to Strava") {
+                            Task {
+                                stravaSent = (try? await app.engine.stravaUpload(files: [path]))?["failed"]?.intValue == 0
+                            }
+                        }
+                        .disabled(stravaSent)
                     }
                 }
             }

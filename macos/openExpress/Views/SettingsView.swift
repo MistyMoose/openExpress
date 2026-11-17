@@ -115,26 +115,29 @@ struct DropFolderSettings: View {
     }
 }
 
+/// The engine's `backup_dir` and `backup_keep`: the defaults of every backup.
 struct BackupSettings: View {
     @Environment(AppModel.self) private var app
     @State private var choosing = false
 
     var body: some View {
-        @Bindable var settings = app.settings
         Form {
             Section {
                 LabeledContent("Folder") {
                     HStack {
-                        Text(settings.backupFolder.path(percentEncoded: false).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                        Text((app.backupFolder.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Button("Choose…") { choosing = true }
                     }
                 }
-                Stepper(value: $settings.keepBackups, in: 0...50) {
-                    LabeledContent("Keep", value: settings.keepBackups == 0
+                Stepper(value: Binding(
+                    get: { app.backupKeep },
+                    set: { n in Task { await app.setEngineSetting("backup_keep", .number(Double(n))) } }),
+                        in: 0...50) {
+                    LabeledContent("Keep", value: app.backupKeep == 0
                                    ? String(localized: "All backups")
-                                   : String(localized: "Newest \(settings.keepBackups)"))
+                                   : String(localized: "Newest \(app.backupKeep)"))
                 }
             } footer: {
                 Text("Files unchanged since the previous backup are linked, not copied again, so keeping several backups costs little extra space.")
@@ -142,8 +145,11 @@ struct BackupSettings: View {
             }
         }
         .formStyle(.grouped)
+        .task { await app.reloadEngineSettings() }
         .fileImporter(isPresented: $choosing, allowedContentTypes: [.folder]) { result in
-            if case .success(let url) = result { settings.backupFolder = url }
+            if case .success(let url) = result {
+                Task { await app.setEngineSetting("backup_dir", .string(url.path)) }
+            }
         }
     }
 }

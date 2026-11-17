@@ -26,7 +26,8 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
     public var lastSync: Date?
     /// Not in docs/ENGINE.md yet: shown when the engine sends it.
     public var lastBackup: Date?
-    /// Not in docs/ENGINE.md yet: battery level 0…100 when the engine sends it.
+    /// Battery level 0…100. Null for Garmin devices (their MTP BatteryLevel is a fixed
+    /// placeholder); the Overview shows no Battery row then.
     public var battery: Int?
 
     public var id: String { unitID }
@@ -73,6 +74,16 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
         battery = try c.decodeIfPresent(Int.self, forKey: .battery)
     }
 
+    /// The name without its variant: "fēnix 8 – 47 mm, AMOLED" → "fēnix 8", for titles.
+    public var shortName: String {
+        var cut = name.endIndex
+        for sep in [" – ", " — ", " - ", " (", ", "] {
+            if let r = name.range(of: sep), r.lowerBound < cut { cut = r.lowerBound }
+        }
+        let short = name[..<cut].trimmingCharacters(in: .whitespaces)
+        return short.isEmpty ? name : short
+    }
+
     /// The kind of device, guessed from its product name, for its SF Symbol.
     public var kind: Kind { Kind(productName: name) }
 
@@ -109,21 +120,30 @@ public struct AccountStatus: Codable, Sendable, Hashable {
     /// Masked, e.g. "j***@e***.com".
     public var account: String?
     public var setupDone: Bool
+    public var environment: String?
 
-    public init(signedIn: Bool, account: String? = nil, setupDone: Bool) {
+    public init(signedIn: Bool, account: String? = nil, setupDone: Bool, environment: String? = nil) {
         self.signedIn = signedIn
         self.account = account
         self.setupDone = setupDone
+        self.environment = environment
     }
 }
 
 public struct EngineHello: Codable, Sendable, Hashable {
     public var engine: String
+    public var protocolVersion: Int?
     public var platform: String
     public var methods: [String]
 
-    public init(engine: String, platform: String, methods: [String]) {
+    enum CodingKeys: String, CodingKey {
+        case engine, platform, methods
+        case protocolVersion = "protocol"
+    }
+
+    public init(engine: String, protocolVersion: Int? = 1, platform: String, methods: [String]) {
         self.engine = engine
+        self.protocolVersion = protocolVersion
         self.platform = platform
         self.methods = methods
     }
@@ -131,28 +151,34 @@ public struct EngineHello: Codable, Sendable, Hashable {
     public func supports(_ method: String) -> Bool { methods.contains(method) }
 }
 
-/// `strava.status`: docs/ENGINE.md points at strava.py; the app reads only these fields.
+/// `strava.status`: `{"configured", "connected", "athlete_id", "athlete_name", "scope", "expires_at"}`.
 public struct StravaStatus: Codable, Sendable, Hashable {
+    /// A client ID and secret are saved.
+    public var configured: Bool
     public var connected: Bool
-    public var athlete: String?
+    public var athleteName: String?
+    /// `strava.connect` without `code`: the page to open.
+    public var authorizeURL: String?
 
-    public init(connected: Bool, athlete: String? = nil) {
+    public var athlete: String? { athleteName }
+
+    enum CodingKeys: String, CodingKey {
+        case configured, connected, athleteName
+        case authorizeURL = "authorizeUrl"
+    }
+
+    public init(configured: Bool = true, connected: Bool, athleteName: String? = nil, authorizeURL: String? = nil) {
+        self.configured = configured
         self.connected = connected
-        self.athlete = athlete
+        self.athleteName = athleteName
+        self.authorizeURL = authorizeURL
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        connected = (try? c.decode(Bool.self, forKey: .connected))
-            ?? (try? c.decode(Bool.self, forKey: .signedIn)) ?? false
-        athlete = try? c.decodeIfPresent(String.self, forKey: .athlete)
-    }
-
-    enum CodingKeys: String, CodingKey { case connected, signedIn, athlete }
-
-    public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(connected, forKey: .connected)
-        try c.encodeIfPresent(athlete, forKey: .athlete)
+        connected = (try? c.decode(Bool.self, forKey: .connected)) ?? false
+        configured = (try? c.decode(Bool.self, forKey: .configured)) ?? connected
+        athleteName = try? c.decodeIfPresent(String.self, forKey: .athleteName)
+        authorizeURL = try? c.decodeIfPresent(String.self, forKey: .authorizeURL)
     }
 }

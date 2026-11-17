@@ -368,7 +368,7 @@ def test_the_apps_page_says_it_in_one_line():
         said = refused_dirs_text(["garmin/apps/media", "garmin/apps/settings"])
     finally:
         i18n.setup("en")
-    assert said == ("Urządzenie nie pozwoliło openExpress utworzyć garmin/apps/media, "
+    assert said == ("Urządzenie nie pozwoliło openExpressowi utworzyć garmin/apps/media, "
                     "garmin/apps/settings w\u00a0tej wersji oprogramowania: aplikacje, które tam "
                     "trafiają, czekają w\u00a0kolejce Garmin Connect.")
 

@@ -254,6 +254,12 @@ class SoftwareUpdate:
         return self.hidden_session == hidden_folders.READ
 
     @property
+    def hidden_unread(self) -> bool:
+        """Its file goes to a folder of the top level ordinary MTP does not show that this
+        connection has not read through openExpress's own session: it is not installed."""
+        return self.hidden_folder is not None and not self.hidden_read
+
+    @property
     def is_add_on(self) -> bool:
         """Something the device does not have that Garmin offers to add to it (a voice, a
         vehicle of a car navigator): the server says it is not installed, it is not the device's
@@ -312,6 +318,7 @@ OLDER_SAME_SIZE = "the same size"
 OLDER_DIFFERS = "another file"
 OLDER_NOT_COMPARED = "not compared"
 MD5_DIFFERS = "MD5 differs"
+SIZE_DIFFERS = "size differs"  # followed by both sizes
 
 
 class Presence(NamedTuple):
@@ -355,8 +362,7 @@ def presence(storage: Storage, u: SoftwareUpdate) -> Presence:
         if size is None:
             return Presence(NOT_ON_THE_DEVICE)
         if size != u.size:
-            return Presence(f"size differs ({applog.size(size)} on the device, "
-                            f"{applog.size(u.size)} offered)", real)
+            return _size_differs(size, u, real)
         same = _md5_of(storage, real, size, entry.mtime) == md5
         return Presence(MATCHES if same else MD5_DIFFERS, real)
     except DeviceNotResponding:
@@ -379,7 +385,11 @@ def presence_by_size(listing: hidden_folders.Listing, u: SoftwareUpdate) -> Pres
     u.hidden_size_same = entry.size == u.size
     if u.hidden_size_same:
         return Presence(SAME_SIZE, real)
-    return Presence(f"size differs ({applog.size(entry.size)} on the device, "
+    return _size_differs(entry.size, u, real)
+
+
+def _size_differs(on_device: int, u: SoftwareUpdate, real) -> Presence:
+    return Presence(f"{SIZE_DIFFERS} ({applog.size(on_device)} on the device, "
                     f"{applog.size(u.size)} offered)", real)
 
 
@@ -439,11 +449,11 @@ def _older_offer(storage: Storage, listing, u: SoftwareUpdate) -> str:
         found = presence_by_size(listing, u)
         if found.why == SAME_SIZE:
             return OLDER_SAME_SIZE
-        return OLDER_DIFFERS if found.why.startswith("size differs") else OLDER_NOT_COMPARED
+        return OLDER_DIFFERS if found.why.startswith(SIZE_DIFFERS) else OLDER_NOT_COMPARED
     found = presence(storage, u)
     if found.why == MATCHES:
         return OLDER_SAME_FILE
-    if found.why == MD5_DIFFERS or found.why.startswith("size differs"):
+    if found.why == MD5_DIFFERS or found.why.startswith(SIZE_DIFFERS):
         return OLDER_DIFFERS
     return OLDER_NOT_COMPARED
 
@@ -573,12 +583,12 @@ def top_folders(storage: Storage) -> set[str] | None:
         return None
 
 
-def top_folder_not_seen(u: SoftwareUpdate, tops: set[str] | None) -> str | None:
-    """The folder of the device's top level the file of `u` goes to when the listing does not
-    show it (a car navigator hides its .System from MTP); None when it is seen, when the file
-    goes to the top level itself, or when the top level could not be listed. A folder inside
-    a folder that is seen is made for the write like any other."""
-    parts = [p for p in u.device_path.split("/") if p]
+def top_folder_not_seen(path: str, tops: set[str] | None) -> str | None:
+    """The folder of the device's top level the file at `path` (with `/`) goes to when the
+    listing does not show it (a car navigator hides its .System from MTP); None when it is
+    seen, when the file goes to the top level itself, or when the top level could not be
+    listed. A folder inside a folder that is seen is made for the write like any other."""
+    parts = [p for p in path.split("/") if p]
     if len(parts) < 2 or tops is None:
         return None
     return None if parts[0].casefold() in tops else parts[0]
@@ -591,7 +601,7 @@ def place(u: SoftwareUpdate, tops: set[str] | None,
     top_folders), and what became of reading its folder through openExpress's own session in
     this connection (hidden_session; `listing`: hidden_folders.kept). Decided here alone, for
     the page, the command line and the write; what is in that folder is mark_present's."""
-    u.hidden_folder = top_folder_not_seen(u, tops)
+    u.hidden_folder = top_folder_not_seen(u.device_path, tops)
     u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
                         if u.hidden_folder is not None and listing is not None else None)
 
@@ -624,6 +634,12 @@ def hidden_software_text(folder: str) -> str:
              "the ordinary USB connection.").format(folder=folder)
 
 
+def power_needed(written: list[SoftwareUpdate]) -> bool:
+    """Whether the device's own software was written into a folder it hides (a car navigator,
+    which installs it once unplugged): then power_text is said."""
+    return any(u.is_system and u.hidden_folder is not None for u in written)
+
+
 def power_text() -> str:
     # TRANSLATORS: after the device's own software was written into the folder a car navigator
     # hides: it installs it once unplugged, and must not lose power meanwhile
@@ -650,7 +666,7 @@ def add_ons_text(count: int) -> str:
 def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
     """Those that may be written: none whose top folder ordinary MTP does not show, unless that
     folder was read through openExpress's own session (hidden_folders)."""
-    return [u for u in updates if u.hidden_folder is None or u.hidden_read]
+    return [u for u in updates if not u.hidden_unread]
 
 
 def add_ons(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -1005,7 +1021,7 @@ def _install(
             raise UpdateError(older_offer_text(u))
     for u in updates:
         place(u, tops, listing)  # as the page and the command line placed it
-        if u.hidden_folder is not None and not u.hidden_read:
+        if u.hidden_unread:
             log.info("software update: %s %s not installed: its top folder %s is not seen",
                      u.part_number, u.version, u.hidden_folder)
             raise UpdateError(not_installed_here_text(u))

@@ -471,7 +471,7 @@ class UpdatesPage:
             detail = caption(system.title, system.severity_text, system.filename)
             # Copied before and offered again: the device has not installed it.
             note = copied_update_text(system)
-            if system.hidden_folder is not None and not system.hidden_read:
+            if system.hidden_unread:
                 # Its folder is not seen: nothing to install, and why.
                 note = hidden_software_text(system.hidden_folder)
                 advice = not_read_text(system)
@@ -571,9 +571,8 @@ class UpdatesPage:
             if note is not None:
                 subtitle += "\n" + note
                 reinstall = True
-            button = (waits_for is None and (u.hidden_folder is None or u.hidden_read)
-                      and not upd.reinstall_refused(u))
-            if u.hidden_folder is not None and not u.hidden_read:
+            button = waits_for is None and not u.hidden_unread and not upd.reinstall_refused(u)
+            if u.hidden_unread:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
         row = Adw.ActionRow(
             # TRANSLATORS: title of the row of an update of the device's own software (firmware), on
@@ -597,7 +596,7 @@ class UpdatesPage:
 
         text = _("Files copied to the device.") + (
             "\n" + _(upd.finish_steps(rep.written, window=True)) if rep.written else "")
-        if any(u.is_system and u.hidden_folder is not None for u in rep.written):
+        if upd.power_needed(rep.written):
             text += "\n\n" + upd.power_text()
         return text
 

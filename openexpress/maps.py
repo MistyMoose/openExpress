@@ -731,8 +731,9 @@ def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str
     if all(here):
         return False
     new = {f.device_path.casefold() for f in m.files}
+    shared = protected_files(maps, m)
     own_old = [p.casefold() for p in m.files_to_remove
-               if p.casefold() not in new and p.casefold() not in protected_files(maps, m)]
+               if p.casefold() not in new and p.casefold() not in shared]
     old_gone = any(p not in present for p in own_old)
     return old_gone or (any(here) and not m.installed)
 
@@ -847,13 +848,10 @@ def _top_not_seen(paths, tops: set[str] | None) -> str | None:
     """The first folder of the top level among those of `paths` that ordinary MTP does not show
     (`tops`: those it shows, in lower case); None when all are seen, or the top level could not
     be listed."""
-    if tops is None:
-        return None
-    for p in paths:
-        parts = [part for part in p.replace("\\", "/").split("/") if part]
-        if len(parts) > 1 and parts[0].casefold() not in tops:
-            return parts[0]
-    return None
+    from openexpress.updates import top_folder_not_seen
+
+    return next((top for p in paths
+                 if (top := top_folder_not_seen(p.replace("\\", "/"), tops)) is not None), None)
 
 
 def hidden_needed(maps: list[UniversalMap]) -> list[str]:

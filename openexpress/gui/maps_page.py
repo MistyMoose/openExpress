@@ -69,6 +69,13 @@ def unseen_map_text() -> str:
     return _("Cannot be read: openExpress cannot see the folder of its files on this device")
 
 
+def _kind(m) -> str:
+    """The type of map `m` for its row; none when the map is named like its type ("Base
+    maps")."""
+    kind = m.map_type.strip()
+    return kind if kind.casefold() != m.name.strip().casefold() else ""
+
+
 class MapsPage:
     """The Maps page and its tasks, for Garmin's maps and maps of your own."""
 
@@ -174,10 +181,8 @@ class MapsPage:
                                 subtitle=GLib.markup_escape_text(self._map_subtitle(m)))
             if m.unseen:
                 # The device hides the folder of its files: no state, nothing to do, and why.
-                kind = m.map_type.strip()
                 row.set_subtitle(GLib.markup_escape_text(
-                    caption(kind if kind.casefold() != m.name.strip().casefold() else "",
-                            m.version, human_size(m.size)) + "\n" + unseen_map_text()))
+                    caption(_kind(m), m.version, human_size(m.size)) + "\n" + unseen_map_text()))
                 g.add(row)
                 continue
             if m.hidden_folder is not None:
@@ -418,8 +423,7 @@ class MapsPage:
         type ("Base maps")."""
         from openexpress import maps as mp
 
-        kind = m.map_type.strip()
-        kind = kind if kind.casefold() != m.name.strip().casefold() else ""
+        kind = _kind(m)
         if m.update_available:
             # The version and the size the server lists are those of the update, not of the
             # map on the device.

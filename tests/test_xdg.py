@@ -1,5 +1,8 @@
 """The XDG base folders of the program (paths.xdg): the variable when it names a folder, else
-the usual folder below the home folder; an empty variable counts as not set."""
+the usual folder below the home folder; an empty variable counts as not set. Linux only (on
+macOS, without the variable, data_dir() answers from ~/Library instead: test_paths_darwin.py)."""
+
+import sys
 
 import pytest
 
@@ -8,6 +11,7 @@ from openexpress import paths
 
 @pytest.mark.parametrize("value", [None, ""], ids=["not set", "empty"])
 def test_without_a_folder_in_the_variable_the_usual_one(monkeypatch, tmp_path, value):
+    monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("HOME", str(tmp_path))
     if value is None:
         monkeypatch.delenv("XDG_DATA_HOME", raising=False)

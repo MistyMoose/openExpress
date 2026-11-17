@@ -4,6 +4,7 @@ written to it. All identifiers here are made up."""
 import logging
 import os
 import stat
+import sys
 
 import pytest
 
@@ -236,6 +237,9 @@ def test_log_file_is_private_and_in_the_state_directory(log_file, tmp_path, monk
     first = lines(log_file)[-1]
     assert " cli[" in first and " INFO openexpress.test: hello" in first
 
+    # Without the variable: the usual folder below the home folder (Linux only; on macOS it
+    # is ~/Library/Logs instead, see test_paths_darwin.py).
+    monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.delenv("XDG_STATE_HOME")
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     assert applog.log_path() == tmp_path / "home/.local/state/openexpress/openexpress.log"

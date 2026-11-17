@@ -1,4 +1,5 @@
-"""Local application directories (XDG)."""
+"""Local application directories (XDG; on macOS the matching folders under ~/Library, which
+has no XDG and no Flatpak)."""
 
 from __future__ import annotations
 
@@ -7,28 +8,41 @@ import contextlib
 import fcntl
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 APP_NAME = "openexpress"
+APP_NAME_MAC = "openExpress"  # the name of the folder this app gets under ~/Library
 APP_ID = "io.github.tomaszbojanowski.OpenExpress"
 FLATPAK_INFO = Path("/.flatpak-info")
 
 
 def xdg(var: str, default: str) -> Path:
     """The XDG base folder in the variable `var` (e.g. XDG_DATA_HOME); `default` below the
-    home folder when the variable is not set or empty."""
+    home folder when the variable is not set or empty. Linux only: macOS has no XDG, so
+    _app_dir does not call this there."""
     value = os.environ.get(var)
     return Path(value) if value else Path.home() / default
 
 
-def _app_dir(var: str, default: str) -> Path:
-    """XDG directory for the app."""
-    return xdg(var, default) / APP_NAME
+def _app_dir(var: str, default: str, mac_library_folder: str) -> Path:
+    """XDG directory for the app; on macOS the app's folder under ~/Library/<mac_library_folder>
+    instead, with no need for XDG variables or GLib to find it. `var` is still honoured when it
+    is set on macOS too (as `xdg` does on Linux): that lets a test (or a user who wants it
+    elsewhere) redirect the folder the same way on every platform."""
+    override = os.environ.get(var)
+    if override:
+        return Path(override) / APP_NAME
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / mac_library_folder / APP_NAME_MAC
+    return Path.home() / default / APP_NAME
 
 
 def config_dir() -> Path:
-    return _app_dir("XDG_CONFIG_HOME", ".config")
+    # macOS keeps config and data together under Application Support (no separate XDG-style
+    # config folder there).
+    return _app_dir("XDG_CONFIG_HOME", ".config", "Application Support")
 
 
 def settings_file() -> Path:
@@ -38,15 +52,17 @@ def settings_file() -> Path:
 
 
 def data_dir() -> Path:
-    return _app_dir("XDG_DATA_HOME", ".local/share")
+    return _app_dir("XDG_DATA_HOME", ".local/share", "Application Support")
 
 
 def cache_dir() -> Path:
-    return _app_dir("XDG_CACHE_HOME", ".cache")
+    return _app_dir("XDG_CACHE_HOME", ".cache", "Caches")
 
 
 def in_flatpak() -> bool:
-    return FLATPAK_INFO.exists()
+    # There is no Flatpak on macOS; every helper below this point stays inert there because
+    # of this early "no".
+    return sys.platform != "darwin" and FLATPAK_INFO.exists()
 
 
 def flatpak_data_dir() -> Path:
@@ -113,8 +129,9 @@ def flatpak_source() -> tuple[str | None, str | None]:
 
 
 def state_dir() -> Path:
-    """Where the log file is kept (in the Flatpak: under ~/.var/app/…/.local/state)."""
-    return _app_dir("XDG_STATE_HOME", ".local/state")
+    """Where the log file is kept (in the Flatpak: under ~/.var/app/…/.local/state; on
+    macOS: ~/Library/Logs/openExpress, where the Console app and the user both expect it)."""
+    return _app_dir("XDG_STATE_HOME", ".local/state", "Logs")
 
 
 def device_dir(unit_id: int) -> Path:
@@ -122,17 +139,20 @@ def device_dir(unit_id: int) -> Path:
 
 
 def default_backup_dir() -> Path:
-    try:
-        import gi
+    # macOS always keeps Documents at ~/Documents (no XDG-style user-dirs file to read, so no
+    # GLib is needed to ask for it); the fallback below is already the right answer there.
+    if sys.platform != "darwin":
+        try:
+            import gi
 
-        gi.require_version("GLib", "2.0")
-        from gi.repository import GLib
+            gi.require_version("GLib", "2.0")
+            from gi.repository import GLib
 
-        docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
-        if docs:
-            return Path(docs) / "Garmin" / "Backups"
-    except (ImportError, ValueError):
-        pass
+            docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
+            if docs:
+                return Path(docs) / "Garmin" / "Backups"
+        except (ImportError, ValueError):
+            pass
     return Path.home() / "Documents" / "Garmin" / "Backups"
 
 

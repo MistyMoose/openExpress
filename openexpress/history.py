@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import posixpath
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -274,17 +275,46 @@ def storage_by_kind(device: GarminDevice, storage: Storage
 def _boot() -> str:
     """This start of the computer: a device at the same place on USB after a restart is another
     connection."""
+    if sys.platform == "darwin":
+        return _boot_darwin()
     try:
         return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
     except OSError:
         return ""
 
 
+def _boot_darwin() -> str:
+    """kern.boottime (sysctlbyname, no /proc on macOS): the seconds of the last boot, as a
+    string, stable while the computer is up and new after a restart, as boot_id is on Linux;
+    "" when it cannot be read."""
+    import ctypes
+
+    class _Timeval(ctypes.Structure):
+        _fields_ = (("tv_sec", ctypes.c_long), ("tv_usec", ctypes.c_int32))
+
+    try:
+        libc = ctypes.CDLL("libc.dylib")
+    except OSError:
+        return ""
+    value = _Timeval()
+    size = ctypes.c_size_t(ctypes.sizeof(value))
+    status = libc.sysctlbyname(b"kern.boottime", ctypes.byref(value), ctypes.byref(size),
+                               None, 0)
+    return str(value.tv_sec) if status == 0 else ""
+
+
 def _mount_id(root) -> str | None:
-    """The system's ID of the mount of a drive at `root` (/proc/self/mountinfo), made anew at
-    each mount; None: not a mount point, or not known."""
+    """The system's ID of the mount of a drive at `root`, made anew at each mount; None: not a
+    mount point, or not known. Linux: its line of /proc/self/mountinfo. macOS, which keeps no
+    such table: the device number of its filesystem (os.stat's st_dev), new as well at each
+    mount since the drive gets a fresh /dev/diskN each time it is mounted."""
     if root is None:
         return None
+    if sys.platform == "darwin":
+        try:
+            return str(os.stat(root).st_dev)
+        except OSError:
+            return None
     try:
         with open("/proc/self/mountinfo", encoding="utf-8") as f:
             for line in f:

@@ -8,6 +8,7 @@ import io
 import json
 import os
 import stat
+import sys
 import types
 from datetime import datetime, timedelta
 
@@ -577,7 +578,9 @@ class Drive(LocalStorage):
 def test_a_drive_mounted_at_a_path_with_a_space_is_a_new_connection_at_each_mount(
         tmp_path, clock, monkeypatch):
     """The system writes a space in a mount point as \\040 (/proc/self/mountinfo): a drive
-    mounted at a path with a space is still found, and each mount of it is a connection."""
+    mounted at a path with a space is still found, and each mount of it is a connection. Linux
+    only: _mount_id reads a different table on macOS (test_history_darwin.py)."""
+    monkeypatch.setattr(sys, "platform", "linux")
     root = tmp_path / "GARMIN DRIVE"
     (root / "GARMIN").mkdir(parents=True)
     (root / "GARMIN" / "GarminDevice.xml").write_text(DEVICE_XML)

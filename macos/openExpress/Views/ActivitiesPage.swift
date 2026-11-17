@@ -47,7 +47,8 @@ struct ActivitiesPage: View {
                         table
                             // Only the columns that fit: no clipped number, no sideways scroller.
                             // A new set of columns lays the table out afresh at their widths.
-                            .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, sportWidth: sportWidth))
+                            .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, sportWidth: sportWidth,
+                                            dateWidth: dateWidth(compact: compactDate)))
                             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { fitColumns(to: $0) }
                     }
                 }
@@ -155,25 +156,34 @@ struct ActivitiesPage: View {
     /// Column widths as the table lays them out (their ideal widths, in points); Sport's
     /// follows its longest name (`sportWidth`), Date's its form.
     private static let columnWidth: [String: CGFloat] = [
-        "date": 165, "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
+        "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
     ]
-    private static let compactDateWidth: CGFloat = 118
 
     /// What lays the table out afresh when it changes.
     struct TableLayout: Hashable {
         var hidden: Set<String>
         var compactDate: Bool
         var sportWidth: CGFloat
+        var dateWidth: CGFloat
+    }
+
+    /// The widest of these texts in the table's font (digits monospaced, as shown).
+    private static func widest(_ texts: some Sequence<String>) -> CGFloat {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        return texts.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
     }
 
     /// Wide enough for the icon and the longest sport name in the list, within reason.
     private var sportWidth: CGFloat {
-        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let longest = Set(all.map(\.sportName)).map {
-            ($0 as NSString).size(withAttributes: [.font: font]).width
-        }.max() ?? 60
+        let longest = Self.widest(Set(all.map(\.sportName)))
         // Icon (20) and its gap (8), the cell's insets; at least the header, at most 200.
         return min(200, max(80, (longest + 20 + 8 + 12).rounded(.up)))
+    }
+
+    /// Wide enough for the longest date of the list in the given form.
+    private func dateWidth(compact: Bool) -> CGFloat {
+        let longest = Self.widest(Set(all.map { Self.formatDate($0.start, compact: compact) }))
+        return min(compact ? 160 : 220, max(70, (longest + 14).rounded(.up)))
     }
 
     /// Makes the columns fit the width: first Avg HR and Ascent go, then Date takes its
@@ -183,9 +193,10 @@ struct ActivitiesPage: View {
         let spacing: CGFloat = 17, margins: CGFloat = 44
         var visible = ["date", "distance", "duration", "ascent", "hr"]
         var compact = false
+        let full = dateWidth(compact: false), short = dateWidth(compact: true)
         func needed() -> CGFloat {
             visible.reduce(margins + sportWidth + spacing) { total, id in
-                total + spacing + (id == "date" && compact ? Self.compactDateWidth : Self.columnWidth[id] ?? 60)
+                total + spacing + (id == "date" ? (compact ? short : full) : Self.columnWidth[id] ?? 60)
             }
         }
         let steps: [() -> Void] = [
@@ -206,8 +217,10 @@ struct ActivitiesPage: View {
     }
 
     /// The date of a row: full, or compact (the year only when it is not this year).
-    private func dateText(_ date: Date) -> String {
-        guard compactDate else { return date.formatted(date: .abbreviated, time: .shortened) }
+    private func dateText(_ date: Date) -> String { Self.formatDate(date, compact: compactDate) }
+
+    private static func formatDate(_ date: Date, compact: Bool) -> String {
+        guard compact else { return date.formatted(date: .abbreviated, time: .shortened) }
         let thisYear = Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
         return thisYear
             ? date.formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -238,7 +251,7 @@ struct ActivitiesPage: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-            .width(min: compactDate ? 100 : 150, ideal: compactDate ? Self.compactDateWidth : 165)
+            .width(min: 70, ideal: dateWidth(compact: compactDate))
             .customizationID("date")
             TableColumn("Distance", value: \.distance.sortKey) { a in
                 NumberCell(text: a.distance.map(Format.distance))
@@ -465,33 +478,44 @@ struct ActivityDetailView: View {
 struct RouteMap: View {
     let track: ActivityTrack
     @Environment(\.colorSchemeContrast) private var contrast
+    /// Bumped when the window comes back into view: see `.id` below.
+    @State private var renderPass = 0
+    @State private var window: NSWindow?
+    @State private var wasHidden = false
+    /// The size the map has been given; the map is made once it has stopped changing.
+    @State private var size: CGSize = .zero
+    @State private var settled = false
 
     private var coordinates: [CLLocationCoordinate2D] {
-        track.points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        RouteGeometry.drawable(track.points).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
     }
 
-    /// Start and finish within 50 m of each other: one start/finish marker.
-    private var isLoop: Bool {
-        guard let a = coordinates.first, let b = coordinates.last, coordinates.count > 1 else { return true }
-        return CLLocation(latitude: a.latitude, longitude: a.longitude)
-            .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude)) < 50
-    }
-
-    /// The route with room around it: more at the bottom, where the attribution is, so the
-    /// markers and the route never touch it.
     private var camera: MapCameraPosition {
-        guard !coordinates.isEmpty else { return .automatic }
-        let points = coordinates.map(MKMapPoint.init)
-        let minX = points.map(\.x).min()!, maxX = points.map(\.x).max()!
-        let minY = points.map(\.y).min()!, maxY = points.map(\.y).max()!
-        let w = max(maxX - minX, 200), h = max(maxY - minY, 200)
-        // Map y grows southwards: the bottom gets the larger margin.
-        let rect = MKMapRect(x: minX - w * 0.15, y: minY - h * 0.18, width: w * 1.3, height: h * 1.48)
-        return .rect(rect)
+        RouteGeometry.cameraRect(track.points).map { .rect($0) } ?? .automatic
     }
 
     var body: some View {
-        Map(initialPosition: camera, interactionModes: [.pan, .zoom]) {
+        // A map made while its frame still changes (the inspector opening beside a table
+        // that lays itself out again) can stay blank: no tiles, no route. It is made once
+        // its size has held for a moment.
+        Group {
+            if settled {
+                map
+            } else {
+                Rectangle().fill(.quaternary)
+            }
+        }
+        .onGeometryChange(for: CGSize.self, of: { $0.size }) { size = $0 }
+        .task(id: size) {
+            guard !settled, size.width > 50, size.height > 50 else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            if !Task.isCancelled { settled = true }
+        }
+    }
+
+    private var map: some View {
+        let isLoop = RouteGeometry.isLoop(track.points)
+        return Map(initialPosition: camera, interactionModes: [.pan, .zoom]) {
             MapPolyline(coordinates: coordinates)
                 .stroke(.orange, style: StrokeStyle(lineWidth: contrast == .increased ? 6 : 4,
                                                     lineCap: .round, lineJoin: .round))
@@ -515,7 +539,38 @@ struct RouteMap: View {
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .mapControls { MapZoomStepper(); MapCompass() }
+        // MapKit draws nothing (no tiles, no route) while its window is fully covered, and a
+        // map made then can stay blank: made again once the window is in view.
+        .id(renderPass)
+        .background(WindowReader(window: $window))
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { note in
+            guard let w = note.object as? NSWindow, w === window else { return }
+            if !w.occlusionState.contains(.visible) {
+                wasHidden = true
+            } else if wasHidden {
+                wasHidden = false
+                renderPass += 1
+            }
+        }
+        .onChange(of: window) { _, w in
+            if let w, !w.occlusionState.contains(.visible) { wasHidden = true }
+        }
         .accessibilityLabel(isLoop ? "Route map, a loop" : "Route map")
+    }
+}
+
+/// The window a view is in.
+struct WindowReader: NSViewRepresentable {
+    @Binding var window: NSWindow?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { window = view.window }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        if nsView.window !== window { DispatchQueue.main.async { window = nsView.window } }
     }
 }
 

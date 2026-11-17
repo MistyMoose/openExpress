@@ -311,6 +311,14 @@ public actor MockEngine: EngineConnection {
             // Indoor activities (training, pool swims) have no GPS points.
             if p["fit"]?.stringValue?.contains("-indoor") == true { return ["points": []] }
             try await Task.sleep(for: stepDelay)
+            // Development: `OEMOCK_TRACK=<engine response .json>` serves a real track (kept
+            // outside the repository) for loops.
+            if p["fit"]?.stringValue?.contains("-ride") != true,
+               let path = ProcessInfo.processInfo.environment["OEMOCK_TRACK"],
+               let data = FileManager.default.contents(atPath: path),
+               let response = try? JSONDecoder().decode(JSONValue.self, from: data) {
+                return response["result"] ?? response
+            }
             // Rides go from A to B; everything else is a loop (start and finish together).
             return try JSONValue(encoding: Self.sampleTrack(loop: p["fit"]?.stringValue?.contains("-ride") != true))
         case "backups.list":
@@ -430,8 +438,9 @@ public actor MockEngine: EngineConnection {
 
     public static func sampleTrack(loop: Bool = true) -> ActivityTrack {
         // A loop around the Utrechtse Heuvelrug, or (not a loop) its first half, A to B.
+        // A loop closes on its first point.
         let n = 240
-        return ActivityTrack(points: (0..<n).map { i in
+        return ActivityTrack(points: (0...(loop ? n : n - 1)).map { i in
             let t = Double(i) / Double(n) * (loop ? 2 : 1) * .pi
             let lat = 52.06 + 0.018 * sin(t) + 0.004 * sin(3 * t)
             let lon = 5.30 + 0.03 * cos(t) + 0.005 * cos(5 * t)

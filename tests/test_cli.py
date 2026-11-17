@@ -86,8 +86,12 @@ def test_sync_requires_setup(device_root, xdg, capsys):
 
 
 def test_no_command_opens_the_window(monkeypatch):
+    """On Linux (on macOS there is no window: test_platform)."""
     import openexpress.cli as cli
+    from openexpress import platform
 
+    monkeypatch.setattr(platform, "is_mac", lambda: False)
+    monkeypatch.setattr(platform, "needs_pygobject", lambda: False)  # as if it were there
     called = []
     monkeypatch.setattr(cli, "cmd_gui", lambda args: called.append(args) or 0)
     assert cli.main([]) == 0

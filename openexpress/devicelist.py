@@ -15,7 +15,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from openexpress import known_devices, picture_urls, tile_facts
-from openexpress.device.gio_storage import distinct_devices
+from openexpress.device.found import distinct_devices
 from openexpress.known_devices import (
     BIKE_ACCESSORY,
     BIKE_SENSOR,

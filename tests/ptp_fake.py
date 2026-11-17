@@ -4,7 +4,9 @@
   only Garmin's 0x9002 lists them, with protection 1;
 * a file just written is listed as usual, with protection 0;
 * an app file (.PRG) reads back other bytes than were written;
-* SendObjectInfo takes storage and parent and returns the new handle;
+* SendObjectInfo takes storage and parent and returns the new handle; a folder it makes only
+  when `allows_folders` (the fēnix 8 refuses one in GARMIN/Apps), and only one described as
+  libmtp describes it (an association of the type "generic folder");
 * DeleteObject removes a protected app file too, as seen when Garmin Express removes an app
   (`delete_protected`: the fake refuses instead).
 
@@ -28,6 +30,7 @@ class FakeObject:
     data: bytes | None = None  # None: a folder
     hidden: bool = False
     listed_size: int | None = None  # listed at this size instead of its bytes' (never read)
+    modified: str = ""  # its ModificationDate, as a PTP date ("20261117T093000")
 
     @property
     def protection(self) -> int:
@@ -46,6 +49,7 @@ class FakeDevice:
         self.refuse_names: dict[str, int] = {}  # file name -> code, at SendObjectInfo
         self.refuse_delete_names: dict[str, int] = {}  # file name -> code, at DeleteObject
         self.supports_hidden = True
+        self.allows_folders = False  # whether SendObjectInfo of a folder makes one
         self.delete_protected = ptp.OK  # or a refusal such as ptp.OBJECT_WRITE_PROTECTED
         self.session_open = False
         self.wrong_transaction = False
@@ -251,7 +255,7 @@ class FakeDevice:
         size = obj.listed_size if obj.listed_size is not None else len(obj.data or b"")
         return (struct.pack("<IHHI", STORAGE, fmt, obj.protection, size)
                 + struct.pack("<HIIIIIIIHII", 0, 0, 0, 0, 0, 0, 0, obj.parent, 0, 0, 0)
-                + ptp.ptp_string(obj.name) + ptp.ptp_string("") + ptp.ptp_string("")
+                + ptp.ptp_string(obj.name) + ptp.ptp_string("") + ptp.ptp_string(obj.modified)
                 + ptp.ptp_string(""))
 
     def _send_object_info(self, params, data):
@@ -259,12 +263,20 @@ class FakeDevice:
         storage, parent = params[0], params[1]
         if storage != STORAGE:
             return (ptp.INVALID_STORAGE_ID,)
-        if parent not in self.objects or self.objects[parent].data is not None:
+        if parent != ptp.ROOT and (parent not in self.objects
+                                   or self.objects[parent].data is not None):
             return (ptp.INVALID_PARENT_OBJECT,)
         fmt, size = struct.unpack_from("<H", data, 4)[0], struct.unpack_from("<I", data, 8)[0]
         name, _end = ptp.read_string(data, 52)
         if fmt == ptp.FORMAT_FOLDER:
-            return (ptp.ACCESS_DENIED,)  # the device does not let folders be created here
+            if not self.allows_folders:
+                return (ptp.ACCESS_DENIED,)  # the device does not let folders be created here
+            if struct.unpack_from("<H", data, 42)[0] != ptp.GENERIC_FOLDER:
+                return (ptp.INVALID_PARAMETER,)
+            handle = self._next
+            self._next += 1
+            self.objects[handle] = FakeObject(name, parent)
+            return ptp.OK, None, (storage, parent, handle)
         if name in self.refuse_names:
             return (self.refuse_names[name],)
         if size > self.free:

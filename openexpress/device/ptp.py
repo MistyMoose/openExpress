@@ -5,20 +5,25 @@ Garmin's operation 0x9002, so app files cannot be written there through gvfs.
 
 Layers: a transport of bulk transfers to one USB device (`LibusbTransport`, libusb-1.0
 through ctypes), `Session` (PTP containers and transactions), and the file operations on
-top: list, look up, send, read, delete. The device must not be in use by another MTP client
-(unmount it from gvfs first). Nothing here creates folders.
+top: list, look up, send, read, delete, and a new folder (create_folder: on macOS, where there is
+no gvfs, the whole device is used through this module: mac_storage). The device must not be in
+use by another MTP client (unmount it from gvfs first).
 """
 
 from __future__ import annotations
 
+import calendar
 import ctypes
 import ctypes.util
 import io
 import logging
 import os
 import struct
+import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import BinaryIO, Protocol
 
 from openexpress import applog
@@ -82,7 +87,8 @@ COMMAND, DATA, RESPONSE = 1, 2, 3
 HEADER = struct.Struct("<IHHI")  # length, container type, code, transaction ID
 
 FORMAT_UNDEFINED = 0x3000
-FORMAT_FOLDER = 0x3001
+FORMAT_FOLDER = 0x3001  # an association: what MTP calls a folder
+GENERIC_FOLDER = 0x0001  # the association type of a folder
 ROOT = 0xFFFFFFFF
 SESSION_ID = 1
 MAX_OBJECT_SIZE = 0xFFFFFFFF - HEADER.size
@@ -110,7 +116,11 @@ class PtpError(DeviceError):
 
 
 class UsbUnavailable(PtpError):
-    """The USB device cannot be opened (no access, no libusb, not found)."""
+    """The USB device cannot be opened (no access, no libusb, not found). `code`: libusb's
+    error, when it was libusb that refused (e.g. LIBUSB_ERROR_ACCESS: another program holds
+    the device)."""
+
+    code: int | None = None
 
 
 class PtpRefused(PtpError):
@@ -231,6 +241,15 @@ def object_info_dataset(name: str, size: int) -> bytes:
     return head + rest + ptp_string(name) + ptp_string("") + ptp_string("") + ptp_string("")
 
 
+def folder_info_dataset(name: str) -> bytes:
+    """The description of a new folder, the way libmtp (so gvfs) sends it: the format of an
+    association, of the type "generic folder", no size, the name; every other field zero or
+    empty. No data follows it."""
+    head = struct.pack("<IHHI", 0, FORMAT_FOLDER, 0, 0)
+    rest = struct.pack("<HIIIIIIIHII", 0, 0, 0, 0, 0, 0, 0, 0, GENERIC_FOLDER, 0, 0)
+    return head + rest + ptp_string(name) + ptp_string("") + ptp_string("") + ptp_string("")
+
+
 @dataclass(frozen=True)
 class ObjectInfo:
     handle: int
@@ -241,10 +260,18 @@ class ObjectInfo:
     parent: int
     storage: int
     hidden: bool = False  # returned only by Garmin's listing, not by the standard one
+    modified: float = 0.0  # when it was last changed (time.time); 0: not told
 
     @property
     def is_dir(self) -> bool:
         return self.format == FORMAT_FOLDER
+
+
+@dataclass(frozen=True)
+class StorageInfo:
+    capacity: int  # bytes
+    free: int  # bytes
+    description: str  # its name, as the device gives it (e.g. "Internal Storage")
 
 
 def parse_object_info(handle: int, data: bytes, hidden: bool = False) -> ObjectInfo:
@@ -252,8 +279,39 @@ def parse_object_info(handle: int, data: bytes, hidden: bool = False) -> ObjectI
         raise PtpError(_("The device sent an incomplete answer."))
     storage, fmt, protection, size = struct.unpack_from("<IHHI", data)
     parent = struct.unpack_from("<I", data, 38)[0]
-    name, _end = read_string(data, 52)
-    return ObjectInfo(handle, name, size, fmt, protection, parent, storage, hidden)
+    name, end = read_string(data, 52)
+    try:
+        _captured, end = read_string(data, end)
+        modified = ptp_time(read_string(data, end)[0])
+    except PtpError:
+        modified = 0.0  # a dataset that ends after the name: the date is not told
+    return ObjectInfo(handle, name, size, fmt, protection, parent, storage, hidden, modified)
+
+
+def ptp_time(text: str) -> float:
+    """A date of PTP ("YYYYMMDDThhmmss", maybe tenths of a second after a dot, then "Z" for
+    UTC or an offset "+hhmm"; without them, the device's local time, taken for this computer's
+    as libmtp takes it) as time.time gives one; 0.0 when there is none or it cannot be read."""
+    main = text[:15]
+    if len(main) != 15 or main[8] != "T" or not (main[:8] + main[9:]).isdigit():
+        return 0.0
+    rest = text[15:]
+    if rest.startswith("."):
+        rest = rest[1:].lstrip("0123456789")
+    parts = (int(main[0:4]), int(main[4:6]), int(main[6:8]),
+             int(main[9:11]), int(main[11:13]), int(main[13:15]))
+    try:
+        if not rest:
+            return time.mktime((*parts, 0, 0, -1))
+        if rest == "Z":
+            offset = 0
+        elif len(rest) == 5 and rest[0] in "+-" and rest[1:].isdigit():
+            offset = (int(rest[1:3]) * 60 + int(rest[3:5])) * 60 * (1 if rest[0] == "+" else -1)
+        else:
+            return 0.0
+        return calendar.timegm((*parts, 0, 0, 0)) - offset
+    except (OverflowError, ValueError):
+        return 0.0
 
 
 # --- transport ---------------------------------------------------------------------------
@@ -308,16 +366,56 @@ _LIBUSB_ERROR_TIMEOUT = -7
 _LIBUSB_OPTION_NO_DEVICE_DISCOVERY = 2
 _libusb = None
 
+# The libusb-1.0 to use instead of any other (a path), e.g. one built for testing.
+LIBUSB_ENV = "OPENEXPRESS_LIBUSB"
+# The name of the library where a bundle carries its own copy (the macOS app).
+BUNDLED_LIBUSB = "libusb-1.0.dylib" if sys.platform == "darwin" else "libusb-1.0.so.0"
+# Where Homebrew puts it on macOS (Apple silicon, then Intel): not where ctypes looks there.
+HOMEBREW_LIBUSB = ("/opt/homebrew/lib/libusb-1.0.dylib", "/usr/local/lib/libusb-1.0.dylib")
+LINUX_LIBUSB = "libusb-1.0.so.0"
+
+
+def _bundled_libusb() -> list[Path]:
+    """Where an app bundle carries its own libusb, those of them that are there: next to the
+    package (the folder that holds `openexpress`), and in the Frameworks of the macOS app the
+    package is in (…/Contents/Frameworks)."""
+    package = Path(__file__).resolve().parent.parent  # openexpress
+    places = [package.parent / BUNDLED_LIBUSB]
+    places += [folder / "Frameworks" / BUNDLED_LIBUSB
+               for folder in package.parents if folder.name == "Contents"][:1]
+    return [place for place in places if place.is_file()]
+
+
+def libusb_candidates() -> list[str]:
+    """The libusb-1.0 to load, in this order: the one LIBUSB_ENV names (then no other), the
+    one bundled with the program, the one the system's library path has, Homebrew's on macOS,
+    and last the name of Linux's."""
+    named = os.environ.get(LIBUSB_ENV, "").strip()
+    if named:
+        return [named]
+    candidates = [str(place) for place in _bundled_libusb()]
+    found = ctypes.util.find_library("usb-1.0")
+    if found:
+        candidates.append(found)
+    if sys.platform == "darwin":
+        candidates += [path for path in HOMEBREW_LIBUSB if os.path.isfile(path)]
+    candidates.append(LINUX_LIBUSB)
+    return list(dict.fromkeys(candidates))
+
 
 def load_libusb():
     global _libusb
     if _libusb is not None:
         return _libusb
-    name = ctypes.util.find_library("usb-1.0") or "libusb-1.0.so.0"
-    try:
-        lib = ctypes.CDLL(name, use_errno=True)
-    except OSError as e:
-        raise UsbUnavailable(_("libusb is not available: {error}").format(error=e)) from e
+    lib = None
+    for name in libusb_candidates():
+        try:
+            lib = ctypes.CDLL(name, use_errno=True)
+            break
+        except OSError as e:
+            error = e
+    if lib is None:
+        raise UsbUnavailable(_("libusb is not available: {error}").format(error=error)) from error
     p, pp, c_int = ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_int
     signatures = {
         "libusb_init": (c_int, [pp]),
@@ -435,8 +533,16 @@ class LibusbTransport:
     @staticmethod
     def _check(lib, result: int) -> None:
         if result < 0:
-            raise UsbUnavailable(_("The USB device cannot be used: {error}").format(
+            error = UsbUnavailable(_("The USB device cannot be used: {error}").format(
                 error=lib.libusb_error_name(result).decode()))
+            error.code = result
+            raise error
+
+    @classmethod
+    def _claim_interface(cls, lib, handle, interface: int) -> None:
+        """Claim the interface for this process; UsbUnavailable when libusb refuses. Where
+        another program may hold it a moment longer (macOS), a subclass tries again."""
+        cls._check(lib, lib.libusb_claim_interface(handle, interface))
 
     @classmethod
     def _claim(cls, lib, context, handle) -> LibusbTransport:
@@ -451,7 +557,7 @@ class LibusbTransport:
             raise UsbUnavailable(_("The USB device has no file transfer interface."))
         interface, ep_out, ep_in, packet_size = found
         lib.libusb_set_auto_detach_kernel_driver(handle, 1)  # not supported everywhere; fine
-        cls._check(lib, lib.libusb_claim_interface(handle, interface))
+        cls._claim_interface(lib, handle, interface)
         return cls(lib, context, handle, interface, ep_out, ep_in, packet_size)
 
     def write(self, data: bytes) -> None:
@@ -705,6 +811,18 @@ class Session:
         data, _answer = self._ok(GET_STORAGE_INFO, storage)
         return struct.unpack_from("<Q", data, 14)[0] if len(data) >= 22 else None
 
+    def storage_info(self, storage: int) -> StorageInfo:
+        """The size of the storage, its free space and its name (GetStorageInfo)."""
+        data, _answer = self._ok(GET_STORAGE_INFO, storage)
+        if len(data) < 22:
+            raise PtpError(_("The device sent an incomplete answer."))
+        capacity, free = struct.unpack_from("<QQ", data, 6)
+        try:
+            description = read_string(data, 26)[0]
+        except PtpError:
+            description = ""  # a dataset cut after the sizes: they are what matters
+        return StorageInfo(capacity, free, description)
+
     def info(self, handle: int, hidden: bool = False) -> ObjectInfo:
         data, _answer = self._ok(GET_OBJECT_INFO, handle)
         return parse_object_info(handle, data, hidden)
@@ -816,3 +934,15 @@ class Session:
     def delete(self, handle: int, size: int | None = None) -> None:
         """Delete an object; `size`: its, when known (a large one may take longer)."""
         self._ok(DELETE_OBJECT, handle, 0, answer_ms=answer_limit_ms(size))
+
+    def create_folder(self, storage: int, parent: int, name: str) -> int:
+        """A new folder `name` in the folder `parent` (ROOT: the top level of the storage), as
+        libmtp makes one: SendObjectInfo of a folder (folder_info_dataset), no SendObject; its
+        handle. Raises PtpRefused when the device does not make it (the fēnix 8 makes none in
+        a folder it took over, such as GARMIN/Apps)."""
+        _data, answer = self._ok(SEND_OBJECT_INFO, storage, parent,
+                                 data_out=folder_info_dataset(name))
+        if len(answer) < 3:
+            raise PtpWriteError(
+                _("The device did not say where it put “{name}”.").format(name=name))
+        return answer[2]

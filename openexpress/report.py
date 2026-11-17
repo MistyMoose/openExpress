@@ -237,8 +237,9 @@ def _interface(cls: str | None) -> str:
 def model_on_usb() -> str | None:
     """The name the first Garmin device on USB gives itself, for the title of the form when
     no device could be opened; None without one."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
 
+    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
     return next((name for _usb_id, name, _classes in gio_storage.garmin_usb_summary() if name),
                 None)
 
@@ -249,7 +250,9 @@ def build_without_device(error: BaseException | None = None,
     of the device, why none is open, the Garmin devices on USB (their USB ID, the name each
     gives itself and the classes of its interfaces; never a serial number) and whether gvfs
     has MTP; then the system, as with a device. Only /sys is read."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
+
+    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
 
     state = gio_storage.usb_state()
     reason = ("several Garmin devices are connected"

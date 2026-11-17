@@ -30,6 +30,14 @@ SYSTEM = b"made-up navigator software"
 NEW_PART = b"made-up new part"
 
 
+@pytest.fixture(autouse=True)
+def nothing_read_before(monkeypatch):
+    """Each test begins with no folder read for any connection: the made-up devices share one
+    address, and a test that stops on its way (a window's, skipped without PyGObject) would
+    leave its reading to the next."""
+    monkeypatch.setattr(hidden_folders, "_kept", {})
+
+
 def _entry(part, name, path, filename, data, severity="Recommended", installed=True,
            primary=False, locale=None, eula=None):
     """One offered item, the keys as the server sends them."""

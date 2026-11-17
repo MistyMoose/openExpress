@@ -84,8 +84,7 @@ def open_storage(args) -> Storage:
     --device-uri names an MTP device; --path a folder without a device (e.g. a copy)."""
     if args.path:
         return LocalStorage(Path(args.path))
-    from openexpress import service
-    from openexpress.device.gio_storage import open_device_storage
+    from openexpress import platform, service
 
     # A device that was just plugged in needs a while before its files can be seen.
     wait = not getattr(args, "no_wait", False)
@@ -93,8 +92,8 @@ def open_storage(args) -> Storage:
     def notify(line):
         print(line, file=sys.stderr, flush=True)
 
-    st = (open_device_storage(args.device_uri, wait=wait, notify=notify) if args.device_uri
-          else service.open_device_or_drive(wait=wait, notify=notify))
+    st = (platform.open_device_storage(args.device_uri, wait=wait, notify=notify)
+          if args.device_uri else service.open_device_or_drive(wait=wait, notify=notify))
     if getattr(args, "apply", False) and getattr(args, "cmd", None) in WORKS_ON_DEVICE:
         # On stderr, so that it does not mix with the result.
         print(_("Do not unplug the device until the operation is finished."),
@@ -145,7 +144,7 @@ def _read_hidden(st, dev, needed=(), why: str = "") -> bool:
 
 def open_device(args) -> tuple[Storage, GarminDevice]:
     from openexpress import service
-    from openexpress.device.gio_storage import mass_storage_text
+    from openexpress.device.found import mass_storage_text
 
     command = getattr(args, "cmd", None)
 
@@ -226,6 +225,11 @@ def cmd_setup(args) -> int:
         settings.chosen_locale = args.locale
     if getattr(args, "diagnostics_copy", None):
         settings.diagnostics_copy = args.diagnostics_copy == "on"
+    if getattr(args, "copy_fit_to", None):
+        settings.copy_fit_to = ("" if args.copy_fit_to == "off"
+                                else str(Path(args.copy_fit_to).expanduser()))
+    if getattr(args, "copy_fit_types", None):
+        settings.copy_fit_types = "" if args.copy_fit_types == "off" else args.copy_fit_types
     settings.save()  # keeps the keys of the others, ui_language among them
     if args.ui_language:
         ui_language = "" if args.ui_language == "system" else args.ui_language
@@ -242,12 +246,24 @@ def cmd_setup(args) -> int:
             else _("system language")))
     if getattr(args, "diagnostics_copy", None):
         print(_diagnostics_copy_text(settings.diagnostics_copy))
+    if getattr(args, "copy_fit_to", None) or getattr(args, "copy_fit_types", None):
+        print(_copy_fit_to_text(settings.copy_fit_to, settings.copy_fit_types))
     return 0
 
 
 def _diagnostics_copy_text(on: bool) -> str:
     return (_("Copy of the device's diagnostic files at each connection: on") if on
             else _("Copy of the device's diagnostic files at each connection: off"))
+
+
+def _copy_fit_to_text(path: str, types: str) -> str:
+    """`setup --copy-fit-to` / `--copy-fit-types`, after saving them."""
+    if not path:
+        return _("FIT drop folder: off")
+    from openexpress import sync
+
+    kinds = ", ".join(sorted(sync.drop_folder_types(types)))
+    return _("FIT drop folder: {path} ({types})").format(path=path, types=kinds)
 
 
 def cmd_diagnostics(args) -> int:
@@ -1159,7 +1175,9 @@ def cmd_status(args) -> int:
     keeps; with --online it asks the account's device list and the update server too,
     keeping nothing of their answers (a car navigator's hidden folder is read for its updates
     then, as the window reads it: _read_hidden)."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
+
+    found = platform.devices()  # what finds the devices here (gio_storage on Linux)
 
     try:
         auth = store.load()
@@ -1167,8 +1185,7 @@ def cmd_status(args) -> int:
         auth = None
     print(_("Garmin Connect: signed in as {account}").format(account=auth.masked_display)
           if auth is not None else _("Garmin Connect: not signed in"))
-    summaries = gio_storage.distinct_devices(
-        [gio_storage.probe(f) for f in gio_storage.find_all_devices()])
+    summaries = found.distinct_devices([found.probe(f) for f in found.find_all_devices()])
     if not summaries:
         print(_("No Garmin device is connected."))
         return 0
@@ -1323,13 +1340,13 @@ def _status_updates(entry, software: str, now) -> str:
 
 def _status_updates_online(client, s) -> str:
     """The updates of the device as Garmin's update server offers them now."""
+    from openexpress import platform
     from openexpress import updates as upd
-    from openexpress.device import gio_storage
 
     try:
         device, storage = s.device, s.storage
         if device is None or storage is None:  # a drive: probe keeps nothing of it
-            storage = gio_storage.open_ums_storage(s.found)
+            storage = platform.devices().open_ums_storage(s.found)
             device = parse(storage.read("GARMIN/GarminDevice.xml"))
         answer = client.software_updates(device.raw)
         items = upd.offered(storage, answer, device, forget_installed=False)  # keeps nothing
@@ -1478,9 +1495,10 @@ def _connected_unit_ids() -> set[int]:
     """The unit IDs of the devices connected now, from the GarminDevice.xml of each, as the
     window lists them: nothing is opened or mounted, nothing is asked of the account. A
     device whose file cannot be read names none."""
-    from openexpress.device.gio_storage import find_all_devices, probe
+    from openexpress import platform
 
-    return {s.unit_id for s in (probe(f) for f in find_all_devices()) if s.unit_id}
+    found = platform.devices()
+    return {s.unit_id for s in (found.probe(f) for f in found.find_all_devices()) if s.unit_id}
 
 
 def _seen_at(ts: float) -> str:
@@ -1510,11 +1528,20 @@ def cmd_upload_config(args) -> int:
     return 0
 
 
+def _drop_folder_dest(args, settings: Settings) -> Path | None:
+    """Where `sync` copies new FIT files after it (sync.run_drop_folder): --copy-fit-to for
+    this run, else the setting of the same name; None: off."""
+    chosen = getattr(args, "copy_fit_to", None) or settings.copy_fit_to
+    return Path(chosen).expanduser() if chosen else None
+
+
 def cmd_sync(args) -> int:
-    from openexpress import service
+    from openexpress import service, sync
 
     st, dev = open_device(args)
     settings = Settings.load()
+    drop_folder = _drop_folder_dest(args, settings)
+    drop_types = sync.drop_folder_types(settings.copy_fit_types) if drop_folder else None
     print(_("{device}, software {version}").format(
         device=dev.description, version=dev.software_version_str))
     try:
@@ -1544,6 +1571,12 @@ def cmd_sync(args) -> int:
             line = _satellite_result(satellite.update(dev, st, apply=False))
             if line is not None:
                 print("\n" + line)
+        if drop_folder is not None:
+            planned = sync.plan_drop_folder(dev, st, drop_folder, drop_types)
+            print("\n" + ngettext(
+                "To the FIT drop folder {path}: {count} new file",
+                "To the FIT drop folder {path}: {count} new files",
+                len(planned)).format(path=drop_folder, count=len(planned)))
         print("\n" + _("Dry run: nothing was uploaded or written to the device. "
                        "Add --apply to run the sync."))
         return 0
@@ -1567,6 +1600,22 @@ def cmd_sync(args) -> int:
             _print_sync_steps(done, dev.unit_id)
         raise
     code = _print_sync_result(summary, dev.unit_id)
+    if drop_folder is not None:
+        # Before the drive is ejected: the device must still be open to read from.
+        with _progress() as progress:
+            dropped = sync.run_drop_folder(dev, st, drop_folder, drop_types, progress=progress)
+        if dropped.copied:
+            print(ngettext(
+                "Copied {count} new file ({size}) to the FIT drop folder {path}",
+                "Copied {count} new files ({size}) to the FIT drop folder {path}",
+                len(dropped.copied)).format(count=len(dropped.copied),
+                                            size=human_size(dropped.bytes), path=drop_folder))
+        if dropped.incomplete:
+            print(ngettext(
+                "{count} file for the drop folder was still being written by the device; "
+                "copied by the next sync",
+                "{count} files for the drop folder were still being written by the device; "
+                "copied by the next sync", dropped.incomplete).format(count=dropped.incomplete))
     # A drive the sync wrote to is ejected, so that the watch takes the files.
     if st.mass_storage and summary.wrote_to_device and not _eject_drive(st, files=True):
         return 1  # the cable must stay in
@@ -3540,6 +3589,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--diagnostics-copy", choices=("on", "off"),
                    help=_("copy the device's diagnostic files to this computer at each "
                           "connection in the window (never sent)"))
+    s.add_argument("--copy-fit-to", metavar="DIR",
+                   help=_("after each sync, copy new FIT files there for another program to "
+                          "pick up (e.g. {example}); \"off\" turns it off").format(
+                       example="sync --copy-fit-to DIR"))
+    s.add_argument("--copy-fit-types", metavar="TYPE",
+                   help=_("which data types --copy-fit-to copies (names as sync --type "
+                          "takes them, comma-separated); default: activities only; "
+                          "\"off\" goes back to that default"))
     s.set_defaults(func=cmd_setup, _parser=s)
 
     s = sub.add_parser("report", help=_("device report for GitHub, without serial numbers"))
@@ -3662,6 +3719,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--type", action="append", help=_("only the given data type (repeatable)"))
     s.add_argument("--include-diagnostics", action="store_true",
                    help=_("also upload device diagnostics and telemetry to Garmin"))
+    s.add_argument("--copy-fit-to", metavar="DIR",
+                   help=_("after the sync, copy new FIT files there (default types: "
+                          "activities; see setup --copy-fit-types); for this run only, "
+                          "instead of the setting of the same name"))
     s.set_defaults(func=cmd_sync)
 
     s = sub.add_parser("baseline", help=_("mark current files as already uploaded"))
@@ -3916,7 +3977,8 @@ def _main(argv: list[str] | None) -> int:
     lang = _lang_from_argv(sys.argv[1:] if argv is None else argv)
     if lang:
         i18n.setup(lang)
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     if args.cmd == "setup" and bool(args.key) != bool(args.secret):
         args._parser.error(_("--key and --secret must be given together"))
     if args.cmd == "diagnostics" and args.free_space and (args.dumps or args.crash_logs):
@@ -3924,9 +3986,21 @@ def _main(argv: list[str] | None) -> int:
         args._parser.error(_("--free-space cannot be given with --dumps or --crash-logs"))
     if args.lang:
         i18n.setup(args.lang)
-    if importlib.util.find_spec("gi") is None:
+    from openexpress import platform
+
+    if platform.is_mac() and args.cmd in platform.LINUX_ONLY_COMMANDS:
+        # The window and the background service are GTK's and systemd's: not on macOS. With
+        # no command at all (which opens the window on Linux) the commands there are are
+        # listed instead.
+        if args.cmd == "gui" and "gui" not in (sys.argv[1:] if argv is None else argv):
+            parser.print_help()
+            return 0
+        _error(linux_only_text(args.cmd))
+        return 1
+    if platform.needs_pygobject() and importlib.util.find_spec("gi") is None:
         # Without PyGObject no command can open a device or a window: one line and exit
         # code 1, not the traceback of the first import of GLib (--help and --version above).
+        # On macOS the devices are opened without it (platform.devices).
         _error(no_pygobject_text())
         return 1
     # Before any process is started (the start line may ask flatpak-spawn) and before GTK:
@@ -3935,6 +4009,7 @@ def _main(argv: list[str] | None) -> int:
     role = args.cmd if args.cmd in ("gui", "watch") else "cli"
     # What a command tells the user itself is not printed again from the log (-v: all of it).
     applog.setup(role, args.verbose, quiet_told=role == "cli" and not args.verbose)
+    platform.at_start()  # on macOS: the camera service a killed run left stopped goes on
     from openexpress import answers
 
     answers.use_disk()  # what Garmin's servers said a moment ago, for this command too
@@ -3953,6 +4028,14 @@ def _main(argv: list[str] | None) -> int:
     finally:
         log.info("end: %s, exit code %s, %.1f s", args.cmd or "-", code,
                  time.monotonic() - started)
+
+
+def linux_only_text(command: str) -> str:
+    """A command of the desktop of Linux (platform.LINUX_ONLY_COMMANDS) run on macOS."""
+    # TRANSLATORS: macOS: {command} is a command of openexpress ("gui", "watch",
+    # "install-desktop"), not to be translated
+    return _("openexpress {command} is only available on Linux. On macOS, use the other "
+             "commands (openexpress --help).").format(command=command)
 
 
 def no_pygobject_text() -> str:
@@ -3979,7 +4062,7 @@ def _run(args) -> int:
     import requests
 
     from openexpress.auth.sso import LoginCancelled
-    from openexpress.device.gio_storage import MassStorageNotice, UnsupportedDevice
+    from openexpress.device.found import MassStorageNotice, UnsupportedDevice
     from openexpress.errors import OrdinaryStop, UserFacingError
 
     try:

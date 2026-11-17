@@ -232,10 +232,10 @@ def open_session(device_uri: str | None = None, storage: Storage | None = None,
     if storage is None and found is not None:
         storage = _open_found(found)
     if storage is None:
-        from openexpress.device.gio_storage import open_device_storage
+        from openexpress import platform
 
         storage = (open_device_or_drive() if allow_ums and device_uri is None
-                   else open_device_storage(device_uri))
+                   else platform.open_device_storage(device_uri))
     device = read_device(storage, found_now=detected)
     settings = Settings.load()
     return DeviceSession(storage, device, settings, make_client(settings))
@@ -430,8 +430,9 @@ def _open_found(found) -> Storage:
     """The storage of the device chosen from a list: a Garmin drive, mounted first when the
     system has not mounted it (KDE); an MTP device by its address, as with --device-uri,
     mounted first when it is not (the user chose it; a list mounts nothing)."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
 
+    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
     if found.kind == "ums":
         if not found.mounted:  # not mounted by the system (KDE): mounted now, chosen
             found = gio_storage.mount_drive(found)
@@ -449,8 +450,9 @@ def open_device_or_drive(wait: bool = False, notify=None) -> Storage:
     """An MTP device comes first, also one that is still on its way to MTP; a Garmin device
     in mass storage mode is opened only when there is none (the window and the command
     line). `wait`, `notify`: as for open_device_storage."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
 
+    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
     try:
         storage = gio_storage.open_device_storage(wait=wait, notify=notify)
     except (gio_storage.SeveralDevices, DeviceNotResponding):

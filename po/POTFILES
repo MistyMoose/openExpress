@@ -13,7 +13,9 @@ openexpress/connect.py
 openexpress/course_gpx.py
 openexpress/courses.py
 openexpress/desktop.py
+openexpress/device/found.py
 openexpress/device/gio_storage.py
+openexpress/device/mac_storage.py
 openexpress/device/ptp.py
 openexpress/device/storage.py
 openexpress/diagnostics.py
@@ -53,6 +55,7 @@ openexpress/maps.py
 openexpress/music.py
 openexpress/netstatus.py
 openexpress/ownmaps.py
+openexpress/platform/mac_usb.py
 openexpress/progress.py
 openexpress/proto.py
 openexpress/service.py

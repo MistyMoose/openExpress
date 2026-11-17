@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 00:05+0100\n"
+"POT-Creation-Date: 2026-11-17 18:42+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1012,6 +1012,16 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid "FIT drop folder: off"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "FIT drop folder: {path} ({types})"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid "Error logs on the device:"
 msgstr ""
 
@@ -1664,7 +1674,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: openexpress/cli.py openexpress/device/gio_storage.py
-#: openexpress/device/storage.py
+#: openexpress/device/mac_storage.py openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot write {path}"
 msgstr ""
@@ -1765,7 +1775,7 @@ msgid "File not found: {path}"
 msgstr ""
 
 #: openexpress/cli.py openexpress/device/gio_storage.py
-#: openexpress/device/storage.py
+#: openexpress/device/mac_storage.py openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot read {path}"
 msgstr ""
@@ -2239,6 +2249,13 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid "To the FIT drop folder {path}: {count} new file"
+msgid_plural "To the FIT drop folder {path}: {count} new files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid ""
 "Dry run: nothing was uploaded or written to the device. Add --apply to run "
 "the sync."
@@ -2254,6 +2271,24 @@ msgid ""
 "  openexpress sync --apply --all uploads everything (Garmin Connect rejects "
 "duplicates)"
 msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Copied {count} new file ({size}) to the FIT drop folder {path}"
+msgid_plural "Copied {count} new files ({size}) to the FIT drop folder {path}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"{count} file for the drop folder was still being written by the device; "
+"copied by the next sync"
+msgid_plural ""
+"{count} files for the drop folder were still being written by the device; "
+"copied by the next sync"
+msgstr[0] ""
+msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3729,6 +3764,20 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid ""
+"after each sync, copy new FIT files there for another program to pick up "
+"(e.g. {example}); \"off\" turns it off"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"which data types --copy-fit-to copies (names as sync --type takes them, "
+"comma-separated); default: activities only; \"off\" goes back to that default"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid "device report for GitHub, without serial numbers"
 msgstr ""
 
@@ -3979,6 +4028,14 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "also upload device diagnostics and telemetry to Garmin"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"after the sync, copy new FIT files there (default types: activities; see "
+"setup --copy-fit-types); for this run only, instead of the setting of the "
+"same name"
 msgstr ""
 
 #: openexpress/cli.py
@@ -4421,6 +4478,15 @@ msgstr ""
 msgid "--free-space cannot be given with --dumps or --crash-logs"
 msgstr ""
 
+#. TRANSLATORS: macOS: {command} is a command of openexpress ("gui", "watch",
+#. "install-desktop"), not to be translated
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"openexpress {command} is only available on Linux. On macOS, use the other "
+"commands (openexpress --help)."
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -4854,6 +4920,13 @@ msgstr ""
 msgid "Garmin;Fenix;Connect;sync;"
 msgstr ""
 
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
+"The device is connected in mass storage mode (as a USB drive): apps, maps "
+"and music are not supported in this mode."
+msgstr ""
+
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "the Flatpak is missing the permission to copy files to the device"
@@ -4873,23 +4946,26 @@ msgstr ""
 
 #. TRANSLATORS: error: the contents of a folder on the device cannot be read ({path}: the
 #. folder)
-#: openexpress/device/gio_storage.py openexpress/device/storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
+#: openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot list {path}"
 msgstr ""
 
 #. TRANSLATORS: error: a file on the device cannot be deleted ({path}: the file)
-#: openexpress/device/gio_storage.py openexpress/device/storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
+#: openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot delete {path}"
 msgstr ""
 
-#: openexpress/device/gio_storage.py openexpress/device/storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
+#: openexpress/device/storage.py
 #, python-brace-format
 msgid "Cannot create directory {path}"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "Cannot read the space on the device"
 msgstr ""
@@ -4975,7 +5051,7 @@ msgstr ""
 
 #. TRANSLATORS: in the words about a Garmin device openExpress cannot use, after
 #. "Connected:", when the device gives USB no name
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgctxt "in a sentence"
 msgid "Garmin device"
@@ -5000,19 +5076,12 @@ msgstr ""
 
 #. TRANSLATORS: the same on the command line; "openexpress report" is a command, not to be
 #. translated
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "openExpress works with devices that connect as a media device (MTP) or a USB "
 "drive. This one uses a different connection. Connected: {name} (USB {id}). "
 "To report it, run openexpress report."
-msgstr ""
-
-#: openexpress/device/gio_storage.py
-#, python-brace-format
-msgid ""
-"The device is connected in mass storage mode (as a USB drive): apps, maps "
-"and music are not supported in this mode."
 msgstr ""
 
 #: openexpress/device/gio_storage.py
@@ -5075,14 +5144,14 @@ msgid ""
 "unplug it and plug it in again."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "The Garmin device is connected, but it does not offer its files. Check its "
 "screen: if it is locked with a PIN or asks something, unlock it or confirm."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "No Garmin device (MTP) found. Connect the device with a USB cable and unlock "
@@ -5094,12 +5163,12 @@ msgstr ""
 msgid "The device is starting. Try again in a moment."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, ignore-reused, python-brace-format
 msgid "The device is starting…"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "Several devices connected, choose one with --device-uri: {names}"
 msgstr ""
@@ -5109,7 +5178,7 @@ msgstr ""
 msgid "Cannot open the device"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "GARMIN/GarminDevice.xml not found on device {uri}"
 msgstr ""
@@ -5134,6 +5203,70 @@ msgstr ""
 msgid ""
 "The device did not come back after an unmount that did not finish in time. "
 "Unplug it and plug it in again."
+msgstr ""
+
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid "The connection to the device is closed."
+msgstr ""
+
+#: openexpress/device/mac_storage.py openexpress/device/storage.py
+#, python-brace-format
+msgid "File not found on the device: {path}"
+msgstr ""
+
+#: openexpress/device/mac_storage.py openexpress/device/storage.py
+#, python-brace-format
+msgid "Not a directory: {path}"
+msgstr ""
+
+#: openexpress/device/mac_storage.py openexpress/device/ptp.py
+#, python-brace-format
+msgid "The file is too large to send."
+msgstr ""
+
+#: openexpress/device/mac_storage.py openexpress/device/storage.py
+#, python-brace-format
+msgid "Cannot write {path}: it is a directory"
+msgstr ""
+
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid "Cannot read the device"
+msgstr ""
+
+#. TRANSLATORS: macOS: the only Garmin device on USB is in its Garmin USB mode (USB ID
+#. 091e:0003); "Garmin USB mode" as Garmin calls it
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"The device is on USB in its Garmin USB mode (091e:0003), which openExpress "
+"does not use. A watch is in it for about 20 seconds after it is plugged in: "
+"wait until it shows its usual screen. If it stays in it, unplug the cable "
+"and plug it in again."
+msgstr ""
+
+#. TRANSLATORS: macOS: a Garmin device connected as a USB drive
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"The Garmin device is connected as a USB drive. On macOS openExpress opens "
+"only devices that connect as a media device (MTP)."
+msgstr ""
+
+#. TRANSLATORS: macOS: --device-uri was given an address of another form; {example}
+#. is one of the form it takes ("mtp://[usb:008,037]/")
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"On macOS a device is named by its place on USB, as in {example} (openexpress "
+"status lists them)."
+msgstr ""
+
+#. TRANSLATORS: error: the USB device could not be opened ({error}: why)
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid "Cannot open the device: {error}"
 msgstr ""
 
 #: openexpress/device/ptp.py
@@ -5203,11 +5336,6 @@ msgstr ""
 
 #: openexpress/device/ptp.py
 #, python-brace-format
-msgid "The file is too large to send."
-msgstr ""
-
-#: openexpress/device/ptp.py
-#, python-brace-format
 msgid "The device answered out of step."
 msgstr ""
 
@@ -5249,16 +5377,6 @@ msgstr ""
 
 #: openexpress/device/storage.py
 #, python-brace-format
-msgid "File not found on the device: {path}"
-msgstr ""
-
-#: openexpress/device/storage.py
-#, python-brace-format
-msgid "Cannot write {path}: it is a directory"
-msgstr ""
-
-#: openexpress/device/storage.py
-#, python-brace-format
 msgid ""
 "Not enough space on the device: {need} needed and {margin} kept free, but "
 "only {free} free"
@@ -5277,11 +5395,6 @@ msgstr ""
 #: openexpress/device/storage.py
 #, python-brace-format
 msgid "Invalid file name: “{path}”"
-msgstr ""
-
-#: openexpress/device/storage.py
-#, python-brace-format
-msgid "Not a directory: {path}"
 msgstr ""
 
 #. TRANSLATORS: a step of copying the diagnostic files the device shows ("… · 3 of 12")
@@ -11154,6 +11267,22 @@ msgstr ""
 msgid "{path} is still on the device; nothing was taken off the list."
 msgstr ""
 
+#. TRANSLATORS: macOS: its camera service holds the device; "ptpcamerad" is the
+#. name of a program, not to be translated
+#: openexpress/platform/mac_usb.py
+#, python-brace-format
+msgid ""
+"macOS's camera service (ptpcamerad) is using the device, for Image Capture "
+"or Photos. Quit them, then unplug the device and plug it in again."
+msgstr ""
+
+#. TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
+#. device, so openExpress cannot open it
+#: openexpress/platform/mac_usb.py
+#, python-brace-format
+msgid "{program} is using the device. Quit it, then try again."
+msgstr ""
+
 #. TRANSLATORS: how far a step of a long task is: "3 of 8", "412.0 MB of 1.5 GB"
 #: openexpress/progress.py
 #, python-brace-format
@@ -11951,6 +12080,12 @@ msgstr ""
 #: openexpress/sync.py
 #, python-brace-format
 msgid "Downloading from Garmin Connect"
+msgstr ""
+
+#. TRANSLATORS: a step of the progress of a sync ("… · 2 of 5")
+#: openexpress/sync.py
+#, python-brace-format
+msgid "Copying to the drop folder"
 msgstr ""
 
 #: openexpress/trueup.py

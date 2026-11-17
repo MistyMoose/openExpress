@@ -20,6 +20,10 @@ def test_the_window_without_a_display_says_so_in_one_line(tmp_path):
                           env=env, capture_output=True, text=True, timeout=60)
     assert done.returncode == 1
     lines = [line for line in done.stderr.splitlines() if line.strip()]
+    if sys.platform == "darwin":  # no window on macOS at all, display or not
+        assert lines == [("openexpress gui is only available on Linux. On macOS, use the other "
+                          "commands (openexpress --help).")], done.stderr
+        return
     assert lines == [("No display available (GDK_BACKEND=x11, WAYLAND_DISPLAY=-, DISPLAY=-): "
                       "openExpress needs a graphical session")], done.stderr
     log = (tmp_path / "state" / "openexpress" / "openexpress.log").read_text()

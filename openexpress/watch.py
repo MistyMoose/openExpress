@@ -18,12 +18,8 @@ from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.requi
 
 from openexpress import history, last_sync, service  # noqa: E402
 from openexpress.connect import OwnershipError  # noqa: E402
-from openexpress.device.gio_storage import (  # noqa: E402
-    MassStorageNotice,
-    SeveralDevices,
-    garmin_usb,
-    own_remount,
-)
+from openexpress.device.found import MassStorageNotice, SeveralDevices  # noqa: E402
+from openexpress.device.gio_storage import garmin_usb, own_remount  # noqa: E402 - Linux only
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
 from openexpress.i18n import _  # noqa: E402
 from openexpress.paths import APP_ID  # noqa: E402

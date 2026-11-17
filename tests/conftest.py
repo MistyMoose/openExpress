@@ -1,6 +1,7 @@
 import atexit
 import ctypes
 import functools
+import importlib.util
 import os
 import select
 import shutil
@@ -8,11 +9,54 @@ import signal
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
 
 import pytest
+
+# --- macOS: a home of their own, and no PyGObject ---------------------------------------------
+#
+# On macOS paths.py falls back to ~/Library whenever an XDG variable is not set, so a test that
+# clears one (or code that runs before the fixtures below) would write into the user's real
+# ~/Library. The whole session gets a home folder of its own instead, before anything is
+# imported. Without PyGObject (the macOS engine has none), a test that needs it is skipped,
+# not failed. Both are inert on Linux.
+
+HAS_GI = importlib.util.find_spec("gi") is not None
+
+if sys.platform == "darwin":
+    _home = Path(tempfile.mkdtemp(prefix="openexpress-tests-home-"))
+    os.environ["HOME"] = str(_home)
+    atexit.register(shutil.rmtree, _home, ignore_errors=True)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    if HAS_GI or call.excinfo is None:
+        return
+    error = call.excinfo.value
+    if isinstance(error, ModuleNotFoundError) and error.name in ("gi", "cairo"):
+        report = outcome.get_result()
+        report.outcome, report.longrepr = "skipped", (str(item.path), item.location[1] or 0,
+                                                      f"needs PyGObject: {error}")
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    """Without PyGObject, a test file that imports it (itself, or through a module of the
+    window) cannot even be collected: skipped as well."""
+    outcome = yield
+    report = outcome.get_result()
+    if HAS_GI or not report.failed:
+        return
+    text = str(report.longrepr)
+    if "No module named 'gi'" in text or "No module named 'cairo'" in text:
+        report.outcome, report.longrepr = "skipped", (str(collector.path), 0,
+                                                      "needs PyGObject")
+
 
 # --- the display of the tests: an X server of their own, never the desktop -------------------
 #
@@ -225,6 +269,20 @@ def no_usb_devices(_empty_sys_bus_usb, monkeypatch):
     except (ImportError, ValueError):  # no PyGObject: nothing reads /sys/bus/usb
         return
     monkeypatch.setattr(gio_storage, "SYSFS_USB", _empty_sys_bus_usb)
+
+
+@pytest.fixture(autouse=True)
+def no_usb_on_macos(monkeypatch, tmp_path):
+    """The same for the way macOS finds devices (platform.mac_usb): no Garmin device on USB,
+    unless a test lists its own, and macOS's camera service (ptpcamerad) of this computer is
+    never stopped, woken or looked at; its lock file is the test's own."""
+    from openexpress.platform import mac_usb
+
+    monkeypatch.setattr(mac_usb, "garmin_devices", list)
+    monkeypatch.setattr(mac_usb, "registered_devices", lambda read=None: {})
+    monkeypatch.setattr(mac_usb, "_signal_daemon", lambda name: False)
+    monkeypatch.setattr(mac_usb, "daemon_stopped", lambda: False)
+    monkeypatch.setattr(mac_usb, "pause_lock_path", lambda: tmp_path / "ptpcamerad.lock")
 
 
 class QuietVolumeMonitor:
@@ -465,6 +523,30 @@ def private_dirs(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setattr(paths, "flatpak_data_dir",
                         lambda: tmp_path / "flatpak-data" / "openexpress")
+
+
+@pytest.fixture(autouse=True)
+def no_real_keychain():
+    """No test ever reaches the real macOS Keychain (openexpress.platform.keychain), on
+    macOS or anywhere else this suite runs: the backend here always says it cannot be
+    reached, so auth.store and settings fall back to their ordinary file (as on Linux,
+    where there is no Keychain to begin with). A test of the Keychain itself (test_keychain.py,
+    test_auth_store_keychain.py) installs a fake backend of its own the same way."""
+    from openexpress.platform import keychain
+
+    class _Unreachable(keychain.Backend):
+        def get(self, account: str) -> bytes | None:
+            return None
+
+        def set(self, account: str, data: bytes) -> None:
+            raise OSError("tests must not use the real Keychain; inject a backend")
+
+        def delete(self, account: str) -> bool:
+            return False
+
+    keychain.use_backend(_Unreachable())
+    yield
+    keychain.use_backend(None)
 
 
 @pytest.fixture(autouse=True)

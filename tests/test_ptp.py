@@ -393,7 +393,8 @@ def test_wrong_size_after_writing(device):
 
 
 def test_the_device_refuses_new_folders(device):
-    """The module never tries; this pins the fake to what the fēnix 8 does."""
+    """Pins the fake to what the fēnix 8 does in a folder it took over (GARMIN/Apps); only
+    the storage of macOS makes folders (Session.create_folder, mac_storage)."""
     with ptp.Session(device) as session:
         dataset = bytearray(ptp.object_info_dataset("MEDIA", 0))
         struct.pack_into("<H", dataset, 4, ptp.FORMAT_FOLDER)
@@ -847,3 +848,102 @@ def test_a_descriptor_whose_interface_is_not_claimed_is_closed(libusb, error):
     with pytest.raises(type(error)):
         ptp.LibusbTransport.from_fd(5)
     assert libusb.lib.calls == [*WRAPPED, ("claim", 7, 99), CLOSE, EXIT]
+
+
+# --- folders, the storage's size and name (macOS uses them: mac_storage) ----------------------
+
+def test_folder_dataset_is_an_association_of_the_type_generic_folder():
+    """As libmtp describes a new folder: no size, no thumbnail format, no data after it."""
+    assert ptp.folder_info_dataset("Music").hex() == (
+        "00000000"                           # storage
+        "0130"                               # format: association
+        "0000"                               # protection
+        "00000000"                           # size
+        "0000" + "00000000" * 7              # thumbnail format, six sizes, parent
+        + (
+            "0100"                           # association type: generic folder
+            "00000000"                       # association description
+            "00000000"                       # sequence number
+        )
+        + "06" + "Music\0".encode("utf-16-le").hex()
+        + "000000"                           # no dates, no keywords
+    )
+
+
+def test_a_folder_is_made_by_its_object_info_alone(device):
+    device.allows_folders = True
+    with ptp.Session(device) as session:
+        handle = session.create_folder(STORAGE, device.handle("GARMIN"), "NewFiles")
+        made = session.info(handle)
+    assert (made.name, made.is_dir, made.parent) == ("NewFiles", True, device.handle("GARMIN"))
+    assert device.sent(ptp.SEND_OBJECT) == 0
+
+
+def test_a_folder_the_device_does_not_make_is_refused(device):
+    with ptp.Session(device) as session, pytest.raises(ptp.PtpRefused) as error:
+        session.create_folder(STORAGE, device.handle("GARMIN/Apps"), "MEDIA")
+    assert error.value.code == ptp.ACCESS_DENIED
+
+
+def test_the_size_free_space_and_name_of_a_storage(device):
+    with ptp.Session(device) as session:
+        info = session.storage_info(STORAGE)
+    assert info == ptp.StorageInfo(2 * device.free, device.free, "Internal")
+
+
+def test_the_modification_date_of_an_object(device):
+    device.objects[device.handle("GARMIN/Apps/OUT.BIN")].modified = "20261117T093000Z"
+    with ptp.Session(device) as session:
+        assert session.lookup(STORAGE, "GARMIN/Apps/OUT.BIN").modified == 1794907800.0
+        assert session.lookup(STORAGE, "GARMIN/GarminDevice.xml").modified == 0.0
+
+
+# --- where libusb is looked for ---------------------------------------------------------------
+
+def test_libusb_named_in_the_environment_is_the_only_one_tried(monkeypatch, tmp_path):
+    monkeypatch.setenv(ptp.LIBUSB_ENV, str(tmp_path / "libusb-1.0.dylib"))
+    assert ptp.libusb_candidates() == [str(tmp_path / "libusb-1.0.dylib")]
+    monkeypatch.setattr(ptp, "_libusb", None)
+    with pytest.raises(ptp.UsbUnavailable, match="libusb is not available"):
+        ptp.load_libusb()
+
+
+def test_libusb_bundled_with_the_program_comes_before_the_systems(monkeypatch, tmp_path):
+    monkeypatch.delenv(ptp.LIBUSB_ENV, raising=False)
+    bundled = tmp_path / ptp.BUNDLED_LIBUSB
+    monkeypatch.setattr(ptp, "_bundled_libusb", lambda: [bundled])
+    monkeypatch.setattr(ptp.ctypes.util, "find_library", lambda name: "/usr/lib/libusb.so")
+    monkeypatch.setattr(ptp.sys, "platform", "linux")
+    assert ptp.libusb_candidates() == [str(bundled), "/usr/lib/libusb.so", ptp.LINUX_LIBUSB]
+
+
+def test_libusb_of_homebrew_is_tried_on_macos_after_the_library_path(monkeypatch):
+    monkeypatch.delenv(ptp.LIBUSB_ENV, raising=False)
+    monkeypatch.setattr(ptp, "_bundled_libusb", list)
+    monkeypatch.setattr(ptp.ctypes.util, "find_library", lambda name: None)
+    monkeypatch.setattr(ptp.sys, "platform", "darwin")
+    monkeypatch.setattr(ptp.os.path, "isfile", lambda path: path.startswith("/opt/homebrew"))
+    assert ptp.libusb_candidates() == ["/opt/homebrew/lib/libusb-1.0.dylib", ptp.LINUX_LIBUSB]
+
+
+def test_libusb_is_bundled_next_to_the_package_or_in_the_frameworks_of_the_app(monkeypatch,
+                                                                             tmp_path):
+    app = tmp_path / "openExpress.app" / "Contents"
+    package = app / "Resources" / "lib" / "python3.13" / "openexpress"
+    (package / "device").mkdir(parents=True)
+    (app / "Frameworks").mkdir()
+    (app / "Frameworks" / ptp.BUNDLED_LIBUSB).write_bytes(b"")
+    monkeypatch.setattr(ptp, "__file__", str(package / "device" / "ptp.py"))
+    assert ptp._bundled_libusb() == [app / "Frameworks" / ptp.BUNDLED_LIBUSB]
+    (package.parent / ptp.BUNDLED_LIBUSB).write_bytes(b"")
+    assert ptp._bundled_libusb()[0] == package.parent / ptp.BUNDLED_LIBUSB
+
+
+def test_a_refusal_of_libusb_keeps_its_code():
+    class Lib:
+        def libusb_error_name(self, code):
+            return b"LIBUSB_ERROR_ACCESS"
+
+    with pytest.raises(ptp.UsbUnavailable) as error:
+        ptp.LibusbTransport._check(Lib(), -3)
+    assert error.value.code == -3

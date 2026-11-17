@@ -480,8 +480,11 @@ def test_subcommand_is_logged(log_file, device_root, monkeypatch):
 
 @pytest.mark.parametrize("argv", [[], ["gui"]], ids=["no command", "gui"])
 def test_the_window_is_logged_as_the_window(log_file, device_root, monkeypatch, argv):
-    from openexpress import cli
+    """On Linux (on macOS there is no window: test_platform)."""
+    from openexpress import cli, platform
 
+    monkeypatch.setattr(platform, "is_mac", lambda: False)
+    monkeypatch.setattr(platform, "needs_pygobject", lambda: False)  # as if it were there
     monkeypatch.setattr(cli, "cmd_gui", lambda args: 0)  # no window here
     assert cli.main(argv) == 0
     assert cli.main(["--path", str(device_root), "files"]) == 0

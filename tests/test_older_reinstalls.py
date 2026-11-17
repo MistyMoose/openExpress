@@ -10,6 +10,7 @@ below, as the device gave them back). Everything else is made up."""
 import types
 
 import pytest
+from fakes import in_language
 
 from openexpress import download, updates
 from openexpress.cli import main
@@ -245,13 +246,8 @@ def test_the_command_line_refuses_an_older_version(edge_cli, edge_md5, capsys, m
       "się porównać: bez ponownej instalacji.")),
 ])
 def test_the_words_in_both_languages(state, en, pl):
-    from openexpress import i18n
-
     u = types.SimpleNamespace(older_offer=getattr(updates, state), installed_version="2.10",
                               version="2.00")
-    try:
-        assert updates.older_offer_text(u) == en
-        i18n.setup("pl")
+    assert updates.older_offer_text(u) == en
+    with in_language("pl"):
         assert updates.older_offer_text(u) == pl
-    finally:
-        i18n.setup("en")

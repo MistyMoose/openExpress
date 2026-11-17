@@ -5,6 +5,7 @@ is asked here (conftest.no_sleep_blocked)."""
 import logging
 
 import pytest
+from fakes import in_language
 
 from openexpress import awake
 
@@ -54,14 +55,9 @@ def test_a_release_that_fails_is_only_logged(monkeypatch, no_sleep_blocked, capl
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_warning_in_both_languages(language):
-    from openexpress import i18n
-
     words = {"en": "openExpress could not keep the computer from sleeping: keep it awake until "
                    "the copy has ended.",
              "pl": "openExpress nie mógł zablokować uśpienia komputera: nie usypiaj go do końca "
                    "kopiowania."}
-    try:
-        i18n.setup(language)
+    with in_language(language):
         assert awake.not_blocked_text() == words[language]
-    finally:
-        i18n.setup("en")

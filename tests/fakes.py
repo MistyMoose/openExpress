@@ -612,23 +612,44 @@ def window_picture(win, path) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     texture.save_to_png(str(path))
 
+
+class Section:
+    """A stand-in for a section of the device view: its groups kept as plain records (their
+    title, rows and the widget at the end of their header), all of them gone at a clear."""
+
+    def __init__(self):
+        self.groups = []
+
+    def group(self, title="", description=""):
+        group = types.SimpleNamespace(title=title, rows=[], header=None)
+        group.add = group.rows.append
+        group.set_header_suffix = lambda widget: setattr(group, "header", widget)
+        self.groups.append(group)
+        return group
+
+    def clear(self):
+        self.groups = []
+
+
+@contextlib.contextmanager
+def in_language(language):
+    """openExpress speaks `language` inside the block, English again after it (as the tests
+    run), also when the block fails."""
+    from openexpress import i18n
+
+    i18n.setup(language)
+    try:
+        yield
+    finally:
+        i18n.setup("en")
+
+
 def maps_window(storage):
     """A stand-in for the window around the Maps page: its groups and rows are kept (the
     groups as plain records), the buttons are real, a reload of a page is recorded."""
     import types
 
     from openexpress.gui.app import MainWindow
-
-    class Section:
-        def __init__(self):
-            self.groups = []
-
-        def group(self, title="", description=""):
-            group = types.SimpleNamespace(title=title, rows=[], header=None)
-            group.add = group.rows.append
-            group.set_header_suffix = lambda widget: setattr(group, "header", widget)
-            self.groups.append(group)
-            return group
 
     reloads = []
     win = window(

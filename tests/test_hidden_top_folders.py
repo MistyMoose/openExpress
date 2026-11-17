@@ -18,7 +18,7 @@ import posixpath
 import types
 
 import pytest
-from fakes import maps_window, window_methods
+from fakes import Section, in_language, maps_window, window_methods
 from fakes import window as stand_in
 from ptp_fake import FakeDevice
 
@@ -71,12 +71,8 @@ def navigator(device_root):
 
 
 def _offered(root):
-    from openexpress import service
-
     storage = LocalStorage(root)
-    device = service.read_device(storage, found_now=False)
-    return storage, updates.offered(storage, lower_keys(server_answer()), device,
-                                    forget_installed=False)
+    return storage, _offered_from(storage)
 
 
 def _by_part(items):
@@ -120,19 +116,27 @@ def test_without_the_servers_word_an_item_is_no_add_on():
 # --- the install: nothing in a top folder not seen ----------------------------------------------
 
 
-@pytest.fixture
-def downloads(monkeypatch, tmp_path):
+def _fetching(monkeypatch, content, again=True):
+    """download.fetch replaced: each file written as `content(name, md5)` gives it; the names
+    of the files fetched, in their order. `again=False`: a file in the cache at its size is not
+    fetched again, as download.fetch does."""
     fetched = []
 
     def fetch(urls, dest, size, md5, session=None, progress=None):
-        fetched.append(dest.name)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(NEW_PART if dest.name == "new.bin" else SYSTEM)
+        if again or not (dest.exists() and dest.stat().st_size == size):
+            fetched.append(dest.name)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(content(dest.name, md5))
         return dest
 
     monkeypatch.setattr(download, "fetch", fetch)
-    monkeypatch.setattr(updates, "cache_path", lambda u: tmp_path / "cache" / u.filename)
     return fetched
+
+
+@pytest.fixture
+def downloads(monkeypatch, tmp_path):
+    monkeypatch.setattr(updates, "cache_path", lambda u: tmp_path / "cache" / u.filename)
+    return _fetching(monkeypatch, lambda name, md5: NEW_PART if name == "new.bin" else SYSTEM)
 
 
 def test_the_install_into_a_top_folder_not_seen_is_refused_before_anything(navigator, downloads):
@@ -205,39 +209,9 @@ def test_the_software_alone_is_refused_with_why(offered_to, downloads, capsys):
 # --- the window -----------------------------------------------------------------------------------
 
 
-class _Group:
-    def __init__(self, title):
-        self.title, self.rows = title, []
-
-    def add(self, row):
-        self.rows.append(row)
-
-
-class _Section:
-    def __init__(self):
-        self.groups = []
-
-    def group(self, title="", description=""):
-        self.groups.append(_Group(title))
-        return self.groups[-1]
-
-    def clear(self):
-        self.groups = []
-
-
 def _updates_page(items):
-    import types
-
-    from openexpress.gui.app import MainWindow
-
-    win = stand_in(
-        session=types.SimpleNamespace(device=types.SimpleNamespace(
-            description="Made-up Drive", software_version_str="8.50")),
-        sections={"updates": _Section()}, busy=False, _action_buttons=[],
-        _set_update_state=lambda new, staged=(), not_installed=(): None,
-        confirm_update=lambda u: None, load_section=lambda *a, **kw: None)
-    window_methods(win, ["_update_row", "_updates_status", "_button"])
-    MainWindow.show_updates(win, items)
+    """The groups of the Updates page of the made-up Drive as it shows `items`."""
+    win, _session = _window_of(None, items)
     return win.sections["updates"].groups
 
 
@@ -750,13 +724,17 @@ NAVIGATOR_TYPES = """
 """
 
 
+def _xml_with(root, block):
+    """`root`, its GarminDevice.xml with `block` added at the end of what it declares."""
+    xml = root / "GARMIN" / "GarminDevice.xml"
+    xml.write_text(xml.read_text().replace("</MassStorageMode>", block + "</MassStorageMode>"))
+    return root
+
+
 def test_device_status_counts_what_was_read_in_the_folders_not_seen(navigator):
     from openexpress import history, service
 
-    xml = navigator / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>",
-                                           NAVIGATOR_TYPES + "</MassStorageMode>"))
-    storage = OverUsb(navigator, navigator_session())
+    storage = OverUsb(_with_types(navigator), navigator_session())
     device = service.read_device(storage, found_now=False)
     before = history.count(device, storage)
     assert (before["maps"], before["updates"]) == (0, 0)  # not seen: nothing counted
@@ -768,16 +746,11 @@ def test_device_status_counts_what_was_read_in_the_folders_not_seen(navigator):
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_words_of_a_folder_not_seen_in_both_languages(language):
-    from openexpress import i18n
-
-    i18n.setup(language)
-    try:
+    with in_language(language):
         u = updates.parse_updates(lower_keys(server_answer()))[0]
         u.hidden_folder = ".System"
         texts = [updates.not_installed_here_text(u), updates.hidden_software_text(".System"),
                  updates.add_ons_text(2)]
-    finally:
-        i18n.setup("en")
     expected = {
         "en": [("Not installed: Made-up Drive 9.00 goes to the folder .System, which openExpress "
                 "cannot see on the device."), NOTICE, ADD_ONS],
@@ -891,10 +864,7 @@ def test_the_command_line_lists_a_map_read_and_never_removes_it(navigator, monke
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_words_of_a_folder_read_in_both_languages(language):
-    from openexpress import i18n
-
-    i18n.setup(language)
-    try:
+    with in_language(language):
         u = updates.parse_updates(lower_keys(server_answer()))[0]
         u.hidden_folder, u.hidden_session = ".System", hidden_folders.READ
         m = maps.read_maps({"maps": [_map("Made-up City Navigator", CITY_NAVIGATOR)]})[0][0]
@@ -902,8 +872,6 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
         texts = [hidden_folders.reading_text([".System"]),
                  hidden_folders.no_session_text(".System", hidden_folders.NO_SESSION),
                  maps.cannot_install_reason(m), maps.removal_refused(m)]
-    finally:
-        i18n.setup("en")
     expected = {
         "en": ["Reading the folder .System…", NO_SESSION_LINE,
                "openExpress does not install maps into the folder .System yet",
@@ -924,10 +892,7 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
 def _with_types(root):
     """The made-up navigator's GarminDevice.xml naming its maps in .System/Map and its software
     in .System, as Device Status counts them."""
-    xml = root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>",
-                                           NAVIGATOR_TYPES + "</MassStorageMode>"))
-    return root
+    return _xml_with(root, NAVIGATOR_TYPES)
 
 
 def test_a_device_found_to_hide_a_top_folder_is_remembered_so(navigator):
@@ -1026,21 +991,16 @@ def test_the_window_reads_the_folders_a_device_is_known_to_hide(navigator, monke
 @pytest.mark.parametrize("language, title", [("en", "Update Cannot Be Installed"),
                                              ("pl", "Nie można zainstalować aktualizacji")])
 def test_the_updates_page_title_says_when_nothing_can_be_installed(navigator, language, title):
-    from openexpress import i18n
-
     storage = OverUsb(navigator, None)  # no session of its own: .System is not read
     offered = _offered_from(storage)
     # The device's software alone (with the add-ons), its folder not read: nothing offered can
     # be installed.
     only_hidden = [u for u in offered if u.part_number not in ("006-D9004-00", "006-D9001-00")]
-    i18n.setup(language)
-    try:
+    with in_language(language):
         status, *_groups = _updates_page(only_hidden)
         none_installable = _texts(status.rows[0])
         status, *_groups = _updates_page(offered)
         one_installable = _texts(status.rows[0])
-    finally:
-        i18n.setup("en")
     assert title in none_installable and title not in one_installable
 
 
@@ -1054,10 +1014,7 @@ OWN_MAPS_HIDDEN = """
 
 
 def _own_maps_in_system(root):
-    xml = root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>",
-                                           OWN_MAPS_HIDDEN + "</MassStorageMode>"))
-    return root
+    return _xml_with(root, OWN_MAPS_HIDDEN)
 
 
 def _map_file(tmp_path):
@@ -1126,18 +1083,14 @@ OWN_MAPS_AT_THE_TOP = """
     ("en", "openExpress does not install maps into the folder Map yet"),
     ("pl", "openExpress jeszcze nie instaluje map w\u00a0folderze Map")])
 def test_a_folder_of_the_device_is_called_a_folder(navigator, language, text):
-    from openexpress import i18n, ownmaps, service
+    from openexpress import ownmaps, service
     from openexpress.gui.app import MainWindow
 
-    xml = navigator / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>",
-                                           OWN_MAPS_AT_THE_TOP + "</MassStorageMode>"))
-    storage = OverUsb(navigator, navigator_session())
+    storage = OverUsb(_xml_with(navigator, OWN_MAPS_AT_THE_TOP), navigator_session())
     win, _reloads = maps_window(storage)
     win.session.device = service.read_device(storage, found_now=False)
     win.choose_map = lambda *args: pytest.fail("a map was chosen")
-    i18n.setup(language)
-    try:
+    with in_language(language):
         MainWindow.show_own_maps(win, ownmaps.overview(win.session.device, storage, []))
         (own,) = win.sections["maps"].groups
         subtitles = [r.get_subtitle() for r in own.rows if hasattr(r, "get_subtitle")]
@@ -1146,8 +1099,6 @@ def test_a_folder_of_the_device_is_called_a_folder(navigator, language, text):
         words = [maps.read_only_text("Map"), maps.cannot_install_message(m),
                  maps.removal_refused(types.SimpleNamespace(unseen=False, **vars(m))),
                  updates.not_installed_here_text(u)]
-    finally:
-        i18n.setup("en")
     assert text in subtitles
     assert all(any(f"{word} Map" in w for word in ("folder", "folderze", "folderu"))
                for w in words), words
@@ -1170,17 +1121,9 @@ def drive_answer():
 
 @pytest.fixture
 def drive_downloads(monkeypatch, tmp_path):
-    fetched, content = [], {"B000000.update": SYSTEM, "gmaptz.img": TZ_NEW}
-
-    def fetch(urls, dest, size, md5, session=None, progress=None):
-        fetched.append(dest.name)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(content[dest.name])
-        return dest
-
-    monkeypatch.setattr(download, "fetch", fetch)
+    content = {"B000000.update": SYSTEM, "gmaptz.img": TZ_NEW}
     monkeypatch.setattr(updates, "cache_path", lambda u: tmp_path / "cache" / u.filename)
-    return fetched
+    return _fetching(monkeypatch, lambda name, md5: content[name])
 
 
 def _drive_offered(storage):
@@ -1387,17 +1330,13 @@ def test_after_the_install_the_software_waits_for_the_device_then_is_said_not_in
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_words_of_a_write_in_both_languages(language):
-    from openexpress import i18n
     from openexpress.gui import updates_page
 
-    i18n.setup(language)
-    try:
+    with in_language(language):
         u = updates.parse_updates(lower_keys(drive_answer()))[1]
         texts = [hidden_folders.not_written_text(u.title, old_removed=True),
                  hidden_folders.contents_not_read_text(u.title),
                  updates_page.replaces_text(u), updates.power_text()]
-    finally:
-        i18n.setup("en")
     expected = {
         "en": [NOT_WRITTEN_TZ,
                ("Time zone map was written and has the right size, but the device did not let "
@@ -1633,7 +1572,7 @@ def _window_of(storage, offered, version="8.50"):
                                                            software_version_str=version),
                               mass_storage=False)
     win = stand_in(session=s, updates_cache=offered, updates_beta=False, progress=None,
-                   sections={"updates": _Section()}, busy=False, _action_buttons=[],
+                   sections={"updates": Section()}, busy=False, _action_buttons=[],
                    _set_update_state=lambda new, staged=(), not_installed=(): None,
                    confirm_update=lambda u: None, load_section=lambda *a, **kw: None)
     window_methods(win, ["_update_row", "_updates_status", "_button", "show_updates",
@@ -1756,14 +1695,10 @@ def test_plugged_in_again_with_the_copy_not_installed_a_navigator_is_told_what_i
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_advice_for_a_copy_not_installed_in_both_languages(language):
-    from openexpress import i18n
     from openexpress.gui.words import not_installed_advice
 
-    i18n.setup(language)
-    try:
+    with in_language(language):
         texts = [not_installed_advice(hidden_folder=True), not_installed_advice()]
-    finally:
-        i18n.setup("en")
     assert texts == [NAVIGATOR_ADVICE[language], WATCH_ADVICE[language]]
 
 
@@ -1780,7 +1715,6 @@ def test_maps_use_of_a_navigator_comes_from_its_folder_read(navigator):
 def test_the_maps_row_counts_no_update_openexpress_cannot_install(navigator, language, text):
     """A newer City Navigator offered for .System: not "1 update available" on the device page
     (openExpress does not install maps there; the Maps page says so), nor "up to date"."""
-    from openexpress import i18n
     from openexpress.gui.app import MainWindow
 
     storage = OverUsb(navigator, navigator_session())
@@ -1800,11 +1734,8 @@ def test_the_maps_row_counts_no_update_openexpress_cannot_install(navigator, lan
                    map_count=0, _map_check_session=None, map_row=Row())
     for name in ("_render_map_state", "_set_map_state"):
         setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
-    i18n.setup(language)
-    try:
+    with in_language(language):
         win._set_map_state((found, 1))
-    finally:
-        i18n.setup("en")
     assert (win.map_update_count, win.map_row.subtitle) == (0, text)
 
 
@@ -1967,11 +1898,10 @@ def _time_zones_listed_newer(navigator, version="9.50"):
     """The navigator's GarminDevice.xml lists its time zone map at a version higher than the
     one Garmin offers (9.00): Garmin offers an older one."""
     major, minor = version.split(".")
-    xml = navigator / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>", (
+    _xml_with(navigator, (
         f"<UpdateFile><PartNumber>006-D9001-00</PartNumber><Version><Major>{major}</Major>"
         f"<Minor>{minor}</Minor></Version><Path>.System</Path><FileName>gmaptz.img</FileName>"
-        "</UpdateFile></MassStorageMode>")))
+        "</UpdateFile>"))
 
 
 def test_an_older_version_of_the_same_size_in_the_folder_read_may_be_reinstalled(navigator):
@@ -2068,17 +1998,7 @@ def map_downloads(monkeypatch):
     """The downloads of the map's files: each by its MD5 from NEW_MAP, written once; what is
     in the cache already is not downloaded again (as download.fetch does)."""
     by_md5 = {hashlib.md5(d).hexdigest(): d for d in NEW_MAP.values()}
-    fetched = []
-
-    def fetch(urls, dest, size, md5, session=None, progress=None):
-        if not (dest.exists() and dest.stat().st_size == size):
-            fetched.append(dest.name)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(by_md5[md5])
-        return dest
-
-    monkeypatch.setattr(download, "fetch", fetch)
-    return fetched
+    return _fetching(monkeypatch, lambda name, md5: by_md5[md5], again=False)
 
 
 def _trial_maps(storage, *entries):
@@ -2098,11 +2018,13 @@ def _activate(order):
     return activate
 
 
-def _install_trial(storage, found, order=None):
-    order = [] if order is None else order
+def _install_trial(storage, found, order=None, waits=None):
+    """The trial of `found`'s map; `order`: what it asks of Garmin noted there, `waits`: the
+    pauses between tries of a file noted there (else none taken)."""
     (m,) = [m for m in found if m.name == TRIAL_NAME]
-    return maps.install(m, found, storage, activate=_activate(order), hidden_trial=True,
-                        sleep=lambda s: None)
+    return maps.install(m, found, storage, activate=_activate([] if order is None else order),
+                        hidden_trial=True,
+                        sleep=(lambda s: None) if waits is None else waits.append)
 
 
 def test_without_the_trial_a_map_is_never_written_into_the_folder_the_device_hides(navigator,
@@ -2248,19 +2170,13 @@ def _refusing(fake, name, times, code=ptp.STORE_FULL):
     fake._handle = handle
 
 
-def _install_trial_waiting(storage, found, waits):
-    (m,) = [m for m in found if m.name == TRIAL_NAME]
-    return maps.install(m, found, storage, activate=_activate([]), hidden_trial=True,
-                        sleep=waits.append)
-
-
 def test_a_file_refused_is_written_again_up_to_three_times(navigator, map_downloads):
     fake = trial_navigator()
     storage = OverUsb(navigator, fake)
     found = _trial_maps(storage)
     _refusing(fake, "D0000002B.img", 2)
     waits = []
-    report = _install_trial_waiting(storage, found, waits)
+    report = _install_trial(storage, found, waits=waits)
     assert waits == [5, 5] and ".System/Map/D0000002B.img" in report.written
     assert fake.data_at(".System/Map/D0000002B.img") == NEW_MAP[".System/Map/D0000002B.img"]
 
@@ -2272,7 +2188,7 @@ def test_a_file_refused_three_times_stops_the_map(navigator, map_downloads):
     _refusing(fake, "D0000002B.img", 3)
     waits = []
     with pytest.raises(maps.MapError, match="1 of 3 files was written"):
-        _install_trial_waiting(storage, found, waits)
+        _install_trial(storage, found, waits=waits)
     assert waits == [5, 5]
 
 
@@ -2290,7 +2206,7 @@ def test_a_session_that_broke_is_not_tried_again(navigator, map_downloads):
     fake._handle = silent_at_the_second
     waits = []
     with pytest.raises(maps.MapError, match="1 of 3 files was written"):
-        _install_trial_waiting(storage, found, waits)
+        _install_trial(storage, found, waits=waits)
     assert waits == []  # no answer: the session is gone, nothing more is tried in it
 
 
@@ -2302,7 +2218,7 @@ def test_an_unlock_file_refused_is_written_again_and_said_as_for_other_maps(navi
     _refusing(fake, "D0000002.gma", 6)
     waits = []
     with pytest.raises(maps.UnlockNotWritten) as stopped:
-        _install_trial_waiting(storage, found, waits)
+        _install_trial(storage, found, waits=waits)
     assert waits == [5] * 5
     assert str(stopped.value).startswith(
         "The map files are on the device, but its unlock file .System/D0000002.gma could not be "

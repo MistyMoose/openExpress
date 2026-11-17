@@ -73,39 +73,38 @@ def test_potfiles_lists_every_file_with_texts_and_the_metainfo_template():
     assert "openexpress/i18n.py" in listed and "openexpress/__main__.py" not in listed
 
 
-def _msgids(pot: Path) -> set[tuple[str, str]]:
-    """(context, text) of every entry of a template."""
-    found, ctx, key, fields = set(), "", None, {}
+def _entries(pot: Path) -> list[dict]:
+    """Every entry of a template after its header: its msgctxt ("" without one), msgid and
+    msgid_plural (None without one) as written there, escapes kept, and its comments for
+    translators (notes)."""
+    found = []
     for block in pot.read_text(encoding="utf-8").split("\n\n")[1:]:
-        fields, key = {}, None
+        fields, key, notes = {}, None, []
         for line in block.splitlines():
-            m = re.match(r'^(msgctxt|msgid) "(.*)"$', line)
-            if m:
+            m = re.match(r'^(msgctxt|msgid|msgid_plural) "(.*)"$', line)
+            if line.startswith("#. "):
+                notes.append(line[3:])
+            elif m:
                 key = m.group(1)
                 fields[key] = m.group(2)
-            elif line.startswith('"') and key in ("msgctxt", "msgid"):
+            elif line.startswith('"') and key:
                 fields[key] += line[1:-1]
-            elif not line.startswith('"'):
+            else:
                 key = None
-        ctx = fields.get("msgctxt", "")
         if "msgid" in fields:
-            found.add((ctx, fields["msgid"]))
+            found.append({"msgctxt": "", "msgid_plural": None, **fields, "notes": notes})
     return found
+
+
+def _msgids(pot: Path) -> set[tuple[str, str]]:
+    """(context, text) of every entry of a template."""
+    return {(e["msgctxt"], e["msgid"]) for e in _entries(pot)}
 
 
 def _english(pot: Path) -> list[str]:
     """Every English text of a template, its plural too, as written there (escapes kept)."""
-    found, key = [], None
-    for line in pot.read_text(encoding="utf-8").split("\n\n", 1)[1].splitlines():
-        m = re.match(r'^(msgid|msgid_plural) "(.*)"$', line)
-        if m:
-            key = m.group(1)
-            found.append(m.group(2))
-        elif line.startswith('"') and key:
-            found[-1] += line[1:-1]
-        else:
-            key = None
-    return found
+    return [text for e in _entries(pot) for text in (e["msgid"], e["msgid_plural"])
+            if text is not None]
 
 
 def test_no_english_text_writes_an_ellipsis_as_three_dots():
@@ -153,24 +152,8 @@ def _unescaped(text: str) -> str:
 def _comments(pot: Path) -> dict[tuple[str, str], str]:
     """(context, text) of every entry of a template: its comments for translators, as one
     line."""
-    found = {}
-    for block in pot.read_text(encoding="utf-8").split("\n\n")[1:]:
-        fields, key, notes = {}, None, []
-        for line in block.splitlines():
-            m = re.match(r'^(msgctxt|msgid) "(.*)"$', line)
-            if line.startswith("#. "):
-                notes.append(line[3:])
-            elif m:
-                key = m.group(1)
-                fields[key] = m.group(2)
-            elif line.startswith('"') and key in ("msgctxt", "msgid"):
-                fields[key] += line[1:-1]
-            elif not line.startswith('"'):
-                key = None
-        if "msgid" in fields:
-            found[(_unescaped(fields.get("msgctxt", "")), _unescaped(fields["msgid"]))] = \
-                " ".join(" ".join(notes).split())
-    return found
+    return {(_unescaped(e["msgctxt"]), _unescaped(e["msgid"])):
+            " ".join(" ".join(e["notes"]).split()) for e in _entries(pot)}
 
 
 def _marked(source: str) -> list[tuple[int, int, str, str]]:

@@ -1531,7 +1531,7 @@ NAVIGATOR_WORDS = {
         "en": "openExpress cannot see the folder .System, where this device keeps its software, so "
               "it installs nothing there. Some devices, such as car navigators, hide it from the "
               "ordinary USB connection.",
-        "pl": "openExpress nie widzi folderu .System, w którym to urządzenie trzyma swoje "
+        "pl": "openExpress nie widzi folderu .System, w\u00a0którym to urządzenie trzyma swoje "
               "oprogramowanie, więc niczego tam nie instaluje. Niektóre urządzenia, np. "
               "nawigacje samochodowe, ukrywają go przed zwykłym połączeniem USB."},
     "maps-navigator": {

@@ -317,6 +317,55 @@ def test_backups_list_gives_each_backup_of_the_device_newest_first_and_the_devic
     assert running.ask("backups.list", {"device": "42"})["result"] == {"backups": []}
 
 
+def _img(title: bytes) -> bytes:
+    """The start of a map's .img file with this name in its header (as test_ownmaps.py makes
+    one): no real map is kept in the tests."""
+    head = bytearray(512)
+    head[0x10:0x17], head[0x41:0x48] = b"DSKIMG\0", b"GARMIN\0"
+    first, rest = title[:20], title[20:50]
+    head[0x49:0x49 + 20] = first.ljust(20, b" ") if rest else first.ljust(20, b"\0")
+    head[0x65:0x65 + len(rest)] = rest
+    head[0x1FE:0x200] = b"\x55\xaa"
+    return bytes(head)
+
+
+def _a_map(name, file, *, installed=True, update=False):
+    from openexpress import maps
+
+    return maps.UniversalMap(
+        name=name, map_type="TopoActive", state=1 if installed else 0,
+        is_reinstall=not update, can_uninstall=True, version="2026.20", region="Europe",
+        identifier={}, files=[maps.MapFile(f"Garmin/{file}", "https://example.org/m", None, 9)],
+        files_to_remove=[], hosts=[])
+
+
+def test_a_map_tells_the_version_the_device_has_from_its_header_when_garmin_offers_an_update(
+        running, device_root, monkeypatch):
+    from openexpress import cli
+
+    garmin = device_root / "Garmin"  # the device's map folder, as Garmin names it
+    garmin.mkdir(exist_ok=True)
+    (garmin / "D1.img").write_bytes(_img(b"TopoActive Europe, West 2026.11") + bytes(100))
+    (garmin / "D2.img").write_bytes(_img(b"CourseView Pacific") + bytes(100))
+    offered = [_a_map("TopoActive Western Europe", "D1.img", update=True),
+               _a_map("CourseView Pacific", "D2.img", update=True),
+               _a_map("TopoActive Central Europe", "D3.img"),
+               _a_map("TopoActive Alps", "D4.img", installed=False)]
+
+    def load_maps(args, client, own=False):
+        st = LocalStorage(device_root)
+        return st, parse(st.read("GARMIN/GarminDevice.xml")), offered, len(offered)
+
+    monkeypatch.setattr(cli, "_load_maps", load_maps)
+    listed = running.ask("maps.list", {"all": True})["result"]["maps"]
+    versions = {m["name"]: (m["status"], m["version"], m["installed_version"]) for m in listed}
+    assert versions == {
+        "TopoActive Western Europe": ("update", "2026.20", "2026.11"),
+        "CourseView Pacific": ("update", "2026.20", None),  # its header names no version
+        "TopoActive Central Europe": ("up to date", "2026.20", "2026.20"),
+        "TopoActive Alps": ("available", "2026.20", None)}
+
+
 def _track_fit(count: int) -> bytes:
     from fakes import FitData, FitDefinition, fit_file
 
@@ -354,6 +403,77 @@ def test_the_track_of_a_file_on_the_device_is_read_from_it(running, device_root)
     assert len(result["result"]["points"]) == 2
     error = running.ask("activities.track", {"fit": "/no/such/file.fit"})["error"]
     assert error["code"] == "not_found"
+
+
+@pytest.fixture
+def three_activities(device_root, monkeypatch):
+    """The device with three activity files, each read counted (`reads`, by name)."""
+    from conftest import make_fit
+
+    from openexpress import activities
+
+    (device_root / "GARMIN" / "Activity" / "2026-10-03-10-00-00.fit").write_bytes(
+        make_fit(1100172800))
+    reads = []
+    real = activities.DeviceActivities.read_file
+
+    def read_file(self, activity):
+        reads.append(activity.name)
+        return real(self, activity)
+
+    monkeypatch.setattr(activities.DeviceActivities, "read_file", read_file)
+    monkeypatch.setattr(engine, "READING_EVERY_S", 0)  # every file told
+    return reads
+
+
+def test_activities_list_tells_each_file_it_reads_as_progress_then_that_all_are_read(
+        running, three_activities):
+    request_id = running.send("activities.list", {"limit": 10})
+    assert len(running.response(request_id)["result"]["activities"]) == 3
+    steps = running.events("progress", request=request_id)
+    assert {s["phase"] for s in steps} == {"reading_activities"}
+    assert [(s["done"], s["total"]) for s in steps] == [(0, 3), (1, 3), (2, 3), (3, 3)]
+    assert [s.get("item") for s in steps[:3]] == three_activities  # the newest first
+
+
+def test_a_later_activities_list_reads_only_files_it_has_not_read_and_tells_no_progress(
+        running, three_activities, device_root):
+    from conftest import make_fit
+
+    running.ask("activities.list", {"limit": 10})
+    assert len(three_activities) == 3
+    second = running.send("activities.list", {"limit": 10})
+    assert len(running.response(second)["result"]["activities"]) == 3
+    assert len(three_activities) == 3 and running.events("progress", request=second) == []
+    (device_root / "GARMIN" / "Activity" / "2026-10-04-10-00-00.fit").write_bytes(
+        make_fit(1100259200))
+    running.ask("activities.list", {"limit": 10})
+    assert three_activities[3:] == ["2026-10-04-10-00-00.fit"]  # the new one alone
+
+
+def test_a_cancelled_activities_list_keeps_what_it_read_and_the_next_call_resumes(
+        running, three_activities, monkeypatch):
+    from openexpress import activities
+
+    first_read, go = threading.Event(), threading.Event()
+    counting = activities.DeviceActivities.read_file
+
+    def read_file(self, activity):
+        data = counting(self, activity)
+        if len(three_activities) == 1:
+            first_read.set()
+            go.wait(10)
+        return data
+
+    monkeypatch.setattr(activities.DeviceActivities, "read_file", read_file)
+    request_id = running.send("activities.list", {"limit": 10})
+    assert first_read.wait(10)
+    running.ask("cancel", {"request": request_id})
+    go.set()
+    assert running.response(request_id)["error"]["code"] == "cancelled"
+    assert len(three_activities) == 1  # stopped before the next file
+    assert len(running.ask("activities.list", {"limit": 10})["result"]["activities"]) == 3
+    assert len(three_activities) == 3  # the two left, not the first again
 
 
 def test_progress_steps_are_put_in_phases_with_what_they_move_as_the_item():

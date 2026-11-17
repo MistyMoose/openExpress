@@ -54,6 +54,8 @@ POLL_S = 2.0
 SHUTDOWN_WAIT_S = 30.0
 # Steps of a long task, at most this often as `progress` events.
 PROGRESS_EVERY_S = 0.25
+# The activity files activities.list reads, at most this often as `progress` events.
+READING_EVERY_S = 0.2
 
 
 class EngineError(Exception):
@@ -287,8 +289,7 @@ class _Turns:
 # The words of a step (progress.py) each phase starts with; anything else is the method's.
 _PHASES = (("downloading", "downloading_text"), ("copying", "copying_text"),
            ("writing", "writing_text"), ("checking", "checking_text"))
-_METHOD_PHASES = {"device.backup": "backup", "device.sync": "sync",
-                  "activities.list": "reading"}
+_METHOD_PHASES = {"device.backup": "backup", "device.sync": "sync"}
 
 
 def _phase_patterns() -> list[tuple[str, re.Pattern]]:
@@ -414,6 +415,10 @@ class Engine:
         self._turns: dict[str, _Turns] = {}
         self._turns_lock = threading.Lock()
         self._account = _Turns()  # account and settings: one at a time
+        # What activities.list read of each device's activity files, by unit ID (as
+        # activities.DeviceActivities keeps it): kept while the engine runs, so that a later
+        # call reads only the files that are new or changed, and a cancelled one resumes.
+        self._activities: dict[int, dict] = {}
         self._running: dict[int, tuple[Request, threading.Thread]] = {}
         self._running_lock = threading.Lock()
         self._stop = threading.Event()
@@ -1198,7 +1203,11 @@ class Engine:
                     else "available")
 
         maps = [{"name": m.name, "version": m.version, "size": m.size,
-                 "installed": m.installed, "status": status(m), "status_text": m.status,
+                 "installed": m.installed, "status": status(m),
+                 "installed_version": (m.version if status(m) == "up to date"
+                                       else installed_map_version(st, m)
+                                       if status(m) == "update" else None),
+                 "status_text": m.status,
                  "region": m.region or None, "type": m.map_type, "waiting": m.waiting,
                  "incomplete": m.incomplete, "restricted": m.restricted is True,
                  "can_install": mp.can_install(m), "can_remove": m.can_uninstall}
@@ -1285,9 +1294,12 @@ class Engine:
         st, dev = cli.open_device(self.args_for(a, "activities"))
         if not activities.keeps_activities(dev):
             return {"activities": [], "total": 0, "only_in_backups": 0}
-        found = activities.DeviceActivities(dev, st, self._backups())
+        found = activities.DeviceActivities(dev, st, self._backups(),
+                                            kept=self._activities.setdefault(dev.unit_id, {}))
         found.list_files()
-        read = found.read_next(min(limit, len(found.listing)), self.progress_for(req))
+        reading = self._reading_activities(req)
+        read = found.read_next(min(limit, len(found.listing)), reading=reading)
+        reading.done()
         out = []
         for r in read:
             act, summary = r.activity, r.summary
@@ -1309,6 +1321,34 @@ class Engine:
                           else "damaged" if state is fit.FileState.DAMAGED else "complete")})
         return {"activities": out, "total": len(found.listing),
                 "only_in_backups": found.only_in_backups}
+
+    def _reading_activities(self, req: Request):
+        """The hook of DeviceActivities.read_next: a `progress` event per file read (phase
+        "reading_activities", the file's name as the item), the first and the last at once
+        and the others at most every READING_EVERY_S; a cancelled request stops before the
+        next file, what was read kept for the next call."""
+        engine = self
+
+        class Reading:
+            last, total = float("-inf"), 0
+
+            def __call__(self, n: int, total: int, activity) -> None:
+                engine.checkpoint(req)
+                self.total = total
+                now = time.monotonic()
+                if n == 1 or now - self.last >= READING_EVERY_S:
+                    self.last = now
+                    engine.event("progress", {
+                        "request": req.id, "phase": "reading_activities", "done": n - 1,
+                        "total": total, "item": activity.name})
+
+            def done(self) -> None:
+                """The last event: every file read (none when none had to be)."""
+                if self.total:
+                    engine.event("progress", {"request": req.id, "phase": "reading_activities",
+                                              "done": self.total, "total": self.total})
+
+        return Reading()
 
     def activities_track(self, req: Request) -> dict:
         """The track of an activity (`fit`): a FIT file of this computer (a copy in a
@@ -1357,6 +1397,34 @@ class Engine:
             out.append({"path": str(folder), "date": _iso(when.timestamp()), "files": files,
                         "bytes": size})
         return {"backups": out}
+
+
+# The version at the end of a map's name in its file's header ("TopoActive Europe, West
+# 2026.11"), written as Garmin's server writes a version.
+_HEADER_VERSION = re.compile(r"\s(\d+\.\d+)$")
+
+
+def installed_map_version(storage, m) -> str | None:
+    """The version of map `m` the device has, for a map with an update: Garmin's answer gives
+    only the new one, so it is read from the name in the header of its files on the device
+    (ownmaps.read_title; the first bytes of each .img file of it, read only). None when no
+    header ends in a version as the server writes one (CourseView has none; a base map writes
+    "v9")."""
+    from openexpress import ownmaps
+    from openexpress.device.storage import DeviceNotResponding
+
+    for f in [f for f in m.files if f.device_path.lower().endswith(".img")][:3]:
+        try:
+            title = ownmaps.read_title(storage.read_start(f.device_path, ownmaps.HEADER_SIZE))
+        except DeviceNotResponding:
+            raise
+        except Exception as e:  # noqa: BLE001 - a version not known is no failed list
+            log.info("engine: map header not read (%s)", type(e).__name__)
+            continue
+        found = _HEADER_VERSION.search(title or "")
+        if found:
+            return found.group(1)
+    return None
 
 
 # The most points a track gives: the app draws a line, not every second of it.

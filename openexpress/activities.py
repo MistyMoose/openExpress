@@ -146,13 +146,16 @@ def _summary(data: bytes | None) -> fit.ActivitySummary | None:
 class DeviceActivities:
     """The activities of one device and of its backups (`backups`: the folder of every
     device's backups; None: none read): listed by list_files, read `PAGE` at a time by
-    read_next."""
+    read_next. `kept`: what was read of the files before, by Activity.key, shared with
+    another reading of the same device (the engine keeps one for as long as it runs): a file
+    in it is not read again, and each file read is added to it at once."""
 
-    def __init__(self, device: GarminDevice, storage: Storage, backups: Path | None):
+    def __init__(self, device: GarminDevice, storage: Storage, backups: Path | None,
+                 kept: dict[tuple, fit.ActivitySummary | None] | None = None):
         self.device, self.storage, self.backups = device, storage, backups
         self.listing: list[Activity] = []
         self.read: list[Read] = []  # those of `listing` read so far, in its order
-        self._kept: dict[tuple, fit.ActivitySummary | None] = {}
+        self._kept: dict[tuple, fit.ActivitySummary | None] = {} if kept is None else kept
 
     @property
     def left(self) -> int:
@@ -191,10 +194,13 @@ class DeviceActivities:
         return sorted(found, key=lambda a: (a.mtime, a.name.casefold()), reverse=True)
 
     def read_next(self, count: int = PAGE,
-                  progress: Callable[[str], None] | None = None) -> list[Read]:
+                  progress: Callable[[str], None] | None = None,
+                  reading: Callable[[int, int, Activity], None] | None = None) -> list[Read]:
         """Reads the next `count` activities of the list and returns them; what is kept is
         not read again. `progress`: a step for each file read ("Reading activities · 2 of 3"),
-        never its name. An error of the device stops it (DeviceError)."""
+        never its name. `reading(n, of, activity)`: before each file read, with the activity
+        (the engine names it to the app); what it raises stops the reading there, with what
+        was read before it kept. An error of the device stops it (DeviceError)."""
         progress = say_to(progress)
         batch = self.listing[len(self.read):len(self.read) + count]
         to_read = [a for a in batch if a.key not in self._kept]
@@ -203,6 +209,8 @@ class DeviceActivities:
         head = _("Reading activities")
         for n, activity in enumerate(to_read, 1):
             progress(Step(head, n, len(to_read)))
+            if reading is not None:
+                reading(n, len(to_read), activity)
             data = self.read_file(activity)
             size += len(data or b"")
             self._kept[activity.key] = _summary(data)

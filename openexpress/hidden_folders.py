@@ -388,8 +388,6 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
             how = _put(session, store, parent.handle, filename, local, size, md5, check,
                        byte_steps(progress, copying) if copying else None,
                        byte_steps(progress, checking) if checking else None, name)
-        except ContentsNotRead:
-            raise
         except ptp.PtpError as e:
             raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
     log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
@@ -462,8 +460,8 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[MapF
               unlocks: list[tuple[str, bytes]], margin: int,
               progress: Callable[[str], None] | None = None, copying: str | None = None,
               checking: str | None = None, check: str = FULL,
-              sleep: Callable[[float], None] = time.sleep, unlock_tries: int = 6,
-              unlock_pause: float = 5) -> MapWritten:
+              sleep: Callable[[float], None] = time.sleep, *, unlock_tries: int,
+              unlock_pause: float) -> MapWritten:
     """The files of map `name` written into folders of the top level ordinary MTP does not
     show, in one session of its own, in Garmin Express's order: each folder listed afresh
     (the ordinary listing and Garmin's together), the space checked with the old files and
@@ -526,8 +524,8 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[MapF
                     checked = (byte_steps(progress, checking, before=before, total=total)
                                if checking else None)
                     if _put_map_file(session, places, split, f.path, f.local, f.size, f.md5, check,
-                                     told, checked, name, tries=WRITE_TRIES, pause=WRITE_PAUSE_S,
-                                     sleep=sleep):
+                                     told, checked, name, keep=True, tries=WRITE_TRIES,
+                                     pause=WRITE_PAUSE_S, sleep=sleep):
                         out.kept.append(f.path)
                     else:
                         out.written.append(f.path)
@@ -556,9 +554,8 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[MapF
 
 
 def _put_map_file(session, places, split, path: str, local: Path | bytes, size: int,
-                  md5: str | None, check: str, told, checked, name: str,
-                  keep: bool = True, tries: int = 1, pause: float = 0,
-                  sleep: Callable[[float], None] = time.sleep) -> bool:
+                  md5: str | None, check: str, told, checked, name: str, *, keep: bool,
+                  tries: int, pause: float, sleep: Callable[[float], None]) -> bool:
     """One file of a map: True when one of its size was there and read back the same (kept,
     when `keep`); else any other one of that name deleted and this one written (_put), again
     after `pause` up to `tries` times while the session goes on."""
@@ -583,8 +580,6 @@ def _put_map_file(session, places, split, path: str, local: Path | bytes, size: 
             _put(session, store, parent.handle, filename, local, size, md5, check, told,
                  checked, name)
             return False
-        except ContentsNotRead:
-            raise
         except ptp.PtpError:
             if session.broken or attempt == tries:
                 raise
@@ -625,8 +620,6 @@ def _put(session, store: int, parent: int, filename: str, local: Path | bytes, s
         if on_device != size:
             raise ptp.PtpWriteError(f"{on_device} B on the device, {size} B written")
         return _read_back(session, handle, filename, local, size, md5, check, checked, name)
-    except ContentsNotRead:
-        raise
     except ptp.PtpError as e:
         handle = getattr(e, "handle", None) or handle
         log.warning("hidden folders: %s not written (%s: %s)", filename, type(e).__name__, e)
@@ -686,9 +679,8 @@ def _compare_whole(session, handle: int, local: Path | bytes, size: int, md5: st
                 told(done, size)
 
         session.read_into(handle, compare, size=size)
-    if not same or done != size:
-        raise ptp.PtpWriteError("the file read back differs from the one written")
-    if md5 is not None and digest.hexdigest() != md5.casefold():
+    if (not same or done != size
+            or (md5 is not None and digest.hexdigest() != md5.casefold())):
         raise ptp.PtpWriteError("the file read back differs from the one written")
 
 

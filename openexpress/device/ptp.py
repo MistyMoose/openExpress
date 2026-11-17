@@ -263,6 +263,7 @@ class Transport(Protocol):
     a zero-length packet); `read` returns what one transfer brought, possibly nothing."""
 
     packet_size: int
+    timeout_ms: int  # of each bulk transfer; the session lengthens it while a large answer is due
 
     def write(self, data: bytes) -> None: ...
 
@@ -602,14 +603,13 @@ class Session:
                 # Header and payload as separate transfers, like the Windows MTP stack.
                 self.transport.write(data_header(operation, transaction, data_out.size))
                 self._send(data_out)
-            usual = getattr(self.transport, "timeout_ms", None)
-            if answer_ms is not None and usual is not None:
+            usual = self.transport.timeout_ms
+            if answer_ms is not None:
                 self.transport.timeout_ms = answer_ms
             try:
                 return self._answer(transaction, data_in)
             finally:
-                if usual is not None:
-                    self.transport.timeout_ms = usual
+                self.transport.timeout_ms = usual
         except BaseException:
             self._broken = True
             raise

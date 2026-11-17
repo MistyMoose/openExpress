@@ -549,6 +549,15 @@ def _age(stamp, now: float) -> str:
     return f"its data {(now - stamp) / 3600:.1f} h old"
 
 
+def _taken_or_replaced(content: bytes, known: dict) -> str:
+    """For the log, what is in the place of ours written before: ours as the device unpacked it,
+    or another file (the phone's, or the device's own). A record without the sum of ours
+    unpacked cannot tell them apart. Either way ours no longer waits to be taken."""
+    if not known.get("raw"):
+        return "taken or replaced, not told apart"
+    return "taken (ours unpacked)" if _sha(content) == known["raw"] else "replaced by another file"
+
+
 def _connection(device, storage) -> str | None:
     from openexpress import history
 
@@ -650,8 +659,7 @@ def _rx_update(unit_id: int, device, storage, state: State, apply: bool, http) -
                         continue  # it is unpacked once the device is unplugged
                     else:  # taken (ours unpacked), or a newer one from the phone
                         known["pending"], known["gone"] = False, 0
-                        found_words = ["taken (ours unpacked)" if _sha(content) == known.get("raw")
-                                       else "another file in place of ours"]
+                        found_words = [_taken_or_replaced(content, known)]
                 if content is not None:
                     known["time"] = rx_time(content)
                     write = _old(known, spec, now)

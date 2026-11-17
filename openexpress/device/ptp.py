@@ -720,11 +720,13 @@ class Session:
         data, _answer = self._ok(GARMIN_GET_OBJECT_IDS, storage, parent)
         return [self.info(handle, hidden=True) for handle in u32_array(data)]
 
-    def all_children(self, storage: int, parent: int) -> list[ObjectInfo]:
+    def all_children(self, storage: int, parent: int,
+                     at_root: bool = False) -> list[ObjectInfo]:
         """Ordinary and hidden objects of a folder; just the ordinary ones on a device
-        without Garmin's listing or in the root, where it was never seen used."""
+        without Garmin's listing, and in the root unless `at_root` (a car navigator keeps its
+        hidden folder there; a watch was never seen using Garmin's listing in the root)."""
         found = self.children(storage, parent)
-        if parent == ROOT:
+        if parent == ROOT and not at_root:
             return found
         try:
             extra = self.hidden_children(storage, parent)

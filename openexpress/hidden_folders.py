@@ -212,17 +212,22 @@ def read(storage: Storage, folders: Iterable[str], why: str,
 
 def _children(session, store: int, parent: int) -> list:
     """What ordinary MTP and Garmin's listing show in a folder, the top level too (where the
-    hidden folder of a navigator is); the ordinary ones alone on a device without Garmin's
-    listing."""
-    found = session.children(store, parent)
-    try:
-        extra = session.hidden_children(store, parent)
-    except ptp.PtpRefused as e:
-        if e.code != ptp.OPERATION_NOT_SUPPORTED:
-            raise
-        return found
-    known = {item.handle for item in found}
-    return found + [item for item in extra if item.handle not in known]
+    hidden folder of a navigator is)."""
+    return session.all_children(store, parent, at_root=True)
+
+
+def _descend(children, store: int, top, parts: list[str]):
+    """The folder `parts` below the folder `top`, each looked up whatever its letter case among
+    the folders `children(store, handle)` lists, with its path as the device spells it; (None,
+    the path so far) when one of them is not there."""
+    current, real = top, [top.name]
+    for part in parts:
+        current = named_in_any_case(
+            [i for i in children(store, current.handle) if i.is_dir], part)
+        if current is None:
+            return None, real
+        real.append(current.name)
+    return current, real
 
 
 def _read_in(session, wanted: list[str], listing: Listing) -> None:
@@ -250,14 +255,8 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
         if place is None:
             listing.missing[folder.casefold()] = folder
             continue
-        store, current = place
-        real = [current.name]
-        for part in parts[1:]:
-            current = named_in_any_case(
-                [i for i in children(store, current.handle) if i.is_dir], part)
-            if current is None:
-                break
-            real.append(current.name)
+        store, top = place
+        current, real = _descend(children, store, top, parts[1:])
         if current is None:
             listing.missing[folder.casefold()] = folder
             continue
@@ -714,16 +713,11 @@ def _folder_in(session, folder: str):
     from the top level through both listings; WriteRefused when it is not there."""
     parts = folder.split("/")
     for store in session.storages():
-        current = named_in_any_case(
+        top = named_in_any_case(
             [i for i in _children(session, store, ptp.ROOT) if i.is_dir], parts[0])
-        real = [current.name] if current is not None else []
-        for part in parts[1:]:
-            if current is None:
-                break
-            current = named_in_any_case(
-                [i for i in _children(session, store, current.handle) if i.is_dir], part)
-            if current is not None:
-                real.append(current.name)
+        if top is None:
+            continue
+        current, real = _descend(lambda s, p: _children(session, s, p), store, top, parts[1:])
         if current is not None:
             return store, current, "/".join(real)
     raise WriteRefused(no_folder_text(folder))

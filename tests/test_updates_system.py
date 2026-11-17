@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from fakes import RunNow, other_bytes_drive, window_methods
+from fakes import RunNow, Section, other_bytes_drive, window_methods
 from fakes import window as stand_in
 
 from openexpress import download, updates
@@ -903,26 +903,6 @@ def test_the_question_names_both_versions_of_a_system_update(monkeypatch):
 # --- the status at the top of the Updates page ---------------------------------------------------
 
 
-class _Group:
-    def __init__(self, title):
-        self.title, self.rows = title, []
-
-    def add(self, row):
-        self.rows.append(row)
-
-
-class _Section:
-    def __init__(self):
-        self.groups = []
-
-    def group(self, title="", description=""):
-        self.groups.append(_Group(title))
-        return self.groups[-1]
-
-    def clear(self):
-        self.groups = []
-
-
 def _children(widget):
     child = widget.get_first_child()
     while child is not None:
@@ -963,7 +943,7 @@ def _updates_page(items, beta=False, drive=False, device=None):
 
     win = stand_in(
         session=types.SimpleNamespace(device=device or _test_watch(), mass_storage=drive),
-        sections={"updates": _Section()}, busy=False, _action_buttons=[], asked=[], loads=[],
+        sections={"updates": Section()}, busy=False, _action_buttons=[], asked=[], loads=[],
         ejected=[], _set_update_state=lambda new, staged=(), not_installed=(): None)
     win.confirm_update = win.asked.append
     win.eject_device = lambda s, button=None: win.ejected.append(s)

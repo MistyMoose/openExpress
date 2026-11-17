@@ -582,14 +582,79 @@ def test_not_unpacked_after_unplugging_turns_it_off(tmp_path, clock, monkeypatch
     assert satellite.update(device, storage).kind == "updated"
 
 
-def test_a_newer_one_from_the_phone_is_kept(tmp_path, clock, monkeypatch):
+def test_a_newer_one_from_the_phone_is_kept(tmp_path, clock, monkeypatch, caplog):
     storage, device, server, served = written_once(tmp_path, clock, monkeypatch)
     phone = made_up_rx(GPES, hours_ago(clock, 0), 9)[1]
     storage.fake.objects[storage.fake.handle(f"{REMOTE}/GPES.bin")].data = phone
     unplugged(storage)
     clock.current += timedelta(hours=1)
-    assert satellite.update(device, storage) == satellite.Result("current")
+    caplog.clear()  # the lines of the write before
+    with caplog.at_level(logging.INFO, logger="openexpress.satellite"):
+        assert satellite.update(device, storage) == satellite.Result("current")
     assert satellite.load(UNIT).on and on_watch(storage, "GPES.bin") == phone
+    assert caplog.messages == [("satellite data: in a session of our own: GPES.bin: replaced by "
+                                "another file, its data 1.0 h old, young enough")]
+
+
+def test_a_record_without_the_sum_of_ours_unpacked_says_it_cannot_tell(
+        tmp_path, clock, monkeypatch, caplog):
+    storage, device, server, served = written_once(tmp_path, clock, monkeypatch)
+    record = satellite.paths.device_dir(UNIT) / satellite.FILE_NAME
+    kept = json.loads(record.read_text(encoding="utf-8"))
+    del kept["files"]["GPES.bin"]["raw"]  # as a record that never had it
+    record.write_text(json.dumps(kept), encoding="utf-8")
+    unplugged(storage)
+    clock.current += timedelta(hours=1)
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="openexpress.satellite"):
+        assert satellite.update(device, storage) == satellite.Result("current")
+    assert satellite.load(UNIT).files["GPES.bin"]["pending"] is False  # ours no longer waits to be taken
+    assert caplog.messages == [("satellite data: in a session of our own: GPES.bin: taken or "
+                                "replaced, not told apart, its data 1.5 h old, young enough")]
+
+
+def test_each_sync_says_in_one_line_what_it_found_of_each_file_and_did(
+        tmp_path, clock, monkeypatch, caplog):
+    from openexpress import applog
+
+    storage, device = fenix(tmp_path, clock, {"GPE.bin": hours_ago(clock, 30),
+                                              "GPES.bin": hours_ago(clock, 5)})
+    satellite.update(device, storage)
+    satellite.set_on(UNIT, True)
+    served = {spec.name: made_up_rx(spec, hours_ago(clock, 0.5))[0] for spec in satellite.RX_FILES}
+    rx_server(monkeypatch, {spec.url: [rx_answer(served[spec.name])]
+                            for spec in satellite.RX_FILES})
+
+    def said() -> list[str]:
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="openexpress.satellite"):
+            satellite.update(device, storage)
+        return [m for m in caplog.messages if m.startswith("satellite data:")]
+
+    def session(*files: str) -> list[str]:
+        return ["satellite data: in a session of our own: " + "; ".join(files)]
+
+    def written(name: str) -> str:
+        return f"written ({applog.size(len(served[name]))}, its first bytes read back)"
+
+    assert said() == session(f"GPE.bin: its data 30.0 h old, {written('GPE.bin')}",
+                             f"GPES.bin: its data 5.0 h old, {written('GPES.bin')}")
+    clock.current += timedelta(hours=1)  # the same connection
+    assert said() == session("GPE.bin: ours not unpacked yet, left until unplugged",
+                             "GPES.bin: ours not unpacked yet, left until unplugged")
+    unplugged(storage)
+    assert said() == session("GPE.bin: taken (ours unpacked), its data 1.5 h old, young enough",
+                             "GPES.bin: taken (ours unpacked), its data 1.5 h old, young enough")
+    clock.current += timedelta(hours=1)  # young enough by the record: no session
+    sessions = storage.sessions
+    assert said() == [("satellite data: no session needed: nothing waits to be taken, all young "
+                       "enough by the program's record (GPE.bin: its data 2.5 h old; GPES.bin: "
+                       "its data 2.5 h old)")]
+    assert storage.sessions == sessions
+    storage.ptp = False  # GPES.bin 4 hours old: a session is needed, none can be had here
+    clock.current += timedelta(hours=2)
+    assert said() == [("satellite data: no session of our own here: the hidden files cannot be "
+                       "reached, nothing checked")]
 
 
 def test_gone_once_it_is_written_again_gone_twice_it_turns_off(tmp_path, clock, monkeypatch):

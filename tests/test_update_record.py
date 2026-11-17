@@ -7,7 +7,7 @@ import time
 import types
 
 import pytest
-from fakes import device_session, page_window
+from fakes import Section, device_session, page_window
 from fakes import window as stand_in
 from test_updates_system import _entry
 
@@ -281,8 +281,6 @@ def test_after_an_install_the_next_opening_shows_the_copy_waiting_until_the_chec
     waits for the device, as a copied system update does: the record forgets the update found
     and keeps that one waits; the device opened again says so from its first frame, and the
     check, with the server offering it no more (installed), says up to date."""
-    from test_updates_system import _Section
-
     from openexpress.gui.app import MainWindow
 
     _record()
@@ -292,7 +290,7 @@ def test_after_an_install_the_next_opening_shows_the_copy_waiting_until_the_chec
         session=device_session(device=types.SimpleNamespace(
             description="fēnix 8 - 47mm, Solar", software_version_str="23.39", unit_id=UNIT),
             mass_storage=False),
-        sections={"updates": _Section()}, busy=False, _action_buttons=[],
+        sections={"updates": Section()}, busy=False, _action_buttons=[],
         _update_check_session=None, _render_update_state=lambda: None,
         confirm_update=lambda u: None, eject_device=lambda s, button=None: None,
         load_section=lambda *a, **kw: None)

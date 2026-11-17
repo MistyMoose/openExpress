@@ -1944,8 +1944,7 @@ def _print_hidden(updates_shown, add_ons, lines: bool = False) -> None:
             print(upd.not_installed_here_text(u))
     if add_ons:
         print(upd.add_ons_text(len(add_ons)))
-    system = next((u for u in updates_shown if u.is_system and u.hidden_folder
-                   and not u.hidden_read), None)
+    system = next((u for u in updates_shown if u.is_system and u.hidden_unread), None)
     if system is None:
         return
     print(upd.hidden_software_text(system.hidden_folder))
@@ -2004,7 +2003,7 @@ def cmd_updates(args) -> int:
             print("  " + _update_line(u) + _flags(u))
             if (older := upd.older_offer_text(u)) is not None:
                 print("      " + older)
-            if u.hidden_folder is not None and not u.hidden_read:
+            if u.hidden_unread:
                 print("      " + upd.not_installed_here_text(u))
             note = _copied_note(u)
             if note:
@@ -2031,7 +2030,7 @@ def cmd_updates(args) -> int:
         chosen = [u for u in chosen if not u.is_add_on]  # said with the hidden ones below
     # Nothing goes to a folder of the device's top level the listing does not show, unless
     # openExpress's own session read it.
-    refused = [u for u in chosen if u.hidden_folder is not None and not u.hidden_read]
+    refused = [u for u in chosen if u.hidden_unread]
     chosen = [u for u in chosen if not any(u is r for r in refused)]
     _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
     # Never an older version over the device's own, unless it is the same file.
@@ -2100,8 +2099,8 @@ def cmd_updates(args) -> int:
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:
         print(_(upd.finish_steps(rep.written)))
-    if any(u.is_system and u.hidden_folder is not None for u in rep.written):
-        print(upd.power_text())  # a navigator, its software written: it must not lose power
+    if upd.power_needed(rep.written):
+        print(upd.power_text())
     return 1 if refused else 0
 
 
@@ -2381,7 +2380,7 @@ def cmd_maps(args) -> int:
         for f in mp.write_order(m):
             print(f"  + {f.device_path}  {human_size(f.size)}")
         sizes = m.device_sizes or {}
-        for p in removing:
+        for p in mp.on_the_device(m, removing) if hidden else removing:
             # In a folder the device hides, with the size its own session read there.
             there = sizes.get(p.casefold()) if hidden else None
             print(f"  - {p}" + (f"  {human_size(there)}" if there is not None else ""))

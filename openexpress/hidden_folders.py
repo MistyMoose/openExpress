@@ -5,7 +5,8 @@ session takes the device from the file manager for a moment, so what it read is 
 connection (kept) until the device is unplugged or the user asks again (forget: Check Again,
 Refresh); updates.mark_present, maps.mark_waiting and history.count take it from there. A file
 of an update is written there by write, as Garmin Express writes it, in a session of its own
-that lists its folder anew."""
+that lists its folder anew; the files of a map (the command line's trial) by write_map, all in
+one session."""
 
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ from openexpress.device.storage import (
     Entry,
     RemountFailed,
     Storage,
+    connection,
     named_in_any_case,
 )
 from openexpress.i18n import _, ngettext
@@ -95,26 +97,18 @@ def _key(folder: str) -> str:
     return folder.strip("/").casefold()
 
 
-# What each connection read, by the connection (_connection).
+# What each connection read, by the connection (storage.connection).
 _kept: dict[tuple, Listing] = {}
-
-
-def _connection(storage: Storage) -> tuple:
-    """The device's address and its place on USB (new at each plugging in); a folder (a drive,
-    the tests) by its path."""
-    usb = getattr(storage, "usb", None)
-    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
-    return where, getattr(usb, "bus", None), getattr(usb, "address", None)
 
 
 def kept(storage: Storage) -> Listing | None:
     """What a session read of this connection; None when none was opened for it."""
-    return _kept.get(_connection(storage))
+    return _kept.get(connection(storage))
 
 
 def forget(storage: Storage) -> None:
     """The next look at the device reads its hidden folders anew ("Check Again")."""
-    _kept.pop(_connection(storage), None)
+    _kept.pop(connection(storage), None)
 
 
 def reading_text(folders: Iterable[str]) -> str:
@@ -179,7 +173,7 @@ def read(storage: Storage, folders: Iterable[str], why: str,
         listing.state = NO_USB if wanted and storage.usb_blocked() else NO_SESSION
         if wanted:
             log.info("hidden folders: %s not read: %s", ", ".join(wanted), listing.state)
-        _kept[_connection(storage)] = listing
+        _kept[connection(storage)] = listing
         return listing
     log.info("hidden folders: opening a USB session of its own to read %s: %s",
              ", ".join(wanted), why)
@@ -205,23 +199,28 @@ def read(storage: Storage, folders: Iterable[str], why: str,
             f"{real}: {len(entries)} entries" for real, entries in listing.folders.values())
             + "".join(f"; {m}: not on the device"
                       for m in sorted(listing.missing.values(), key=str.casefold)))
-    _kept[_connection(storage)] = listing
+    _kept[connection(storage)] = listing
     return listing
 
 
 def _children(session, store: int, parent: int) -> list:
     """What ordinary MTP and Garmin's listing show in a folder, the top level too (where the
-    hidden folder of a navigator is); the ordinary ones alone on a device without Garmin's
-    listing."""
-    found = session.children(store, parent)
-    try:
-        extra = session.hidden_children(store, parent)
-    except ptp.PtpRefused as e:
-        if e.code != ptp.OPERATION_NOT_SUPPORTED:
-            raise
-        return found
-    known = {item.handle for item in found}
-    return found + [item for item in extra if item.handle not in known]
+    hidden folder of a navigator is)."""
+    return session.all_children(store, parent, at_root=True)
+
+
+def _descend(children, store: int, top, parts: list[str]):
+    """The folder `parts` below the folder `top`, each looked up whatever its letter case among
+    the folders `children(store, handle)` lists, with its path as the device spells it; (None,
+    the path so far) when one of them is not there."""
+    current, real = top, [top.name]
+    for part in parts:
+        current = named_in_any_case(
+            [i for i in children(store, current.handle) if i.is_dir], part)
+        if current is None:
+            return None, real
+        real.append(current.name)
+    return current, real
 
 
 def _read_in(session, wanted: list[str], listing: Listing) -> None:
@@ -249,14 +248,8 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
         if place is None:
             listing.missing[folder.casefold()] = folder
             continue
-        store, current = place
-        real = [current.name]
-        for part in parts[1:]:
-            current = named_in_any_case(
-                [i for i in children(store, current.handle) if i.is_dir], part)
-            if current is None:
-                break
-            real.append(current.name)
+        store, top = place
+        current, real = _descend(children, store, top, parts[1:])
         if current is None:
             listing.missing[folder.casefold()] = folder
             continue
@@ -388,8 +381,6 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
             how = _put(session, store, parent.handle, filename, local, size, md5, check,
                        byte_steps(progress, copying) if copying else None,
                        byte_steps(progress, checking) if checking else None, name)
-        except ContentsNotRead:
-            raise
         except ptp.PtpError as e:
             raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
     log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
@@ -443,7 +434,9 @@ def no_space_map_text(name: str, needed: int, free: int) -> str:
 
 
 @dataclass
-class MapFile:
+class FileToWrite:
+    """A file of a map, downloaded, that write_map writes."""
+
     path: str  # on the device, as the server gives it
     local: Path  # downloaded, checked against its MD5
     size: int
@@ -458,12 +451,12 @@ class MapWritten:
     unlocks: list[str] = field(default_factory=list)
 
 
-def write_map(storage: Storage, name: str, removing: list[str], files: list[MapFile],
+def write_map(storage: Storage, name: str, removing: list[str], files: list[FileToWrite],
               unlocks: list[tuple[str, bytes]], margin: int,
               progress: Callable[[str], None] | None = None, copying: str | None = None,
               checking: str | None = None, check: str = FULL,
-              sleep: Callable[[float], None] = time.sleep, unlock_tries: int = 6,
-              unlock_pause: float = 5) -> MapWritten:
+              sleep: Callable[[float], None] = time.sleep, *, unlock_tries: int,
+              unlock_pause: float) -> MapWritten:
     """The files of map `name` written into folders of the top level ordinary MTP does not
     show, in one session of its own, in Garmin Express's order: each folder listed afresh
     (the ordinary listing and Garmin's together), the space checked with the old files and
@@ -526,8 +519,8 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[MapF
                     checked = (byte_steps(progress, checking, before=before, total=total)
                                if checking else None)
                     if _put_map_file(session, places, split, f.path, f.local, f.size, f.md5, check,
-                                     told, checked, name, tries=WRITE_TRIES, pause=WRITE_PAUSE_S,
-                                     sleep=sleep):
+                                     told, checked, name, keep=True, tries=WRITE_TRIES,
+                                     pause=WRITE_PAUSE_S, sleep=sleep):
                         out.kept.append(f.path)
                     else:
                         out.written.append(f.path)
@@ -556,9 +549,8 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[MapF
 
 
 def _put_map_file(session, places, split, path: str, local: Path | bytes, size: int,
-                  md5: str | None, check: str, told, checked, name: str,
-                  keep: bool = True, tries: int = 1, pause: float = 0,
-                  sleep: Callable[[float], None] = time.sleep) -> bool:
+                  md5: str | None, check: str, told, checked, name: str, *, keep: bool,
+                  tries: int, pause: float, sleep: Callable[[float], None]) -> bool:
     """One file of a map: True when one of its size was there and read back the same (kept,
     when `keep`); else any other one of that name deleted and this one written (_put), again
     after `pause` up to `tries` times while the session goes on."""
@@ -583,8 +575,6 @@ def _put_map_file(session, places, split, path: str, local: Path | bytes, size: 
             _put(session, store, parent.handle, filename, local, size, md5, check, told,
                  checked, name)
             return False
-        except ContentsNotRead:
-            raise
         except ptp.PtpError:
             if session.broken or attempt == tries:
                 raise
@@ -625,8 +615,6 @@ def _put(session, store: int, parent: int, filename: str, local: Path | bytes, s
         if on_device != size:
             raise ptp.PtpWriteError(f"{on_device} B on the device, {size} B written")
         return _read_back(session, handle, filename, local, size, md5, check, checked, name)
-    except ContentsNotRead:
-        raise
     except ptp.PtpError as e:
         handle = getattr(e, "handle", None) or handle
         log.warning("hidden folders: %s not written (%s: %s)", filename, type(e).__name__, e)
@@ -686,9 +674,8 @@ def _compare_whole(session, handle: int, local: Path | bytes, size: int, md5: st
                 told(done, size)
 
         session.read_into(handle, compare, size=size)
-    if not same or done != size:
-        raise ptp.PtpWriteError("the file read back differs from the one written")
-    if md5 is not None and digest.hexdigest() != md5.casefold():
+    if (not same or done != size
+            or (md5 is not None and digest.hexdigest() != md5.casefold())):
         raise ptp.PtpWriteError("the file read back differs from the one written")
 
 
@@ -719,16 +706,11 @@ def _folder_in(session, folder: str):
     from the top level through both listings; WriteRefused when it is not there."""
     parts = folder.split("/")
     for store in session.storages():
-        current = named_in_any_case(
+        top = named_in_any_case(
             [i for i in _children(session, store, ptp.ROOT) if i.is_dir], parts[0])
-        real = [current.name] if current is not None else []
-        for part in parts[1:]:
-            if current is None:
-                break
-            current = named_in_any_case(
-                [i for i in _children(session, store, current.handle) if i.is_dir], part)
-            if current is not None:
-                real.append(current.name)
+        if top is None:
+            continue
+        current, real = _descend(lambda s, p: _children(session, s, p), store, top, parts[1:])
         if current is not None:
             return store, current, "/".join(real)
     raise WriteRefused(no_folder_text(folder))

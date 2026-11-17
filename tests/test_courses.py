@@ -14,6 +14,7 @@ from fakes import (
     gpx_route,
     gpx_track,
     gpx_waypoint,
+    in_language,
     locations_fit,
 )
 from fakes import course_device as device
@@ -503,16 +504,13 @@ def test_a_device_that_takes_gpx_files_in_its_own_folder_is_told_which(device_ro
 def test_the_words_of_a_folder_of_its_own_for_gpx_files(language):
     from fakes import course_device
 
-    from openexpress import courses, i18n
+    from openexpress import courses
     from openexpress.gui.courses_page import not_offered_text as page_text
 
-    i18n.setup(language)
-    try:
+    with in_language(language):
         own = course_device(gpx_folder="GPX")
         texts = [courses.not_offered_text(own), page_text(own),
                  courses.not_offered_text(course_device(gpx_folder=None))]
-    finally:
-        i18n.setup("en")
     own_en = ("This device takes GPX files in its own folder GPX, where openExpress does not "
               "copy them")
     own_pl = ("To urządzenie przyjmuje pliki GPX we własnym folderze GPX, do którego "

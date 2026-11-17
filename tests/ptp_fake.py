@@ -1,4 +1,5 @@
-"""A fake Garmin device at the other end of a PTP transport, answering as the fēnix 8 does:
+"""A fake Garmin device at the other end of a PTP transport, answering as the fēnix 8 does
+and listing the operations it lists:
 
 * a folder the device took over, and its app files, are missing from the ordinary listing;
   only Garmin's 0x9002 lists them, with protection 1;
@@ -19,6 +20,17 @@ from dataclasses import dataclass
 from openexpress.device import ptp
 
 STORAGE = 0x00010001
+# What GetDeviceInfo lists: a fēnix 8's operations, and a Drive 53 EX's (an Edge 1050's
+# without 0x900A).
+FENIX_8_OPERATIONS = [
+    0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1007, 0x1008, 0x1009, 0x100A, 0x100B, 0x100C, 0x100D,
+    0x1010, 0x1014, 0x1015, 0x1016, 0x1019, 0x101B, 0x9000, 0x9001, 0x9002, 0x9003, 0x9004, 0x9005,
+    0x9006, 0x9007, 0x9008, 0x9009, 0x900A, 0x900B, 0x9801, 0x9802, 0x9803, 0x9804, 0x9805, 0x9810,
+    0x9811]
+DRIVE_53_OPERATIONS = [
+    0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1007, 0x1008, 0x1009, 0x100B, 0x100C, 0x100D, 0x1010,
+    0x1014, 0x1015, 0x1016, 0x1019, 0x101B, 0x9000, 0x9001, 0x9002, 0x9003, 0x9004, 0x9005, 0x9006,
+    0x9008, 0x9009, 0x9801, 0x9802, 0x9803, 0x9804, 0x9805]
 
 
 @dataclass
@@ -52,8 +64,7 @@ class FakeDevice:
         self.silent = False
         self.truncate_written = 0  # bytes cut from the next stored file
         # What GetDeviceInfo lists; the strings after it are made up, and must never be read.
-        self.supported = [0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1007, 0x1008, 0x1009,
-                          0x100B, 0x100C, 0x100D, 0x101B, 0x9002]
+        self.supported = list(FENIX_8_OPERATIONS)
         self.transfers: list[bytes] = []
         self.timeout_ms = ptp.TIMEOUT_MS  # set by the session, as on a real transport
         self.read_limits: list[int] = []  # the time limit in force at each read

@@ -6467,7 +6467,7 @@ msgid ""
 "The device did not let openExpress create {folders} with this software "
 "version: apps that go there stay queued in Garmin Connect."
 msgstr ""
-"Urządzenie nie pozwoliło openExpress utworzyć {folders} w tej wersji "
+"Urządzenie nie pozwoliło openExpressowi utworzyć {folders} w tej wersji "
 "oprogramowania: aplikacje, które tam trafiają, czekają w kolejce Garmin "
 "Connect."
 

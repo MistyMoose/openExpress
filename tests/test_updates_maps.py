@@ -7,7 +7,7 @@ import threading
 
 import pytest
 import requests
-from fakes import RunNow, device_session, maps_window
+from fakes import RunNow, device_session, in_language, maps_window
 from fakes import window as stand_in
 
 from openexpress import applog, download, maps, updates
@@ -1993,21 +1993,20 @@ def test_maps_page_says_what_the_maps_take_on_the_device(server, device_root):
 @pytest.mark.needs_display
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_row_of_a_map_with_an_update_says_what_it_downloads(server, device_root, language):
-    from openexpress import i18n
     from openexpress.gui.app import MainWindow
 
     all_maps = _maps_on_the_device(server, device_root)
-    i18n.setup(language)
-    try:
+    with in_language(language):
         win, _reloads = maps_window(LocalStorage(device_root))
         MainWindow.show_maps(win, (all_maps, len(all_maps)), space=(5_000_000, 32_000_000))
         rows = {r.get_title(): r.get_subtitle() for r in win.sections["maps"].groups[0].rows[1:]}
-    finally:
-        i18n.setup("en")
     expected = {
-        "en": {"TopoActive East": "TopoActive · 2026.11 available · 9.0 kB to download",
-               "TopoActive West": "TopoActive · 2026.11 · 9.0 kB · up to date"},
-        "pl": {"TopoActive East": ("TopoActive · dostępna wersja 2026.11 · 9,0 kB do "
-                                   "pobrania"),
-               "TopoActive West": "TopoActive · 2026.11 · 9,0 kB · aktualna"}}
+        "en": {"TopoActive East": ("TopoActive\u00a0· 2026.11 available\u00a0· 9.0\u00a0kB to "
+                                   "download"),
+               "TopoActive West": ("TopoActive\u00a0· 2026.11\u00a0· 9.0\u00a0kB\u00a0· up to "
+                                   "date")},
+        "pl": {"TopoActive East": ("TopoActive\u00a0· dostępna wersja 2026.11\u00a0· 9,0\u00a0kB "
+                                   "do pobrania"),
+               "TopoActive West": ("TopoActive\u00a0· 2026.11\u00a0· 9,0\u00a0kB\u00a0· "
+                                   "aktualna")}}
     assert rows == expected[language]

@@ -4,6 +4,7 @@ import SwiftUI
 /// The main window: devices and Account in the sidebar, the selected one's pages in the detail.
 struct ContentView: View {
     @Environment(AppModel.self) private var app
+    @State private var windowWidth: CGFloat = 0
 
     var body: some View {
         @Bindable var app = app
@@ -13,6 +14,8 @@ struct ContentView: View {
         } detail: {
             detail
         }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { windowWidth = $0 }
+        .environment(\.windowWidth, windowWidth)
         .sheet(isPresented: $app.isShowingSetup) { SetupSheet() }
         .sheet(isPresented: $app.isShowingSignIn) { SignInSheet() }
         .alert("openExpress", isPresented: Binding(
@@ -171,4 +174,9 @@ struct DeviceRow: View {
         }
         return String(localized: "Not connected")
     }
+}
+
+extension EnvironmentValues {
+    /// The main window's width, for layouts that change with it (the toolbar's page picker).
+    @Entry var windowWidth: CGFloat = 0
 }

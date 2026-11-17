@@ -59,7 +59,11 @@ struct ActivitiesPage: View {
                 }
                 // The sport is the main filter: a scope bar on top, the totals below.
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    SportScopeBar(filter: $model.activityFilter, activities: all)
+                    // Filtering lives in one place: the sports, and the Filter button pinned
+                    // at the end of the same bar (never lost in a toolbar overflow).
+                    SportScopeBar(filter: $model.activityFilter, activities: all) {
+                        filterButton
+                    }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) { summaryBar }
             }
@@ -77,22 +81,6 @@ struct ActivitiesPage: View {
         .onChange(of: widths) { if tableWidth > 0 { fitColumns(to: tableWidth) } }
         .onChange(of: search) { _, new in model.activityFilter.text = new }
         .onExitCommand(perform: resetSearch)
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    showsFilters.toggle()
-                } label: {
-                    Label("Filter", systemImage: model.activityFilter.hasRangeFilters
-                          ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                }
-                .help("Filter by distance, duration and date")
-                .accessibilityValue(model.activityFilter.hasRangeFilters ? Text("Filters on") : Text("No filters"))
-                .popover(isPresented: $showsFilters, arrowEdge: .bottom) {
-                    ActivityFilterPopover(filter: $model.activityFilter)
-                }
-                .disabled(model.activities?.isEmpty != false)
-            }
-        }
         .onChange(of: selection) { _, new in
             if new != nil { showsInspector = true }
         }
@@ -113,6 +101,26 @@ struct ActivitiesPage: View {
                         .help("Show or hide the activity's details")
                 }
             }
+        }
+    }
+
+    /// Distance, duration and date ranges in a popover; filled while any is set.
+    private var filterButton: some View {
+        Button {
+            showsFilters.toggle()
+        } label: {
+            Label("Filter", systemImage: model.activityFilter.hasRangeFilters
+                  ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                .labelStyle(.iconOnly)
+                .font(.title3)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(model.activityFilter.hasRangeFilters ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+        .help("Filter by distance, duration and date")
+        .accessibilityLabel("Filter")
+        .accessibilityValue(model.activityFilter.hasRangeFilters ? Text("Filters on") : Text("No filters"))
+        .popover(isPresented: $showsFilters, arrowEdge: .bottom) {
+            ActivityFilterPopover(filter: $model.activityFilter)
         }
     }
 
@@ -684,9 +692,11 @@ struct RangeFields: View {
 /// The sport scope bar (as in Finder's and Mail's search): All, then each sport of the list
 /// with its count under the other filters, most first. A click selects only that sport,
 /// ⌘-click adds or removes it, All clears.
-struct SportScopeBar: View {
+struct SportScopeBar<Trailing: View>: View {
     @Binding var filter: ActivityFilter
     let activities: [Activity]
+    /// Pinned at the end of the bar, outside the scrolling sports.
+    @ViewBuilder let trailing: () -> Trailing
 
     @State private var fade = EdgeFade(leading: false, trailing: false)
 
@@ -699,45 +709,50 @@ struct SportScopeBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal) {
-                HStack(spacing: 6) {
-                    let all = counts.reduce(0) { $0 + $1.count }
-                    ScopeButton(selected: filter.sports.isEmpty) {
-                        filter.select(sport: nil, extending: false)
-                    } label: {
-                        ScopeLabel(systemImage: "square.grid.2x2", title: String(localized: "All"), count: all)
-                    }
-                    .accessibilityLabel("All sports, \(all) activities")
-                    ForEach(counts, id: \.sport) { item in
-                        let selected = filter.sports.contains(item.sport)
-                        ScopeButton(selected: selected) {
-                            filter.select(sport: item.sport, extending: NSEvent.modifierFlags.contains(.command))
+            HStack(spacing: 0) {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        let all = counts.reduce(0) { $0 + $1.count }
+                        ScopeButton(selected: filter.sports.isEmpty) {
+                            filter.select(sport: nil, extending: false)
                         } label: {
-                            ScopeLabel(systemImage: symbol(item.sport), title: item.sport, count: item.count)
+                            ScopeLabel(systemImage: "square.grid.2x2", title: String(localized: "All"), count: all)
                         }
-                        .opacity(item.count == 0 && !selected ? 0.45 : 1)
-                        .help("Click to show only \(item.sport); ⌘-click to add or remove it")
-                        .accessibilityLabel("\(item.sport), \(item.count) activities")
+                        .accessibilityLabel("All sports, \(all) activities")
+                        ForEach(counts, id: \.sport) { item in
+                            let selected = filter.sports.contains(item.sport)
+                            ScopeButton(selected: selected) {
+                                filter.select(sport: item.sport, extending: NSEvent.modifierFlags.contains(.command))
+                            } label: {
+                                ScopeLabel(systemImage: symbol(item.sport), title: item.sport, count: item.count)
+                            }
+                            .opacity(item.count == 0 && !selected ? 0.45 : 1)
+                            .help("Click to show only \(item.sport); ⌘-click to add or remove it")
+                            .accessibilityLabel("\(item.sport), \(item.count) activities")
+                        }
+                    }
+                    .controlSize(.regular)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                }
+                .scrollIndicators(.never)
+                // A soft fade at an edge with more sports beyond it.
+                .onScrollGeometryChange(for: EdgeFade.self) { g in
+                    EdgeFade(leading: g.contentOffset.x > 1,
+                             trailing: g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1)
+                } action: { _, new in fade = new }
+                .mask {
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.black.opacity(fade.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 28)
+                        Rectangle()
+                        LinearGradient(colors: [.black, .black.opacity(fade.trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 28)
                     }
                 }
-                .controlSize(.regular)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-            }
-            .scrollIndicators(.never)
-            // A soft fade at an edge with more sports beyond it.
-            .onScrollGeometryChange(for: EdgeFade.self) { g in
-                EdgeFade(leading: g.contentOffset.x > 1,
-                         trailing: g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1)
-            } action: { _, new in fade = new }
-            .mask {
-                HStack(spacing: 0) {
-                    LinearGradient(colors: [.black.opacity(fade.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 28)
-                    Rectangle()
-                    LinearGradient(colors: [.black, .black.opacity(fade.trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 28)
-                }
+                trailing()
+                    .padding(.leading, 6)
+                    .padding(.trailing, 12)
             }
             Divider()
         }

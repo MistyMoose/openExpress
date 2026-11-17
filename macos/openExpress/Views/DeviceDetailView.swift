@@ -6,6 +6,11 @@ struct DeviceDetailView: View {
     @Environment(AppModel.self) private var app
     let model: DeviceModel
 
+    /// The window is too narrow for the page titles (below this width the toolbar would push
+    /// its trailing items into the overflow menu).
+    @Environment(\.windowWidth) private var windowWidth
+    private var compactToolbar: Bool { windowWidth > 0 && windowWidth < 1150 }
+
     var body: some View {
         @Bindable var app = app
         @Bindable var model = model
@@ -23,9 +28,20 @@ struct DeviceDetailView: View {
             .navigationSubtitle(subtitle)
             .toolbar {
                 ToolbarItem(placement: .principal) {
+                    // In a narrow window the pages become icons (titles in their tooltips and
+                    // for VoiceOver), so the inspector toggle and search never overflow.
                     Picker("Page", selection: $app.page) {
                         ForEach(DevicePage.allCases) { page in
-                            Text(page.title).tag(page)
+                            Group {
+                                if compactToolbar {
+                                    Image(systemName: page.systemImage)
+                                        .accessibilityLabel(page.title)
+                                } else {
+                                    Text(page.title)
+                                }
+                            }
+                            .help(page.title)
+                            .tag(page)
                         }
                     }
                     .pickerStyle(.segmented)

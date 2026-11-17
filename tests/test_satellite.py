@@ -380,15 +380,38 @@ def on_watch(storage, name: str) -> bytes | None:
     return None if handle is None else storage.fake.objects[handle].data
 
 
-def unplugged(storage) -> None:
-    """Unplugged and plugged in again: the watch unpacks our files and hides them; the device
-    gets another address on USB."""
+def unplugged(storage, hide: bool = True) -> None:
+    """Unplugged for minutes and plugged in again: the device unpacks our files and, as a watch
+    does, hides them (`hide`); the device gets another address on USB."""
     for spec in satellite.RX_FILES:
         handle = storage.fake.handle(f"{REMOTE}/{spec.name}")
         obj = storage.fake.objects.get(handle)
         if obj is not None and obj.data[:2] == b"\x1f\x8b":
-            obj.data, obj.hidden = gzip.decompress(obj.data), True
+            obj.data, obj.hidden = gzip.decompress(obj.data), hide
+    plugged_in_again(storage)
+
+
+def plugged_in_again(storage) -> None:
+    """Unplugged and plugged in again at once, before the device unpacked anything: another
+    address on USB."""
     storage.usb = types.SimpleNamespace(bus=1, address=storage.usb.address + 1)
+
+
+def edge(tmp_path, clock, stamp: float, data: bytes | None = None):
+    """A bike computer that keeps GPES.bin shown (its time `stamp`, unpacked, as the phone gives
+    it; else `data`) and no GPE.bin, as an Edge 1050: the folder on disk is what the ordinary
+    listing shows, the fake device the same over a PTP session of our own."""
+    root = tmp_path / "device"
+    fake = Recording()
+    gpes = made_up_rx(GPES, stamp, 2)[1] if data is None else data
+    (root / REMOTE).mkdir(parents=True, exist_ok=True)
+    for name, content in (("006-DA194-00.zip", b"made up"), ("GPES.bin", gpes)):
+        (root / REMOTE / name).write_bytes(content)
+        fake.add(f"{REMOTE}/{name}", content)
+    fake.add("GARMIN/EXPRESS/OUT.BIN", b"made-up request")
+    device = types.SimpleNamespace(unit_id=UNIT, part_number="006-B0000-00",
+                                   software_version_str="1.00")
+    return Fenix(root, fake), device
 
 
 class RxServer:
@@ -437,11 +460,85 @@ def test_a_watch_that_hides_them_is_found_by_a_sync_and_offered_off(tmp_path, cl
         "Satellite data (experimental): off (the switch is on the device page in the window)")
 
 
-def test_a_watch_that_shows_them_as_an_edge_1050_is_not_offered(tmp_path, clock):
-    storage, device = watch(tmp_path, {f"{REMOTE}/GPES.bin": made_up_rx(GPES, 0)[1]})
-    storage.exclusive_ptp = lambda: pytest.fail("no PTP session for a device that shows them")
-    assert satellite.update(device, storage) is None
-    assert satellite.load(UNIT) is None and satellite.seen(device, storage) is None
+def test_a_device_that_shows_gpes_bin_as_an_edge_1050_is_offered_it_at_the_opening(
+        tmp_path, clock, caplog):
+    storage, device = edge(tmp_path, clock, hours_ago(clock, 2))
+    with caplog.at_level(logging.INFO, logger="openexpress.satellite"):
+        state = satellite.seen(device, storage)
+    assert state is not None and (state.on, state.kind) == (False, satellite.RXNETWORKS)
+    assert list(state.files) == ["GPES.bin"]
+    assert storage.sessions == 0  # read through the file manager
+    assert caplog.messages == [
+        "satellite data: 006-B0000-00 has GPES.bin of the rxnetworks kind, shown: offered (off)"]
+    assert satellite.seen(device, storage) == state  # remembered
+
+
+@pytest.mark.parametrize("data", [
+    made_up_rx(GPES, 0)[1][:3000],  # smaller than GPES.bin may be
+    b"\x01\x00" + bytes(RX_SIZES["GPES.bin"] - 2),  # not of the kind by its header
+    gzip.compress(b"\x02\x00" + bytes(RX_SIZES["GPES.bin"] - 2), mtime=0),
+], ids=["too-small", "other-header", "gzip-of-another-kind"])
+def test_a_shown_gpes_bin_not_of_the_kind_known_is_not_offered(tmp_path, clock, data):
+    storage, device = edge(tmp_path, clock, 0, data)
+    assert satellite.seen(device, storage) is None and satellite.load(UNIT) is None
+
+
+def test_a_usb_drive_that_shows_gpes_bin_is_not_offered_it(tmp_path, clock):
+    storage, device = edge(tmp_path, clock, hours_ago(clock, 2))
+    storage.mass_storage = True
+    storage.exclusive_ptp = lambda: pytest.fail("no PTP session on a USB drive")
+    assert satellite.seen(device, storage) is None
+    assert satellite.update(device, storage) is None and satellite.load(UNIT) is None
+
+
+def test_an_edge_gets_its_gpes_bin_alone_and_ours_waits_until_it_unpacks_it(
+        tmp_path, clock, monkeypatch, caplog):
+    from openexpress import applog
+
+    storage, device = edge(tmp_path, clock, hours_ago(clock, 6))
+    satellite.seen(device, storage)
+    satellite.set_on(UNIT, True)
+    served = made_up_rx(GPES, hours_ago(clock, 0.5), 5)[0]
+    server = rx_server(monkeypatch, {GPES.url: [rx_answer(served)]})
+
+    def said() -> list[str]:
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="openexpress.satellite"):
+            satellite.update(device, storage)
+        return [m.removeprefix("satellite data: in a session of our own: ")
+                for m in caplog.messages if m.startswith("satellite data:")]
+
+    assert said() == [(f"GPES.bin: its data 6.0 h old, written ({applog.size(len(served))}, its "
+                       "first bytes read back)")]
+    assert server.asked == [GPES.url] and on_watch(storage, "GPES.bin") == served
+    assert storage.fake.sent(ptp.DELETE_OBJECT) == 1 and on_watch(storage, "GPE.bin") is None
+    clock.current += timedelta(minutes=5)  # a sync later, plugged in all along
+    assert said() == ["GPES.bin: waits: still ours as written (gzip), 5 min after the write"]
+    plugged_in_again(storage)  # a minute later: too soon for the Edge to unpack ours
+    clock.current += timedelta(minutes=1)
+    assert said() == ["GPES.bin: waits: still ours as written (gzip), 6 min after the write"]
+    assert satellite.load(UNIT).on
+    unplugged(storage, hide=False)  # for minutes: unpacked, shown still
+    clock.current += timedelta(minutes=5)
+    assert said() == ["GPES.bin: taken (ours unpacked), its data 0.7 h old, young enough"]
+    assert satellite.load(UNIT).files["GPES.bin"]["pending"] is False
+    assert len(server.asked) == 1 and storage.fake.sent(ptp.SEND_OBJECT) == 1
+
+
+def test_ours_as_written_when_due_again_turns_it_off_only_after_an_unplugging(
+        tmp_path, clock, monkeypatch):
+    storage, device = edge(tmp_path, clock, hours_ago(clock, 6))
+    satellite.seen(device, storage)
+    satellite.set_on(UNIT, True)
+    rx_server(monkeypatch, {GPES.url: [rx_answer(made_up_rx(GPES, hours_ago(clock, 0.5))[0])]})
+    assert satellite.update(device, storage).kind == "updated"
+    clock.current += timedelta(hours=4)  # due again, plugged in all along: it had no chance
+    assert satellite.update(device, storage) == satellite.Result("current")
+    assert satellite.load(UNIT).files["GPES.bin"]["pending"]
+    plugged_in_again(storage)  # unplugged since, and still ours as written
+    assert satellite.update(device, storage) == satellite.Result(
+        "stopped", reason=satellite.NOT_TAKEN)
+    assert not satellite.load(UNIT).on
 
 
 def test_a_watch_without_them_is_looked_at_again_a_day_later(tmp_path, clock):
@@ -563,11 +660,21 @@ def test_not_unpacked_while_still_plugged_in_is_waited_for(tmp_path, clock, monk
     assert on_watch(storage, "GPES.bin") == served[0] and len(server.asked) == 1
 
 
-def test_not_unpacked_after_unplugging_turns_it_off(tmp_path, clock, monkeypatch):
+def test_plugged_in_again_before_it_unpacked_ours_is_waited_for(tmp_path, clock, monkeypatch):
+    storage, device, server, served = written_once(tmp_path, clock, monkeypatch)
+    plugged_in_again(storage)
+    clock.current += timedelta(minutes=1)
+    assert satellite.update(device, storage) == satellite.Result("current")
+    state = satellite.load(UNIT)
+    assert state.on and state.files["GPES.bin"]["pending"] and len(server.asked) == 1
+
+
+def test_not_unpacked_after_unplugging_once_due_again_turns_it_off(tmp_path, clock, monkeypatch):
     from openexpress.gui import words
 
     storage, device, server, served = written_once(tmp_path, clock, monkeypatch)
-    storage.usb = types.SimpleNamespace(bus=1, address=storage.usb.address + 1)  # left as it was
+    plugged_in_again(storage)  # left as it was
+    clock.current += timedelta(hours=4)  # its data 4.5 hours old: due to be written anew
     assert satellite.update(device, storage) == satellite.Result(
         "stopped", reason=satellite.NOT_TAKEN)
     state = satellite.load(UNIT)
@@ -640,8 +747,9 @@ def test_each_sync_says_in_one_line_what_it_found_of_each_file_and_did(
     assert said() == session(f"GPE.bin: its data 30.0 h old, {written('GPE.bin')}",
                              f"GPES.bin: its data 5.0 h old, {written('GPES.bin')}")
     clock.current += timedelta(hours=1)  # the same connection
-    assert said() == session("GPE.bin: ours not unpacked yet, left until unplugged",
-                             "GPES.bin: ours not unpacked yet, left until unplugged")
+    assert said() == session("GPE.bin: waits: still ours as written (gzip), 60 min after the write",
+                             "GPES.bin: waits: still ours as written (gzip), 60 min after the "
+                             "write")
     unplugged(storage)
     assert said() == session("GPE.bin: taken (ours unpacked), its data 1.5 h old, young enough",
                              "GPES.bin: taken (ours unpacked), its data 1.5 h old, young enough")

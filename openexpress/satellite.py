@@ -11,14 +11,16 @@ as Garmin sends them, never changed, to a watch that already keeps them in a for
   found, in a PTP session of our own (a write through gvfs would land on the hidden file of that
   name and keep its size and the tail of its content): the old file deleted, ours written, its
   first bytes read back. Written only when the device's file is older than its RxFile.fresh and
-  Garmin's is newer; the device unpacks the file when it is unplugged.
+  Garmin's is newer; the device unpacks the file once it is unplugged (a fēnix 8 within seconds,
+  an Edge 1050 a few minutes later; plugged in again before, it waits).
 
 Only a device that had such a file of its own is offered it; seen once, it is remembered
 (devices/<unit ID>/satellite.json in the data folder), also after the file is gone. Files of the
-rxnetworks kind that the ordinary listing shows (an Edge 1050 keeps GPES.bin so) are not offered:
-that way of writing them was never tried. A device with GARMIN/RemoteSW and none of them shown is
-looked at in a PTP session at a sync, at most once in RECHECK (the phone may give it the files
-later). The feature is off until it is turned on for the device. Garmin's files are kept in the
+rxnetworks kind that the ordinary listing shows (an Edge 1050 keeps GPES.bin so) are found at an
+opening, read through the file manager, on an MTP device (they are written in a PTP session of our
+own, as the hidden ones). A device with GARMIN/RemoteSW and none of them shown is looked at in a
+PTP session at a sync, at most once in RECHECK (the phone may give it the files later). The
+feature is off until it is turned on for the device. Garmin's files are kept in the
 cache for 4 hours, as the server says they may be; after its answer 429 nothing is asked of it
 until the time it gave (blocked.json beside them). The requests carry no account and nothing of
 the device.
@@ -279,8 +281,9 @@ def seen(device, storage) -> State | None:
     """At an opening: the state of a device that has, or had, a file of a format known (a device
     seen with CPE.BIN of the format now is remembered); None for any other device, and for a copy
     of a device's files (a test drive). Reads CPE.BIN of the format's size only, and CPE_BAD.bin
-    after a file was written. Files of the rxnetworks kind are looked for at a sync (update), as
-    a watch hides them: the opening never opens a PTP session."""
+    after a file was written; files of the rxnetworks kind only when the ordinary listing shows
+    them (_offer_shown). Hidden ones are looked for at a sync (update): the opening never opens
+    a PTP session."""
     unit = getattr(device, "unit_id", None)
     if not unit or getattr(storage, "test_drive", False):
         return None
@@ -290,7 +293,7 @@ def seen(device, storage) -> State | None:
     current = _read(storage, NAME)
     if state is None:
         if current is None or not known_format(current):
-            return None
+            return _offer_shown(unit, device, storage)
         state = State()
         save(unit, state)
         log.info("satellite data: %s has %s in the format known: offered (off)",
@@ -499,18 +502,52 @@ def _named(items, name: str) -> list:
     return [i for i in items if not i.is_dir and i.name.casefold() == name.casefold()]
 
 
+def _shown_rx(storage) -> dict[str, dict]:
+    """The files of the rxnetworks kind that the ordinary listing of GARMIN/RemoteSW shows, each of
+    a size it may have and of the kind by its header: {name: {"time": the time in its header}}."""
+    found: dict[str, dict] = {}
+    if storage.resolve(RX_FOLDER) is None:
+        return found
+    shown = {e.name.casefold(): e.name for e in storage.listdir(RX_FOLDER) if not e.is_dir}
+    for spec in RX_FILES:
+        name = shown.get(spec.name.casefold())
+        if name is None:
+            continue
+        path = f"{RX_FOLDER}/{name}"
+        size = storage.size(path)
+        if size is None or not spec.sizes[0] <= size < spec.sizes[1]:
+            continue
+        stamp = rx_time(storage.read(path))
+        if stamp is not None:
+            found[spec.name] = {"time": stamp}
+    return found
+
+
+def _offer_shown(unit_id: int, device, storage) -> State | None:
+    """A device that shows its files of the rxnetworks kind (an Edge 1050 keeps GPES.bin so) is
+    offered them (off), read through the file manager. Only over MTP: they are written in a PTP
+    session of our own, and a USB drive has none."""
+    if getattr(storage, "mass_storage", False):
+        return None
+    found = _shown_rx(storage)
+    if not found:
+        return None
+    state = State(kind=RXNETWORKS, files=found)
+    save(unit_id, state)
+    log.info("satellite data: %s has %s of the rxnetworks kind, shown: offered (off)",
+             getattr(device, "part_number", "?"), ", ".join(found))
+    return state
+
+
 def _look_for_rx(unit_id: int, device, storage) -> State | None:
     """At a sync of a device not known: GPE.bin and GPES.bin of the rxnetworks kind in
-    GARMIN/RemoteSW. Shown by the ordinary listing: not offered (never tried). Else, at most once
-    in RECHECK, a PTP session reads them hidden; found, the device is offered them (off)."""
+    GARMIN/RemoteSW. Shown by the ordinary listing: offered (_offer_shown). Else, at most once in
+    RECHECK, a PTP session reads them hidden; found, the device is offered them (off)."""
     if storage.resolve(RX_FOLDER) is None:
         return None
-    shown = [e.name for e in storage.listdir(RX_FOLDER)
-             if not e.is_dir and e.name.casefold() in {f.name.casefold() for f in RX_FILES}]
-    if shown:
-        log.info("satellite data: GARMIN/RemoteSW shows %s: a device that keeps them shown is "
-                 "not offered them yet", ", ".join(sorted(shown)))
-        return None
+    state = _offer_shown(unit_id, device, storage)
+    if state is not None:
+        return state
     if getattr(storage, "mass_storage", False) or _checked_lately(unit_id):
         return None
     opener = storage.exclusive_ptp()
@@ -547,6 +584,13 @@ def _age(stamp, now: float) -> str:
     if not isinstance(stamp, (int, float)):
         return "not of the kind known"
     return f"its data {(now - stamp) / 3600:.1f} h old"
+
+
+def _since_write(state: State, now: float) -> str:
+    """How long ago our last write was, for the log."""
+    if not isinstance(state.written_at, (int, float)):
+        return ""
+    return f", {max(0, round((now - state.written_at) / 60))} min after the write"
 
 
 def _taken_or_replaced(content: bytes, known: dict) -> str:
@@ -652,11 +696,16 @@ def _rx_update(unit_id: int, device, storage, state: State, apply: bool, http) -
                         if known["gone"] >= 2:
                             return _stop(unit_id, state, GONE_TWICE, spec.name)
                         found_words = ["ours gone"]
-                    elif _sha(content) == known.get("sha"):  # ours, not unpacked yet
-                        if key is None or known.get("connection") != key:
+                    elif _sha(content) == known.get("sha"):  # ours as written, not unpacked yet
+                        # The device unpacks it once unplugged, a few minutes later at most, and
+                        # waits while plugged in again before. Not taken: still as written
+                        # although the device was unplugged since and it is due to be written anew.
+                        unplugged = key is None or known.get("connection") != key
+                        if unplugged and _old(known, spec, now):
                             return _stop(unit_id, state, NOT_TAKEN, spec.name)
-                        said.append(f"{spec.name}: ours not unpacked yet, left until unplugged")
-                        continue  # it is unpacked once the device is unplugged
+                        said.append(f"{spec.name}: waits: still ours as written (gzip)"
+                                    + _since_write(state, now))
+                        continue
                     else:  # taken (ours unpacked), or a newer one from the phone
                         known["pending"], known["gone"] = False, 0
                         found_words = [_taken_or_replaced(content, known)]

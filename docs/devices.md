@@ -3,7 +3,7 @@
 | Device | Connection | Checked by | What works | Report: system, version |
 |---|---|---|---|---|
 | fēnix 8 (47 mm, Solar) | MTP | the developer, on its Garmin account; [#13](https://github.com/TomaszBojanowski/openExpress/issues/13) | sync, software update downloads, a component update, maps, Connect IQ apps, music, activities, courses, Device Status and satellite data (experimental): [what was checked](#fēnix-8-47-mm-solar). In #13 it works once gvfs-mtp is installed and Dolphin's MTP service no longer holds the watch (see [System requirements](../README.md#system-requirements)); map downloads and copying work | developer: Fedora 44, GNOME; courses: Fedora 45, GNOME, the version from source after 0.8.7; #13: CachyOS, KDE Plasma, Flatpak 0.6.15 |
-| Edge 1050 | MTP | the developer, on the same account | sync, system software updates, the primary training device, Connect IQ apps, courses and Device Status: [what was checked](#edge-1050) | developer: Fedora 44, GNOME; the second update and courses: Fedora 45, GNOME, Flatpak 0.8.7 and the version from source after it |
+| Edge 1050 | MTP | the developer, on the same account | sync, system software updates, the primary training device, Connect IQ apps, courses, Device Status and satellite data (experimental): [what was checked](#edge-1050) | developer: Fedora 44, GNOME; the second update and courses: Fedora 45, GNOME, Flatpak 0.8.7 and the version from source after it |
 | Varia RTL515 (part 006-B3592-03) | USB drive | the developer; [#9](https://github.com/TomaszBojanowski/openExpress/issues/9) | detected as a USB drive; sign-in and checking for software updates; shown on the start page as the remembered Varia before its drive is mounted; a component update copied to it and the drive ejected in the window | developer: Fedora 44, GNOME on Wayland; #9: Linux Mint 22.3, Cinnamon on X11, Flatpak 0.6.4 |
 | epix (Gen 2; part 006-B3943) | MTP | the developer | read-only commands and backup; it is not registered to the account used for testing, so sync and Connect IQ apps are refused with a message, and the window says why | developer: Fedora 44, GNOME |
 | Venu 2 (part 006-B3703) | MTP | the developer | detected automatically; read-only commands; software updates installed (two components, Time Zone Map and Exercise to muscle mapping); added to a Garmin Connect account with **Add to Account** in the window (experimental; software 19.05); it has not been synced, so sync and Connect IQ apps are not tested on it | developer: Fedora 44, GNOME |
@@ -95,6 +95,11 @@ Checked by the developer over MTP, on the same account:
     count of saved locations is the same as the Edge's;
   - the courses were listed as copied by openExpress and removed, on the command line and in the
     window.
+- Satellite data (experimental): the Edge keeps `GPES.bin` where the ordinary USB connection
+  shows it, and no `GPE.bin`. With **Satellite Data** turned on, a sync wrote `GPES.bin` as
+  Garmin's server sends it, and the Edge unpacked it by itself about two minutes after it was
+  unplugged. Plugged in again within a minute, the file still waited, not unpacked yet, and the
+  switch stayed on.
 - Device Status in the window: the page without crashes; Free Up Space removed five older memory
   dumps (682.8 MB): two after copying them (75.3 MB, the checksums of the copies matching) and
   three without a copy, as too large to copy (607.5 MB); the newest dump stayed; the page from the

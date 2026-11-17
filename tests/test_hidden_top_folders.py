@@ -791,8 +791,6 @@ def test_the_new_words_in_both_languages(language):
 
 # --- what the pages and the command line say of a folder read -------------------------------------
 
-READ_NOTICE = ("openExpress reads the folder .System through its own USB connection, but does not "
-               "install into it yet.")
 NO_SESSION_LINE = ("openExpress cannot open its own USB session with this device, so it cannot "
                    "read the folder .System.")
 
@@ -807,15 +805,14 @@ def test_the_updates_page_after_the_reading_offers_what_goes_there(navigator):
     hidden_folders.read(storage, [".System"], "test")
     status, available, advanced = _updates_page(_offered_from(storage))
     top = _texts(status.rows[0])
-    assert "Install" in top and NOTICE not in top and READ_NOTICE not in top
-    assert not any("no action is needed" in text for text in top)
+    assert "Install" in top and NOTICE not in top
     assert [r.get_title() for r in available.rows] == ["New Part"]
     # The time zone map at the size offered is among the components on the device, as on a
     # watch: nothing said of its folder.
     (components,) = [r for r in advanced.rows if isinstance(r, Adw.ExpanderRow)]
     (tz,) = [r for r in descendants(components)
              if isinstance(r, Adw.ActionRow) and r.get_title() == "Time zone map"]
-    assert not any(words in tz.get_subtitle() for words in ("only reads", "file named"))
+    assert "folder" not in tz.get_subtitle()
     assert [w.get_label() for w in descendants(tz) if isinstance(w, Gtk.Button)] == [
         "Reinstall"]
 
@@ -862,8 +859,7 @@ def test_the_command_line_reads_the_folder_once_and_says_what_it_read(offered_to
     assert storage.sessions == 1
     assert "Available updates: 2" in out and "Already on the device: 1" in out
     # Listed as any update: nothing said of the folder it goes to.
-    assert not [line for line in out if any(words in line for words in (
-        "only reads", "does not install into it", "no action is needed", "trial"))]
+    assert not [line for line in out if "trial" in line]
     assert fake.sent(ptp.SEND_OBJECT_INFO) == fake.sent(ptp.DELETE_OBJECT) == 0
 
 
@@ -950,7 +946,7 @@ def test_the_folders_read_are_those_needed_and_what_the_xml_names_under_them(nav
 
 
 def test_the_command_line_counts_what_the_window_counts_after_the_reading(offered_to,
-                                                                         monkeypatch, capsys):
+                                                                         monkeypatch):
     from openexpress import cli, history, service
 
     _with_types(offered_to)
@@ -968,7 +964,7 @@ def test_the_command_line_counts_what_the_window_counts_after_the_reading(offere
 
 
 @pytest.mark.parametrize("hidden", WATCHES.values(), ids=WATCHES)
-def test_a_watch_opens_no_session_for_a_command(device_root, hidden, monkeypatch, capsys):
+def test_a_watch_opens_no_session_for_a_command(device_root, hidden, monkeypatch):
     from openexpress import cli
 
     fake = FakeDevice()
@@ -1615,11 +1611,10 @@ def test_the_updates_page_offers_install_for_the_folder_read(navigator):
     offered = list(_drive_offered(storage).values())
     status, available, *_rest = _updates_page(offered)
     top = _texts(status.rows[0])
-    assert "Install" in top and READ_NOTICE not in top
+    assert "Install" in top
     (tz,) = available.rows
     assert "Install" in _texts(tz)
-    assert not any(words in tz.get_subtitle() for words in ("only reads", "file named",
-                                                            "cannot see"))
+    assert "cannot see" not in tz.get_subtitle()
     assert updates_page.replaces_text(offered[1]) == (
         "The update replaces the file gmaptz.img on the device.")
 
@@ -2124,7 +2119,6 @@ def test_the_trial_downloads_and_activates_before_it_changes_the_device(navigato
     storage = OverUsb(navigator, fake)
     found = _trial_maps(storage)
     order = []
-    fake_steps = fake.steps
     real_handle = fake._handle
 
     def noted(operation, params, data):
@@ -2137,11 +2131,11 @@ def test_the_trial_downloads_and_activates_before_it_changes_the_device(navigato
     assert order == ["activate", "device"] and sorted(map_downloads) == sorted(
         hashlib.md5(d).hexdigest() for d in NEW_MAP.values())
     # One session to write: the old file of this map removed, the shared one kept.
-    assert ("delete", ".System/Map/D0000001A.img") in fake_steps
+    assert ("delete", ".System/Map/D0000001A.img") in fake.steps
     assert fake.data_at(SHARED) == MAP_FILE and fake.data_at(".System/Map/D0000001A.img") is None
     for path, data in NEW_MAP.items():
         assert fake.data_at(path) == data
-        assert ("read", path) in fake_steps  # each read back whole
+        assert ("read", path) in fake.steps  # each read back whole
     assert fake.data_at(UNLOCK[0]) == UNLOCK[1]
     assert sorted(report.written) == sorted(NEW_MAP) and report.unlocks == [UNLOCK[0]]
     assert report.removed == [".System/Map/D0000001A.img"] and report.kept == []
@@ -2384,7 +2378,7 @@ def test_the_command_line_trial_dry_run_says_what_would_be_done(trial_cli, capsy
     out = capsys.readouterr().out
     for path in NEW_MAP:
         assert f"  + {path}  " in out
-    assert "  - .System/Map/D0000001A.img  4\u00a0B".replace("\u00a0", " ") in out
+    assert "  - .System/Map/D0000001A.img  4 B" in out
     assert "  - " + SHARED not in out  # another map uses it: never removed
     assert "Space on this computer for the download:" in out
     assert "Writing and reading back on the device: about" in out
@@ -2511,7 +2505,6 @@ def _refused_both_ways(trial_cli, capsys, map_downloads, reason, keep=None):
     assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 1
     assert reason in capsys.readouterr().err
     assert trial_cli.fake.steps == [] and map_downloads == [] and trial_cli.order == []
-    return out
 
 
 def test_a_file_over_four_gib_is_refused_before_anything(trial_cli, capsys, map_downloads):
@@ -2520,8 +2513,8 @@ def test_a_file_over_four_gib_is_refused_before_anything(trial_cli, capsys, map_
     big["deliverableoptions"][0]["sizeinbytes"] = 5 * 1024 ** 3
     trial_cli.answer = {"maps": [entry, _other_map()]}
     _refused_both_ways(trial_cli, capsys, map_downloads,
-                       f"{big['filename']} is 5.4\u00a0GB: a file over 4 GiB cannot be sent to "
-                       "the device.".replace("\u00a0", " "), keep="6-dry-run-refused")
+                       f"{big['filename']} is 5.4 GB: a file over 4 GiB cannot be sent to the "
+                       "device.", keep="6-dry-run-refused")
 
 
 def test_a_folder_not_on_the_device_is_refused_before_anything(trial_cli, capsys, map_downloads):

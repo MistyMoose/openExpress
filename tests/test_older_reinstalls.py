@@ -70,10 +70,7 @@ def edge(tmp_path):
 @pytest.fixture
 def edge_md5(monkeypatch):
     """The MD5 of a file read back from the device: the Emoji Font's, as the Edge gave it."""
-    told = {}
-
     def md5_of(storage, real, size, mtime):
-        told[real] = size
         return told_md5.get(real, "0" * 32)
 
     told_md5 = {f"{EMOJI.path}/{EMOJI.filename}": EMOJI.md5}
@@ -153,7 +150,7 @@ def test_an_update_offered_is_never_taken_for_an_older_version(edge, edge_md5):
     assert u.older_offer is None
 
 
-def test_a_file_read_back_once_is_not_read_again(edge, edge_md5):
+def test_a_file_read_back_once_is_not_read_again(edge, edge_md5, monkeypatch):
     """The MD5 only of the files of the size offered; the device is asked once per file."""
     asked = []
     md5_of = updates._md5_of
@@ -162,11 +159,8 @@ def test_a_file_read_back_once_is_not_read_again(edge, edge_md5):
         asked.append(real)
         return md5_of(storage, real, size, mtime)
 
-    updates._md5_of = counted
-    try:
-        _offered(edge, _answer(_emoji_entry()), _device(EMOJI_LISTED))
-    finally:
-        updates._md5_of = md5_of
+    monkeypatch.setattr(updates, "_md5_of", counted)
+    _offered(edge, _answer(_emoji_entry()), _device(EMOJI_LISTED))
     assert asked == [f"{EMOJI.path}/{EMOJI.filename}"]
 
 
@@ -211,7 +205,7 @@ DEVICE_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-def test_the_command_line_says_the_same_file_and_reinstalls_it(edge_cli, capsys, monkeypatch):
+def test_the_command_line_says_the_same_file_and_reinstalls_it(edge_cli, capsys):
     edge_cli(_emoji_entry())
     assert main(["updates", "--reinstalls"]) == 0
     out = capsys.readouterr().out.splitlines()

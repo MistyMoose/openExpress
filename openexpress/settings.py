@@ -81,6 +81,10 @@ class Settings:
     # macOS fork: `setup --copy-fit-types`, data type names (as `sync --type` takes them)
     # comma-separated; empty: activities only (sync.drop_folder_types).
     copy_fit_types: str = ""
+    # macOS fork: `setup --strava-upload on|off`. Off unless chosen: a sync's newly-uploaded
+    # activity FIT files are also sent to Strava (strava.py), with the user's own Strava API
+    # application (`strava connect`).
+    strava_upload: bool = False
 
     def __post_init__(self) -> None:
         self._extra: dict = {}

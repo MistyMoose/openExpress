@@ -17,6 +17,7 @@ from openexpress.i18n import _
 FIT_EPOCH_OFFSET = 631065600  # 1989-12-31T00:00:00Z as Unix time
 
 _MESG_FILE_ID = 0
+_FIELD_SERIAL_NUMBER = 3
 _FIELD_TIME_CREATED = 4
 # FIT profile: session (one part of an activity; a multisport activity has one per sport)
 _MESG_SESSION = 18
@@ -69,6 +70,9 @@ class FitError(Exception):
 @dataclass
 class FileId:
     time_created: int | None = None
+    # The device that made the file (file_id's serial_number): for an activity, the watch's
+    # own Unit ID. None when the field is not there or is of another type.
+    serial_number: int | None = None
 
 
 @dataclass
@@ -325,7 +329,8 @@ def parse_file_id(data: bytes) -> FileId:
     if v is None:
         # TRANSLATORS: error reading a FIT file; file_id is the name of a FIT message, keep it
         raise FitError(_("No file_id message"))
-    return FileId(time_created=_whole_number(v.get(_FIELD_TIME_CREATED)))
+    return FileId(time_created=_whole_number(v.get(_FIELD_TIME_CREATED)),
+                 serial_number=_whole_number(v.get(_FIELD_SERIAL_NUMBER)))
 
 
 MESG_CALLBACK_DELAY = 197  # Garmin-internal message used by TrueUp

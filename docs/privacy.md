@@ -171,6 +171,34 @@ The map data is © OpenStreetMap contributors, under the Open Database License.
 - A data type one of whose upload locations needs a further consent is not uploaded at all, to
   any of its locations, until that consent is given (as in Garmin Express).
 
+## Strava
+
+macOS fork: openExpress uploads to [Strava](https://www.strava.com) only with your own Strava
+API application and only what you turn on ([Guide](guide.md#strava)); it ships with no Strava
+application of its own, as it does with no Garmin application key either.
+
+- **What is sent.** With `setup --strava-upload on` (and `strava connect` run once), each sync
+  sends the FIT files of its newly-uploaded activities to Strava's upload endpoint, as
+  `openexpress strava upload FILE…` does by hand for any FIT file you name. Nothing else
+  (monitoring, sleep, settings, diagnostics…) is ever sent to Strava, and openExpress never
+  reads anything from Strava beyond the result of an upload (whether it was accepted, and its
+  activity ID) to recognise it as already there next time.
+- **What is kept, and where.** The Client ID and Client Secret of your Strava API application
+  (`strava connect`) and the OAuth2 token it receives (access token, refresh token, when it
+  expires, and the connected athlete's ID and name) are kept the same way as the Garmin sign-in:
+  on macOS in the Keychain (items "strava_client" and "strava_token"); on Linux, or if the
+  Keychain cannot be reached, in 0600 files
+  (`~/.config/openexpress/strava_client.json`/`strava_token.json`, in the Flatpak under
+  `~/.var/app/io.github.tomaszbojanowski.OpenExpress/config/openexpress/`). A local record of
+  what has already been uploaded to Strava (so that nothing is sent twice) is kept in
+  `~/.local/share/openexpress/strava/uploaded.json` (in the Flatpak, the matching `data`
+  folder), and the activity files staged for a sync's own upload in
+  `~/.local/share/openexpress/devices/<Unit ID>/sync/strava/` (removed, with the rest of a
+  device's records, by `openexpress devices --forget`).
+- **Disconnecting.** `openexpress strava disconnect` revokes the token at Strava and removes it
+  here; your Strava API application itself (and anything already uploaded to Strava) stays as
+  it is until you remove it yourself, at strava.com.
+
 ## What Garmin is asked about a device
 
 Garmin's update server describes a device in one request. Like the update check, that request

@@ -659,3 +659,37 @@ copied twice; a FIT file the device is still writing waits for the next sync, as
   `off` goes back to the default (activities only).
 - Without `--apply`, `sync` only says how many new files it would copy; `sync --apply` copies
   them, right after the rest of the sync, and says how many it copied and their size.
+
+### Strava
+
+macOS fork: openExpress can also upload a device's new activities to
+[Strava](https://www.strava.com), with your own Strava API application (openExpress ships with
+none of its own, as it does with no Garmin application key either):
+
+1. At [strava.com/settings/api](https://www.strava.com/settings/api), create an API application
+   (free). Any name and website will do; for **Authorization Callback Domain**, enter
+   `localhost`. Note its **Client ID** and **Client Secret**.
+2. `openexpress strava connect --client-id ID --client-secret SECRET` (the command line) saves
+   them and opens a browser at Strava's consent page; once you approve it, Strava sends the
+   authorization code back to a one-time local address (`http://localhost:<port>/strava`, a
+   random port on this computer alone — nothing is exposed to the network) and openExpress
+   exchanges it for a token. A later `strava connect`, without the options, reuses the saved
+   Client ID/Secret (so reconnecting after `strava disconnect` needs them only once).
+3. `openexpress setup --strava-upload on` turns on the sync integration: after a sync's own
+   upload to Garmin Connect, the same newly-uploaded activities are also sent to Strava, as FIT
+   files (`off` turns it off again; the default is off). `openexpress strava status` shows
+   whether openExpress is connected and as which athlete; `openexpress strava disconnect` revokes
+   the token at Strava and removes it here (your API application itself stays registered at
+   strava.com until you remove it there).
+4. `openexpress strava upload FILE…` uploads FIT files to Strava by hand, outside a sync (for
+   example, an export or a backup); a dry run by default, `--apply` to really send them.
+
+A file already sent to Strava (by a sync or by `strava upload`) is never sent again, even if it
+is read again or copied under another path: openExpress keeps its own record of what went,
+separate from what Strava itself may already have (which it also recognises: an activity Strava
+reports as a duplicate of one already there counts as uploaded here too, not as a failure).
+Uploading is one-way: openExpress never reads anything back from Strava beyond an upload's own
+result, and never changes or removes anything already on Strava.
+
+What goes to Strava, and where the token and the record of what was uploaded are kept:
+[Privacy](privacy.md#strava).

@@ -3,20 +3,30 @@
 Copies files of all data types the device exposes for reading
 (OutputFromUnit), plus GarminDevice.xml. Media, maps and software are
 skipped. The `keep` most recent backups are retained.
+
+Incremental: a file whose relative path, size and modification time match the previous backup
+is hard-linked into the new one (os.link) instead of being read from the device again; the
+file's modification time on the device is kept on its copy (os.utime) so that the next backup
+can compare against it. A destination filesystem that does not support hard links (most FAT
+volumes) falls back to an ordinary copy for that file; `keep` still prunes old backups safely,
+as a file linked from an older one is simply another name for the same data until the last
+backup holding it is removed.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import posixpath
 import shutil
+import stat
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from openexpress import applog, paths
-from openexpress.device.storage import DeviceError, Storage, refresh_to_read_again
+from openexpress.device.storage import DeviceError, Entry, Storage, refresh_to_read_again
 from openexpress.device.xmldevice import OUTPUT, GarminDevice
 from openexpress.fit import not_whole
 from openexpress.i18n import _, ngettext
@@ -34,11 +44,17 @@ PARTIAL_PREFIX = ".partial-"
 @dataclass
 class BackupResult:
     path: Path
-    files: int
-    bytes: int
+    files: int  # copied + linked
+    bytes: int  # copied_bytes + linked_bytes
     removed: list[Path]
     # FIT files the device was still writing when they were read: left out (incomplete_text).
     incomplete: int = 0
+    # Of `files`/`bytes`: read from the device and written, and hard-linked from the previous
+    # backup instead (unchanged: same relative path, size and modification time).
+    copied: int = 0
+    copied_bytes: int = 0
+    linked: int = 0
+    linked_bytes: int = 0
 
 
 def backup_files(device: GarminDevice) -> list:
@@ -129,14 +145,45 @@ def _fit_check(path: str, data: bytes) -> tuple[bool, str] | None:
     return not_whole(data) if path.casefold().endswith(".fit") else None
 
 
-def _copy_files(device: GarminDevice, storage: Storage, target: Path,
-                progress: Callable[[str], None]) -> tuple[int, int, int]:
+# A destination filesystem's modification time may have coarser resolution than the device's
+# (most FAT volumes: 2 s); a file kept unchanged is still a match within that.
+MTIME_TOLERANCE = 2.0
+
+
+def _unchanged(prev_path: Path, entry: Entry) -> bool:
+    """Whether `prev_path` (the same relative path in the previous backup) is the device's
+    `entry` already: a plain file of the same size, and the same modification time as the
+    device reports now, which a copied file keeps (os.utime, below; the previous backup made
+    it the same way). False for anything that stops this from being certain, never raised."""
+    try:
+        st = prev_path.stat()
+    except OSError:
+        return False
+    return (not stat.S_ISDIR(st.st_mode) and st.st_size == entry.size
+            and abs(st.st_mtime - entry.mtime) <= MTIME_TOLERANCE)
+
+
+@dataclass
+class _CopyTally:
+    copied: int = 0
+    copied_bytes: int = 0
+    linked: int = 0
+    linked_bytes: int = 0
+    incomplete: int = 0
+
+
+def _copy_files(device: GarminDevice, storage: Storage, target: Path, previous: Path | None,
+                progress: Callable[[str], None]) -> _CopyTally:
     """`progress`: which file of how many ("Copying to the backup · 120 of 1530"), never its
     name. A FIT file is checked as a sync checks it (fit.not_whole): one the device wrote while
     it was connected is read cut short (gvfs keeps the size it had when it was first looked
     at), so it is read once more after the device is mounted again (at most once a backup);
     still cut short, it is left out. One not whole otherwise is copied as it is, the backup
-    faithful. Returns the files written, the bytes read of them and those left out."""
+    faithful. `previous`: the most recent earlier backup of this device (None: there is none,
+    or the file is new or changed there): a file matching there (_unchanged) is hard-linked
+    instead of being read from the device again; a filesystem that does not support that
+    (OSError) falls back to reading and copying it, as if there were no previous backup for
+    that one file."""
     # Every data type checked before anything is written.
     for src in backup_files(device):
         if not paths.is_safe_component(src.datatype):
@@ -152,11 +199,25 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
     count = len(files) + 1
     progress(Step(head, 1, count))
     (target / "GarminDevice.xml").write_bytes(device.raw)
-    total = len(device.raw)
-    left_out = 0
+    tally = _CopyTally(copied=1, copied_bytes=len(device.raw))  # GarminDevice.xml: never linked
     refreshed: bool | None = None  # at most once a backup; None: not asked yet
-    for n, (path, _entry, datatype, out) in enumerate(files, 2):
+    for n, (path, entry, datatype, out) in enumerate(files, 2):
         progress(Step(head, n, count))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if previous is not None:
+            prev_path = previous / out.relative_to(target)
+            if _unchanged(prev_path, entry):
+                try:
+                    os.link(prev_path, out)
+                except OSError as e:
+                    log.info("backup: a %s file could not be hard-linked (%s); copied instead",
+                             datatype, type(e).__name__)
+                else:
+                    log.debug("backup: file %d of %d linked from the previous backup (%s)",
+                              n, count, datatype)
+                    tally.linked += 1
+                    tally.linked_bytes += entry.size
+                    continue
         log.debug("backup: copying file %d of %d (%s)", n, count, datatype)
         data = storage.read(path)
         found = _fit_check(path, data)
@@ -176,15 +237,18 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
         if found and found[0]:
             log.warning("backup: a %s file still being written by the device (%s); not in "
                         "the backup", datatype, found[1])
-            left_out += 1
+            tally.incomplete += 1
             continue
         if found:
             log.info("backup: a %s file is not a whole FIT file (%s); copied as it is",
                      datatype, found[1])
-        out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(data)
-        total += len(data)  # what was read: a listing before a refresh may give less
-    return count - left_out, total, left_out
+        # Kept as the device has it, not as it was just written, so that the next backup can
+        # compare against it (_unchanged) without reading the file again.
+        os.utime(out, (entry.mtime, entry.mtime))
+        tally.copied += 1
+        tally.copied_bytes += len(data)  # what was read: a listing before a refresh may give less
+    return tally
 
 
 def run_backup(
@@ -205,18 +269,27 @@ def run_backup(
     for p in unit_dir.glob(PARTIAL_PREFIX + "*"):
         if p.is_dir():
             shutil.rmtree(p, ignore_errors=True)
+    # A link named like a backup is the user's own, as backups_of has it: never removed, and
+    # never taken as the previous backup to link from either.
+    existing = sorted((p for p in unit_dir.iterdir() if not p.is_symlink() and is_backup_dir(p)),
+                      key=lambda p: datetime.strptime(p.name, STAMP))
+    # The most recent earlier backup of this device: its unchanged files are hard-linked
+    # instead of read again from the device (_copy_files); None: this is the first.
+    previous = existing[-1] if existing else None
     partial = unit_dir / (PARTIAL_PREFIX + stamp)
     partial.mkdir()
     try:
-        count, total, incomplete = _copy_files(device, storage, partial, progress)
+        tally = _copy_files(device, storage, partial, previous, progress)
         partial.rename(target)
     except BaseException:
         shutil.rmtree(partial, ignore_errors=True)
         raise
-    # A link named like a backup is the user's own, as backups_of has it: never removed.
-    old = sorted((p for p in unit_dir.iterdir() if not p.is_symlink() and is_backup_dir(p)),
-                 key=lambda p: datetime.strptime(p.name, STAMP))
-    removed = keep_newest(old, keep, new=target)
-    log.info("backup: %d files (%s), %d still being written left out, %d old backups removed",
-             count, applog.size(total), incomplete, len(removed))
-    return BackupResult(target, count, total, removed, incomplete)
+    removed = keep_newest([*existing, target], keep, new=target)
+    log.info("backup: %d files copied (%s), %d linked from the previous backup (%s), "
+             "%d still being written left out, %d old backups removed",
+             tally.copied, applog.size(tally.copied_bytes), tally.linked,
+             applog.size(tally.linked_bytes), tally.incomplete, len(removed))
+    return BackupResult(
+        target, tally.copied + tally.linked, tally.copied_bytes + tally.linked_bytes,
+        removed, tally.incomplete, tally.copied, tally.copied_bytes, tally.linked,
+        tally.linked_bytes)

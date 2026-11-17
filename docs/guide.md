@@ -72,7 +72,10 @@ The device page of a connected device:
 - has **Apps** and **Music** rows that lead to their pages, as **Maps** does, and say how many
   there are once those pages have read them;
 - has a **Backup** row that says when the last backup was made and how many there are (the
-  folder is in its tooltip). A backup copies the device's files as they are. A FIT file the
+  folder is in its tooltip). A backup copies the device's files as they are; a file unchanged
+  since the previous backup is linked to it instead of being read from the device again, so
+  that keeping several backups costs little extra space (not on a destination filesystem that
+  does not support that, such as most FAT volumes, where it is copied instead). A FIT file the
   device was still writing is read once more, as during a sync ([Sync details](#sync-details));
   a file still cut short is left out, and the backup then says to unplug the device, plug it in
   again and make the backup again.
@@ -639,3 +642,20 @@ too) and `openexpress cache --clear --only maps,updates --apply` only those name
 part with a trash button, and **Clear All**; maps, updates and **Clear All** ask first. Maps are then downloaded
 again when they are installed or updated. Nothing is cleared while a download, an install or a
 copy to the device is running.
+
+### FIT drop folder
+
+macOS fork: a sync can also copy the FIT files it finds for the types you choose (activities by
+default) into a folder of your own, each under its name on the device, so that another program
+watching that folder — a training app, for example — picks them up. It never overwrites a file
+already there, so a file an earlier sync already copied is simply left alone, and nothing is
+copied twice; a FIT file the device is still writing waits for the next sync, as an upload does.
+
+- `openexpress setup --copy-fit-to DIR` turns it on permanently (`off` turns it off again);
+  `openexpress sync --copy-fit-to DIR` copies to a folder for one sync only, without changing
+  the setting.
+- `openexpress setup --copy-fit-types FIT_TYPE_32,FIT_TYPE_2` changes which data types are
+  copied (the same names `sync --type` takes; `openexpress files` lists a device's own);
+  `off` goes back to the default (activities only).
+- Without `--apply`, `sync` only says how many new files it would copy; `sync --apply` copies
+  them, right after the rest of the sync, and says how many it copied and their size.

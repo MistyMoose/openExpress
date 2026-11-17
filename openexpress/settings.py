@@ -75,6 +75,12 @@ class Settings:
     # A copy of the device's diagnostic files at each connection (diagnostics.py); off
     # unless chosen, and nothing of it is ever sent.
     diagnostics_copy: bool = False
+    # macOS fork: `setup --copy-fit-to DIR` (sync.run_drop_folder). Empty: off. A folder of
+    # this computer another program can watch for newly-synced FIT files.
+    copy_fit_to: str = ""
+    # macOS fork: `setup --copy-fit-types`, data type names (as `sync --type` takes them)
+    # comma-separated; empty: activities only (sync.drop_folder_types).
+    copy_fit_types: str = ""
 
     def __post_init__(self) -> None:
         self._extra: dict = {}
@@ -159,13 +165,20 @@ class Settings:
         )
 
 
+# The Keychain item's name on macOS (auth.store.read_secret/save_secret); the file's name
+# everywhere.
+CONSUMER_ITEM = "consumer"
+
+
 def consumer_path() -> Path:
-    return paths.config_dir() / "consumer.json"
+    return paths.config_dir() / f"{CONSUMER_ITEM}.json"
 
 
 def load_consumer() -> Consumer:
-    path = consumer_path()
-    if not path.exists():
+    from openexpress.auth.store import read_secret
+
+    text = read_secret(CONSUMER_ITEM, consumer_path())
+    if text is None:
         raise SetupError(_(
             "openExpress is not set up yet. It needs the Garmin Express installer for Windows "
             "(GarminExpress.exe, a free download from garmin.com), and only reads it: it takes "
@@ -173,13 +186,13 @@ def load_consumer() -> Consumer:
             "Connect. First run: openexpress setup --from-installer /path/to/GarminExpress.exe"
         ))
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(text)
         return Consumer(str(data["key"]), str(data["secret"]), data.get("url_salt"))
-    except (OSError, ValueError, KeyError, TypeError) as e:
+    except (ValueError, KeyError, TypeError) as e:
         raise SetupError(_(
             "The saved application key in {path} is damaged. Run again: "
             "openexpress setup --from-installer /path/to/GarminExpress.exe"
-        ).format(path=path)) from e
+        ).format(path=consumer_path())) from e
 
 
 def has_consumer() -> bool:
@@ -193,10 +206,13 @@ def has_consumer() -> bool:
 
 
 def save_consumer(consumer: Consumer) -> None:
-    paths.write_private(
-        consumer_path(),
+    from openexpress.auth.store import save_secret
+
+    save_secret(
+        CONSUMER_ITEM,
         json.dumps({"key": consumer.key, "secret": consumer.secret,
-                    "url_salt": consumer.url_salt}, indent=2),
+                   "url_salt": consumer.url_salt}, indent=2),
+        consumer_path(),
     )
 
 

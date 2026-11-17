@@ -14,10 +14,15 @@ its client identifiers and the values of its client headers (see
 
 - The password is entered only on Garmin's page; openExpress never sees or stores it.
 - After signing in, openExpress stores an OAuth1 token and, next to it, your user name, e-mail
-  address, profile number and account identifier. They are in one file readable only by you
-  (permissions 0600): `~/.config/openexpress/connect_auth.json`, in the Flatpak
-  `~/.var/app/io.github.tomaszbojanowski.OpenExpress/config/openexpress/connect_auth.json`.
-- `openexpress logout` removes that file.
+  address, profile number and account identifier. On Linux they are in one file readable only
+  by you (permissions 0600): `~/.config/openexpress/connect_auth.json`, in the Flatpak
+  `~/.var/app/io.github.tomaszbojanowski.OpenExpress/config/openexpress/connect_auth.json`. On
+  macOS they are in the Keychain instead (service "openExpress", item "connect_auth"); a file
+  from an earlier version is moved in the first time it is read, and removed once that
+  succeeds (left as a file, readable only by you, if the Keychain cannot be reached). The
+  application key from your installer (`setup --from-installer`) is kept the same way, as the
+  item "consumer".
+- `openexpress logout` removes it, from the Keychain on macOS too.
 
 ## What is kept of each device
 

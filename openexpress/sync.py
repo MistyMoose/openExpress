@@ -15,6 +15,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 import posixpath
 import time
 import uuid
@@ -1208,3 +1209,113 @@ def describe_queue(items: list[DownloadItem], client: GarminClient) -> list[Queu
              sum(1 for f in found if f.check is not None),
              sum(1 for f in found if f.error is not None))
     return found
+
+
+# --- FIT drop folder (macOS fork): a copy for another program to pick up ----------------------
+#
+# `sync --copy-fit-to DIR` (or the setting of the same name, settings.Settings.copy_fit_to)
+# copies the device's FIT files of the given types (default: activities) into DIR, so that
+# another program (e.g. a training app) watching that folder picks them up. Independent of
+# the upload to Garmin Connect: it looks at what the device has now, not at what was just
+# uploaded, so a sync with nothing new to upload (or run with --download-only) still fills the
+# folder the first time it is turned on. A name already in DIR is never overwritten (an
+# earlier sync's copy, or a file the user put there themselves), so only files new since the
+# last sync are written; that also makes the plan and the copy safe to run again.
+
+# `settings.Settings.copy_fit_types` is empty for "activities only"; DROP_FOLDER_DEFAULT_TYPES
+# is what that means in terms of a data type's name (as `sync --type` takes it).
+DROP_FOLDER_DEFAULT_TYPES = frozenset({ACTIVITY_TYPE})
+
+
+def drop_folder_types(raw: str) -> frozenset[str]:
+    """`copy_fit_types` (the setting, or a comma-separated --copy-fit-types) as a set of data
+    type names; empty (nothing chosen): DROP_FOLDER_DEFAULT_TYPES (activities)."""
+    names = frozenset(t.strip() for t in raw.split(",") if t.strip())
+    return names or DROP_FOLDER_DEFAULT_TYPES
+
+
+@dataclass(frozen=True)
+class DropFolderFile:
+    datatype: str
+    device_path: str
+    name: str  # the file's name on the device: also its name in the drop folder
+
+
+def plan_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
+                     types: frozenset[str] | None = None) -> list[DropFolderFile]:
+    """The FIT files of `types` (default: DROP_FOLDER_DEFAULT_TYPES) the device has that are
+    not in `dest` yet, by name alone: nothing is read, as every plan_* function. A name already
+    in `dest` is left out, whether an earlier sync put it there or the user did."""
+    found = []
+    for dt in sorted(types or DROP_FOLDER_DEFAULT_TYPES):
+        for _src, path, _entry in files_of(storage, device.sources(dt)):
+            if not path.casefold().endswith(".fit"):
+                continue
+            name = posixpath.basename(path)
+            if not (dest / name).exists():
+                found.append(DropFolderFile(dt, path, name))
+    return found
+
+
+@dataclass
+class DropFolderResult:
+    copied: list[str] = field(default_factory=list)
+    bytes: int = 0
+    # FIT files still being written by the device, as a sync's own uploads leave them for the
+    # next sync (fit.incompleteness): not copied now, tried again by the next sync.
+    incomplete: int = 0
+
+
+def _write_new(dest: Path, name: str, data: bytes) -> bool:
+    """`data` written under `name` in `dest` without ever overwriting a file already there:
+    a temporary file is written first and then put under that name — linked (os.link), so
+    that another program watching the folder never sees a half-written file; where the
+    folder's filesystem does not support hard links (e.g. FAT, as backup.py falls back to
+    copying for the same reason), renamed instead (os.replace is atomic too), after checking
+    again that the name is not taken (it may have appeared while `data` was read or written).
+    Returns whether it was written."""
+    tmp = dest / f".{name}.tmp-{os.getpid()}-{uuid.uuid4().hex}"
+    tmp.write_bytes(data)
+    out = dest / name
+    try:
+        os.link(tmp, out)
+        return True
+    except FileExistsError:
+        return False
+    except OSError:
+        if out.exists():
+            return False
+        os.replace(tmp, out)
+        return True
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
+                    types: frozenset[str] | None = None,
+                    progress: Callable[[str], None] | None = None) -> DropFolderResult:
+    """The files of plan_drop_folder copied into `dest` (made if it does not exist yet). A FIT
+    file the device is still writing (incompleteness, as an upload checks it) is left for the
+    next sync. `dest` must allow hard links to itself (a temporary file next to each name); a
+    filesystem that does not (e.g. most FAT volumes) raises OSError, same as a backup falls
+    back to copying for that, a drop folder is meant to be a folder of this computer."""
+    progress = say_to(progress)
+    dest.mkdir(parents=True, exist_ok=True)
+    planned = plan_drop_folder(device, storage, dest, types)
+    result = DropFolderResult()
+    for n, f in enumerate(planned, 1):
+        # TRANSLATORS: a step of the progress of a sync ("… · 2 of 5")
+        progress(Step(_("Copying to the drop folder"), n, len(planned)))
+        data = storage.read(f.device_path)
+        why = incompleteness(data)
+        if why:
+            log.info("drop folder: a %s file still being written by the device (%s); copied "
+                     "by the next sync", f.datatype, why)
+            result.incomplete += 1
+            continue
+        if _write_new(dest, f.name, data):
+            result.copied.append(f.name)
+            result.bytes += len(data)
+    log.info("drop folder: %d files copied (%s), %d still being written left for the next sync",
+             len(result.copied), applog.size(result.bytes), result.incomplete)
+    return result

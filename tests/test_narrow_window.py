@@ -13,6 +13,9 @@ from datetime import datetime, timedelta
 
 import pytest
 from fakes import (
+    DRIVE_MAP,
+    DRIVE_NEW_MAP,
+    DRIVE_SPACE,
     Waits,
     descendants,
     device_session,
@@ -272,7 +275,7 @@ INREACH = ("inReach Mini 2", "5.05", "006-B3968-00")
 # software's name on the update server is "Drive 53").
 NAVIGATOR = ("Drive 53 EX", "8.50", "006-B4449-00")
 # Its free space and capacity, the same on its Maps page and its Device Status.
-NAVIGATOR_SPACE = (6_700_000_000, 14_800_000_000)
+NAVIGATOR_SPACE = DRIVE_SPACE
 
 
 def _navigator_updates(read: bool = False, current: bool = False):
@@ -351,18 +354,17 @@ def _navigator_maps(read: bool = False):
     """Its City Navigator as a Drive 53 EX has it: listed by Garmin's server with
     an update (2027.20, 8.3 GB of files), its files in four folders of .System, which the
     listing does not show; `read`: read through openExpress's own session, its files there
-    taking 7.6 GB (the folder Map 5.26 GB; how the rest is shared among the other three is
-    made up). Its own maps' folder, Map, is at the top level, which ordinary MTP does not show:
-    nothing is added there."""
+    taking 7.6 GB (fakes.DRIVE_MAP, each folder's in one file here). Its own maps' folder, Map,
+    is at the top level, which ordinary MTP does not show: nothing is added there."""
     from openexpress.maps import MapFile, UniversalMap
     from openexpress.ownmaps import Overview
 
-    files = [MapFile(f".System/{folder}/{name}", "u", None, size) for folder, name, size in (
-        ("Map", "D0000001A.img", 5_260_000_000), ("JCV", "D0000001B.jcv", 2_100_000_000),
-        ("SID", "D0000001C.sid", 400_000_000), ("SQLite", "D0000001D.db", 540_000_000))]
-    on_the_device = dict(zip((f.device_path.casefold() for f in files),
-                             (5_260_000_000, 1_400_000_000, 400_000_000, 540_000_000),
-                             strict=True))
+    names = {"Map": "D0000001A.img", "JCV": "D0000001B.jcv", "SID": "D0000001C.sid",
+             "SQLite": "D0000001D.db"}
+    files = [MapFile(f".System/{folder}/{name}", "u", None, DRIVE_NEW_MAP[folder])
+             for folder, name in names.items()]
+    on_the_device = {f".System/{folder}/{name}".casefold(): DRIVE_MAP[folder]
+                     for folder, name in names.items()}
     m = UniversalMap(name="City Navigator North America NT", map_type="City Navigator",
                      state=1, is_reinstall=False, can_uninstall=True, version="2027.20",
                      region="Americas", identifier={}, files=files, files_to_remove=[], hosts=[],
@@ -381,7 +383,7 @@ def _navigator_status_facts():
     now = datetime(2026, 10, 21, 12, 0)
     return status.Facts(
         free=NAVIGATOR_SPACE[0], capacity=NAVIGATOR_SPACE[1],
-        categories={"maps": 5_260_000_000, "updates": 65_344_512, "system": 2_774_655_488},
+        categories={"maps": DRIVE_MAP["Map"], "updates": 65_344_512, "system": 2_774_655_488},
         counted_at=now - timedelta(minutes=2), crashes=[], errors_known=False, dumps=None,
         events=[], hidden_logs=False, copies=(0, 0, None), has_diagnostics=False,
         recounted=True)

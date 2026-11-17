@@ -18,9 +18,17 @@ import posixpath
 import types
 
 import pytest
-from fakes import Section, in_language, maps_window, window_methods
+from fakes import (
+    DRIVE_MAP,
+    DRIVE_NEW_MAP,
+    DRIVE_SPACE,
+    Section,
+    in_language,
+    maps_window,
+    window_methods,
+)
 from fakes import window as stand_in
-from ptp_fake import FakeDevice
+from ptp_fake import DRIVE_53_OPERATIONS, FakeDevice
 
 from openexpress import download, hidden_folders, maps, updates
 from openexpress.cli import main
@@ -324,6 +332,7 @@ class _Session(FakeDevice):
 
     def __init__(self):
         super().__init__()
+        self.supported = list(DRIVE_53_OPERATIONS)
         self.listed, self.fail_at, self.steps, self.corrupt_reads = [], None, [], False
         self.parts = []  # (offset, size) of each part of a file read back
 
@@ -2322,14 +2331,9 @@ def _keep_output(name: str, text: str) -> None:
         (folder / f"{name}.txt").write_text(text)
 
 
-# A Drive 53 EX as one was seen on its screenshots and listing: City Navigator in four
-# folders of .System taking 7.6 GB (Map 5.26 GB in 6 files), 6.7 GB free of 14.8 GB; the new
-# version 8.3 GB in the same folders. File names and how the sizes split are made up.
+# The files of the Drive's City Navigator in each folder (fakes.DRIVE_MAP; the folder Map in 6
+# files, as on the Drive); file names and the other counts are made up.
 DRIVE_FOLDERS = {"Map": 6, "JCV": 2, "SID": 16, "SQLite": 4}
-OLD_SIZES = {"Map": 5_260_000_000, "JCV": 1_100_000_000, "SID": 840_000_000,
-             "SQLite": 400_000_000}
-NEW_SIZES = {"Map": 5_750_000_000, "JCV": 1_200_000_000, "SID": 900_000_000,
-             "SQLite": 450_000_000}
 
 
 def _drive_files(sizes, version):
@@ -2346,7 +2350,7 @@ def test_the_command_line_trial_dry_run_on_the_drive_as_it_is(navigator, monkeyp
                                                               map_downloads):
     from openexpress import cli
 
-    old, new = _drive_files(OLD_SIZES, "2026"), _drive_files(NEW_SIZES, "2027")
+    old, new = _drive_files(DRIVE_MAP, "2026"), _drive_files(DRIVE_NEW_MAP, "2027")
     fake = navigator_session()
     for folder in DRIVE_FOLDERS:
         fake.add(f".System/{folder}", hidden=True)
@@ -2354,7 +2358,7 @@ def test_the_command_line_trial_dry_run_on_the_drive_as_it_is(navigator, monkeyp
         handle = fake.add(path, b"", hidden=True)
         fake.objects[handle].listed_size = size
     storage = OverUsb(navigator, fake)
-    storage.free_space = lambda: 6_700_000_000
+    storage.free_space = lambda: DRIVE_SPACE[0]
     monkeypatch.setattr(maps, "free_on_computer", lambda: 120_000_000_000)
     monkeypatch.setattr(cli, "open_storage", lambda args: storage)
     entry = _trial_map(remove=list(old), files={p: b"" for p in new})

@@ -613,6 +613,16 @@ def window_picture(win, path) -> None:
     texture.save_to_png(str(path))
 
 
+# A Drive 53 EX as one was seen on its screenshots and listing: 6.7 GB free of 14.8 GB, and City
+# Navigator in four folders of .System taking 7.6 GB (the folder Map 5.26 GB); its new version
+# 8.3 GB in the same folders. How the sizes split among JCV, SID and SQLite is made up.
+DRIVE_SPACE = (6_700_000_000, 14_800_000_000)
+DRIVE_MAP = {"Map": 5_260_000_000, "JCV": 1_100_000_000, "SID": 840_000_000,
+             "SQLite": 400_000_000}
+DRIVE_NEW_MAP = {"Map": 5_750_000_000, "JCV": 1_200_000_000, "SID": 900_000_000,
+                 "SQLite": 450_000_000}
+
+
 class Section:
     """A stand-in for a section of the device view: its groups kept as plain records (their
     title, rows and the widget at the end of their header), all of them gone at a clear."""

@@ -177,9 +177,11 @@ def test_the_line_of_the_log_names_the_operations_that_matter_and_nothing_of_the
     with ptp.Session(device) as session:
         line = ptp.operations_line(session)
     assert line == (
-        "the device lists 13 operations; GetPartialObject yes, SendObject yes, DeleteObject yes, "
+        "the device lists 37 operations; GetPartialObject yes, SendObject yes, DeleteObject yes, "
         "Garmin's hidden listing yes; all: 0x1001 0x1002 0x1003 0x1004 0x1005 0x1007 0x1008 "
-        "0x1009 0x100B 0x100C 0x100D 0x101B 0x9002")
+        "0x1009 0x100A 0x100B 0x100C 0x100D 0x1010 0x1014 0x1015 0x1016 0x1019 0x101B 0x9000 "
+        "0x9001 0x9002 0x9003 0x9004 0x9005 0x9006 0x9007 0x9008 0x9009 0x900A 0x900B 0x9801 "
+        "0x9802 0x9803 0x9804 0x9805 0x9810 0x9811")
     assert not any(word in line for word in ("Made-up", "9.99", "MADEUPSERIAL", "microsoft"))
 
 
@@ -227,7 +229,7 @@ def test_a_session_of_its_own_logs_the_operations_once_it_is_open(device, monkey
         assert session.storages() == [STORAGE]
     lines = [r.getMessage() for r in caplog.records if r.name == "openexpress.device.gio_storage"]
     opened = next(i for i, line in enumerate(lines) if line.startswith("PTP: session open after"))
-    assert lines[opened + 1].startswith("PTP: the device lists 13 operations; GetPartialObject yes")
+    assert lines[opened + 1].startswith("PTP: the device lists 37 operations; GetPartialObject yes")
     assert device.operations[:2] == [ptp.OPEN_SESSION, ptp.GET_DEVICE_INFO]
 
 

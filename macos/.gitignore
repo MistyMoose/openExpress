@@ -1,0 +1,9 @@
+# Generated from project.yml by XcodeGen (`xcodegen generate` in this folder).
+/openExpress.xcodeproj/
+/build/
+OpenExpressKit/.build/
+OpenExpressKit/.swiftpm/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.build/

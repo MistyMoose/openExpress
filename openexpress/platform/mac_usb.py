@@ -108,12 +108,19 @@ class _Registered:
 
 def _program_name(pid: int, short: str) -> str:
     """The name of the program with this process ID (the IORegistry cuts it at 16
-    characters: "Garmin Express S"); `short` when it cannot be told."""
+    characters: "Garmin Express S"); `short` when it cannot be told. Another openexpress
+    process (the app's engine, a command in a Terminal) is "openExpress", not the "Python"
+    that runs it."""
     try:
         path = subprocess.run([PS, "-p", str(pid), "-o", "comm="], capture_output=True,
                               text=True, timeout=TOOL_TIMEOUT_S, check=False).stdout.strip()
+        args = subprocess.run([PS, "-p", str(pid), "-o", "args="], capture_output=True,
+                              text=True, timeout=TOOL_TIMEOUT_S, check=False).stdout
     except (OSError, subprocess.TimeoutExpired):
         return short
+    if any(os.path.basename(word) == "openexpress" or word == "openexpress"
+           for word in args.split()[:3]):
+        return "openExpress"
     name = os.path.basename(path)
     return name if name.startswith(short) else short
 

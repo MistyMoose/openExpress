@@ -648,3 +648,26 @@ def test_a_stopped_ptpcamerad_is_told_by_its_state(monkeypatch):
     assert DAEMON_STOPPED() is False
     answers["pgrep"] = ""
     assert DAEMON_STOPPED() is False
+
+
+@pytest.mark.parametrize("comm, args, expected", [
+    (("/opt/homebrew/Cellar/python@3.13/3.13.18/Frameworks/Python.framework/Versions/3.13/"
+     "Resources/Python.app/Contents/MacOS/Python"),
+     "/opt/homebrew/…/Python /Users/u/.venvs/openexpress-mac/bin/openexpress engine", "openExpress"),
+    ("/usr/bin/python3", "/usr/bin/python3 -m openexpress info", "openExpress"),
+    (("/Applications/Garmin Express.app/Contents/Library/LoginItems/Garmin Express Service.app/"
+     "Contents/MacOS/Garmin Express Service"),
+     "/Applications/Garmin Express.app/…/Garmin Express Service -fromClient true",
+     "Garmin Express Service"),
+])
+def test_a_device_held_by_another_openexpress_names_openexpress_not_python(monkeypatch, comm,
+                                                                           args, expected):
+    import subprocess
+
+    def ps(cmd, **_kw):
+        out = comm if cmd[-1] == "comm=" else args
+        return subprocess.CompletedProcess(cmd, 0, stdout=out + "\n", stderr="")
+
+    monkeypatch.setattr(mac_usb.subprocess, "run", ps)
+    short = "Python" if expected == "openExpress" else "Garmin Express S"
+    assert mac_usb._program_name(4242, short) == expected

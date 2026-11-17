@@ -57,14 +57,16 @@ struct ActivitiesPage: View {
 
     private var table: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder) {
-            TableColumn("Date", value: \.start) { a in
-                Text(a.start.formatted(date: .numeric, time: .shortened))
-            }
-            .width(min: 120, ideal: 140)
+            // The sport first, then when: the engine's `name` repeats the date and the file,
+            // so it stays in the inspector.
             TableColumn("Sport", value: \.sport) { a in
-                Label(a.name ?? a.sportName, systemImage: a.systemImage)
+                Label(a.sportName, systemImage: a.systemImage)
             }
             .width(min: 110, ideal: 150)
+            TableColumn("Date", value: \.start) { a in
+                Text(a.start.formatted(date: .abbreviated, time: .shortened))
+            }
+            .width(min: 140, ideal: 170)
             TableColumn("Distance", value: \.distance.orZero) { a in
                 Text(a.distance.map(Format.distance) ?? "—").monospacedDigit()
             }

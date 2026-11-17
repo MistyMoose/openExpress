@@ -19,6 +19,7 @@ from __future__ import annotations
 import io
 import logging
 import mmap
+import os
 import shutil
 import struct
 import subprocess
@@ -82,10 +83,15 @@ def _key_not_read(path: Path, size: int, check: str) -> SetupError:
 
 
 def _seven_zip() -> str:
-    for name in ("7z", "7za", "7zz"):
-        path = shutil.which(name)
-        if path:
-            return path
+    """The first of 7z, 7za and 7zz in the first folder of PATH that has one: a 7-Zip bundled
+    with the program (the macOS app puts its 7zz first on PATH) wins over one installed
+    elsewhere."""
+    folders = [f for f in os.environ.get("PATH", os.defpath).split(os.pathsep) if f]
+    for folder in folders:
+        for name in ("7z", "7za", "7zz"):
+            path = shutil.which(name, path=folder)
+            if path:
+                return path
     raise SetupError(_("The 7z tool is required (package p7zip or 7zip)."))
 
 

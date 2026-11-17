@@ -136,7 +136,7 @@ public actor EngineClient: EngineConnection {
         let gen = generation
         process = p
         input = stdin.fileHandleForWriting
-        Self.log.info("engine started (pid \(p.processIdentifier))")
+        Self.log.info("engine started: \(self.configuration.executable.path, privacy: .public) (pid \(p.processIdentifier))")
         let reader = stdout.fileHandleForReading
         Task.detached { [weak self] in
             do {

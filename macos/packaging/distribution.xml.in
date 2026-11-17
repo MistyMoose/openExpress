@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The installer of openExpress.app (productbuild, macos/scripts/build-pkg.sh fills in
+     @VERSION@ and @COMPONENT@). GPL-3.0-or-later. -->
+<installer-gui-script minSpecVersion="2">
+    <title>openExpress</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <license file="LICENSE.txt" mime-type="text/plain"/>
+    <!-- Apple silicon only; installed on the startup disk, for every user, in /Applications. -->
+    <options customize="never" require-scripts="false" hostArchitectures="arm64" rootVolumeOnly="true"/>
+    <domains enable_localSystem="true" enable_anywhere="false" enable_currentUserHome="false"/>
+    <installation-check script="openExpressCanInstall()"/>
+    <script><![CDATA[
+function openExpressCanInstall() {
+    if (system.compareVersions(system.version.ProductVersion, '26.0') < 0) {
+        my.result.type = 'Fatal';
+        my.result.title = 'openExpress needs macOS 26 or later';
+        my.result.message = 'This Mac runs macOS ' + system.version.ProductVersion +
+            '. Update macOS (Apple menu > System Settings > General > Software Update), then open this installer again.';
+        return false;
+    }
+    if (system.sysctl('hw.optional.arm64') != 1) {
+        my.result.type = 'Fatal';
+        my.result.title = 'openExpress needs a Mac with Apple silicon';
+        my.result.message = 'This version of openExpress runs only on Macs with an Apple M-series chip.';
+        return false;
+    }
+    return true;
+}
+    ]]></script>
+    <pkg-ref id="io.github.openexpress.mac"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="io.github.openexpress.mac"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="io.github.openexpress.mac" visible="false">
+        <pkg-ref id="io.github.openexpress.mac"/>
+    </choice>
+    <pkg-ref id="io.github.openexpress.mac" version="@VERSION@" onConclusion="none">@COMPONENT@</pkg-ref>
+</installer-gui-script>

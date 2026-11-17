@@ -1,6 +1,9 @@
 # Generated from project.yml by XcodeGen (`xcodegen generate` in this folder).
 /openExpress.xcodeproj/
+# Everything scripts/build-pkg.sh makes: DerivedData, downloads (cache/), the staged app (pkg/),
+# the expanded package (verify/) and openExpress-<version>.pkg.
 /build/
+*.pkg
 OpenExpressKit/.build/
 OpenExpressKit/.swiftpm/
 *.xcuserstate

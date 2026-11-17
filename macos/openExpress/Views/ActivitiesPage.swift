@@ -16,6 +16,9 @@ struct ActivitiesPage: View {
     @State private var hiddenColumns: Set<String> = []
     /// "13 Nov, 10:36" instead of "13 Nov 2026 at 10:36" when space is tight.
     @State private var compactDate = false
+    /// Measured from the list when it changes (see `ColumnWidths`).
+    @State private var widths = ColumnWidths()
+    @State private var tableWidth: CGFloat = 0
 
     private var all: [Activity] { model.activities ?? [] }
 
@@ -47,9 +50,11 @@ struct ActivitiesPage: View {
                         table
                             // Only the columns that fit: no clipped number, no sideways scroller.
                             // A new set of columns lays the table out afresh at their widths.
-                            .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, sportWidth: sportWidth,
-                                            dateWidth: dateWidth(compact: compactDate)))
-                            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { fitColumns(to: $0) }
+                            .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, widths: widths))
+                            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
+                                tableWidth = width
+                                fitColumns(to: width)
+                            }
                     }
                 }
                 // The sport is the main filter: a scope bar on top, the totals below.
@@ -68,6 +73,8 @@ struct ActivitiesPage: View {
             demo()
         }
         .onChange(of: model.activities == nil) { demo() }
+        .onChange(of: model.activities, initial: true) { widths = ColumnWidths(all) }
+        .onChange(of: widths) { if tableWidth > 0 { fitColumns(to: tableWidth) } }
         .onChange(of: search) { _, new in model.activityFilter.text = new }
         .onExitCommand(perform: resetSearch)
         .toolbar {
@@ -153,51 +160,71 @@ struct ActivitiesPage: View {
         }
     }
 
-    /// Column widths as the table lays them out (their ideal widths, in points); Sport's
-    /// follows its longest name (`sportWidth`), Date's its form.
-    private static let columnWidth: [String: CGFloat] = [
-        "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
-    ]
-
     /// What lays the table out afresh when it changes.
     struct TableLayout: Hashable {
         var hidden: Set<String>
         var compactDate: Bool
-        var sportWidth: CGFloat
-        var dateWidth: CGFloat
+        var widths: ColumnWidths
     }
 
-    /// The widest of these texts in the table's font (digits monospaced, as shown).
-    private static func widest(_ texts: some Sequence<String>) -> CGFloat {
-        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        return texts.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
-    }
+    /// Each column as wide as its widest value or its header, measured once per list.
+    struct ColumnWidths: Hashable {
+        var sport: CGFloat = 110
+        var date: CGFloat = 150
+        var compactDate: CGFloat = 100
+        var distance: CGFloat = 80
+        var duration: CGFloat = 76
+        var ascent: CGFloat = 64
+        var hr: CGFloat = 56
 
-    /// Wide enough for the icon and the longest sport name in the list, within reason.
-    private var sportWidth: CGFloat {
-        let longest = Self.widest(Set(all.map(\.sportName)))
-        // Icon (20) and its gap (8), the cell's insets; at least the header, at most 200.
-        return min(200, max(80, (longest + 20 + 8 + 12).rounded(.up)))
-    }
+        init() {}
 
-    /// Wide enough for the longest date of the list in the given form.
-    private func dateWidth(compact: Bool) -> CGFloat {
-        let longest = Self.widest(Set(all.map { Self.formatDate($0.start, compact: compact) }))
-        return min(compact ? 160 : 220, max(70, (longest + 14).rounded(.up)))
+        init(_ activities: [Activity]) {
+            let body = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+            let header = NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
+            func widest(_ texts: some Sequence<String>) -> CGFloat {
+                texts.map { ($0 as NSString).size(withAttributes: [.font: body]).width }.max() ?? 0
+            }
+            func head(_ title: String) -> CGFloat {
+                // The header's title, and some room for its sort arrow.
+                (title as NSString).size(withAttributes: [.font: header]).width + 10
+            }
+            /// The cell's insets on both sides.
+            let inset: CGFloat = 8
+            func column(_ title: LocalizedStringResource, _ values: some Sequence<String>) -> CGFloat {
+                (max(head(String(localized: title)), widest(values)) + inset).rounded(.up)
+            }
+            // Icon (20) and its gap (8).
+            sport = min(200, (max(head(String(localized: "Sport")), widest(Set(activities.map(\.sportName))) + 28) + inset).rounded(.up))
+            date = min(220, column("Date", Set(activities.map { ActivitiesPage.formatDate($0.start, compact: false) })))
+            compactDate = min(160, column("Date", Set(activities.map { ActivitiesPage.formatDate($0.start, compact: true) })))
+            distance = column("Distance", activities.compactMap(\.distance).map(Format.distance))
+            duration = column("Duration", activities.compactMap(\.duration).map(Format.duration))
+            ascent = column("Ascent", activities.compactMap(\.ascent).map(Format.elevation))
+            hr = column("Avg HR", activities.compactMap(\.averageHeartRate).map(Format.heartRate))
+        }
+
+        func width(_ id: String, compactDate compact: Bool) -> CGFloat {
+            switch id {
+            case "sport": sport
+            case "date": compact ? compactDate : date
+            case "distance": distance
+            case "duration": duration
+            case "ascent": ascent
+            default: hr
+            }
+        }
     }
 
     /// Makes the columns fit the width: first Avg HR and Ascent go, then Date takes its
     /// compact form, then Duration and Distance go. Sport and Date always stay.
     private func fitColumns(to width: CGFloat) {
-        // Cell spacing per column; the row insets and the vertical scroller.
-        let spacing: CGFloat = 17, margins: CGFloat = 44
-        var visible = ["date", "distance", "duration", "ascent", "hr"]
+        // The table's spacing between columns (17), its row insets; the scroller overlays.
+        let spacing: CGFloat = 17, margins: CGFloat = 20
+        var visible = ["sport", "date", "distance", "duration", "ascent", "hr"]
         var compact = false
-        let full = dateWidth(compact: false), short = dateWidth(compact: true)
         func needed() -> CGFloat {
-            visible.reduce(margins + sportWidth + spacing) { total, id in
-                total + spacing + (id == "date" ? (compact ? short : full) : Self.columnWidth[id] ?? 60)
-            }
+            visible.reduce(margins) { $0 + widths.width($1, compactDate: compact) + spacing }
         }
         let steps: [() -> Void] = [
             { visible.removeAll { $0 == "hr" } },
@@ -207,6 +234,11 @@ struct ActivitiesPage: View {
             { visible.removeAll { $0 == "distance" } },
         ]
         for step in steps where needed() > width { step() }
+        // Development: `OEDEBUG_LAYOUT=1` logs the measured widths and what was chosen.
+        if ProcessInfo.processInfo.environment["OEDEBUG_LAYOUT"] != nil {
+            NSLog("openExpress layout: table %.0f, needed %.0f; widths %@; compact date %d; columns %@",
+                  width, needed(), String(describing: widths), compact ? 1 : 0, visible.joined(separator: " · "))
+        }
         let hidden = Set(["hr", "ascent", "duration", "distance"].filter { !visible.contains($0) })
         guard hidden != hiddenColumns || compact != compactDate else { return }
         for id in ["hr", "ascent", "duration", "distance"] {
@@ -219,12 +251,15 @@ struct ActivitiesPage: View {
     /// The date of a row: full, or compact (the year only when it is not this year).
     private func dateText(_ date: Date) -> String { Self.formatDate(date, compact: compactDate) }
 
-    private static func formatDate(_ date: Date, compact: Bool) -> String {
+    /// Full: "13 Nov 2026 at 10:36". Compact: "13 Nov, 10:36", and "13 Nov 25, 10:36" for
+    /// another year (two digits: the compact form must stay compact for older activities).
+    static func formatDate(_ date: Date, compact: Bool) -> String {
         guard compact else { return date.formatted(date: .abbreviated, time: .shortened) }
         let thisYear = Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
-        return thisYear
-            ? date.formatted(.dateTime.day().month(.abbreviated).hour().minute())
-            : date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute())
+        let day = thisYear
+            ? date.formatted(.dateTime.day().month(.abbreviated))
+            : date.formatted(.dateTime.day().month(.abbreviated).year(.twoDigits))
+        return day + ", " + date.formatted(date: .omitted, time: .shortened)
     }
 
     private func resetSearch() {
@@ -243,7 +278,7 @@ struct ActivitiesPage: View {
             TableColumn("Sport", value: \.sportName) { a in
                 SportLabel(activity: a)
             }
-            .width(min: 80, ideal: sportWidth, max: 260)
+            .width(min: 80, ideal: widths.sport, max: 260)
             .customizationID("sport")
             .disabledCustomizationBehavior(.visibility)
             TableColumn("Date", value: \.start) { a in
@@ -251,30 +286,30 @@ struct ActivitiesPage: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-            .width(min: 70, ideal: dateWidth(compact: compactDate))
+            .width(min: 70, ideal: widths.width("date", compactDate: compactDate))
             .customizationID("date")
             TableColumn("Distance", value: \.distance.sortKey) { a in
                 NumberCell(text: a.distance.map(Format.distance))
             }
-            .width(min: 80, ideal: 88)
+            .width(min: 50, ideal: widths.distance)
             .alignment(.trailing)
             .customizationID("distance")
             TableColumn("Duration", value: \.duration.sortKey) { a in
                 NumberCell(text: a.duration.map(Format.duration))
             }
-            .width(min: 76, ideal: 84)
+            .width(min: 50, ideal: widths.duration)
             .alignment(.trailing)
             .customizationID("duration")
             TableColumn("Ascent", value: \.ascent.sortKey) { a in
                 NumberCell(text: a.ascent.map(Format.elevation))
             }
-            .width(min: 64, ideal: 72)
+            .width(min: 44, ideal: widths.ascent)
             .alignment(.trailing)
             .customizationID("ascent")
             TableColumn("Avg HR", value: \.averageHeartRate.sortKey) { a in
                 NumberCell(text: a.averageHeartRate.map(Format.heartRate))
             }
-            .width(min: 56, ideal: 64)
+            .width(min: 44, ideal: widths.hr)
             .alignment(.trailing)
             .customizationID("hr")
         }

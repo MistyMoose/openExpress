@@ -406,6 +406,12 @@ class MacStorage(Storage):
         space = self._space()
         return (space.capacity or None) if space is not None else None
 
+    def battery(self) -> int | None:
+        """The device's battery charge in percent: None, as Garmin's devices do not tell it
+        over MTP. A fēnix 8 answers BatteryLevel with its default, 50 (of 0, 10, … 100), at
+        any charge (seen at 100 % on its own screen), so a number from it would mislead."""
+        return None
+
     def refresh(self, progress=None) -> bool:
         """What was listed is dropped: the next look asks the device (its sizes now)."""
         self._responding()
@@ -685,6 +691,16 @@ def open_found(found: FoundDevice) -> MacStorage:
     with _open_lock:
         _open[place] = st
     return st
+
+
+def close_found(found: FoundDevice) -> None:
+    """The storage open of a device find_devices found, closed: the device let go (the engine
+    lets it go between requests, so that another program may take it). Nothing when none is
+    open."""
+    with _open_lock:
+        open_storage = _open.get(usb_place(found.usb))
+    if open_storage is not None:
+        open_storage.close()
 
 
 def _storage_with_device_file(session: ptp.Session, found: FoundDevice) -> MacStorage:

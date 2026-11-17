@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import collections
 import contextlib
+import contextvars
 import dataclasses
 import importlib.util
 import json
@@ -230,6 +231,8 @@ def cmd_setup(args) -> int:
                                 else str(Path(args.copy_fit_to).expanduser()))
     if getattr(args, "copy_fit_types", None):
         settings.copy_fit_types = "" if args.copy_fit_types == "off" else args.copy_fit_types
+    if getattr(args, "strava_upload", None):
+        settings.strava_upload = args.strava_upload == "on"
     settings.save()  # keeps the keys of the others, ui_language among them
     if args.ui_language:
         ui_language = "" if args.ui_language == "system" else args.ui_language
@@ -248,12 +251,19 @@ def cmd_setup(args) -> int:
         print(_diagnostics_copy_text(settings.diagnostics_copy))
     if getattr(args, "copy_fit_to", None) or getattr(args, "copy_fit_types", None):
         print(_copy_fit_to_text(settings.copy_fit_to, settings.copy_fit_types))
+    if getattr(args, "strava_upload", None):
+        print(_strava_upload_text(settings.strava_upload))
     return 0
 
 
 def _diagnostics_copy_text(on: bool) -> str:
     return (_("Copy of the device's diagnostic files at each connection: on") if on
             else _("Copy of the device's diagnostic files at each connection: off"))
+
+
+def _strava_upload_text(on: bool) -> str:
+    return (_("Strava upload after each sync: on") if on
+            else _("Strava upload after each sync: off"))
 
 
 def _copy_fit_to_text(path: str, types: str) -> str:
@@ -1168,6 +1178,63 @@ def _masked_field(value) -> str:
     return store.masked(value) if isinstance(value, str) and value else "?"
 
 
+def _strava_status_line(s) -> str:
+    if not s.connected:
+        return (_("Strava: not connected.") if s.configured
+                else _("Strava: no API application set up yet. See: openexpress strava "
+                       "connect --help"))
+    # TRANSLATORS: `strava status`; {athlete} the signed-in athlete's name, or "?" when Strava
+    # did not give one
+    return _("Strava: connected as {athlete}").format(athlete=s.athlete_name or "?")
+
+
+def cmd_strava(args) -> int:
+    """`strava connect|disconnect|status|upload FILE…`: the public API of strava.py used
+    here is exactly what openexpress/engine.py (the macOS app) calls too: status(),
+    connect_with_code(), authorize_url(), disconnect(), upload_files()."""
+    from openexpress import strava
+
+    cmd = args.strava_cmd or "status"
+    if cmd == "status":
+        print(_strava_status_line(strava.status()))
+        return 0
+    if cmd == "connect":
+        s = strava.connect(args.client_id, args.client_secret)
+        print(_strava_status_line(s))
+        return 0
+    if cmd == "disconnect":
+        print(_("Disconnected from Strava.") if strava.disconnect()
+              else _("Strava was not connected."))
+        return 0
+    if cmd == "upload":
+        return _strava_upload_command(args, strava)
+    raise AssertionError(cmd)  # argparse requires one of the above
+
+
+def _strava_upload_command(args, strava) -> int:
+    report = strava.upload_files(args.files, apply=args.apply)
+    if not args.apply:
+        for name in report.uploaded:
+            print(_("Would upload {name}").format(name=name))
+    else:
+        for name in report.uploaded:
+            print(_("Uploaded {name}").format(name=name))
+    for name in report.duplicates:
+        print(_("Already on Strava: {name}").format(name=name))
+    for name, why in report.skipped:
+        print(_("Skipped {name}: {why}").format(name=name, why=why))
+    ok = True
+    for name, error in report.failed:
+        _error(_("Error: {name}: {error}").format(name=name, error=error))
+        ok = False
+    if report.rate_limited:
+        _error(_("Strava: too many uploads for now; try again later."))
+        ok = False
+    if not args.apply:
+        print(_("Dry run: nothing was uploaded. Add --apply to upload."))
+    return 0 if ok else 1
+
+
 def cmd_status(args) -> int:
     """Print what this installation knows now: the login, the Garmin devices connected (name,
     USB mode, whether on the account), the last sync of each and what the last check of its
@@ -1535,6 +1602,63 @@ def _drop_folder_dest(args, settings: Settings) -> Path | None:
     return Path(chosen).expanduser() if chosen else None
 
 
+def _strava_dry_run_line(dev, st, settings: Settings) -> str | None:
+    """`sync` without --apply: how many new activity FIT files would be staged for Strava
+    this sync (Settings.strava_upload); None when the setting is off. Never raises: a
+    problem with Strava (not connected, network) is said in its place, as the dry run of the
+    upload to Garmin Connect needs no login either."""
+    if not settings.strava_upload:
+        return None
+    from openexpress import strava, sync
+
+    try:
+        planned = sync.plan_drop_folder(dev, st, strava.pending_dir(dev.unit_id),
+                                        frozenset({sync.ACTIVITY_TYPE}))
+    except Exception as e:  # noqa: BLE001 - the dry run of the rest of the sync still shows
+        return _("To Strava: not checked ({error})").format(error=e)
+    return ngettext("To Strava: {count} new activity file",
+                    "To Strava: {count} new activity files", len(planned)).format(
+        count=len(planned))
+
+
+def _strava_sync_upload(dev, st, progress) -> None:
+    """After the sync's own upload to Garmin Connect: the device's activity FIT files staged
+    for Strava (sync.run_drop_folder, into strava.pending_dir, which is never emptied: as the
+    FIT drop folder, a name already there is not read from the device again) and those sent
+    with strava.upload_files, which keeps its own record of what went already so that
+    nothing already sent is sent twice. Prints what it did; never raises, so that Strava
+    cannot fail the sync (Settings.strava_upload)."""
+    from openexpress import strava, sync
+
+    pending = strava.pending_dir(dev.unit_id)
+    try:
+        dropped = sync.run_drop_folder(dev, st, pending, frozenset({sync.ACTIVITY_TYPE}),
+                                       progress=progress)
+        waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
+        report = strava.upload_files(waiting, apply=True, progress=progress)
+    except Exception as e:  # noqa: BLE001 - reported, the sync itself is already done
+        print(_("Strava: {error}").format(error=e), file=sys.stderr)
+        log.warning("strava: sync upload failed: %s: %s", type(e).__name__, e)
+        return
+    if dropped.incomplete:
+        log.info("strava: %d activity file still being written by the device, staged by "
+                 "the next sync", dropped.incomplete)
+    if report.uploaded:
+        print(ngettext("Uploaded to Strava: {count} activity",
+                       "Uploaded to Strava: {count} activities", len(report.uploaded)).format(
+            count=len(report.uploaded)))
+    if report.duplicates:
+        print(ngettext("Already on Strava: {count} activity",
+                       "Already on Strava: {count} activities", len(report.duplicates)).format(
+            count=len(report.duplicates)))
+    for name, error in report.failed:
+        print(_("Strava: {name} was not uploaded: {error}").format(name=name, error=error),
+              file=sys.stderr)
+    if report.rate_limited:
+        print(_("Strava: too many uploads for now; the rest wait for the next sync."),
+              file=sys.stderr)
+
+
 def cmd_sync(args) -> int:
     from openexpress import service, sync
 
@@ -1577,6 +1701,9 @@ def cmd_sync(args) -> int:
                 "To the FIT drop folder {path}: {count} new file",
                 "To the FIT drop folder {path}: {count} new files",
                 len(planned)).format(path=drop_folder, count=len(planned)))
+        strava_line = _strava_dry_run_line(dev, st, settings)
+        if strava_line is not None:
+            print("\n" + strava_line)
         print("\n" + _("Dry run: nothing was uploaded or written to the device. "
                        "Add --apply to run the sync."))
         return 0
@@ -1616,6 +1743,9 @@ def cmd_sync(args) -> int:
                 "copied by the next sync",
                 "{count} files for the drop folder were still being written by the device; "
                 "copied by the next sync", dropped.incomplete).format(count=dropped.incomplete))
+    if settings.strava_upload:
+        with _progress() as progress:
+            _strava_sync_upload(dev, st, progress)
     # A drive the sync wrote to is ejected, so that the watch takes the files.
     if st.mass_storage and summary.wrote_to_device and not _eject_drive(st, files=True):
         return 1  # the cable must stay in
@@ -1877,10 +2007,19 @@ class _Status:
             self.open = False
 
 
+# Where the progress of a command goes instead of the terminal: the engine (engine.py) sets
+# its callback on the thread of the request that runs the command; None: the terminal.
+PROGRESS_TO: contextvars.ContextVar[Callable[[str], None] | None] = contextvars.ContextVar(
+    "PROGRESS_TO", default=None)
+
+
 @contextlib.contextmanager
 def _progress():
     """The progress of a long command: progress.Reporter telling _Status, whose line is
-    ended when the command is."""
+    ended when the command is (or the engine's callback, PROGRESS_TO)."""
+    if (engine := PROGRESS_TO.get()) is not None:
+        yield engine
+        return
     status = _Status()
     try:
         yield Reporter(status)
@@ -3462,6 +3601,13 @@ def cmd_gui(args) -> int:
     return gui_main()
 
 
+def cmd_engine(args) -> int:
+    """JSON Lines on stdin and stdout for the macOS app (engine.py, docs/ENGINE.md)."""
+    from openexpress import engine
+
+    return engine.main(args)
+
+
 def cmd_watch(args) -> int:
     from openexpress.watch import main as watch_main
 
@@ -3607,6 +3753,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("which data types --copy-fit-to copies (names as sync --type "
                           "takes them, comma-separated); default: activities only; "
                           "\"off\" goes back to that default"))
+    s.add_argument("--strava-upload", choices=("on", "off"),
+                   help=_("after each sync, also upload its new activity FIT files to Strava "
+                          "(needs {command})").format(command="strava connect"))
     s.set_defaults(func=cmd_setup, _parser=s)
 
     s = sub.add_parser("report", help=_("device report for GitHub, without serial numbers"))
@@ -3712,6 +3861,22 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("whoami", help=_("signed-in account"))
     s.add_argument("--check", action="store_true", help=_("verify the token with the server"))
     s.set_defaults(func=cmd_whoami)
+
+    s = sub.add_parser("strava", help=_("connect to Strava and upload FIT files to it "
+                                        "(your own Strava API application)"))
+    stsub = s.add_subparsers(dest="strava_cmd")
+    c = stsub.add_parser("connect", help=_("connect openExpress to your Strava API "
+                                           "application (opens a browser)"))
+    c.add_argument("--client-id", metavar="ID",
+                   help=_("the application's Client ID (only needed once)"))
+    c.add_argument("--client-secret", metavar="SECRET",
+                   help=_("the application's Client Secret (only needed once)"))
+    stsub.add_parser("disconnect", help=_("remove the saved Strava token"))
+    stsub.add_parser("status", help=_("whether openExpress is connected to Strava"))
+    u = stsub.add_parser("upload", help=_("upload FIT files to Strava (dry run by default)"))
+    u.add_argument("files", nargs="+", metavar="FILE", help=_("FIT files on this computer"))
+    u.add_argument("--apply", action="store_true", help=_("really upload"))
+    s.set_defaults(func=cmd_strava)
 
     s = sub.add_parser("upload-config",
                        help=_("upload configuration from the Garmin server (OMT)"))
@@ -3898,6 +4063,11 @@ def build_parser() -> argparse.ArgumentParser:
     # TRANSLATORS: CLI help of the gui command, which opens the application window
     s = sub.add_parser("gui", help=_("application window"))
     s.set_defaults(func=cmd_gui)
+
+    # TRANSLATORS: CLI help of `openexpress engine`; "JSON Lines" is the name of a format
+    s = sub.add_parser("engine", help=_("requests and answers as JSON Lines on stdin and "
+                                        "stdout, for the macOS app"))
+    s.set_defaults(func=cmd_engine)
 
     s = sub.add_parser("watch", help=_("background service: sync when the device is connected"))
     s.set_defaults(func=cmd_watch)

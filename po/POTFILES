@@ -20,6 +20,7 @@ openexpress/device/ptp.py
 openexpress/device/storage.py
 openexpress/diagnostics.py
 openexpress/download.py
+openexpress/engine.py
 openexpress/fit.py
 openexpress/forget.py
 openexpress/freeing.py
@@ -60,6 +61,7 @@ openexpress/progress.py
 openexpress/proto.py
 openexpress/service.py
 openexpress/settings.py
+openexpress/strava.py
 openexpress/sync.py
 openexpress/trueup.py
 openexpress/updates.py

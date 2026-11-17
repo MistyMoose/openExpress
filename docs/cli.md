@@ -17,9 +17,11 @@ the two are separate installations, see
 | `openexpress status [--online]` | the sign-in, the Garmin devices connected (name, USB mode, whether they are on the account), the last sync of each with the activities it has to upload now, what the window's last check of its updates found, and for a watch with satellite data (experimental) whether they are on and when they were last written; `--online` also asks Garmin Connect and Garmin's update server now (nothing of the answers is kept); without it nothing is asked of a server |
 | `openexpress devices [--forget N] [--discard-pending] [--backups] [--apply]` | the devices this installation has seen; `--forget N` forgets device number N of the list and what this installation keeps of it, as **Forget Device** does ([what that is](guide.md#the-start-page-and-the-device-page)); files not uploaded yet go only with `--discard-pending`, its backups only with `--backups`; a connected device is not forgotten |
 | `openexpress setup --from-installer GarminExpress.exe` | one-time setup from the Garmin Express installer for Windows (only read, nothing installed); instead of it `--from-dll Networking.dll [--utilities-dll Utilities.dll]` or `--key KEY --secret SECRET` |
-| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china] [--copy-fit-to DIR\|off] [--copy-fit-types TYPE\|off]` | settings: the program's language, the copy of the device's diagnostic files, the language asked of Garmin's servers (by default the program's), Garmin's servers, macOS fork: the [FIT drop folder](guide.md#fit-drop-folder) and which data types it copies; without options it shows them |
+| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china] [--copy-fit-to DIR\|off] [--copy-fit-types TYPE\|off] [--strava-upload on\|off]` | settings: the program's language, the copy of the device's diagnostic files, the language asked of Garmin's servers (by default the program's), Garmin's servers, macOS fork: the [FIT drop folder](guide.md#fit-drop-folder) and which data types it copies, and whether a sync also uploads new activities to [Strava](guide.md#strava); without options it shows them |
 | `openexpress login [--manual]` | sign in on the Garmin SSO page (WebKitGTK window) |
 | `openexpress whoami [--check]`, `logout` | account (its name masked: a user name as `t…b`, an e-mail address as `t…@e…`, as in every command's output), sign out (removes the local token) |
+| `openexpress strava connect [--client-id ID --client-secret SECRET]`, `strava disconnect`, `strava status` | macOS fork: connect to, disconnect from, or the connection to [Strava](guide.md#strava), with your own Strava API application (`connect` opens a browser; later runs reuse the client ID/secret it saved) |
+| `openexpress strava upload FILE… [--apply]` | macOS fork: upload FIT files to Strava by hand ([details](guide.md#strava)); a dry run by default |
 | `openexpress upload-config [--json]` | what data is uploaded for this device and where (Garmin server) |
 | `openexpress sync [--all] [--upload-only] [--download-only] [--type TYPE]… [--include-diagnostics] [--copy-fit-to DIR] [--apply]` | uploads new FIT files to Garmin Connect and writes the courses and workouts it has queued to the device ([details](#sync)) |
 | `openexpress baseline [--apply]` | marks current files as already uploaded (first run) |
@@ -49,6 +51,7 @@ the two are separate installations, see
 | `openexpress music playlist FILE.m3u [--name NAME] [--apply]`, `music remove TEXT… [--apply]` | write a playlist as `.m3u8`; remove files whose name, artist or album folder matches TEXT (at least 3 characters) |
 | `openexpress gui` | application window (GTK 4 + libadwaita): device, sync, updates, maps, apps, music, activities |
 | `openexpress watch` | background service: sync when a device is connected, with a notification |
+| `openexpress engine` | macOS fork: requests and answers as JSON Lines on stdin and stdout, for the macOS app; the same commands as here, without a terminal ([the protocol](ENGINE.md)) |
 | `openexpress install-desktop [--remove] [--force] [--apply]` | application menu entry and systemd user service (version from source; in the Flatpak it does nothing); `--remove` removes them, `--force` installs them also when the Flatpak is installed |
 
 The NAME of an app is its name in the store or the one the device gives it (they can differ, as
@@ -167,6 +170,12 @@ Garmin Connect has queued to the device.
   types](guide.md#fit-drop-folder) into `DIR`, for this run only, instead of the folder set
   with `setup --copy-fit-to` (neither given: nothing is copied). A dry run only counts the new
   files; `--apply` copies them, after the rest of the sync, and says how many and their size.
+- macOS fork: with `setup --strava-upload on` (and `strava connect` run once), each sync also
+  uploads its new activities to [Strava](guide.md#strava), after the rest of the sync; the dry
+  run only counts them. A file already sent (by this sync or an earlier one) is never sent
+  again. A Strava problem (not connected, too many uploads for now, a single file Strava
+  refuses) is printed but never fails the sync itself; the files it could not send wait for
+  the next sync.
 - A device connected as a USB drive is synced the same way when it can be (otherwise the command
   says why); its Connect IQ apps are left in Garmin Connect's queue, and the drive is ejected
   after a sync that wrote to it.

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 18:49+0100\n"
+"POT-Creation-Date: 2026-11-17 19:18+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -215,7 +215,7 @@ msgstr ""
 msgid "3. Paste the URL: "
 msgstr ""
 
-#: openexpress/auth/sso.py
+#: openexpress/auth/sso.py openexpress/engine.py
 #, ignore-end-stop, python-brace-format
 msgid "The given URL has no ticket=ST-… parameter"
 msgstr ""
@@ -1008,6 +1008,16 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Copy of the device's diagnostic files at each connection: off"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava upload after each sync: on"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava upload after each sync: off"
 msgstr ""
 
 #: openexpress/cli.py
@@ -1915,6 +1925,69 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid "Strava: not connected."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Strava: no API application set up yet. See: openexpress strava connect --help"
+msgstr ""
+
+#. TRANSLATORS: `strava status`; {athlete} the signed-in athlete's name, or "?" when Strava
+#. did not give one
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava: connected as {athlete}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Disconnected from Strava."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava was not connected."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Would upload {name}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Uploaded {name}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Already on Strava: {name}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Skipped {name}: {why}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Error: {name}: {error}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava: too many uploads for now; try again later."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Dry run: nothing was uploaded. Add --apply to upload."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid "Garmin Connect: signed in as {account}"
 msgstr ""
 
@@ -1923,7 +1996,7 @@ msgstr ""
 msgid "Garmin Connect: not signed in"
 msgstr ""
 
-#: openexpress/cli.py
+#: openexpress/cli.py openexpress/engine.py
 #, python-brace-format
 msgid "No Garmin device is connected."
 msgstr ""
@@ -2240,6 +2313,47 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Device type: {name}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "To Strava: not checked ({error})"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "To Strava: {count} new activity file"
+msgid_plural "To Strava: {count} new activity files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava: {error}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Uploaded to Strava: {count} activity"
+msgid_plural "Uploaded to Strava: {count} activities"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Already on Strava: {count} activity"
+msgid_plural "Already on Strava: {count} activities"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava: {name} was not uploaded: {error}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Strava: too many uploads for now; the rest wait for the next sync."
 msgstr ""
 
 #: openexpress/cli.py
@@ -3791,6 +3905,13 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid ""
+"after each sync, also upload its new activity FIT files to Strava (needs "
+"{command})"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid "device report for GitHub, without serial numbers"
 msgstr ""
 
@@ -3996,6 +4117,48 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "verify the token with the server"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"connect to Strava and upload FIT files to it (your own Strava API "
+"application)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "connect openExpress to your Strava API application (opens a browser)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "the application's Client ID (only needed once)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "the application's Client Secret (only needed once)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "remove the saved Strava token"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "whether openExpress is connected to Strava"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "upload FIT files to Strava (dry run by default)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "really upload"
 msgstr ""
 
 #: openexpress/cli.py
@@ -4440,6 +4603,13 @@ msgstr ""
 msgid "application window"
 msgstr ""
 
+#. TRANSLATORS: CLI help of `openexpress engine`; "JSON Lines" is the name of a format
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"requests and answers as JSON Lines on stdin and stdout, for the macOS app"
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "background service: sync when the device is connected"
@@ -4516,7 +4686,7 @@ msgstr ""
 msgid "Server error: {error}"
 msgstr ""
 
-#: openexpress/cli.py
+#: openexpress/cli.py openexpress/engine.py
 #, python-brace-format
 msgid "Network error: could not reach the Garmin server ({error})"
 msgstr ""
@@ -5485,6 +5655,68 @@ msgstr ""
 #: openexpress/download.py
 #, python-brace-format
 msgid "Could not download the file:"
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Missing parameter: {name}"
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Invalid value for {name}."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "The request was cancelled."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "The request is not valid JSON."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "A request needs an id, a method and its params as an object."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Unknown method: {method}"
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Several devices are connected: name one with its unit ID."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "No connected device has the unit ID {device}."
+msgstr ""
+
+#. TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
+#. device, so openExpress cannot open it
+#: openexpress/engine.py openexpress/platform/mac_usb.py
+#, python-brace-format
+msgid "{program} is using the device. Quit it, then try again."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Unknown setting: {key}"
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "Strava is not available in this version."
+msgstr ""
+
+#: openexpress/engine.py
+#, python-brace-format
+msgid "The file cannot be read: {error}"
 msgstr ""
 
 #: openexpress/fit.py
@@ -11289,13 +11521,6 @@ msgid ""
 "or Photos. Quit them, then unplug the device and plug it in again."
 msgstr ""
 
-#. TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
-#. device, so openExpress cannot open it
-#: openexpress/platform/mac_usb.py
-#, python-brace-format
-msgid "{program} is using the device. Quit it, then try again."
-msgstr ""
-
 #. TRANSLATORS: how far a step of a long task is: "3 of 8", "412.0 MB of 1.5 GB"
 #: openexpress/progress.py
 #, python-brace-format
@@ -12036,6 +12261,101 @@ msgstr ""
 #: openexpress/settings.py
 #, python-brace-format
 msgid "URL signing data not found in {path}"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid ""
+"No Strava API application is set up yet. Create one (free) at strava.com/"
+"settings/api - Authorization Callback Domain: localhost - then run: "
+"openexpress strava connect"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava sign-in"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "{what} failed: {error}"
+msgstr ""
+
+#. TRANSLATORS: the page shown in the browser once Strava's consent page sends it back
+#. here; the command line itself tells the result
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Connected to Strava. You can close this window."
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava sign-in was not completed. You can close this window."
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid ""
+"Strava did not answer in time: the browser may not have opened, or the "
+"consent was not given."
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava sign-in was not completed: {error}"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava could not be reached: {error}"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid ""
+"The Strava sign-in has expired: {error}. Run: openexpress strava connect"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Not connected to Strava. Run: openexpress strava connect"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava rejected the file: {error}"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava did not finish processing the upload in time"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava: too many requests for now"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava: too many uploads for now"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Strava upload failed: {error}"
+msgstr ""
+
+#: openexpress/strava.py
+#, python-brace-format
+msgid "not a FIT file"
+msgstr ""
+
+#. TRANSLATORS: a step of a sync, or of `strava upload`, telling how many FIT
+#. files are sent to Strava ("… · 3 of 8")
+#: openexpress/strava.py
+#, python-brace-format
+msgid "Uploading to Strava"
 msgstr ""
 
 #. TRANSLATORS: who made a file of Garmin Connect's queue: the open device

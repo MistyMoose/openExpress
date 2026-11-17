@@ -4,9 +4,10 @@ again, is a new one to it.
 Deleted: the entry in devices.json, the device's own folder in the data folder (what was
 uploaded from it, the copies of files not uploaded yet, its last sync, the maps of your own
 copied to it, the apps it refused, the copies of its diagnostic files) and the shared last
-sync when it is of this device. Files not uploaded yet only with consent; its backups only
-when asked, and of them only the folders openExpress made. Never the cache, the window's
-settings or anything on the Garmin account."""
+sync when it is of this device, and of the cache the summaries of its activity files
+(activities.summaries_path). Files not uploaded yet only with consent; its backups only
+when asked, and of them only the folders openExpress made. Never the rest of the cache, the
+window's settings or anything on the Garmin account."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from openexpress import history, known_devices, paths, service, sync
+from openexpress import activities, history, known_devices, paths, service, sync
 from openexpress.backup import PARTIAL_PREFIX, is_backup_dir
 from openexpress.ciq import APP_LIST_COPY_PREFIX
 from openexpress.errors import OrdinaryStop
@@ -86,6 +87,7 @@ def _delete(unit_id: int, discard_pending: bool, backups: bool) -> str:
         if folder.exists():
             shutil.rmtree(folder)
         history.forgotten(unit_id)
+    activities.forget_summaries(unit_id)
     shared = service.last_sync_path()
     try:
         of_it = json.loads(shared.read_text(encoding="utf-8")).get("unit_id") == unit_id

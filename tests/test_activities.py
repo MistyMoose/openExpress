@@ -214,5 +214,9 @@ def test_the_names_of_sports():
 
     assert activities.sport_name(1) == "Running"
     assert activities.sport_name(62) == "HIIT"
+    # water sports of the FIT profile (a fēnix logs a surf session as 38)
+    assert activities.sport_name(38) == "Surfing"
+    assert [activities.sport_name(n) for n in (39, 43, 44)] == [
+        "Wakeboarding", "Windsurfing", "Kitesurfing"]
     assert activities.sport_name(0) == activities.sport_name(None) == "Activity"
     assert activities.sport_name(99) == "Sport 99"

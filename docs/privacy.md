@@ -106,7 +106,12 @@ readable only by you, each kind within its limit, the oldest removed first:
 
 - The **Activities** page and `openexpress activities` read the activity files of the device and
   of its backups only when you open the page or run the command. What they say (sport, start,
-  time, distance, ascent) is kept in memory while the device is open, never on disk.
+  time, distance, ascent) is kept in memory while the device is open. The command line and the
+  macOS app also keep it in the cache, one file per device readable only by you
+  (`activities/UNIT_ID.json` in `~/.cache/openexpress`, on macOS `~/Library/Caches/openExpress`),
+  with each file's path, size and time, so that only new files are read the next time; it holds
+  only the files the device and its backups still have, a new version of openExpress reads them
+  again, and **Forget Device** (`openexpress devices --forget`) deletes it.
 - A GPX file is written only where you save it. It holds the positions, elevation and time of
   the activity and nothing of the device.
 - The dry run of `openexpress sync` downloads the files waiting in Garmin Connect into memory to

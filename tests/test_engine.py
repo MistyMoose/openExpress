@@ -476,6 +476,115 @@ def test_a_cancelled_activities_list_keeps_what_it_read_and_the_next_call_resume
     assert len(three_activities) == 3  # the two left, not the first again
 
 
+def _kept_on_disk() -> list[str]:
+    from openexpress import activities
+
+    data = json.loads(activities.summaries_path(int(UNIT)).read_text())
+    return [entry["path"].rsplit("/", 1)[-1] for entry in data["files"]]
+
+
+def test_a_new_engine_reads_no_activity_file_the_one_before_read(devices, three_activities):
+    first = Running(devices)
+    first.ask("activities.list", {"limit": 10})
+    first.stop()
+    assert len(three_activities) == 3 and len(_kept_on_disk()) == 3
+    second = Running(devices)
+    try:
+        request_id = second.send("activities.list", {"limit": 10})
+        result = second.response(request_id)["result"]["activities"]
+        assert [a["state"] for a in result] == ["complete"] * 3
+        assert len(three_activities) == 3  # nothing read again
+        assert second.events("progress", request=request_id) == []
+    finally:
+        second.stop()
+
+
+def test_a_file_changed_since_is_read_again_alone_and_one_gone_leaves_the_kept_file(
+        devices, three_activities, device_root):
+    from conftest import make_fit
+
+    first = Running(devices)
+    first.ask("activities.list", {"limit": 10})
+    first.stop()
+    folder = device_root / "GARMIN" / "Activity"
+    (folder / "2026-10-02-10-00-00.fit").write_bytes(make_fit(1100086401) + b"\0")  # its size
+    (folder / "2026-10-01-10-00-00.fit").unlink()
+    second = Running(devices)
+    try:
+        assert len(second.ask("activities.list", {"limit": 10})["result"]["activities"]) == 2
+    finally:
+        second.stop()
+    assert three_activities[3:] == ["2026-10-02-10-00-00.fit"]
+    assert sorted(_kept_on_disk()) == ["2026-10-02-10-00-00.fit", "2026-10-03-10-00-00.fit"]
+
+
+@pytest.mark.parametrize("kept", [
+    "{not json", json.dumps({"format": 1, "openexpress": "0.0.1", "files": []}),
+    json.dumps({"format": 99, "openexpress": __version__, "files": []}),
+    json.dumps({"format": 1, "openexpress": __version__, "files": [{"path": 3}]}),
+], ids=["damaged", "older version", "other format", "damaged entry"])
+def test_kept_summaries_that_are_damaged_or_of_another_version_are_read_again(
+        running, three_activities, kept):
+    from openexpress import activities
+
+    path = activities.summaries_path(int(UNIT))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(kept)
+    assert len(running.ask("activities.list", {"limit": 10})["result"]["activities"]) == 3
+    assert len(three_activities) == 3
+    assert len(_kept_on_disk()) == 3  # written anew
+
+
+def test_the_kept_summaries_cannot_be_written_and_the_list_is_answered_all_the_same(
+        running, three_activities, monkeypatch):
+    from openexpress import activities, paths
+
+    real = paths.write_private
+
+    def refused(path, data):
+        if path == activities.summaries_path(int(UNIT)):
+            raise PermissionError("read-only cache")
+        real(path, data)
+
+    monkeypatch.setattr(paths, "write_private", refused)
+    assert len(running.ask("activities.list", {"limit": 10})["result"]["activities"]) == 3
+    assert not activities.summaries_path(int(UNIT)).exists()
+
+
+def test_what_a_cancelled_activities_list_read_is_kept_on_disk_too(
+        running, three_activities, monkeypatch):
+    from openexpress import activities
+
+    first_read, go = threading.Event(), threading.Event()
+    counting = activities.DeviceActivities.read_file
+
+    def read_file(self, activity):
+        data = counting(self, activity)
+        first_read.set()
+        go.wait(10)
+        return data
+
+    monkeypatch.setattr(activities.DeviceActivities, "read_file", read_file)
+    request_id = running.send("activities.list", {"limit": 10})
+    assert first_read.wait(10)
+    running.ask("cancel", {"request": request_id})
+    go.set()
+    assert running.response(request_id)["error"]["code"] == "cancelled"
+    assert _kept_on_disk() == three_activities[:1]
+
+
+def test_forgetting_a_device_deletes_the_summaries_kept_of_its_activities(
+        running, three_activities):
+    from openexpress import activities, forget, known_devices
+
+    running.ask("activities.list", {"limit": 10})
+    path = activities.summaries_path(int(UNIT))
+    assert path.exists()
+    known_devices.remember(int(UNIT), "Test watch", "006-B0000-00", "23.39", "mtp")
+    assert forget.forget_device(int(UNIT))
+    assert not path.exists()
+
+
 def test_progress_steps_are_put_in_phases_with_what_they_move_as_the_item():
     assert engine.phase_of(downloading_text("TopoActive Europe"), "maps.install") == (
         "downloading", "TopoActive Europe")

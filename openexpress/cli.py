@@ -851,16 +851,22 @@ def cmd_activities(args) -> int:
         print(_("This device keeps no activities."))
         return 1 if exporting else 0
     backups = getattr(args, "export_backups", None) or args.backups
+    # What was read of the files before (the engine's too): only new or changed ones are read.
     found = activities.DeviceActivities(
-        dev, st, Path(backups) if backups else paths.default_backup_dir())
+        dev, st, Path(backups) if backups else paths.default_backup_dir(),
+        kept=activities.load_summaries(dev.unit_id))
     found.list_files()
     if exporting:
         return _export_activities(args, found)
     if not found.listing:
         print(_("No activities on the device or in its backups."))
         return 0
-    with _progress() as progress:
-        read = found.read_next(len(found.listing) if args.all else args.limit, progress)
+    try:
+        with _progress() as progress:
+            read = found.read_next(len(found.listing) if args.all else args.limit, progress)
+    finally:
+        if found.newly_read:
+            activities.save_summaries(dev.unit_id, found)
     for line in _activity_table(read):
         print(line)
     only_in_backups = sum(1 for a in found.listing if a.source is activities.Source.BACKUP)

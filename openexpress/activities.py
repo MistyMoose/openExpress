@@ -12,6 +12,7 @@ sizes and times, never a name or a date.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import posixpath
@@ -22,7 +23,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from openexpress import applog, fit, paths
+from openexpress import __version__, applog, fit, paths
 from openexpress.backup import backups_of
 from openexpress.device.storage import Storage
 from openexpress.device.xmldevice import GarminDevice
@@ -93,12 +94,27 @@ def sport_name(sport: int | None) -> str:
         18: pgettext("sport", "Multisport"),
         19: pgettext("sport", "Paddling"),
         21: pgettext("sport", "E-biking"),
+        23: pgettext("sport", "Boating"),
         25: pgettext("sport", "Golf"),
+        27: pgettext("sport", "Horseback riding"),
+        29: pgettext("sport", "Fishing"),
+        30: pgettext("sport", "Inline skating"),
         31: pgettext("sport", "Rock climbing"),
+        32: pgettext("sport", "Sailing"),
+        33: pgettext("sport", "Ice skating"),
         35: pgettext("sport", "Snowshoeing"),
         37: pgettext("sport", "Stand-up paddleboarding"),
+        38: pgettext("sport", "Surfing"),
+        39: pgettext("sport", "Wakeboarding"),
+        40: pgettext("sport", "Water skiing"),
         41: pgettext("sport", "Kayaking"),
+        42: pgettext("sport", "Rafting"),
+        43: pgettext("sport", "Windsurfing"),
+        44: pgettext("sport", "Kitesurfing"),
+        47: pgettext("sport", "Boxing"),
+        53: pgettext("sport", "Diving"),
         62: pgettext("sport", "HIIT"),
+        67: pgettext("sport", "Meditation"),
     }
     if sport is None:
         return names[0]
@@ -143,6 +159,91 @@ def _summary(data: bytes | None) -> fit.ActivitySummary | None:
         return None
 
 
+# --- what was read of the files, kept on disk ------------------------------------------------
+#
+# The summary of each activity file read (fit.summary), by its Activity.key, in a file of the
+# cache for each device (summaries_path): the engine (engine.py) and `activities` read only the
+# files that are new or changed since. Written whole and atomically; made by another version
+# of the program, or of another format, it is not read (and is replaced). Never an error of a
+# command: a file that cannot be read is none, one that cannot be written is told in the log.
+
+SUMMARIES_FORMAT = 1
+# The most summaries kept for one device (the newest files): about 200 bytes each.
+SUMMARIES_MOST = 20_000
+
+
+def summaries_path(unit_id: int) -> Path:
+    return paths.cache_dir() / "activities" / f"{unit_id}.json"
+
+
+def _summary_json(key: tuple, summary: fit.ActivitySummary) -> dict:
+    source, path, size, mtime = key
+    return {"source": source.value, "path": path, "size": size, "mtime": mtime,
+            "state": summary.state.value, "created": summary.created, "start": summary.start,
+            "sport": summary.sport, "timer_time": summary.timer_time,
+            "distance": summary.distance, "ascent": summary.ascent,
+            "has_positions": summary.has_positions}
+
+
+def _summary_of(entry: dict) -> tuple[tuple, fit.ActivitySummary]:
+    key = (Source(entry["source"]), str(entry["path"]), int(entry["size"]),
+           float(entry["mtime"]))
+    return key, fit.ActivitySummary(
+        fit.FileState(entry["state"]), entry.get("created"), entry.get("start"),
+        entry.get("sport"), entry.get("timer_time"), entry.get("distance"),
+        entry.get("ascent"), bool(entry.get("has_positions")))
+
+
+def load_summaries(unit_id: int) -> dict[tuple, fit.ActivitySummary | None]:
+    """The summaries kept on disk for this device; none when there is no file, or one that
+    cannot be read, is damaged, or was written by another version (one line of the log)."""
+    path = summaries_path(unit_id)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as e:
+        log.info("activities: the kept summaries not read (%s)", type(e).__name__)
+        return {}
+    if (not isinstance(data, dict) or data.get("format") != SUMMARIES_FORMAT
+            or data.get("openexpress") != __version__):
+        log.info("activities: the kept summaries are of another version; read again")
+        return {}
+    kept = {}
+    for entry in data.get("files") or []:
+        try:
+            key, summary = _summary_of(entry)
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue  # one entry damaged: that file is read again
+        kept[key] = summary
+    log.info("activities: %d summaries kept from before", len(kept))
+    return kept
+
+
+def save_summaries(unit_id: int, found: DeviceActivities) -> bool:
+    """What `found` has read, written for its device: only of the files it lists now (a file
+    gone from the device and its backups goes from the file too), and not of a file the
+    device was still writing or that could not be read (read again next time). Whether it
+    was written; a failure is a line of the log, never an error."""
+    listed = {a.key for a in found.listing}
+    kept = [(key, s) for key, s in found._kept.items() if key in listed and s is not None
+            and s.state is not fit.FileState.STILL_BEING_WRITTEN]
+    kept.sort(key=lambda item: item[0][3], reverse=True)  # the newest first
+    data = {"format": SUMMARIES_FORMAT, "openexpress": __version__,
+            "files": [_summary_json(key, s) for key, s in kept[:SUMMARIES_MOST]]}
+    try:
+        paths.write_private(summaries_path(unit_id), json.dumps(data, separators=(",", ":")))
+    except (OSError, ValueError) as e:
+        log.warning("activities: the summaries not kept (%s)", type(e).__name__)
+        return False
+    return True
+
+
+def forget_summaries(unit_id: int) -> None:
+    """The summaries kept for a device, deleted (forget.py)."""
+    summaries_path(unit_id).unlink(missing_ok=True)
+
+
 class DeviceActivities:
     """The activities of one device and of its backups (`backups`: the folder of every
     device's backups; None: none read): listed by list_files, read `PAGE` at a time by
@@ -156,6 +257,8 @@ class DeviceActivities:
         self.listing: list[Activity] = []
         self.read: list[Read] = []  # those of `listing` read so far, in its order
         self._kept: dict[tuple, fit.ActivitySummary | None] = {} if kept is None else kept
+        # How many files were read (not found kept) since it was made: save_summaries then.
+        self.newly_read = 0
 
     @property
     def left(self) -> int:
@@ -214,6 +317,7 @@ class DeviceActivities:
             data = self.read_file(activity)
             size += len(data or b"")
             self._kept[activity.key] = _summary(data)
+            self.newly_read += 1
         found = [Read(a, self._kept[a.key]) for a in batch]
         self.read += found
         if to_read:

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 19:18+0100\n"
+"POT-Creation-Date: 2026-11-17 19:47+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -117,13 +117,49 @@ msgstr ""
 #: openexpress/activities.py
 #, python-brace-format
 msgctxt "sport"
+msgid "Boating"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
 msgid "Golf"
 msgstr ""
 
 #: openexpress/activities.py
 #, python-brace-format
 msgctxt "sport"
+msgid "Horseback riding"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Fishing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Inline skating"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
 msgid "Rock climbing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Sailing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Ice skating"
 msgstr ""
 
 #: openexpress/activities.py
@@ -139,6 +175,24 @@ msgid "Stand-up paddleboarding"
 msgstr ""
 
 #: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Surfing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Wakeboarding"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Water skiing"
+msgstr ""
+
+#: openexpress/activities.py
 #, ignore-reused, python-brace-format
 msgctxt "sport"
 msgid "Kayaking"
@@ -147,7 +201,43 @@ msgstr ""
 #: openexpress/activities.py
 #, python-brace-format
 msgctxt "sport"
+msgid "Rafting"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Windsurfing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Kitesurfing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Boxing"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Diving"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
 msgid "HIIT"
+msgstr ""
+
+#: openexpress/activities.py
+#, python-brace-format
+msgctxt "sport"
+msgid "Meditation"
 msgstr ""
 
 #. TRANSLATORS: a sport the program has no name for, by its number in the FIT profile

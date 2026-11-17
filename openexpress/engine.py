@@ -416,8 +416,10 @@ class Engine:
         self._turns_lock = threading.Lock()
         self._account = _Turns()  # account and settings: one at a time
         # What activities.list read of each device's activity files, by unit ID (as
-        # activities.DeviceActivities keeps it): kept while the engine runs, so that a later
-        # call reads only the files that are new or changed, and a cancelled one resumes.
+        # activities.DeviceActivities keeps it), loaded from disk at the first call for the
+        # device and written back after each call that read files (activities.save_summaries):
+        # a later call, or a later engine, reads only the files that are new or changed, and
+        # a cancelled call is resumed.
         self._activities: dict[int, dict] = {}
         self._running: dict[int, tuple[Request, threading.Thread]] = {}
         self._running_lock = threading.Lock()
@@ -1294,11 +1296,17 @@ class Engine:
         st, dev = cli.open_device(self.args_for(a, "activities"))
         if not activities.keeps_activities(dev):
             return {"activities": [], "total": 0, "only_in_backups": 0}
-        found = activities.DeviceActivities(dev, st, self._backups(),
-                                            kept=self._activities.setdefault(dev.unit_id, {}))
+        kept = self._activities.get(dev.unit_id)
+        if kept is None:  # the first call for the device: what was kept on disk
+            kept = self._activities[dev.unit_id] = activities.load_summaries(dev.unit_id)
+        found = activities.DeviceActivities(dev, st, self._backups(), kept=kept)
         found.list_files()
         reading = self._reading_activities(req)
-        read = found.read_next(min(limit, len(found.listing)), reading=reading)
+        try:
+            read = found.read_next(min(limit, len(found.listing)), reading=reading)
+        finally:  # also when it was cancelled: what it read is kept
+            if found.newly_read:
+                activities.save_summaries(dev.unit_id, found)
         reading.done()
         out = []
         for r in read:

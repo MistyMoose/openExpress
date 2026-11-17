@@ -1813,6 +1813,16 @@ def cmd_backup(args) -> int:
     print(ngettext("Copied {count} file ({size}) to {path}",
                    "Copied {count} files ({size}) to {path}", res.files).format(
         count=res.files, size=human_size(res.bytes), path=res.path.name))
+    if res.linked:
+        # TRANSLATORS: an incremental backup: most files were the same as in the previous
+        # backup, so they share its copy on the disk (a hard link) instead of being read again.
+        print("  " + ngettext("{copied} read from the device ({copied_size}), {count} file "
+                              "unchanged since the previous backup ({size}, takes no extra space)",
+                              "{copied} read from the device ({copied_size}), {count} files "
+                              "unchanged since the previous backup ({size}, take no extra space)",
+                              res.linked).format(
+            copied=res.copied, copied_size=human_size(res.copied_bytes), count=res.linked,
+            size=human_size(res.linked_bytes)))
     print("  " + _("in the folder of the device under {folder}").format(folder=dest))
     for p in res.removed:
         print(_("Removed old backup {path}").format(path=p.name))

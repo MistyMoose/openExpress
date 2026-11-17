@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.6\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 18:42+0100\n"
+"POT-Creation-Date: 2026-11-17 18:49+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2439,6 +2439,19 @@ msgstr[1] ""
 #, python-brace-format
 msgid "Copied {count} file ({size}) to {path}"
 msgid_plural "Copied {count} files ({size}) to {path}"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: an incremental backup: most files were the same as in the previous
+#. backup, so they share its copy on the disk (a hard link) instead of being read again.
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"{copied} read from the device ({copied_size}), {count} file unchanged since "
+"the previous backup ({size}, takes no extra space)"
+msgid_plural ""
+"{copied} read from the device ({copied_size}), {count} files unchanged since "
+"the previous backup ({size}, take no extra space)"
 msgstr[0] ""
 msgstr[1] ""
 

@@ -44,9 +44,9 @@ devices that connect over USB (MTP) should work too – reports are welcome.
   on your account can be added from openExpress (experimental).
 - Installs and updates software and free maps (TopoActive, CourseView, Ski…), checked by MD5
   before they are written, and copies maps of your own.
-- Keeps the GPS satellite data of the Forerunner 45 and the fēnix 8 current when they sync,
-  without the phone: it only refreshes the files the watch already keeps, downloaded from
-  Garmin's server without your account or any detail of the watch (experimental, off by
+- Keeps the GPS satellite data of the Forerunner 45, the fēnix 8 and the Edge 1050 current when
+  they sync, without the phone: it only refreshes the files the device already keeps, downloaded
+  from Garmin's server without your account or any detail of the device (experimental, off by
   default).
 - Copies courses from GPX files to the device, which turns them into courses when it is
   unplugged, without Garmin Connect; lists and removes them (experimental).
@@ -185,11 +185,11 @@ changes anything only shows its plan until you add `--apply`. Every command:
   there are shown in the window; the command line can install one only as a trial
   (`openexpress maps install NAME --hidden-folder-trial`), not yet tried on a real device.
   Voices and vehicles Garmin offers to add are not installed.
-- GPS satellite data is written only to watches that already keep it in a format openExpress
-  knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8), and only when
-  **Satellite Data** is turned on for them (experimental); other watches get it from the phone
-  app as before. On a watch that hides these files, such as the fēnix 8, the row appears after
-  the first sync.
+- GPS satellite data is written only to devices that already keep it in a format openExpress
+  knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8, `GPES.bin` of
+  the Edge 1050), and only when **Satellite Data** is turned on for them (experimental); other
+  devices get it from the phone app as before. On a watch that hides these files, such as the
+  fēnix 8, the row appears after the first sync.
 - ECG recordings are not uploaded: they go to Garmin Health, which needs a sign-in of its own. A
   sync leaves them on the device and says how many there are.
 - The privacy-policy consents are not checked before a sync; the upload consent is

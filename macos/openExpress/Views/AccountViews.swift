@@ -55,15 +55,31 @@ struct StravaSection: View {
     @State private var clientID = ""
     @State private var clientSecret = ""
 
+    /// The engine's `strava_upload`: off unless chosen.
+    private var uploadAfterSync: Binding<Bool> {
+        Binding(get: { app.engineSettings["strava_upload"]?.boolValue ?? false },
+                set: { on in Task { await app.setEngineSetting("strava_upload", .bool(on)) } })
+    }
+
     var body: some View {
         @Bindable var app = app
+        let connected = app.strava?.connected == true
         Section {
             LabeledContent("Strava") {
-                Text(app.strava?.connected == true
-                     ? (app.strava?.athlete ?? String(localized: "Connected"))
-                     : String(localized: "Not connected"))
+                Text(connected ? String(localized: "Connected") : String(localized: "Not connected"))
             }
-            if app.strava?.connected == true {
+            if connected {
+                if let athlete = app.strava?.athleteName {
+                    LabeledContent("Athlete", value: athlete)
+                }
+                if let scope = app.strava?.scope, !scope.isEmpty {
+                    LabeledContent("Access") {
+                        Text(scope.replacingOccurrences(of: ",", with: ", "))
+                            .font(.callout.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
                 Button("Disconnect Strava", role: .destructive) { Task { await app.disconnectStrava() } }
             } else {
                 if app.strava?.configured != true {
@@ -78,14 +94,23 @@ struct StravaSection: View {
         } header: {
             Text("Strava")
         } footer: {
-            Text(app.strava?.configured == true
-                 ? "New activities are also sent to Strava when you sync."
-                 : "Create an API application on strava.com/settings/api with “localhost” as its callback domain, then enter its client ID and secret.")
-                .foregroundStyle(.secondary)
+            if app.strava?.configured != true {
+                Text("Create an API application on strava.com/settings/api with “localhost” as its callback domain, then enter its client ID and secret.")
+                    .foregroundStyle(.secondary)
+            }
         }
+        .task { await app.reloadEngineSettings() }
         .sheet(item: Binding(get: { app.stravaAuthorizeURL.map(IdentifiedURL.init) },
                              set: { if $0 == nil { app.stravaAuthorizeURL = nil } })) { item in
             StravaAuthorizeSheet(url: item.url)
+        }
+        if connected {
+            Section {
+                Toggle("Upload new activities after each sync", isOn: uploadAfterSync)
+            } footer: {
+                Text("Leave this off if Garmin Connect already sends your activities to Strava (Strava → Settings → My Apps → Garmin); otherwise every activity reaches Strava twice.")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

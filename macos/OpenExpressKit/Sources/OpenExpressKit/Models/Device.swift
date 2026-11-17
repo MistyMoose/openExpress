@@ -157,13 +157,15 @@ public struct StravaStatus: Codable, Sendable, Hashable {
     public var configured: Bool
     public var connected: Bool
     public var athleteName: String?
+    /// What openExpress may do on Strava, e.g. "read,activity:write".
+    public var scope: String?
     /// `strava.connect` without `code`: the page to open.
     public var authorizeURL: String?
 
     public var athlete: String? { athleteName }
 
     enum CodingKeys: String, CodingKey {
-        case configured, connected, athleteName
+        case configured, connected, athleteName, scope
         case authorizeURL = "authorizeUrl"
     }
 
@@ -179,6 +181,7 @@ public struct StravaStatus: Codable, Sendable, Hashable {
         connected = (try? c.decode(Bool.self, forKey: .connected)) ?? false
         configured = (try? c.decode(Bool.self, forKey: .configured)) ?? connected
         athleteName = try? c.decodeIfPresent(String.self, forKey: .athleteName)
+        scope = try? c.decodeIfPresent(String.self, forKey: .scope)
         authorizeURL = try? c.decodeIfPresent(String.self, forKey: .authorizeURL)
     }
 }

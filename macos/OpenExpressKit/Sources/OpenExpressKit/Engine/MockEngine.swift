@@ -32,6 +32,7 @@ public actor MockEngine: EngineConnection {
     private var settings: [String: JSONValue] = [
         "copy_fit_to": "", "copy_fit_types": "", "environment": "production", "locale": "",
         "backup_dir": "~/Documents/Garmin/Backups", "backup_keep": 3,
+        "strava_upload": false,
     ]
     private var stravaConfigured = false
     /// Devices with a request running: the engine runs one request per device at a time.
@@ -367,7 +368,7 @@ public actor MockEngine: EngineConnection {
     private var stravaStatus: JSONValue {
         ["configured": .bool(stravaConfigured), "connected": .bool(stravaConnected),
          "athlete_id": stravaConnected ? 12345 : .null, "athlete_name": stravaConnected ? "Demo Athlete" : .null,
-         "scope": stravaConnected ? "activity:write" : .null, "expires_at": .null]
+         "scope": stravaConnected ? "read,activity:write,activity:read_all" : .null, "expires_at": .null]
     }
 
     public static let methods = [

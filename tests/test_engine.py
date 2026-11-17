@@ -751,6 +751,17 @@ def test_settings_are_read_and_written_by_the_names_of_setup_s_options(running, 
     assert running.ask("settings.get", {"key": "colour"})["error"]["code"] == "unknown_setting"
 
 
+def test_the_strava_upload_after_a_sync_is_off_until_turned_on_as_setup_s_option_does(running):
+    from openexpress.settings import Settings
+
+    assert running.ask("settings.get", {"key": "strava_upload"})["result"]["value"] is False
+    assert running.ask("settings.set", {"key": "strava_upload", "value": True})[
+        "result"] == {"key": "strava_upload", "value": True}
+    assert Settings.load().strava_upload is True  # the same setting `setup --strava-upload` sets
+    assert running.ask("settings.set", {"key": "strava_upload", "value": "on"})[
+        "error"]["code"] == "invalid_params"
+
+
 def test_strava_methods_are_not_available_without_strava_py(running, monkeypatch):
     monkeypatch.setitem(sys.modules, "openexpress.strava", None)
     assert running.ask("strava.status")["error"]["code"] == "not_available"

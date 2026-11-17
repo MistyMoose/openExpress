@@ -876,6 +876,7 @@ class Engine:
         "diagnostics_copy": ("diagnostics_copy", bool),
         "copy_fit_to": ("copy_fit_to", str),
         "copy_fit_types": ("copy_fit_types", str),
+        "strava_upload": ("strava_upload", bool),
         "backup_dir": (None, str),
         "backup_keep": (None, int),
     }

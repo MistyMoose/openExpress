@@ -174,6 +174,11 @@ struct ModelTests {
         #expect(app.stravaAuthorizeURL?.absoluteString.contains("redirect_uri=\(AppModel.stravaRedirectURI)") == true)
         await app.finishStrava(code: "abc")
         #expect(app.strava?.connected == true)
+        #expect(app.strava?.athleteName == "Demo Athlete")
+        #expect(app.strava?.scope?.contains("activity:write") == true)
+        #expect(app.engineSettings["strava_upload"] == false)        // off unless chosen
+        await app.setEngineSetting("strava_upload", true)
+        #expect(app.engineSettings["strava_upload"] == true)
         #expect(app.stravaAuthorizeURL == nil)
     }
 

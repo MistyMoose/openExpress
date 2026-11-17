@@ -143,7 +143,10 @@ extension EngineConnection {
 
     /// The first read of a device takes a while (every FIT file over MTP); it reports
     /// `progress` with phase `reading_activities`, done/total in files.
-    public func activities(_ unitID: String?, limit: Int? = 200,
+    /// Every activity: the engine keeps their summaries on disk, so only the first read is slow.
+    public static var allActivities: Int { 100_000 }
+
+    public func activities(_ unitID: String?, limit: Int? = Self.allActivities,
                            progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> [Activity] {
         var p: [String: JSONValue] = [:]
         if let unitID { p["device"] = .string(unitID) }

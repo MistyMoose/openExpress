@@ -150,3 +150,26 @@ struct SportSymbolTests {
         #expect(Activity(start: .now, sport: "Sport 99", sportID: 99).systemImage == "figure.mixed.cardio")
     }
 }
+
+@Suite("Activity titles")
+struct ActivityTitleTests {
+    @Test func fileNamesAreNotTitles() {
+        func title(_ name: String?) -> String? {
+            Activity(start: .now, sport: "Running", fitPath: "/b/2026-11-13-10-36-39.fit", name: name).title
+        }
+        #expect(title("2026-11-13-10-36-39.fit") == nil)
+        #expect(title("2026-11-13-10-36-39") == nil)
+        #expect(title("Running") == nil)
+        #expect(title(nil) == nil)
+        #expect(title("Heuvelrug loop") == "Heuvelrug loop")
+        #expect(Activity(start: .now, sport: "Running", fitPath: "/b/x.fit").fileName == "x.fit")
+    }
+
+    @Test func manyActivitiesInTheMock() async throws {
+        let engine = MockEngine(scenario: .many, stepDelay: .milliseconds(0))
+        let list = try await engine.activities(MockEngine.fenixID)
+        #expect(list.count == 280)
+        let request = await engine.calls.last { $0.method == "activities.list" }
+        #expect((request?.params?["limit"]?.intValue ?? 0) >= 280)   // all, not the engine's default 20
+    }
+}

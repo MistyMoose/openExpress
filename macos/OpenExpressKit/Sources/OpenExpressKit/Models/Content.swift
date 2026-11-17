@@ -293,6 +293,22 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
 
     public var id: String { (source ?? "") + ":" + (fitPath ?? start.ISO8601Format()) }
 
+    /// A title worth showing: the engine's `name`, unless that is only the FIT file's name
+    /// ("2026-11-13-10-36-39.fit") or the sport again.
+    public var title: String? {
+        guard let name = name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
+        if name.lowercased().hasSuffix(".fit") || name == sportName { return nil }
+        if name == fileName || name.range(of: #"^\d{4}-\d{2}-\d{2}[-_ T]\d{2}[-_.:]\d{2}"#, options: .regularExpression) != nil {
+            return nil
+        }
+        return name
+    }
+
+    /// The FIT file's name ("2026-11-13-10-36-39.fit").
+    public var fileName: String? {
+        fitPath.map { ($0 as NSString).lastPathComponent }
+    }
+
     /// The FIT file is a file on this Mac (a backup's copy), not one on the device.
     public var isOnThisMac: Bool { source == "backup" }
 

@@ -14,6 +14,8 @@ public actor MockEngine: EngineConnection {
         case signedOut
         /// No devices.
         case empty
+        /// As standard, with 280 activities (a well-used watch).
+        case many
     }
 
     public let scenario: Scenario
@@ -289,7 +291,7 @@ public actor MockEngine: EngineConnection {
                 "  Crystal Face           watch face   2.13    on   (update available)",
             ]]
         case "activities.list":
-            let all = Self.sampleActivities(unit: unit)
+            let all = Self.sampleActivities(unit: unit, count: scenario == .many ? 280 : 24)
             if let unit, !activitiesCached.contains(unit) {
                 // The first read goes through every FIT file on the device.
                 for (i, a) in all.enumerated() {
@@ -298,7 +300,8 @@ public actor MockEngine: EngineConnection {
                                             item: a.start.formatted(date: .abbreviated, time: .omitted))
                     progress?(ev)
                     broadcaster.yield(.progress(ev))
-                    try await Task.sleep(for: stepDelay / 2)
+                    // About as long in all: 24 files at half a step each.
+                    try await Task.sleep(for: stepDelay * 12 / all.count)
                 }
                 activitiesCached.insert(unit)
             }
@@ -308,7 +311,8 @@ public actor MockEngine: EngineConnection {
             // Indoor activities (training, pool swims) have no GPS points.
             if p["fit"]?.stringValue?.contains("-indoor") == true { return ["points": []] }
             try await Task.sleep(for: stepDelay)
-            return try JSONValue(encoding: Self.sampleTrack())
+            // Rides go from A to B; everything else is a loop (start and finish together).
+            return try JSONValue(encoding: Self.sampleTrack(loop: p["fit"]?.stringValue?.contains("-ride") != true))
         case "backups.list":
             return ["backups": .array(try (backups[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) })]
         case "settings.get":
@@ -390,26 +394,31 @@ public actor MockEngine: EngineConnection {
         return f.string(from: date)
     }
 
-    public static func sampleActivities(unit: String? = fenixID) -> [Activity] {
+    public static func sampleActivities(unit: String? = fenixID, count: Int = 24) -> [Activity] {
         // Display names and FIT sport numbers, as the engine sends them.
         let sports: [(String, Int, Double)] = [   // name, sport_id, speed m/s (0: no distance)
             ("Running", 1, 3.1), ("Cycling", 2, 8.1), ("Hiking", 17, 1.3), ("Surfing", 38, 0.4),
             ("Swimming", 5, 0.8), ("Walking", 11, 1.4), ("Training", 10, 0), ("Running", 1, 2.9),
         ]
         let now = Date()
-        return (0..<24).map { i in
+        let stamp = DateFormatter()
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.dateFormat = "yyyy-MM-dd-HH-mm-ss"
+        return (0..<count).map { i in
             let (sport, id, speed) = sports[(i * 5 + 3) % sports.count]
             // 15 min to 2 h 45: short walks to long rides.
             let duration = Double(900 + (i * 1777) % 9000)
             let onDevice = i < 12
+            let start = now.addingTimeInterval(-Double(i) * 86400 * 1.7 - 7200)
+            let file = stamp.string(from: start) + ([10, 5].contains(id) ? "-indoor" : id == 2 ? "-ride" : "") + ".fit"
             return Activity(
-                start: now.addingTimeInterval(-Double(i) * 86400 * 1.7 - 7200),
+                start: start,
                 sport: sport,
                 distance: speed > 0 ? duration * speed : nil,
                 duration: duration,
-                fitPath: (onDevice ? "GARMIN/Activity/2026-\(i)" : "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/2026-\(i)")
-                    + ([10, 5].contains(id) ? "-indoor.fit" : ".fit"),
-                name: "\(sport) \(i)",
+                fitPath: (onDevice ? "GARMIN/Activity/" : "/Users/demo/Documents/Garmin/Backups/\(unit ?? fenixID)/Activity/") + file,
+                // The engine's name is mostly the file's; a few carry a title of their own.
+                name: i % 7 == 2 ? "Heuvelrug loop" : file,
                 ascent: [2, 17, 1].contains(id) ? Double(40 + (i * 37) % 600) : nil,
                 calories: duration / 6,
                 averageHeartRate: id == 38 ? nil : Double(118 + (i * 7) % 40),
@@ -419,11 +428,11 @@ public actor MockEngine: EngineConnection {
         }
     }
 
-    public static func sampleTrack() -> ActivityTrack {
-        // A loop around the Utrechtse Heuvelrug.
+    public static func sampleTrack(loop: Bool = true) -> ActivityTrack {
+        // A loop around the Utrechtse Heuvelrug, or (not a loop) its first half, A to B.
         let n = 240
         return ActivityTrack(points: (0..<n).map { i in
-            let t = Double(i) / Double(n) * 2 * .pi
+            let t = Double(i) / Double(n) * (loop ? 2 : 1) * .pi
             let lat = 52.06 + 0.018 * sin(t) + 0.004 * sin(3 * t)
             let lon = 5.30 + 0.03 * cos(t) + 0.005 * cos(5 * t)
             return .init(latitude: lat, longitude: lon, time: Double(i) * 15,

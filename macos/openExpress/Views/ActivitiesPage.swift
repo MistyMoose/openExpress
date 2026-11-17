@@ -12,6 +12,8 @@ struct ActivitiesPage: View {
     /// Columns the user can hide from the header's menu; Ascent and Avg HR make room while
     /// the inspector is open.
     @State private var columns = TableColumnCustomization<Activity>()
+    /// The columns hidden to fit the width (see `fitColumns`).
+    @State private var hiddenColumns: Set<String> = []
 
     private var all: [Activity] { model.activities ?? [] }
 
@@ -41,6 +43,10 @@ struct ActivitiesPage: View {
                         }
                     } else {
                         table
+                            // Only the columns that fit: no clipped number, no sideways scroller.
+                            // A new set of columns lays the table out afresh at their widths.
+                            .id(hiddenColumns)
+                            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { fitColumns(to: $0) }
                     }
                 }
                 // The sport is the main filter: a scope bar on top, the totals below.
@@ -80,10 +86,6 @@ struct ActivitiesPage: View {
         .onChange(of: selection) { _, new in
             if new != nil { showsInspector = true }
         }
-        .onChange(of: showsInspector) { _, open in
-            columns[visibility: "ascent"] = open ? .hidden : .automatic
-            columns[visibility: "hr"] = open ? .hidden : .automatic
-        }
         .inspector(isPresented: $showsInspector) {
             Group {
                 if let selected {
@@ -94,7 +96,7 @@ struct ActivitiesPage: View {
                                            description: Text("Select an activity to see its route."))
                 }
             }
-            .inspectorColumnWidth(min: 300, ideal: 360, max: 520)
+            .inspectorColumnWidth(min: 300, ideal: 340, max: 520)
             .toolbar {
                 ToolbarItem {
                     Button("Details", systemImage: "sidebar.trailing") { showsInspector.toggle() }
@@ -148,6 +150,33 @@ struct ActivitiesPage: View {
         }
     }
 
+    /// Column widths as the table lays them out (their ideal widths, in points) and the order
+    /// the less important ones give way in.
+    private static let columnWidth: [String: CGFloat] = [
+        "sport": 140, "date": 165, "distance": 88, "duration": 84, "ascent": 72, "hr": 64,
+    ]
+    private static let givesWay = ["hr", "ascent", "date"]
+
+    /// Hides Avg HR, then Ascent, then Date when the table is too narrow for them (the
+    /// inspector open in a small window), and shows them again when there is room.
+    private func fitColumns(to width: CGFloat) {
+        // Cell spacing per column; the row insets and the vertical scroller.
+        let spacing: CGFloat = 17, margins: CGFloat = 44
+        var visible = ["sport", "date", "distance", "duration", "ascent", "hr"]
+        func needed() -> CGFloat {
+            visible.reduce(margins) { $0 + (Self.columnWidth[$1] ?? 60) + spacing }
+        }
+        for id in Self.givesWay where needed() > width {
+            visible.removeAll { $0 == id }
+        }
+        let hidden = Set(Self.givesWay.filter { !visible.contains($0) })
+        guard hidden != hiddenColumns else { return }
+        for id in Self.givesWay {
+            columns[visibility: id] = hidden.contains(id) ? .hidden : .automatic
+        }
+        hiddenColumns = hidden
+    }
+
     private func resetSearch() {
         search = ""
     }
@@ -164,31 +193,31 @@ struct ActivitiesPage: View {
             TableColumn("Sport", value: \.sportName) { a in
                 SportLabel(activity: a)
             }
-            .width(min: 120, ideal: 140)
+            .width(min: 110, ideal: 140)
             .customizationID("sport")
             .disabledCustomizationBehavior(.visibility)
             TableColumn("Date", value: \.start) { a in
                 Text(a.start.formatted(date: .abbreviated, time: .shortened))
                     .monospacedDigit()
             }
-            .width(min: 140, ideal: 160)
+            .width(min: 150, ideal: 165)
             .customizationID("date")
             TableColumn("Distance", value: \.distance.sortKey) { a in
                 NumberCell(text: a.distance.map(Format.distance))
             }
-            .width(min: 70, ideal: 84)
+            .width(min: 80, ideal: 88)
             .alignment(.trailing)
             .customizationID("distance")
             TableColumn("Duration", value: \.duration.sortKey) { a in
                 NumberCell(text: a.duration.map(Format.duration))
             }
-            .width(min: 64, ideal: 76)
+            .width(min: 76, ideal: 84)
             .alignment(.trailing)
             .customizationID("duration")
             TableColumn("Ascent", value: \.ascent.sortKey) { a in
                 NumberCell(text: a.ascent.map(Format.elevation))
             }
-            .width(min: 60, ideal: 70)
+            .width(min: 64, ideal: 72)
             .alignment(.trailing)
             .customizationID("ascent")
             TableColumn("Avg HR", value: \.averageHeartRate.sortKey) { a in
@@ -262,9 +291,13 @@ struct ActivityDetailView: View {
                         .background(.tint.quaternary, in: .rect(cornerRadius: 9))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(activity.sportName)
+                        // A title of its own when the activity has one, else the sport.
+                        Text(activity.title ?? activity.sportName)
                             .font(.title3.weight(.semibold))
-                        Text(activity.start.formatted(date: .complete, time: .shortened))
+                            .lineLimit(2)
+                        Text(activity.title == nil
+                             ? activity.start.formatted(date: .complete, time: .shortened)
+                             : "\(activity.sportName) · \(activity.start.formatted(date: .long, time: .shortened))")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -310,9 +343,6 @@ struct ActivityDetailView: View {
                 if let c = activity.calories {
                     LabeledContent("Calories", value: String(localized: "\(c.formatted(.number.precision(.fractionLength(0)))) kcal"))
                 }
-                if let name = activity.name, name != activity.sportName {
-                    LabeledContent("Name", value: name)
-                }
             }
             .monospacedDigit()
 
@@ -354,14 +384,28 @@ struct ActivityDetailView: View {
                 }
             }
 
-            if let path = activity.fitPath, activity.isOnThisMac {
+            if let path = activity.fitPath, let file = activity.fileName {
                 Section {
-                    if FileManager.default.fileExists(atPath: path) {
-                        Button("Show FIT File in Finder") {
-                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                    // Quiet: the file it was read from, and where to find a backup's copy.
+                    LabeledContent("File") {
+                        HStack(spacing: 6) {
+                            Text(file)
+                                .font(.callout.monospaced())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                            if activity.isOnThisMac, FileManager.default.fileExists(atPath: path) {
+                                Button("Show in Finder", systemImage: "magnifyingglass.circle") {
+                                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                                }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .help("Show the FIT file in Finder")
+                            }
                         }
                     }
-                    if app.strava?.connected == true, app.supports("strava.upload") {
+                    if activity.isOnThisMac, app.strava?.connected == true, app.supports("strava.upload") {
                         Button(stravaSent ? "Sent to Strava" : "Send to Strava") {
                             Task {
                                 stravaSent = (try? await app.engine.stravaUpload(files: [path]))?["failed"]?.intValue == 0
@@ -388,23 +432,52 @@ struct RouteMap: View {
         track.points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
     }
 
+    /// Start and finish within 50 m of each other: one start/finish marker.
+    private var isLoop: Bool {
+        guard let a = coordinates.first, let b = coordinates.last, coordinates.count > 1 else { return true }
+        return CLLocation(latitude: a.latitude, longitude: a.longitude)
+            .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude)) < 50
+    }
+
+    /// The route with room around it: more at the bottom, where the attribution is, so the
+    /// markers and the route never touch it.
+    private var camera: MapCameraPosition {
+        guard !coordinates.isEmpty else { return .automatic }
+        let points = coordinates.map(MKMapPoint.init)
+        let minX = points.map(\.x).min()!, maxX = points.map(\.x).max()!
+        let minY = points.map(\.y).min()!, maxY = points.map(\.y).max()!
+        let w = max(maxX - minX, 200), h = max(maxY - minY, 200)
+        // Map y grows southwards: the bottom gets the larger margin.
+        let rect = MKMapRect(x: minX - w * 0.15, y: minY - h * 0.18, width: w * 1.3, height: h * 1.48)
+        return .rect(rect)
+    }
+
     var body: some View {
-        Map(initialPosition: .automatic, interactionModes: [.pan, .zoom]) {
+        Map(initialPosition: camera, interactionModes: [.pan, .zoom]) {
             MapPolyline(coordinates: coordinates)
                 .stroke(.orange, style: StrokeStyle(lineWidth: contrast == .increased ? 6 : 4,
                                                     lineCap: .round, lineJoin: .round))
             if let first = coordinates.first {
-                Marker("Start", systemImage: "flag.fill", coordinate: first)
-                    .tint(.green)
-            }
-            if let last = coordinates.last, coordinates.count > 1 {
-                Marker("Finish", systemImage: "flag.checkered", coordinate: last)
-                    .tint(.red)
+                if isLoop {
+                    // Markers without text over the map; VoiceOver still reads their titles.
+                    Marker("Start and finish", systemImage: "flag.checkered", coordinate: first)
+                        .tint(.green)
+                        .annotationTitles(.hidden)
+                } else {
+                    Marker("Start", systemImage: "flag.fill", coordinate: first)
+                        .tint(.green)
+                        .annotationTitles(.hidden)
+                    if let last = coordinates.last {
+                        Marker("Finish", systemImage: "flag.checkered", coordinate: last)
+                            .tint(.red)
+                            .annotationTitles(.hidden)
+                    }
+                }
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .mapControls { MapZoomStepper(); MapCompass() }
-        .accessibilityLabel("Route map")
+        .accessibilityLabel(isLoop ? "Route map, a loop" : "Route map")
     }
 }
 
@@ -487,6 +560,13 @@ struct SportScopeBar: View {
     @Binding var filter: ActivityFilter
     let activities: [Activity]
 
+    @State private var fade = EdgeFade(leading: false, trailing: false)
+
+    struct EdgeFade: Equatable {
+        var leading: Bool
+        var trailing: Bool
+    }
+
     private var counts: [(sport: String, count: Int)] { filter.sportCounts(in: activities) }
 
     var body: some View {
@@ -517,6 +597,20 @@ struct SportScopeBar: View {
                 .padding(.vertical, 7)
             }
             .scrollIndicators(.never)
+            // A soft fade at an edge with more sports beyond it.
+            .onScrollGeometryChange(for: EdgeFade.self) { g in
+                EdgeFade(leading: g.contentOffset.x > 1,
+                         trailing: g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1)
+            } action: { _, new in fade = new }
+            .mask {
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [.black.opacity(fade.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 28)
+                    Rectangle()
+                    LinearGradient(colors: [.black, .black.opacity(fade.trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 28)
+                }
+            }
             Divider()
         }
         .background(.bar)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 11:49+0100\n"
+"POT-Creation-Date: 2026-11-18 11:53+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5250,6 +5250,16 @@ msgid ""
 "To report it, run openexpress report."
 msgstr ""
 
+#: openexpress/device/found.py
+#, python-brace-format
+msgid "Several devices connected, choose one with --device-uri: {names}"
+msgstr ""
+
+#: openexpress/device/found.py
+#, ignore-reused, python-brace-format
+msgid "The device is starting…"
+msgstr ""
+
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "the Flatpak is missing the permission to copy files to the device"
@@ -5452,16 +5462,6 @@ msgstr ""
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "The device is starting. Try again in a moment."
-msgstr ""
-
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, ignore-reused, python-brace-format
-msgid "The device is starting…"
-msgstr ""
-
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, python-brace-format
-msgid "Several devices connected, choose one with --device-uri: {names}"
 msgstr ""
 
 #: openexpress/device/gio_storage.py

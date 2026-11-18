@@ -58,9 +58,11 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     files_not_offered_text,
     mass_storage_text,
     no_device_text,
+    one_device,
     place_of,
     unsupported_device_text,
     usb_place,
+    wait_for_device,
 )
 from openexpress.device.storage import (  # noqa: E402
     CopyNotStarted,
@@ -73,7 +75,6 @@ from openexpress.device.storage import (  # noqa: E402
     UmsStorage,
     connection,
 )
-from openexpress.errors import OrdinaryStop  # noqa: E402
 from openexpress.i18n import _, caption, pgettext  # noqa: E402
 from openexpress.paths import host_command, in_flatpak  # noqa: E402
 from openexpress.progress import refreshing_text, say_to  # noqa: E402
@@ -1882,93 +1883,27 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
     """Return the device storage that contains GARMIN/GarminDevice.xml; raises DeviceError
     (NotThereYet, SeveralDevices, MassStorageNotice) when there is none to open. With `wait`,
     a Garmin device on USB but not offered by gvfs yet is waited for up to WAIT_FOR_DEVICE_S,
-    and `notify` is called once with a line saying so."""
-    started = clock()
-    deadline = started + WAIT_FOR_DEVICE_S
-    told = False
-    gone_since = None  # when a device we were waiting for left the bus
-    seen = None  # the last USB state written to the log
-    while True:
-        try:
-            st = _open_device_storage(uri)
-            log.info("device: opened over MTP after %.1f s (USB %s)", clock() - started,
-                     st.usb_id or "?")
-            return st
-        except (SeveralDevices, DeviceNotResponding):
-            raise  # a stall: each try would wait for the same blocked device
-        except DeviceError as e:
-            state = usb_state()
-            if state != seen:
-                # ABSENT: no Garmin on USB; STARTING: 091e:0003; PRESENT: on USB, not mounted;
-                # MASS_STORAGE: only Garmin devices in mass storage mode; DRIVE_OFF: 091e:0003
-                # where a Garmin drive was.
-                log.info("device: not available after %.1f s, USB state: %s (%s), waiting: %s",
-                         clock() - started, state,
-                         ", ".join(f"091e:{p}" for p in garmin_products_on_usb()) or "-", wait)
-                seen = state
-            if state == DRIVE_OFF and isinstance(e, NotThereYet):
-                # In Garmin USB mode after it was ejected: only plugging it in again helps.
-                raise MassStorageNotice(not_ready_text(state)) from e
-            if state == UNSUPPORTED and isinstance(e, NotThereYet):
-                # Neither MTP nor a drive that stays: nothing to wait for.
-                raise UnsupportedDevice(unsupported_text(window=False)) from e
-            # Without a Garmin device on USB (in its normal mode) there is nothing to wait for.
-            if state in (ABSENT, MASS_STORAGE):
-                if wait and told:
-                    # A device we were waiting for left the bus: unplugged, or between modes.
-                    # It has USB_GAP_S to come back before it counts as unplugged.
-                    if gone_since is None:
-                        gone_since = clock()
-                    if clock() - gone_since < USB_GAP_S and clock() < deadline:
-                        sleep(1)
-                        continue
-                if state == MASS_STORAGE and isinstance(e, NotThereYet):
-                    raise MassStorageNotice(not_ready_text(state)) from e
-                if state == ABSENT and isinstance(e, NotThereYet) \
-                        and not isinstance(e, OrdinaryStop):
-                    raise NoDevice(str(e)) from e
-                raise
-            gone_since = None
-            if state == PRESENT and mtp_missing():
-                # gvfs here has no MTP backend: the device is never offered, so it is not
-                # waited for.
-                raise NotThereYet(no_mtp_text()) from e
-            if not wait:
-                if isinstance(e, NotThereYet) and state == STARTING:
-                    raise NotThereYet(_("The device is starting. Try again in a moment.")) from e
-                raise
-            if clock() >= deadline:
-                if isinstance(e, NotThereYet):
-                    text = not_ready_text(state)
-                    if state == PRESENT:
-                        text = f"{text} {held_elsewhere_text()}"
-                    raise NotThereYet(text) from e
-                if state == PRESENT:
-                    # On USB in its normal mode, never mounted (gvfs could not open it: another
-                    # program may hold it): the error, then the window's sentence about that.
-                    said = str(e).rstrip()
-                    raise DeviceError(f"{said}{'' if said.endswith('.') else '.'} "
-                                      f"{held_elsewhere_text()}") from e
-                raise
-            if not told and notify is not None:
-                notify(_("The device is starting…"))
-            told = True
-            sleep(1)
+    and `notify` is called once with a line saying so (found.wait_for_device). gvfs without
+    its MTP backend never offers a device, and one not offered when the wait ran out may be
+    held by KDE's MTP service."""
+    return wait_for_device(
+        lambda: _open_device_storage(uri), usb_state=usb_state, products=garmin_products_on_usb,
+        not_ready_text=not_ready_text, starting_text=_starting_text, log=log, over="MTP",
+        wait=wait, notify=notify, sleep=sleep, clock=clock,
+        never_offered=lambda: no_mtp_text() if mtp_missing() else None,
+        held_elsewhere=held_elsewhere_text)
+
+
+def _starting_text() -> str:
+    return _("The device is starting. Try again in a moment.")
 
 
 def _open_device_storage(uri: str | None) -> GioStorage:
     usb = None
     if uri is None:
-        devices = find_devices()
-        if not devices:
-            raise NotThereYet(not_ready_text(ABSENT))
-        if len(devices) > 1:
-            names = ", ".join(d.uri for d in devices)
-            raise SeveralDevices(
-                _("Several devices connected, choose one with --device-uri: {names}")
-                .format(names=names), devices)
-        mount(devices[0])
-        uri, usb = devices[0].uri, devices[0].usb
+        device = one_device(find_devices())
+        mount(device)
+        uri, usb = device.uri, device.usb
     else:
         usb = _identify(uri, None)
     return _mtp_storage(uri, usb)

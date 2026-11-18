@@ -7,11 +7,13 @@ mac_storage); gio_storage gives the same names, for what imports them from there
 
 from __future__ import annotations
 
+import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from openexpress.device import ptp
-from openexpress.device.storage import DeviceError
+from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import OrdinaryStop
 from openexpress.i18n import _, pgettext
 
@@ -226,6 +228,109 @@ def unsupported_device_text(name: str | None, usb_id: str) -> str:
     return _("openExpress works with devices that connect as a media device (MTP) or a USB "
              "drive. This one uses a different connection. Connected: {name} (USB {id}). To "
              "report it, run openexpress report.").format(name=name, id=usb_id)
+
+
+# --- opening one -----------------------------------------------------------------------------
+
+def one_device(devices: list[FoundDevice]) -> FoundDevice:
+    """The device found where none was named: NotThereYet when there is none, SeveralDevices
+    when there are more."""
+    if not devices:
+        raise NotThereYet(no_device_text())
+    if len(devices) > 1:
+        names = ", ".join(d.uri for d in devices)
+        raise SeveralDevices(
+            _("Several devices connected, choose one with --device-uri: {names}")
+            .format(names=names), devices)
+    return devices[0]
+
+
+def wait_for_device(open_once: Callable[[], Storage], *, usb_state: Callable[[], str],
+                    products: Callable[[], list[str]], not_ready_text: Callable[[str], str],
+                    starting_text: Callable[[], str], log: logging.Logger, over: str,
+                    wait: bool, notify, sleep, clock,
+                    never_offered: Callable[[], str | None] | None = None,
+                    held_elsewhere: Callable[[], str] | None = None) -> Storage:
+    """open_once() tried until it gives the storage of a device. Its errors are said by the
+    USB state (usb_state(); products(): the Garmin product IDs on USB) as NotThereYet,
+    NoDevice, MassStorageNotice or UnsupportedDevice, in not_ready_text's words;
+    SeveralDevices, DeviceNotResponding and DeviceInUse are raised at once. With `wait`, a
+    Garmin device on USB that is not offered yet is waited for up to WAIT_FOR_DEVICE_S, and
+    `notify` is called once with a line saying so; without, starting_text() says a device in
+    its transitional mode.
+
+    What only one system has: never_offered(), asked of a device in its normal mode
+    (PRESENT): the words when such a device is never offered here (nothing to wait for), else
+    None; held_elsewhere(): the sentence added when the wait for such a device ran out. One
+    line in `log` when the device is opened (`over`: how) and when the USB state changes."""
+    started = clock()
+    deadline = started + WAIT_FOR_DEVICE_S
+    told = False
+    gone_since = None  # when a device we were waiting for left the bus
+    seen = None  # the last USB state written to the log
+    while True:
+        try:
+            st = open_once()
+            log.info("device: opened over %s after %.1f s (USB %s)", over, clock() - started,
+                     st.usb_id or "?")
+            return st
+        except (SeveralDevices, DeviceNotResponding, DeviceInUse):
+            raise  # nothing waiting would change (a stall: each try would wait for it again)
+        except DeviceError as e:
+            state = usb_state()
+            if state != seen:
+                # ABSENT: no Garmin on USB; STARTING: 091e:0003; PRESENT: on USB, not offered;
+                # MASS_STORAGE: only Garmin devices in mass storage mode; DRIVE_OFF: 091e:0003
+                # where a Garmin drive was.
+                log.info("device: not available after %.1f s, USB state: %s (%s), waiting: %s",
+                         clock() - started, state,
+                         ", ".join(f"091e:{p}" for p in products()) or "-", wait)
+                seen = state
+            if state == DRIVE_OFF and isinstance(e, NotThereYet):
+                # In Garmin USB mode after it was ejected: only plugging it in again helps.
+                raise MassStorageNotice(not_ready_text(state)) from e
+            if state == UNSUPPORTED and isinstance(e, NotThereYet):
+                # Neither MTP nor a drive that stays: nothing to wait for.
+                raise UnsupportedDevice(not_ready_text(state)) from e
+            # Without a Garmin device on USB (in its normal mode) there is nothing to wait for.
+            if state in (ABSENT, MASS_STORAGE):
+                if wait and told:
+                    # A device we were waiting for left the bus: unplugged, or between modes.
+                    # It has USB_GAP_S to come back before it counts as unplugged.
+                    if gone_since is None:
+                        gone_since = clock()
+                    if clock() - gone_since < USB_GAP_S and clock() < deadline:
+                        sleep(1)
+                        continue
+                if state == MASS_STORAGE and isinstance(e, NotThereYet):
+                    raise MassStorageNotice(not_ready_text(state)) from e
+                if state == ABSENT and isinstance(e, NotThereYet) \
+                        and not isinstance(e, OrdinaryStop):
+                    raise NoDevice(str(e)) from e
+                raise
+            gone_since = None
+            never = never_offered() if state == PRESENT and never_offered else None
+            if never is not None:
+                raise NotThereYet(never) from e
+            if not wait:
+                if isinstance(e, NotThereYet) and state == STARTING:
+                    raise NotThereYet(starting_text()) from e
+                raise
+            if clock() >= deadline:
+                held = held_elsewhere() if state == PRESENT and held_elsewhere else None
+                if isinstance(e, NotThereYet):
+                    text = not_ready_text(state)
+                    raise NotThereYet(f"{text} {held}" if held else text) from e
+                if held:
+                    # On USB in its normal mode, never offered (another program may hold it):
+                    # the error, then the sentence about that.
+                    said = str(e).rstrip()
+                    raise DeviceError(f"{said}{'' if said.endswith('.') else '.'} {held}") from e
+                raise
+            if not told and notify is not None:
+                notify(_("The device is starting…"))
+            told = True
+            sleep(1)
 
 
 # --- a short look at a device found, for a list to choose from -----------------------------

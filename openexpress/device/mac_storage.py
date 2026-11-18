@@ -56,9 +56,11 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     files_not_offered_text,
     mass_storage_text,
     no_device_text,
+    one_device,
     place_of,
     unsupported_device_text,
     usb_place,
+    wait_for_device,
 )
 from openexpress.device.storage import (
     CopyNotStarted,
@@ -69,7 +71,6 @@ from openexpress.device.storage import (
     UmsStorage,
     entry_named,
 )
-from openexpress.errors import OrdinaryStop
 from openexpress.i18n import _, pgettext
 from openexpress.platform import mac_usb
 
@@ -565,73 +566,21 @@ def not_ready_text(state: str) -> str:
 
 def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
                         sleep=time.sleep, clock=time.monotonic) -> MacStorage:
-    """The storage of the device that has GARMIN/GarminDevice.xml, as gio_storage opens one:
-    raises DeviceError (NotThereYet, SeveralDevices, MassStorageNotice, UnsupportedDevice,
-    NoDevice, DeviceInUse) when there is none to open. With `wait`, a Garmin device
-    on USB that does not offer MTP yet (its Garmin USB mode) is waited for up to
-    WAIT_FOR_DEVICE_S, and `notify` is called once with a line saying so."""
-    started = clock()
-    deadline = started + WAIT_FOR_DEVICE_S
-    told = False
-    gone_since = None
-    seen = None
-    while True:
-        try:
-            st = _open_device_storage(uri)
-            log.info("device: opened over USB after %.1f s (USB %s)", clock() - started,
-                     st.usb_id or "?")
-            return st
-        except (SeveralDevices, DeviceNotResponding, DeviceInUse):
-            raise  # nothing that waiting would change
-        except DeviceError as e:
-            state = usb_state()
-            if state != seen:
-                log.info("device: not available after %.1f s, USB state: %s (%s), waiting: %s",
-                         clock() - started, state,
-                         ", ".join(f"091e:{p}" for p in garmin_products_on_usb()) or "-", wait)
-                seen = state
-            if state == UNSUPPORTED and isinstance(e, NotThereYet):
-                raise UnsupportedDevice(not_ready_text(state)) from e
-            if state in (ABSENT, MASS_STORAGE):
-                if wait and told:
-                    # A device we were waiting for left the bus: between modes, or unplugged.
-                    if gone_since is None:
-                        gone_since = clock()
-                    if clock() - gone_since < USB_GAP_S and clock() < deadline:
-                        sleep(1)
-                        continue
-                if state == MASS_STORAGE and isinstance(e, NotThereYet):
-                    raise MassStorageNotice(not_ready_text(state)) from e
-                if state == ABSENT and isinstance(e, NotThereYet) \
-                        and not isinstance(e, OrdinaryStop):
-                    raise NoDevice(str(e)) from e
-                raise
-            gone_since = None
-            if not wait:
-                if isinstance(e, NotThereYet) and state == STARTING:
-                    raise NotThereYet(garmin_mode_text()) from e
-                raise
-            if clock() >= deadline:
-                if isinstance(e, NotThereYet):
-                    raise NotThereYet(not_ready_text(state)) from e
-                raise
-            if not told and notify is not None:
-                notify(_("The device is starting…"))
-            told = True
-            sleep(1)
+    """The storage of the device that has GARMIN/GarminDevice.xml, as gio_storage opens one
+    (found.wait_for_device): raises DeviceError (NotThereYet, SeveralDevices,
+    MassStorageNotice, UnsupportedDevice, NoDevice, DeviceInUse) when there is none to open.
+    With `wait`, a Garmin device on USB that does not offer MTP yet (its Garmin USB mode) is
+    waited for up to WAIT_FOR_DEVICE_S, and `notify` is called once with a line saying so."""
+    return wait_for_device(
+        lambda: _open_device_storage(uri), usb_state=usb_state, products=garmin_products_on_usb,
+        not_ready_text=not_ready_text, starting_text=garmin_mode_text, log=log, over="USB",
+        wait=wait, notify=notify, sleep=sleep, clock=clock)
 
 
 def _open_device_storage(uri: str | None) -> MacStorage:
     found = find_devices()
     if uri is None:
-        if not found:
-            raise NotThereYet(not_ready_text(ABSENT))
-        if len(found) > 1:
-            names = ", ".join(d.uri for d in found)
-            raise SeveralDevices(
-                _("Several devices connected, choose one with --device-uri: {names}")
-                .format(names=names), found)
-        return open_found(found[0])
+        return open_found(one_device(found))
     place = place_of(uri)
     if place is None:
         # TRANSLATORS: macOS: --device-uri was given an address of another form; {example}

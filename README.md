@@ -1,281 +1,182 @@
 <p align="center">
-  <img src="openexpress/data/io.github.tomaszbojanowski.OpenExpress.svg" width="128" alt="openExpress icon">
+  <img src="openexpress/data/io.github.tomaszbojanowski.OpenExpress.svg" width="128" alt="openExpress for Mac icon">
 </p>
 
-<h1 align="center">openExpress</h1>
-
-> [!NOTE]
-> **This is openExpress for Mac**, the macOS edition of
-> [openExpress](https://github.com/TomaszBojanowski/openExpress): a native app for Apple Silicon
-> Macs that replaces Garmin Express, built on openExpress's engine with a SwiftUI app on top.
-> Install it with `openExpress-for-Mac-<version>.pkg` (Apple silicon, macOS 26 or later, nothing else
-> needed). Status, setup, building the package and how it differs: **[docs/macos.md](docs/macos.md)**. Everything below is
-> upstream's README and describes the Linux app. Not affiliated with Garmin.
+<h1 align="center">openExpress for Mac</h1>
 
 <p align="center">
-  An unofficial Linux app for Garmin watches and bike computers: sync with Garmin Connect,
-  software updates, maps, Connect IQ apps and music over USB.
-  <br><a href="https://openexpress.bojanowski.me">openexpress.bojanowski.me</a>
+  A native Mac app for Garmin watches and bike computers: sync with Garmin Connect, backups,
+  activities, software updates, maps and Connect IQ apps over USB.
 </p>
 
 <p align="center">
-  <a href="https://github.com/TomaszBojanowski/openExpress/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/TomaszBojanowski/openExpress?label=release&cacheSeconds=3600"></a>
+  <a href="https://github.com/bruring/openExpress-mac/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/bruring/openExpress-mac?include_prereleases&label=release&cacheSeconds=3600"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue"></a>
-  <a href="https://the5krunner.com/2026/10/17/openexpress-garmin-express-linux/"><img alt="Featured in the5krunner" src="https://img.shields.io/badge/featured%20in-the5krunner-orange"></a>
+  <a href="https://the5krunner.com/2026/10/17/openexpress-garmin-express-linux/"><img alt="openExpress featured in the5krunner" src="https://img.shields.io/badge/openExpress%20featured%20in-the5krunner-orange"></a>
 </p>
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/activity.png">
-    <img alt="openExpress – the page of a hike: its track on a map coloured by elevation, and its elevation profile" src="docs/screenshots/activity-light.png" width="800">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac/activities.png">
+    <img alt="openExpress for Mac – the Activities page: a list of activities with sport, date, distance, duration, ascent and heart rate, and the selected one's route on a map with its elevation and heart-rate charts" src="docs/screenshots/mac/activities-light.png" width="800">
   </picture>
 </p>
 
-> **openExpress is not affiliated with, endorsed by or supported by Garmin Ltd.**
-> Garmin, fēnix, Garmin Connect and Garmin Express are trademarks of Garmin Ltd. or its
-> subsidiaries. openExpress talks to the same Garmin services as the official Windows/macOS
-> app; Garmin may change them at any time. Use at your own risk.
+openExpress for Mac is the macOS edition of
+[openExpress](https://github.com/TomaszBojanowski/openExpress) by Tomasz Bojanowski. It is a
+SwiftUI app for Apple silicon Macs, built on openExpress's engine, and does what you would use
+Garmin Express for – without Garmin Express, which on the Mac is an Intel-only app that runs
+under Rosetta 2.
 
-## What it is
+> **Not affiliated with, endorsed by or supported by Garmin Ltd.**
+> Garmin, fēnix, Edge, Garmin Connect, Garmin Express and Connect IQ are trademarks of Garmin
+> Ltd. or its subsidiaries. openExpress talks to the same Garmin services as the official app;
+> Garmin may change them at any time. Use at your own risk.
 
-Garmin Express exists only for Windows and macOS. openExpress is an independent implementation for
-Linux with its own code: how the Garmin services and the device's files work was learned by
-analysing the official application, solely to interoperate with them. It contains no Garmin code;
-the application key, its secret and the value that signs download addresses are read from **your
-own copy** of the official installer during setup.
+## What it does
 
-**Status:** beta. The main features work and are tested on the devices below; other Garmin
-devices that connect over USB (MTP) should work too – reports are welcome.
+- **Sync with Garmin Connect.** New activities and other data on the device are uploaded;
+  what Garmin Connect has queued for the device (workouts, courses and other files) is
+  written to it. The first sync asks whether to upload everything still on
+  the device or only what it records from now on; activities Garmin Connect already has are
+  recognised.
+- **Backups on your Mac.** A copy of the device's files in a folder you choose, keeping the
+  newest backups you ask for. Backups are incremental: a file unchanged since the previous
+  backup is linked rather than copied again, so several backups cost little extra space.
+- **Activities.** The activities on the device, filtered by sport, date, distance and
+  duration, with distance, duration, ascent, average heart rate and calories.
+  Each has its route on a map and elevation and heart-rate charts.
+- **Software updates** for the device, including beta versions it is offered (installed only
+  when you choose them one by one). An update is copied to the device, which installs it once
+  you unplug it. Nothing is ever installed without asking.
+- **Maps.** Install, update and remove Garmin's free maps for the device; maps of your own on
+  it are listed.
+- **Connect IQ apps.** The apps, watch faces and data fields on the device by kind, its free
+  slots and memory, available updates, and the apps on your Garmin account that are not on the
+  device.
+- **In the background.** A menu bar item, notifications, and (optional) an automatic backup
+  and sync whenever a device is connected. Software and map updates are only checked
+  automatically, never installed.
+- **FIT drop folder** (optional): after each sync, new activity files are copied to a folder of
+  your choice for other apps to pick up.
+- **Strava** (optional): upload new activities after each sync with your own Strava API
+  application. Leave it off if Garmin Connect already sends your activities to Strava.
+- **Keeps the Mac awake** while it works with the device, so a long backup or map install is
+  not cut off by idle sleep.
 
-- Syncs with Garmin Connect: new activities, sleep, HRV and other data go up; courses, workouts
-  and Connect IQ apps queued in Garmin Connect come down to the device; TrueUp. A device not yet
-  on your account can be added from openExpress (experimental).
-- Installs and updates software and free maps (TopoActive, CourseView, Ski…), checked by MD5
-  before they are written, and copies maps of your own.
-- Keeps the GPS satellite data of the Forerunner 45, the fēnix 8 and the Edge 1050 current when
-  they sync, without the phone: it only refreshes the files the device already keeps, downloaded
-  from Garmin's server without your account or any detail of the device (experimental, off by
-  default).
-- Copies courses from GPX files to the device, which turns them into courses when it is
-  unplugged, without Garmin Connect; lists and removes them (experimental).
-- Installs, updates and removes Connect IQ apps, turns them on or off and puts them back in
-  order – also on watches that hide their app folder, such as the fēnix 8.
-- Copies music, podcasts and audiobooks, with playlists.
-- Shows the activities of the device and of its backups, each on its own page: the track on a
-  map coloured by heart rate, pace or elevation (streets from OpenStreetMap once you turn them
-  on), charts, laps, heart rate zones, training effect and details. Exports them as GPX.
-- Shows what any FIT file holds, and what a sync will write to the device.
-- Shows what needs attention on the device: its crashes, its software updates and what takes
-  its space; frees up space taken by older memory dumps and updates it did not install.
-- Makes backups of the device and keeps copies of its diagnostic files on this computer.
-- Shows and sets the primary training device and the primary wearable.
-- Works in a GTK 4 / libadwaita window, on the command line and in the background.
-- Sends no telemetry. Translated on Hosted Weblate ([Help translate](#help-translate)).
+Garmin Express must not be running: it holds the device while it runs. openExpress for Mac
+says so when it finds the device in use, and never quits other apps for you.
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/courses.png">
-    <img alt="The Courses page: four courses on a fēnix 8, two copied by openExpress and one from Garmin Connect, a GPX file waiting for the watch to be unplugged and its saved locations" src="docs/screenshots/courses-light.png" width="700">
-  </picture>
-</p>
+## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/activities.png" width="700"
-       alt="The Activities page: activities of a fēnix 8 with their sport, time, distance and ascent">
-</p>
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac/overview.png">
+        <img alt="The Overview page of a fēnix 8: its software with an update available, its storage, its last sync and backup" src="docs/screenshots/mac/overview-light.png">
+      </picture>
+      <p align="center"><b>Overview</b> – software, storage, sync and backup at a glance</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac/updates.png">
+        <img alt="The Updates page: software updates for the device, a beta version among them" src="docs/screenshots/mac/updates-light.png">
+      </picture>
+      <p align="center"><b>Updates</b> – software for the device, betas included</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac/maps.png">
+        <img alt="The Maps page: maps installed on the device and maps available to install" src="docs/screenshots/mac/maps-light.png">
+      </picture>
+      <p align="center"><b>Maps</b> – install, update and remove Garmin's maps</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac/apps.png">
+        <img alt="The Apps page: Connect IQ apps, watch faces and data fields on the device, and its free slots" src="docs/screenshots/mac/apps-light.png">
+      </picture>
+      <p align="center"><b>Apps</b> – the Connect IQ apps on the device</p>
+    </td>
+  </tr>
+</table>
 
-<p align="center">
-  <img src="docs/screenshots/status.png" width="700"
-       alt="The Device Status page of a fēnix 8 watch: four crashes in the last 30 days, its storage by kind of file, maps the largest, and the newest crash at the top of its list">
-</p>
+## Download and install
 
-## Supported devices
+**[Download the latest release](https://github.com/bruring/openExpress-mac/releases/latest)**
+– `openExpress-for-Mac-<version>.pkg`.
 
-| Device | Connection | Checked by |
-|---|---|---|
-| fēnix 8 (47 mm, Solar) | MTP | the developer; [#13](https://github.com/TomaszBojanowski/openExpress/issues/13) |
-| Edge 1050 | MTP | the developer |
-| Varia RTL515 | USB drive | the developer; [#9](https://github.com/TomaszBojanowski/openExpress/issues/9) |
-| epix (Gen 2) | MTP | the developer (read-only: another account) |
-| Venu 2 | MTP | the developer (added with Add to Account; not synced) |
-| fēnix 8 (47 mm, AMOLED) | MTP | [#4](https://github.com/TomaszBojanowski/openExpress/issues/4) |
-| fēnix 8 (51 mm, AMOLED) | MTP | [#14](https://github.com/TomaszBojanowski/openExpress/issues/14) |
-| fēnix 7 (Sapphire Dual Power) | MTP | [#6](https://github.com/TomaszBojanowski/openExpress/issues/6) |
-| fēnix 7X (Sapphire Solar), fēnix 7S (Sapphire) | MTP | users on Reddit |
-| fēnix 5X | MTP | [#27](https://github.com/TomaszBojanowski/openExpress/issues/27) |
-| Instinct 3 – 45mm Tactical | MTP | [#21](https://github.com/TomaszBojanowski/openExpress/issues/21) |
-| Edge 1040 | MTP | [#8](https://github.com/TomaszBojanowski/openExpress/issues/8), [#10](https://github.com/TomaszBojanowski/openExpress/issues/10) |
-| Edge 540 | MTP | [#18](https://github.com/TomaszBojanowski/openExpress/issues/18), [#28](https://github.com/TomaszBojanowski/openExpress/issues/28) |
-| Drive 53 EX | MTP | a user; [#42](https://github.com/TomaszBojanowski/openExpress/issues/42) |
-| inReach Mini 2 | USB drive | [#11](https://github.com/TomaszBojanowski/openExpress/issues/11) |
-| Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
-| Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |
-| Instinct 2S Solar | USB drive | [#24](https://github.com/TomaszBojanowski/openExpress/issues/24) |
-| Forerunner 45 | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36), [#30](https://github.com/TomaszBojanowski/openExpress/issues/30) |
-| zūmo 595LM | – | [#15](https://github.com/TomaszBojanowski/openExpress/issues/15) |
-| Other Garmin watches and bike computers over USB (MTP) | MTP | expected to work, untested |
+Requirements: a Mac with **Apple silicon** and **macOS 26** or later. Nothing else to install:
+the package carries its own engine (with its own Python). The package is signed and notarized
+by Apple, so it opens without warnings, and installs `openExpress for Mac.app` into
+`/Applications`.
 
-What works on each, and the reports in full: [Supported devices](docs/devices.md). A device that
-connects as a USB drive gets its information, software updates and backups, and a watch in this
-mode is also synced, both ways; what it cannot do: [Limitations](#limitations).
+First steps:
 
-## Install
-
-```bash
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak remote-add --user --if-not-exists bojanowski https://flatpak.bojanowski.me/bojanowski.flatpakrepo
-flatpak install --user bojanowski io.github.tomaszbojanowski.OpenExpress
-```
-
-Updates then come with `flatpak update`. The GNOME runtime comes from Flathub, hence the
-first line. If you added this repository earlier under the name `openexpress`, keep it: it is
-the same repository and keeps updating. Not using Flatpak, or installing offline:
-[Other ways to install](docs/install.md). The Flatpak and the version from source keep their own
-setup, sign-in and records:
-[The Flatpak and the version from source](docs/install.md#the-flatpak-and-the-version-from-source).
-
-### System requirements
-
-openExpress reads devices that connect over MTP (most watches and bike computers) through
-gvfs, as GNOME's file manager does; the Flatpak uses the gvfs of your system. gvfs needs its
-MTP backend:
-
-- Fedora: `sudo dnf install gvfs-mtp`
-- Arch and distributions based on it (e.g. CachyOS, Manjaro): `sudo pacman -S gvfs-mtp`
-- Debian, Ubuntu: `sudo apt install gvfs-backends`
-
-GNOME comes with it; KDE Plasma and other desktops often do not. Log out and back in after
-installing it. Without it, the window says **No MTP Support in the System (gvfs-mtp)** as soon
-as a device is plugged in, and the command line says the same. Devices in mass storage mode
-(such as the Varia RTL515) need no MTP.
-
-**KDE Plasma and Dolphin:** Dolphin opens MTP devices through KDE's own MTP service (kmtpd
-from kio-extras, in the `kiod6` process), which keeps the device, so the window says
-**Device Not Ready**. Close Dolphin, run `kquitapp6 kiod6`, then unplug the cable and
-plug it in again ([more](docs/troubleshooting.md#kde-plasma-and-dolphin)).
-
-## Getting started
-
-1. Download the Garmin Express installer **for Windows** (`GarminExpress.exe`, free from
-   [garmin.com](https://www.garmin.com/en-US/software/express/windows/)) – also without
-   Windows: openExpress only reads it. The installer for macOS does not work.
-2. Open openExpress from your application menu.
-3. Connect the device. On its page, click **Choose Installer…** in the banner and select the
-   installer, then **Sign In**. No key needs to be created in Garmin Connect.
-4. Sync. The first sync asks whether to upload everything on the device or new data only.
-5. To sync whenever the device is connected, turn on **Background Sync** on its page.
-
-How the window works: [Usage](docs/guide.md).
-
-## Command line
-
-Everything is also available on the command line:
-`flatpak run io.github.tomaszbojanowski.OpenExpress <command>`, or
-`openexpress <command>` from source – for example `sync`, `updates` or `maps`. A command that
-changes anything only shows its plan until you add `--apply`. Every command:
-[Command line](docs/cli.md).
-
-## Limitations
-
-- Connect IQ app settings cannot be changed: their form is rendered by apps.garmin.com.
-- A device that connects as a USB drive gets no apps, maps or music, and is synced only with the
-  **Sync** button or `openexpress sync`, never in the background
-  ([USB modes](docs/devices.md#usb-modes-mtp-and-mass-storage)).
-- Maps are not updated on devices whose maps Garmin serves another way than its universal map
-  service (the window and `openexpress maps` say so, and the Maps page names the map update type
-  Garmin gives the device, which helps a report). Maps go only to the device's internal memory,
-  not to a memory card.
-- A car navigator that hides the folder of its software and maps (`.System`) from the ordinary USB
-  connection, such as the Drive 53 EX ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)),
-  gets its software updates and its time zone map installed there, and reinstalled from
-  **Reinstall Components**: openExpress reads that folder through its own USB session and
-  writes them as Garmin Express does, each checked by its size and read back whole. Its maps
-  there are shown in the window; the command line can install one only as a trial
-  (`openexpress maps install NAME --hidden-folder-trial`), tried once on a Drive 53 EX with a
-  map update of 8.3 GB.
-  Voices and vehicles Garmin offers to add are not installed.
-- GPS satellite data is written only to devices that already keep it in a format openExpress
-  knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8, `GPES.bin` of
-  the Edge 1050), and only when **Satellite Data** is turned on for them (experimental); other
-  devices get it from the phone app as before. On a watch that hides these files, such as the
-  fēnix 8, the row appears after the first sync.
-- ECG recordings are not uploaded: they go to Garmin Health, which needs a sign-in of its own. A
-  sync leaves them on the device and says how many there are.
-- The privacy-policy consents are not checked before a sync; the upload consent is
-  ([Uploads](docs/privacy.md#uploads)).
-- Software updates are never installed as part of a sync, only when you choose to: on the
-  Updates page or with `openexpress updates --install`.
-- A device that connects only over HID, such as the inReach Mini of the first generation
-  ([#31](https://github.com/TomaszBojanowski/openExpress/issues/31)), is not supported.
+1. **Quit Garmin Express**, from its menu bar icon, so that Garmin Express Service stops too.
+2. **Open openExpress for Mac** and set it up. openExpress needs the application key inside
+   Garmin Express for Windows: the app can download that installer from Garmin, read the key
+   from it and delete it again (or you choose a `GarminExpress.exe` you already have). Nothing
+   of it is installed.
+3. **Sign in** to Garmin Connect on Garmin's own sign-in page. Your password is typed only
+   there.
+4. **Connect the device** with its USB cable and unlock it if it asks. It appears in the
+   sidebar.
+5. **Sync.** The first sync asks whether to upload everything on the device or new data only.
+   To back up and sync whenever the device is connected, turn on **Back up and sync when
+   connected**.
 
 ## Privacy
 
-- The password is typed only on Garmin's page; openExpress keeps a login token in a file only
-  you can read.
-- No telemetry. The device's diagnostics are uploaded only with `--include-diagnostics`, and
-  the copies of its diagnostic files stay on this computer.
-- Sync never deletes files from the device, and every file written to it is checked.
-- The log never has serial numbers, Unit IDs, tokens or e-mail addresses.
-- The map of an activity asks OpenStreetMap for its streets only after you turn them on; the
-  server then learns the area of each map you look at and your IP address, never the activity,
-  its track or your account.
+- No telemetry.
+- Your password is typed only on Garmin's sign-in page. The sign-in token, the application key
+  and any Strava tokens are kept in the macOS Keychain.
+- Device data goes to Garmin's servers only. Strava is contacted only if you connect it, and
+  only for the activities a sync uploads. Activity routes are drawn on Apple Maps.
+- Nothing is uploaded unless your Garmin account has given its consent to upload device data;
+  a sync never deletes files from the device, and every file written to it is checked.
+- Settings, backups and data stay on your Mac, in `~/Library/Application Support/openExpress`
+  (and the backup folder you choose).
 
-More: [Privacy and security](docs/privacy.md).
+In full: [Privacy and security](docs/privacy.md).
 
-### Flatpak permissions
+## Supported devices
 
-Besides a window and the network, the Flatpak may run `gio copy` on the host (gvfs lets no
-sandboxed app write to MTP devices), open USB devices (`--device=usb`: Connect IQ apps on
-watches that hide their app folder, the folder a car navigator hides) and use the drives mounted under `/run/media` and `/media`
-(devices in mass storage mode). What each is for and how to turn it off:
-[Flatpak permissions](docs/privacy.md#flatpak-permissions).
+Tested with openExpress for Mac: **fēnix 8** and **Edge 1040**, both over MTP. Other Garmin
+watches and bike computers that connect over USB as a media device (MTP) should work too;
+openExpress (Linux) lists the devices it was tested with in [Supported devices](docs/devices.md).
 
-## Support
+Devices that connect as a USB drive (mass storage, e.g. older Edge software, handhelds or car
+navigators) work too: macOS mounts them, openExpress uses them as on Linux and ejects them after
+a sync, so the device takes the new files. This was tried with a USB stick standing in for a
+device; please report how your Garmin drive does.
 
-Tried openExpress with another device, or something does not work? Please send a
-[device report](https://github.com/TomaszBojanowski/openExpress/issues/new?template=device_report.yml) –
-also when everything works.
+Not supported yet: devices that keep their music on a separate storage (e.g. Forerunner 645
+Music); see [Supported devices](docs/devices.md).
 
-- In the window: main menu (☰) → **Report a Device or Problem…**; on the command line:
-  `openexpress report`, and `openexpress report --log` for the log. The report has no serial
-  number, Unit ID or e-mail.
-- Do not post the output of `openexpress info`, your `GarminDevice.xml` or the files in
-  `~/.config/openexpress`.
-- When something goes wrong: [Troubleshooting](docs/troubleshooting.md).
+Please report what works and what does not on your device in the
+[issues](https://github.com/bruring/openExpress-mac/issues).
 
-## Help translate
+## openExpress for Mac and openExpress
 
-<a href="https://hosted.weblate.org/projects/openexpress/"><img alt="Translation status on Hosted Weblate" src="https://hosted.weblate.org/widget/openexpress/openexpress/svg-badge.svg"></a>
+openExpress for Mac is built on [openExpress](https://github.com/TomaszBojanowski/openExpress)
+by Tomasz Bojanowski, an unofficial Linux app for Garmin devices
+([openexpress.bojanowski.me](https://openexpress.bojanowski.me)). openExpress's Python code is
+the engine; this edition adds a macOS device layer (its own MTP client over libusb), the
+SwiftUI app and the installer. The name is used with the agreement of openExpress's maintainer.
 
-openExpress speaks English, Polish, German, Czech and, in part, French. To add your language or
-correct one, translate it in your browser on
-[Hosted Weblate](https://hosted.weblate.org/projects/openexpress/) (Polish, which the project
-keeps itself: an issue or a pull request):
-[Translating openExpress](docs/translating.md). To see your translation in the program before a
-release, see [Trying a translation in the window](docs/translating.md#trying-a-translation-in-the-window).
+- For Linux, use [openExpress](https://github.com/TomaszBojanowski/openExpress) itself.
+- Fixes and features that are not Mac-specific go upstream, to openExpress.
+- Both are free software under the [GNU General Public License v3.0 or later](LICENSE).
 
-## Documentation
+## For developers
 
-- [Supported devices](docs/devices.md) – every device and what was tested, USB modes
-- [Usage](docs/guide.md) – the window, software updates, maps, apps, music, sync, settings
-- [Command line](docs/cli.md) – every command and option, exit codes
-- [Troubleshooting](docs/troubleshooting.md) – known problems, the log, reporting a problem
-- [Privacy and security](docs/privacy.md) – what is kept and sent, the Flatpak's permissions
-- [Other ways to install](docs/install.md) – a bundle from a release, from source, building the Flatpak
-- [Translating](docs/translating.md) – what not to translate, Garmin's words, trying a translation
-- [Contributing](CONTRIBUTING.md) – tests and translations
-
-## Thanks
-
-- GNOME's [icon-development-kit](https://gitlab.gnome.org/Teams/Design/icon-development-kit)
-  (CC0 1.0) gave the shapes of three icons of an activity's tiles: the heart, the stopwatch
-  and the speedometer (pace and speed); the other icons are drawn in the style of GNOME's
-  symbolic icons.
-- hutamaki found why every write to the device failed from the Flatpak on Ubuntu 22.04
-  and sent the fix ([#28](https://github.com/TomaszBojanowski/openExpress/issues/28)).
-- The translators on Hosted Weblate: prajzner (Czech), BeGiBue (German) and Alex Giroux
-  (French); see [TRANSLATORS](TRANSLATORS).
-
-## License
-
-openExpress is free software under the [GNU General Public License v3.0 or later](LICENSE).
+- [openExpress for Mac](docs/macos.md) – how it fits together, building the app, the engine
+  and the package, signing, tests
+- [The engine protocol](docs/ENGINE.md) – JSON Lines between the app and `openexpress engine`
+- [Contributing](CONTRIBUTING.md) and [Translating](docs/translating.md)
+- [Usage](docs/guide.md) and [Command line](docs/cli.md) – openExpress's own documentation; the
+  engine's command line works on the Mac too

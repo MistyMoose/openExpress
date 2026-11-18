@@ -333,6 +333,37 @@ def _flag(params: dict, name: str, default: bool = False) -> bool:
     return value
 
 
+_REQUIRED = object()
+
+
+def _text(params: dict, name: str, default=_REQUIRED):
+    """The non-empty string `name`. Without a `default` anything else is missing; with one, it
+    is what an absent `name` gives, and anything else is invalid."""
+    value = params.get(name)
+    if isinstance(value, str) and value:
+        return value
+    if default is _REQUIRED:
+        raise _missing(name)
+    if value is None:
+        return default
+    raise _invalid(name)
+
+
+def _count(params: dict, name: str, default: int) -> int:
+    """The positive whole number `name` (not a bool), `default` when it is not given."""
+    value = params.get(name, default)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise _invalid(name)
+    return value
+
+
+def _apply_option(req) -> list[str]:
+    """The request's `apply` as the command line's option; a request that applies writes to
+    the device (req.writes)."""
+    req.writes = _flag(req.params, "apply")
+    return ["--apply"] if req.writes else []
+
+
 def _names(params: dict, name: str) -> list[str]:
     value = params.get(name)
     if isinstance(value, str):
@@ -817,9 +848,7 @@ class Engine:
         from openexpress.installer import consumer_from_installer
         from openexpress.settings import save_consumer
 
-        installer = req.params.get("installer")
-        if not isinstance(installer, str) or not installer:
-            raise _missing("installer")
+        installer = _text(req.params, "installer")
         save_consumer(consumer_from_installer(Path(installer).expanduser()))
         return {}
 
@@ -951,15 +980,11 @@ class Engine:
                     and isinstance(secret, str) and secret):
                 raise _invalid("client_id" if not client_id else "client_secret")
             strava.save_client(strava.Client(client_id, secret))
-        redirect_uri = p.get("redirect_uri")
-        if not isinstance(redirect_uri, str) or not redirect_uri:
-            raise _missing("redirect_uri")
-        code = p.get("code")
+        redirect_uri = _text(p, "redirect_uri")
+        code = _text(p, "code", None)
         if code is None:
             return {**dataclasses.asdict(strava.status()),
                     "authorize_url": strava.authorize_url(redirect_uri)}
-        if not isinstance(code, str) or not code:
-            raise _invalid("code")
         return dataclasses.asdict(strava.connect_with_code(code, redirect_uri))
 
     def strava_disconnect(self, req: Request) -> dict:
@@ -1033,12 +1058,8 @@ class Engine:
         from openexpress.settings import Settings
 
         apply = _flag(req.params, "apply")
-        dest = req.params.get("dest")
-        if dest is not None and (not isinstance(dest, str) or not dest):
-            raise _invalid("dest")
-        keep = req.params.get("keep", Settings.load()._extra.get("backup_keep", 3))
-        if not isinstance(keep, int) or isinstance(keep, bool) or keep < 1:
-            raise _invalid("keep")
+        dest = _text(req.params, "dest", None)
+        keep = _count(req.params, "keep", Settings.load()._extra.get("backup_keep", 3))
         st, dev = cli.open_device(self.args_for(a, "backup", apply=apply))
         root = Path(dest).expanduser() if dest else self._backups()
         if not apply:
@@ -1156,12 +1177,11 @@ class Engine:
 
     def updates_install(self, req: Request, a: Attached) -> dict:
         """As `updates --install PART… [--apply]`."""
-        apply = _flag(req.params, "apply")
-        req.writes = apply
+        apply = _apply_option(req)
         parts = req.params.get("parts")
         parts = ["all"] if parts == "all" else _names(req.params, "parts")
-        return self.run_command(req, [*self.command_line(a), "updates",
-                                      *(["--apply"] if apply else []), "--install", *parts])
+        return self.run_command(req, [*self.command_line(a), "updates", *apply, "--install",
+                                      *parts])
 
     def maps_list(self, req: Request, a: Attached) -> dict:
         """As `maps [--all]`: Garmin's maps for the device, and the maps of your own."""
@@ -1179,20 +1199,21 @@ class Engine:
         on_device = [m for m in all_maps if m.listed or m.waiting]
         shown = all_maps if every else on_device
 
-        def status(m) -> str:
-            return ("update" if m.update_available else "up to date" if m.installed
-                    else "available")
+        def entry(m) -> dict:
+            status = ("update" if m.update_available else "up to date" if m.installed
+                      else "available")
+            return {"name": m.name, "version": m.version, "size": m.size,
+                    "installed": m.installed, "status": status,
+                    "installed_version": (m.version if status == "up to date"
+                                          else installed_map_version(st, m)
+                                          if status == "update" else None),
+                    "status_text": m.status,
+                    "region": m.region or None, "type": m.map_type, "waiting": m.waiting,
+                    "incomplete": m.incomplete, "restricted": m.restricted is True,
+                    "can_install": mp.can_install(m), "can_remove": m.can_uninstall}
 
-        maps = [{"name": m.name, "version": m.version, "size": m.size,
-                 "installed": m.installed, "status": status(m),
-                 "installed_version": (m.version if status(m) == "up to date"
-                                       else installed_map_version(st, m)
-                                       if status(m) == "update" else None),
-                 "status_text": m.status,
-                 "region": m.region or None, "type": m.map_type, "waiting": m.waiting,
-                 "incomplete": m.incomplete, "restricted": m.restricted is True,
-                 "can_install": mp.can_install(m), "can_remove": m.can_uninstall}
-                for m in sorted(shown, key=lambda m: (m not in on_device, m.map_type, m.name))]
+        maps = [entry(m) for m in sorted(
+            shown, key=lambda m: (m not in on_device, m.map_type, m.name))]
         own = [{"file": o.filename, "size": o.size, "title": o.title, "path": o.path}
                for o in ownmaps.list_own(dev, st, all_maps)]
         return {"maps": maps, "own_maps": own, "free": free,
@@ -1201,14 +1222,13 @@ class Engine:
     def _each_map(self, req: Request, a: Attached, command: str) -> dict:
         """maps.install, maps.remove: the command for each map named, one after the other;
         a map refused is said in its entry, and the next is done."""
-        apply = _flag(req.params, "apply")
-        req.writes = apply
+        apply = _apply_option(req)
         out = []
         for name in _names(req.params, "maps"):
             self.checkpoint(req)
             try:
-                done = self.run_command(req, [*self.command_line(a), "maps", command,
-                                              *(["--apply"] if apply else []), "--", name])
+                done = self.run_command(req, [*self.command_line(a), "maps", command, *apply,
+                                              "--", name])
             except Exception as e:  # noqa: BLE001 - the error of this map, then the next
                 error = error_of(e)
                 out.append({"name": name, "done": False, "code": error.code,
@@ -1216,7 +1236,7 @@ class Engine:
                 continue
             out.append({"name": name, "done": done["exit_code"] == 0,
                         "exit_code": done["exit_code"], "lines": done["lines"]})
-        return {"dry_run": not apply, "maps": out}
+        return {"dry_run": not req.writes, "maps": out}
 
     def maps_install(self, req: Request, a: Attached) -> dict:
         return self._each_map(req, a, "install")
@@ -1226,10 +1246,8 @@ class Engine:
 
     def maps_update(self, req: Request, a: Attached) -> dict:
         """As `maps update [--apply]`: every installed map with an update."""
-        apply = _flag(req.params, "apply")
-        req.writes = apply
         return self.run_command(req, [*self.command_line(a), "maps", "update",
-                                      *(["--apply"] if apply else [])])
+                                      *_apply_option(req)])
 
     def apps_list(self, req: Request, a: Attached) -> dict:
         """As `apps [--builtin]`."""
@@ -1237,39 +1255,27 @@ class Engine:
         return self.run_command(req, [*self.command_line(a), "apps",
                                       *(["--builtin"] if builtin else [])])
 
-    def apps_install(self, req: Request, a: Attached) -> dict:
-        """As `apps install NAME [--allow-permissions] [--apply]`."""
-        apply = _flag(req.params, "apply")
-        req.writes = apply
-        name = req.params.get("name")
-        if not isinstance(name, str) or not name:
-            raise _missing("name")
-        options = ["--apply"] if apply else []
-        if _flag(req.params, "allow_permissions"):
-            options.append("--allow-permissions")
-        return self.run_command(req, [*self.command_line(a), "apps", "install", *options,
+    def _app_command(self, req: Request, a: Attached, command: str, flag: str) -> dict:
+        """As `apps COMMAND NAME [--FLAG] [--apply]`, with the request's `flag` (a parameter
+        named as the option, with _ for -)."""
+        options = _apply_option(req)
+        name = _text(req.params, "name")
+        if _flag(req.params, flag):
+            options.append("--" + flag.replace("_", "-"))
+        return self.run_command(req, [*self.command_line(a), "apps", command, *options,
                                       "--", name])
 
+    def apps_install(self, req: Request, a: Attached) -> dict:
+        return self._app_command(req, a, "install", "allow_permissions")
+
     def apps_remove(self, req: Request, a: Attached) -> dict:
-        """As `apps remove NAME [--forget] [--apply]`."""
-        apply = _flag(req.params, "apply")
-        req.writes = apply
-        name = req.params.get("name")
-        if not isinstance(name, str) or not name:
-            raise _missing("name")
-        options = ["--apply"] if apply else []
-        if _flag(req.params, "forget"):
-            options.append("--forget")
-        return self.run_command(req, [*self.command_line(a), "apps", "remove", *options,
-                                      "--", name])
+        return self._app_command(req, a, "remove", "forget")
 
     def activities_list(self, req: Request, a: Attached) -> dict:
         """As `activities`: the newest activities of the device and of its backups."""
         from openexpress import activities, cli, fit
 
-        limit = req.params.get("limit", 20)
-        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
-            raise _invalid("limit")
+        limit = _count(req.params, "limit", 20)
         st, dev = cli.open_device(self.args_for(a, "activities"))
         if not activities.keeps_activities(dev):
             return {"activities": [], "total": 0, "only_in_backups": 0}
@@ -1288,22 +1294,23 @@ class Engine:
         out = []
         for r in read:
             act, summary = r.activity, r.summary
-            state = None if summary is None else summary.state
-            when = (summary.start or summary.created) if summary else None
-            out.append({
-                "name": act.name, "source": act.source.value, "path": act.path,
-                "size": act.size, "backup": act.backup.isoformat() if act.backup else None,
-                "start": _iso(when), "sport": (activities.sport_name(summary.sport)
-                                               if summary and summary.sport is not None
-                                               else None),
-                "sport_id": summary.sport if summary else None,
-                "distance": summary.distance if summary else None,
-                "duration": summary.timer_time if summary else None,
-                "ascent": summary.ascent if summary else None,
-                "state": ("unreadable" if summary is None
-                          else "still_being_written"
-                          if state is fit.FileState.STILL_BEING_WRITTEN
-                          else "damaged" if state is fit.FileState.DAMAGED else "complete")})
+            entry = {"name": act.name, "source": act.source.value, "path": act.path,
+                     "size": act.size,
+                     "backup": act.backup.isoformat() if act.backup else None}
+            if summary is None:
+                entry.update(start=None, sport=None, sport_id=None, distance=None,
+                             duration=None, ascent=None, state="unreadable")
+            else:
+                state = summary.state
+                entry.update(
+                    start=_iso(summary.start or summary.created),
+                    sport=(activities.sport_name(summary.sport)
+                           if summary.sport is not None else None),
+                    sport_id=summary.sport, distance=summary.distance,
+                    duration=summary.timer_time, ascent=summary.ascent,
+                    state=("still_being_written" if state is fit.FileState.STILL_BEING_WRITTEN
+                           else "damaged" if state is fit.FileState.DAMAGED else "complete"))
+            out.append(entry)
         return {"activities": out, "total": len(found.listing),
                 "only_in_backups": found.only_in_backups}
 
@@ -1339,9 +1346,7 @@ class Engine:
         """The track of an activity (`fit`): a FIT file of this computer (a copy in a
         backup, an absolute path), else the path of the file on the device that
         activities.list gave (`device`, or the only one connected), read in its turn."""
-        path = req.params.get("fit")
-        if not isinstance(path, str) or not path:
-            raise _missing("fit")
+        path = _text(req.params, "fit")
         local = Path(path).expanduser()
         if local.is_absolute():
             try:

@@ -842,7 +842,7 @@ class DevicePage:
         the page of an activity read from it."""
         activity_page.leave(self)
         self.maps_cache = self.updates_cache = None
-        self.map_cleanup = []
+        self.map_cleanup, self.maps_noted = [], []
         self.update_state = None
         self.update_checked_at = self._update_record_at = None
         self.apps_count = self.music_count = None  # read again by their pages
@@ -1423,7 +1423,9 @@ class DevicePage:
         self.in_background(work, done, failed)
 
     def _render_map_state(self) -> None:
-        """Shows self.map_state in the overview (the "Maps" row)."""
+        """Shows self.map_state in the overview (the "Maps" row): with updates or with maps
+        not up to date (self.maps_noted), the count of the updates first, then each of those
+        maps on a line of its own, named with its state on the Maps page."""
         if self.session is None or self.map_row is None:
             return
         from openexpress import maps as mp
@@ -1431,6 +1433,8 @@ class DevicePage:
         if self.map_state == "available":
             text = ngettext("{count} update available", "{count} updates available",
                             self.map_update_count).format(count=self.map_update_count)
+        elif self.map_state == "noted":
+            text = ""
         elif self.map_state == "onboard":
             # TRANSLATORS: subtitle of the row "Maps" of the device page when Garmin offers a newer
             # version that openExpress does not install (a car navigator), without a full stop
@@ -1452,7 +1456,11 @@ class DevicePage:
             text = _("Could not check for updates")
         else:
             text = _("Checking…")
-        self.map_row.set_subtitle(text)
+        lines = [text] if text else []
+        if self.map_state in ("available", "noted"):
+            lines += [caption(m.name, m.status) for m in self.maps_noted]
+        # A map's name is the server's: text, not markup.
+        self.map_row.set_subtitle(GLib.markup_escape_text("\n".join(lines)))
 
     def _set_map_state(self, result, no_maps: bool = False) -> None:
         """From an answer of the map check: the maps read, and how many the server listed;
@@ -1460,6 +1468,7 @@ class DevicePage:
         it has no maps at all (maps.DeviceHasNoMaps). Also called by the Maps page, whose
         answer is the newer one."""
         self._map_check_session = None  # a quiet check that is still running is out of date
+        self.maps_noted = []
         if result is None:
             self.map_update_count = 0
             self.map_state = "nomaps" if no_maps else "unsupported"
@@ -1474,10 +1483,15 @@ class DevicePage:
                                     if m.update_available and mp.can_install(m))
         held = any(m.update_available for m in all_maps)
         self.map_count = sum(1 for m in all_maps if m.installed or m.incomplete)
+        # Never "up to date" while one is not: partly on the device, its folder not read, or
+        # waiting for the device to be unplugged.
+        self.maps_noted = [m for m in all_maps if m.incomplete or m.unseen or m.waiting]
         if not listed:
             self.map_state = "none"
         elif self.map_update_count:
             self.map_state = "available"
+        elif self.maps_noted:
+            self.map_state = "noted"
         elif held:
             self.map_state = "onboard"
         elif any(m.installed or m.incomplete for m in all_maps):

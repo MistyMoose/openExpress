@@ -327,7 +327,7 @@ class StartWindow:
         an address), the device pages say to choose one. Nothing is opened until one is
         chosen."""
         self.maps_cache = self.updates_cache = None
-        self.map_cleanup = []
+        self.map_cleanup, self.maps_noted = [], []
         self.update_state = self.map_state = None
         self.update_checked_at = self._update_record_at = None
         self.apps_count = self.music_count = None

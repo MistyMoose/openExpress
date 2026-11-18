@@ -239,7 +239,7 @@ def test_the_words_in_polish():
 @pytest.mark.needs_display
 def test_a_device_change_forgets_the_old_files_of_the_maps_before(monkeypatch):
     """The plan belongs to the maps of the device that was open: with the rest of the state of
-    the maps (maps_cache, map_state) it goes when another device is opened or none is, so
+    the maps (maps_cache, map_state, maps_noted) it goes when another device is opened or none is, so
     that no question about a map could name the old files of another device."""
     from openexpress import netstatus
     from openexpress.gui import app
@@ -253,9 +253,9 @@ def test_a_device_change_forgets_the_old_files_of_the_maps_before(monkeypatch):
         assert win.map_cleanup == []  # nothing before the first page of maps
         old = [mp.CleanupFile("GARMIN/OLD1.GMA", 3)]
         for change in (win._clear_device_pages, win.show_choices):
-            win.map_cleanup, win.maps_cache = list(old), []
+            win.map_cleanup, win.maps_cache, win.maps_noted = list(old), [], ["a map"]
             change()
-            assert (win.map_cleanup, win.maps_cache) == ([], None)
+            assert (win.map_cleanup, win.maps_cache, win.maps_noted) == ([], None, [])
     finally:
         netstatus.STATUS.remove_listener(win._net_listener)
         win.destroy()

@@ -97,6 +97,30 @@ def _key(folder: str) -> str:
     return folder.strip("/").casefold()
 
 
+def top_folders(storage: Storage) -> set[str] | None:
+    """The names of the folders of the device's top level that the ordinary listing shows,
+    in lower case; None when they cannot be listed (then no folder is taken for unseen)."""
+    try:
+        return {e.name.casefold() for e in storage.listdir("") if e.is_dir}
+    except DeviceNotResponding:
+        raise
+    except DeviceError:
+        return None
+
+
+def top_not_seen(folder: str, tops: set[str] | None) -> str | None:
+    """The folder of the device's top level that `folder` (with `/` or `\\`) is in, or is,
+    when the ordinary listing does not show it (`tops`: top_folders; a car navigator hides its
+    .System from MTP); None when it is seen, when `folder` is the top level itself, or when the
+    top level could not be listed. The one rule for the file of an update or of a map (its
+    folder: posixpath.dirname of its path) and for the folder of own maps; a folder inside a
+    folder that is seen is made for a write like any other."""
+    parts = [p for p in folder.replace("\\", "/").split("/") if p]
+    if not parts or tops is None:
+        return None
+    return None if parts[0].casefold() in tops else parts[0]
+
+
 # What each connection read, by the connection (storage.connection).
 _kept: dict[tuple, Listing] = {}
 

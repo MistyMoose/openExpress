@@ -65,20 +65,14 @@ for f in "$ENGINE/bin/openexpress" "$ENGINE/bin/python3.13" "$ENGINE/bin/7zz" \
 done
 echo "$APP_NAME.app $APP_VERSION, macOS $MIN_OS or later, $(du -sh "$APP" | cut -f1)"
 
-say "Machine code: no Homebrew, /usr/local, venv or build paths"
-BAD=0
+say "Machine code: only the system's and the app's own libraries, arm64, macOS $MIN_OS"
+. "$SCRIPTS/macho.sh"
+check_macho "$APP" "$MIN_OS" || die "machine code refers to paths outside the app and the system, or needs a newer macOS"
 COUNT=0
-while IFS= read -r -d '' f; do
-    case "$(head -c 4 "$f" | xxd -p)" in cffaedfe|cafebabe) ;; *) continue ;; esac
+while IFS= read -r f; do
     COUNT=$((COUNT + 1))
-    refs=$( { otool -L "$f" | tail -n +2 | awk '{ print $1 }'
-              otool -l "$f" | awk '/cmd LC_RPATH/ { getline; getline; print $2 }'; } )
-    if grep -E '/opt/homebrew|/usr/local|venv|/Users/|/install/' <<<"$refs"; then
-        echo "  ^ in ${f#"$APP"/}"; BAD=1
-    fi
     printf '  %-58s %s\n' "${f#"$APP"/}" "$(codesign -dv "$f" 2>&1 | sed -n 's/^Signature=//p;s/^CodeDirectory.*flags=\([^ ]*\).*/flags=\1/p' | tr '\n' ' ')"
-done < <(find "$APP" -type f -print0)
-[ $BAD = 0 ] || die "machine code refers to paths outside the app and the system"
+done < <(macho_files "$APP")
 echo "$COUNT Mach-O files, all clean"
 
 say "The engine with a scrubbed environment (no Homebrew on PATH)"

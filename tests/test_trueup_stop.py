@@ -10,13 +10,14 @@ from fakes import RunNow
 from fakes import window as stand_in
 
 from openexpress import service
+from openexpress.settings import Settings
 
 
 def _session(stopped: bool):
     s = types.SimpleNamespace(
         device=types.SimpleNamespace(part_number="006-B0000-00", unit_id=1234, description="Test watch"),
         storage=None, client=None, mass_storage=False, logged_in=True, ownership_error=None,
-        first_sync=False, stop_waiting=threading.Event(), satellite=None)
+        first_sync=False, stop_waiting=threading.Event(), satellite=None, settings=Settings())
     if stopped:
         s.stop_waiting.set()
     return s
@@ -38,6 +39,23 @@ def test_the_window_clears_a_stop_left_from_its_previous_sync(monkeypatch):
         _show_last_sync=lambda: None, _count_activities_again=lambda: None)
     app.MainWindow.start_sync(win)
     assert seen == [False]
+
+
+def test_the_window_s_sync_tells_what_failed_after_it(monkeypatch):
+    """The drop folder or Strava failing after the window's sync (service.after_sync): the sync
+    is finished, with errors."""
+    from openexpress.gui import app
+
+    monkeypatch.setattr(service, "run_sync", lambda s, progress=None, options=None:
+                        service.SyncSummary())
+    monkeypatch.setattr(service, "after_sync", lambda s, apply, progress=None:
+                        service.AfterSyncResult(strava_error=OSError("offline")))
+    toasts = []
+    win = stand_in(
+        session=_session(stopped=False), run_task=RunNow(), progress=lambda *a: None,
+        toast=toasts.append, _show_last_sync=lambda: None, _count_activities_again=lambda: None)
+    app.MainWindow.start_sync(win)
+    assert toasts == ["Sync finished with errors"]
 
 
 def test_a_quit_asked_before_the_background_service_kept_its_session(monkeypatch):

@@ -142,3 +142,44 @@ def test_a_second_run_still_writes_nothing_new_after_the_fallback_path(
     sync.run_drop_folder(dev, st, dest)
     second = sync.run_drop_folder(dev, st, dest)
     assert second.copied == []
+
+
+# --- service.after_sync: the step after every sync (command line, engine, window, service) --
+
+
+def _session(root, **settings):
+    from openexpress import service
+    from openexpress.settings import Settings
+
+    st, dev = _device(root)
+    return service.DeviceSession(st, dev, Settings(**settings), client=None)
+
+
+def test_after_sync_does_nothing_when_both_settings_are_off(device_root):
+    from openexpress import service
+
+    after = service.after_sync(_session(device_root), apply=True)
+    assert after == service.AfterSyncResult()
+    assert after.problems() == []
+
+
+def test_after_sync_plans_in_a_dry_run_and_copies_with_apply(device_root, tmp_path):
+    from openexpress import service
+
+    s = _session(device_root, copy_fit_to=str(tmp_path / "drop"))
+    planned = service.after_sync(s, apply=False)
+    assert (planned.drop_folder, planned.drop_planned, planned.dropped) == (
+        tmp_path / "drop", 2, None)
+    assert not (tmp_path / "drop").exists()  # a dry run writes nothing
+    done = service.after_sync(s, apply=True)
+    assert set(done.dropped.copied) == ACTIVITY_NAMES and done.drop_planned is None
+
+
+def test_after_sync_keeps_an_error_of_the_drop_folder_in_its_result(device_root, tmp_path):
+    from openexpress import service
+
+    taken = tmp_path / "a file"
+    taken.write_text("not a folder")
+    after = service.after_sync(_session(device_root, copy_fit_to=str(taken)), apply=True)
+    assert after.dropped is None and isinstance(after.drop_error, OSError)
+    assert after.problems()[0].startswith("FIT drop folder: ")

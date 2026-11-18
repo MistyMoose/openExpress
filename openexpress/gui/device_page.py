@@ -1618,8 +1618,9 @@ class DevicePage:
                 or s.ownership_error is not None):
             return
 
-        def done(summary: service.SyncSummary):
-            self.toast(_("Sync finished") if not summary.errors
+        def done(result: tuple[service.SyncSummary, service.AfterSyncResult]):
+            summary, after = result
+            self.toast(_("Sync finished") if not summary.errors and not after.problems()
                        else _("Sync finished with errors"))
             # What the sync did of them, as kept; a watch found with them by the sync shows its
             # row now.
@@ -1648,8 +1649,11 @@ class DevicePage:
         def work():
             # A drive is asked for here and on the command line, never in the background;
             # run_sync judges it again before anything is uploaded.
-            return service.run_sync(s, progress=self.progress, options=service.SyncOptions(
+            summary = service.run_sync(s, progress=self.progress, options=service.SyncOptions(
                 first_run=first_run, drive=getattr(s, "mass_storage", False)))
+            # The drop folder and Strava, as the settings say, before a drive is ejected
+            # (done); never an error of the sync.
+            return summary, service.after_sync(s, apply=True, progress=self.progress)
 
         # Stop Waiting pressed during the previous sync of this session: not for this one.
         s.stop_waiting.clear()

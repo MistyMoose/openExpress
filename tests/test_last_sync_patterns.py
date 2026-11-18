@@ -14,6 +14,7 @@ from fakes import descendants, window_methods
 from fakes import window as stand_in
 
 from openexpress import i18n, service, sync
+from openexpress.settings import Settings
 
 PATTERNS = Path(__file__).resolve().parent / "data" / "last_sync"
 
@@ -391,6 +392,7 @@ def test_the_notification_of_the_background_sync_says_what_the_row_says(monkeypa
     shown = []
     session = types.SimpleNamespace(
         mass_storage=False, logged_in=True, first_sync=False, client=None, storage=None,
+        settings=Settings(),
         device=types.SimpleNamespace(part_number="006-B0000-00", unit_id=record["unit_id"], description="Test watch"))
     monkeypatch.setattr(watch.service, "open_session", lambda: session)
     monkeypatch.setattr(watch.service, "require_account_device", lambda client, unit, fresh=False, **_kw: None)
@@ -405,3 +407,29 @@ def test_the_notification_of_the_background_sync_says_what_the_row_says(monkeypa
         "Errors: FIT_TYPE_4/2026-10-01-10-00-00.fit: HTTP 500"]
     unnamed = last_sync.describe(summary.record())
     assert unnamed.counts == told.counts and unnamed.text == told.text
+
+
+def test_the_notification_of_the_background_sync_ends_with_what_failed_after_it(monkeypatch):
+    """The drop folder and Strava after a sync in the background (service.after_sync): what
+    failed is said under the sync's own words, and the sync is still told as done."""
+    import types
+
+    from openexpress import watch
+
+    shown = []
+    session = types.SimpleNamespace(
+        mass_storage=False, logged_in=True, first_sync=False, client=None, storage=None,
+        settings=Settings(), device=types.SimpleNamespace(
+            part_number="006-B0000-00", unit_id=1234, description="Test watch"))
+    monkeypatch.setattr(watch.service, "open_session", lambda: session)
+    monkeypatch.setattr(watch.service, "require_account_device",
+                        lambda client, unit, fresh=False, **_kw: None)
+    monkeypatch.setattr(watch.service, "run_sync",
+                        lambda s, progress=None, **kw: service.SyncSummary())
+    monkeypatch.setattr(watch.service, "after_sync", lambda s, apply, progress=None:
+                        service.AfterSyncResult(drop_error=OSError("disk full")))
+    monkeypatch.setattr(watch.GLib, "idle_add", lambda fn, *args: shown.append(args))
+    watch.Watcher()._sync()
+    title, body = shown[-1]
+    assert title == "Test watch synced"
+    assert body.splitlines()[-1] == "FIT drop folder: disk full"

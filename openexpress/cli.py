@@ -1599,68 +1599,54 @@ def cmd_upload_config(args) -> int:
     return 0
 
 
-def _drop_folder_dest(args, settings: Settings) -> Path | None:
-    """Where `sync` copies new FIT files after it (sync.run_drop_folder): --copy-fit-to for
-    this run, else the setting of the same name; None: off."""
-    chosen = getattr(args, "copy_fit_to", None) or settings.copy_fit_to
-    return Path(chosen).expanduser() if chosen else None
-
-
-def _strava_dry_run_line(dev, st, settings: Settings) -> str | None:
+def _strava_dry_run_line(after) -> str | None:
     """`sync` without --apply: how many new activity FIT files would be staged for Strava
-    this sync (Settings.strava_upload); None when the setting is off. Never raises: a
-    problem with Strava (not connected, network) is said in its place, as the dry run of the
-    upload to Garmin Connect needs no login either."""
-    if not settings.strava_upload:
+    this sync (service.after_sync); None when Settings.strava_upload is off. A problem with
+    Strava (not connected, network) is said in its place, as the dry run of the upload to
+    Garmin Connect needs no login either."""
+    if after.strava_error is not None:
+        return _("To Strava: not checked ({error})").format(error=after.strava_error)
+    if after.strava is None:
         return None
-    from openexpress import strava
-
-    try:
-        planned = strava.after_sync(dev, st, apply=False).planned
-    except Exception as e:  # noqa: BLE001 - the dry run of the rest of the sync still shows
-        return _("To Strava: not checked ({error})").format(error=e)
+    planned = after.strava.planned
     return ngettext("To Strava: {count} new activity file",
                     "To Strava: {count} new activity files", planned).format(count=planned)
 
 
-def _strava_sync_upload(dev, st, progress) -> None:
-    """After the sync's own upload to Garmin Connect: strava.after_sync, and what it did
-    printed. Never raises, so that Strava cannot fail the sync."""
-    from openexpress import strava
-
-    try:
-        done = strava.after_sync(dev, st, apply=True, progress=progress)
-    except Exception as e:  # noqa: BLE001 - reported, the sync itself is already done
-        print(_("Strava: {error}").format(error=e), file=sys.stderr)
-        log.warning("strava: sync upload failed: %s: %s", type(e).__name__, e)
-        return
-    report = done.report
-    if done.incomplete:
-        log.info("strava: %d activity file still being written by the device, staged by "
-                 "the next sync", done.incomplete)
-    if report.uploaded:
+def _print_after_sync(after) -> None:
+    """What service.after_sync did after `sync --apply`: the FIT drop folder, then Strava."""
+    dropped = after.dropped
+    if dropped is not None and dropped.copied:
+        print(ngettext(
+            "Copied {count} new file ({size}) to the FIT drop folder {path}",
+            "Copied {count} new files ({size}) to the FIT drop folder {path}",
+            len(dropped.copied)).format(count=len(dropped.copied),
+                                        size=human_size(dropped.bytes), path=after.drop_folder))
+    if dropped is not None and dropped.incomplete:
+        print(ngettext(
+            "{count} file for the drop folder was still being written by the device; "
+            "copied by the next sync",
+            "{count} files for the drop folder were still being written by the device; "
+            "copied by the next sync", dropped.incomplete).format(count=dropped.incomplete))
+    report = after.strava.report if after.strava is not None else None
+    if report is not None and report.uploaded:
         print(ngettext("Uploaded to Strava: {count} activity",
                        "Uploaded to Strava: {count} activities", len(report.uploaded)).format(
             count=len(report.uploaded)))
-    if report.duplicates:
+    if report is not None and report.duplicates:
         print(ngettext("Already on Strava: {count} activity",
                        "Already on Strava: {count} activities", len(report.duplicates)).format(
             count=len(report.duplicates)))
-    for name, error in report.failed:
-        print(_("Strava: {name} was not uploaded: {error}").format(name=name, error=error),
-              file=sys.stderr)
-    if report.rate_limited:
-        print(_("Strava: too many uploads for now; the rest wait for the next sync."),
-              file=sys.stderr)
+    for line in after.strava_problems():
+        print(line, file=sys.stderr)
 
 
 def cmd_sync(args) -> int:
-    from openexpress import service, sync
+    from openexpress import service
 
     st, dev = open_device(args)
     settings = Settings.load()
-    drop_folder = _drop_folder_dest(args, settings)
-    drop_types = sync.drop_folder_types(settings.copy_fit_types) if drop_folder else None
+    copy_fit_to = getattr(args, "copy_fit_to", None)
     print(_("{device}, software {version}").format(
         device=dev.description, version=dev.software_version_str))
     try:
@@ -1690,13 +1676,15 @@ def cmd_sync(args) -> int:
             line = _satellite_result(satellite.update(dev, st, apply=False))
             if line is not None:
                 print("\n" + line)
-        if drop_folder is not None:
-            planned = sync.plan_drop_folder(dev, st, drop_folder, drop_types)
+        after = service.after_sync(session, apply=False, copy_fit_to=copy_fit_to)
+        if after.drop_error is not None:
+            raise after.drop_error
+        if after.drop_planned is not None:
             print("\n" + ngettext(
                 "To the FIT drop folder {path}: {count} new file",
                 "To the FIT drop folder {path}: {count} new files",
-                len(planned)).format(path=drop_folder, count=len(planned)))
-        strava_line = _strava_dry_run_line(dev, st, settings)
+                after.drop_planned).format(path=after.drop_folder, count=after.drop_planned))
+        strava_line = _strava_dry_run_line(after)
         if strava_line is not None:
             print("\n" + strava_line)
         print("\n" + _("Dry run: nothing was uploaded or written to the device. "
@@ -1722,25 +1710,13 @@ def cmd_sync(args) -> int:
             _print_sync_steps(done, dev.unit_id)
         raise
     code = _print_sync_result(summary, dev.unit_id)
-    if drop_folder is not None:
-        # Before the drive is ejected: the device must still be open to read from.
-        with _progress() as progress:
-            dropped = sync.run_drop_folder(dev, st, drop_folder, drop_types, progress=progress)
-        if dropped.copied:
-            print(ngettext(
-                "Copied {count} new file ({size}) to the FIT drop folder {path}",
-                "Copied {count} new files ({size}) to the FIT drop folder {path}",
-                len(dropped.copied)).format(count=len(dropped.copied),
-                                            size=human_size(dropped.bytes), path=drop_folder))
-        if dropped.incomplete:
-            print(ngettext(
-                "{count} file for the drop folder was still being written by the device; "
-                "copied by the next sync",
-                "{count} files for the drop folder were still being written by the device; "
-                "copied by the next sync", dropped.incomplete).format(count=dropped.incomplete))
-    if settings.strava_upload:
-        with _progress() as progress:
-            _strava_sync_upload(dev, st, progress)
+    # Before the drive is ejected: the device must still be open to read from.
+    with _progress() as progress:
+        after = service.after_sync(session, apply=True, progress=progress,
+                                   copy_fit_to=copy_fit_to)
+    _print_after_sync(after)
+    if after.drop_error is not None:
+        raise after.drop_error
     # A drive the sync wrote to is ejected, so that the watch takes the files.
     if st.mass_storage and summary.wrote_to_device and not _eject_drive(st, files=True):
         return 1  # the cable must stay in

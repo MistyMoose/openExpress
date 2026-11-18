@@ -178,10 +178,13 @@ class Watcher(Gio.Application):
                     s.stop_waiting.set()
             try:
                 summary = service.run_sync(s, progress=nothing)
+                # The drop folder and Strava, as the settings say; never an error of the sync.
+                after = service.after_sync(s, apply=True, progress=nothing)
             finally:
                 self._session = None
             # The words of the row under "Last Sync", as last_sync.describe tells them.
             body = last_sync.describe(summary.record(s.device.unit_id)).notification
+            body = "\n".join([body, *after.problems()])
             # TRANSLATORS: title of a notification of the background sync, over what it did
             GLib.idle_add(self.notify, _("{device} synced").format(device=name()), body)
         except service.SyncBusy:

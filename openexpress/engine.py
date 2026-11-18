@@ -983,22 +983,18 @@ class Engine:
         return dataclasses.asdict(strava.upload_files(files, apply=apply,
                                                       progress=self.progress_for(req)))
 
-    def _strava_after_sync(self, dev, st, settings, apply: bool, progress) -> dict | None:
-        """strava.after_sync for a sync (Settings.strava_upload): in a dry run how many files
-        would be staged, else what was sent. None when the setting is off; never an error of
-        the sync (said in "error")."""
-        if not settings.strava_upload:
+    @staticmethod
+    def _strava_after_sync(after) -> dict | None:
+        """The Strava part of service.after_sync: in a dry run how many files would be staged,
+        else what was sent; None when Settings.strava_upload is off. Never an error of the
+        sync (said in "error")."""
+        if after.strava_error is not None:
+            return {"error": error_of(after.strava_error).message}
+        if after.strava is None:
             return None
-        from openexpress import strava
-
-        try:
-            done = strava.after_sync(dev, st, apply, progress)
-            if not apply:
-                return {"files": done.planned}
-            return dataclasses.asdict(done.report)
-        except Exception as e:  # noqa: BLE001 - Strava never fails the sync
-            log.warning("engine: strava after the sync: %s", type(e).__name__)
-            return {"error": error_of(e).message}
+        if after.strava.report is None:
+            return {"files": after.strava.planned}
+        return dataclasses.asdict(after.strava.report)
 
     # --- methods: devices ------------------------------------------------------------
 
@@ -1057,7 +1053,7 @@ class Engine:
     def device_sync(self, req: Request, a: Attached) -> dict:
         """As `sync`: the plan in a dry run; with apply the sync of the window and the
         command line (service.run_sync), then the FIT drop folder."""
-        from openexpress import cli, last_sync, service, sync
+        from openexpress import cli, last_sync, service
         from openexpress.auth import store
         from openexpress.settings import Settings
 
@@ -1072,8 +1068,6 @@ class Engine:
             raise _invalid("first_run")
         st, dev = cli.open_device(self.args_for(a, "sync", apply=apply))
         settings = Settings.load()
-        drop_folder = cli._drop_folder_dest(argparse.Namespace(), settings)
-        drop_types = sync.drop_folder_types(settings.copy_fit_types) if drop_folder else None
         try:
             client = cli.make_client(settings, need_auth=True)
         except store.NotLoggedIn:
@@ -1102,10 +1096,12 @@ class Engine:
                    "downloads": sum(1 for i in items if not i.unsupported
                                     and not service.stays_in_queue(i, st.mass_storage)),
                    "drop_folder": None}
-            if drop_folder is not None:
-                planned = sync.plan_drop_folder(dev, st, drop_folder, drop_types)
-                out["drop_folder"] = {"path": str(drop_folder), "files": len(planned)}
-            out["strava"] = self._strava_after_sync(dev, st, settings, False, None)
+            after = service.after_sync(session, apply=False)
+            if after.drop_error is not None:
+                raise after.drop_error
+            if after.drop_folder is not None:
+                out["drop_folder"] = {"path": str(after.drop_folder), "files": after.drop_planned}
+            out["strava"] = self._strava_after_sync(after)
             return out
         progress = self.progress_for(req)
         summary = service.run_sync(session, progress=progress, options=options)
@@ -1116,11 +1112,15 @@ class Engine:
                "not_confirmed": summary.not_confirmed,
                "steps": [text for text, _warning in told.steps], "sentence": told.sentence,
                "drop_folder": None, "strava": None}
-        if drop_folder is not None:
-            dropped = sync.run_drop_folder(dev, st, drop_folder, drop_types, progress=progress)
-            out["drop_folder"] = {"path": str(drop_folder), "copied": dropped.copied,
+        # Before the drive is ejected: the device must still be open to read from.
+        after = service.after_sync(session, apply=True, progress=progress)
+        if after.drop_error is not None:
+            raise after.drop_error
+        dropped = after.dropped
+        if dropped is not None:
+            out["drop_folder"] = {"path": str(after.drop_folder), "copied": dropped.copied,
                                   "bytes": dropped.bytes, "incomplete": dropped.incomplete}
-        out["strava"] = self._strava_after_sync(dev, st, settings, True, progress)
+        out["strava"] = self._strava_after_sync(after)
         if st.mass_storage and summary.wrote_to_device:
             out["ejected"] = cli._eject_drive(st, files=True)
         return out

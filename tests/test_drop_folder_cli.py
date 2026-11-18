@@ -1,13 +1,12 @@
 """The command-line side of the FIT drop folder: `setup --copy-fit-to`/`--copy-fit-types`
 persist the setting (settings.Settings.copy_fit_to/copy_fit_types), and `sync --copy-fit-to`
-overrides it for one run without saving anything (cli._drop_folder_dest), the same pattern as
+overrides it for one run without saving anything (service.drop_folder_dest), the same pattern as
 every other `setup`/one-run-option pair in this program (e.g. --diagnostics-copy). No device
 is opened by any of this."""
 
-import argparse
 from pathlib import Path
 
-from openexpress import cli
+from openexpress import service
 from openexpress.cli import main
 from openexpress.settings import Settings
 
@@ -46,27 +45,24 @@ def test_setup_without_copy_fit_options_leaves_a_saved_destination_untouched(tmp
     assert Settings.load().copy_fit_to == str(dest)
 
 
-# --- cli._drop_folder_dest: --copy-fit-to for one run, else the setting, else off ----------
+# --- service.drop_folder_dest: --copy-fit-to for one run, else the setting, else off -------
 
 
 def test_drop_folder_dest_prefers_the_run_s_own_option_over_the_setting(tmp_path):
-    args = argparse.Namespace(copy_fit_to=str(tmp_path / "run-only"))
     settings = Settings(copy_fit_to=str(tmp_path / "setting"))
-    assert cli._drop_folder_dest(args, settings) == tmp_path / "run-only"
+    assert service.drop_folder_dest(settings, str(tmp_path / "run-only")) == tmp_path / "run-only"
 
 
 def test_drop_folder_dest_falls_back_to_the_setting_when_nothing_is_given_for_this_run(
         tmp_path):
-    args = argparse.Namespace(copy_fit_to=None)
     settings = Settings(copy_fit_to=str(tmp_path / "setting"))
-    assert cli._drop_folder_dest(args, settings) == tmp_path / "setting"
+    assert service.drop_folder_dest(settings, None) == tmp_path / "setting"
 
 
 def test_drop_folder_dest_is_none_when_neither_is_given():
-    assert cli._drop_folder_dest(argparse.Namespace(copy_fit_to=None), Settings()) is None
+    assert service.drop_folder_dest(Settings(), None) is None
 
 
 def test_drop_folder_dest_expands_a_leading_tilde(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
-    args = argparse.Namespace(copy_fit_to="~/drop")
-    assert cli._drop_folder_dest(args, Settings()) == Path.home() / "drop"
+    assert service.drop_folder_dest(Settings(), "~/drop") == Path.home() / "drop"

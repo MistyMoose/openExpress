@@ -12,7 +12,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import NoReturn
+from pathlib import Path
+from typing import TYPE_CHECKING, NoReturn
 from urllib.parse import urlsplit
 
 import requests
@@ -35,6 +36,9 @@ from openexpress.errors import OrdinaryStop, UserFacingError
 from openexpress.i18n import N_, _, ngettext, pgettext
 from openexpress.progress import Waiting, say_to
 from openexpress.settings import Settings, SetupError, language_tag, load_consumer
+
+if TYPE_CHECKING:
+    from openexpress.strava import AfterSync as StravaAfterSync
 
 log = logging.getLogger(__name__)
 
@@ -1935,6 +1939,83 @@ def load_last_sync(unit_id: int | None = None, test_drive: bool = False) -> dict
     if data is None or (unit_id is not None and data.get("unit_id") != unit_id):
         return None
     return data
+
+
+# --- after the sync: the FIT drop folder and Strava -----------------------------------------
+
+
+def drop_folder_dest(settings: Settings, chosen: str | None = None) -> Path | None:
+    """Where a sync copies new FIT files after it (sync.run_drop_folder): `chosen` (the
+    command line's --copy-fit-to, for one run), else Settings.copy_fit_to; None: off."""
+    chosen = chosen or settings.copy_fit_to
+    return Path(chosen).expanduser() if chosen else None
+
+
+@dataclass
+class AfterSyncResult:
+    """What after_sync did, or in a dry run would do. A part that is off stays None."""
+    drop_folder: Path | None = None  # where new FIT files are copied
+    drop_planned: int | None = None  # a dry run: the files that would be copied
+    dropped: sync.DropFolderResult | None = None  # what was copied
+    drop_error: Exception | None = None
+    strava: StravaAfterSync | None = None  # Settings.strava_upload
+    strava_error: Exception | None = None
+
+    def strava_problems(self) -> list[str]:
+        """What went wrong with Strava, in words for the user."""
+        if self.strava_error is not None:
+            return [_("Strava: {error}").format(error=self.strava_error)]
+        report = self.strava.report if self.strava is not None else None
+        if report is None:
+            return []
+        out = [_("Strava: {name} was not uploaded: {error}").format(name=name, error=error)
+               for name, error in report.failed]
+        if report.rate_limited:
+            out.append(_("Strava: too many uploads for now; the rest wait for the next sync."))
+        return out
+
+    def problems(self) -> list[str]:
+        """What went wrong after the sync, in words for the user: the window and the background
+        service say it as they say the sync's own errors."""
+        out = []
+        if self.drop_error is not None:
+            out.append(_("FIT drop folder: {error}").format(error=self.drop_error))
+        return out + self.strava_problems()
+
+
+def after_sync(s: DeviceSession, apply: bool, progress: Progress | None = None,
+               copy_fit_to: str | None = None) -> AfterSyncResult:
+    """What a sync does after its own work, by the settings: the new FIT files copied to the
+    drop folder (`copy_fit_to` for this run, drop_folder_dest), then the new activities sent to
+    Strava (strava.after_sync). Without `apply`: what it would do, with no network. Run while
+    the device is still open: a drive is ejected after it. Never raises: an error of either
+    part is in the result, so that neither fails the sync."""
+    from openexpress import strava
+
+    dev, st = s.device, s.storage
+    out = AfterSyncResult(drop_folder=drop_folder_dest(s.settings, copy_fit_to))
+    if out.drop_folder is not None:
+        types = sync.drop_folder_types(s.settings.copy_fit_types)
+        try:
+            if apply:
+                out.dropped = sync.run_drop_folder(dev, st, out.drop_folder, types,
+                                                   progress=progress)
+            else:
+                out.drop_planned = len(sync.plan_drop_folder(dev, st, out.drop_folder, types))
+        except Exception as e:  # noqa: BLE001 - in the result: the sync itself is done
+            log.warning("drop folder: %s: %s", type(e).__name__, e)
+            out.drop_error = e
+    if s.settings.strava_upload:
+        try:
+            out.strava = strava.after_sync(dev, st, apply, progress)
+        except Exception as e:  # noqa: BLE001 - in the result: Strava never fails the sync
+            log.warning("strava: after the sync: %s", type(e).__name__)
+            out.strava_error = e
+        else:
+            if out.strava.incomplete:
+                log.info("strava: %d activity file still being written by the device, staged "
+                         "by the next sync", out.strava.incomplete)
+    return out
 
 
 def _install_queued_apps(s, messages, progress, errors, received: list) -> list[dict]:

@@ -14,6 +14,7 @@ from fakes import window as stand_in
 from openexpress import service, sync
 from openexpress.device.storage import LocalStorage
 from openexpress.device.xmldevice import parse
+from openexpress.settings import Settings
 
 NOW = 1_800_000_000.0
 DAY = 86400.0
@@ -234,7 +235,8 @@ def _window(device, to_sync, other):
 
     session = types.SimpleNamespace(device=device, storage=Untouchable(), logged_in=True,
                                     mass_storage=False, ownership_error=None, to_sync=to_sync,
-                                    stop_waiting=threading.Event(), satellite=None)
+                                    stop_waiting=threading.Event(), satellite=None,
+                                    settings=Settings())
     drawn = []
     return stand_in(
         session=session, run_task=RunNow(), progress=lambda *a: None, toast=lambda text: None,

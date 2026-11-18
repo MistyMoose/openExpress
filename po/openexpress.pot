@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 11:53+0100\n"
+"POT-Creation-Date: 2026-11-18 12:09+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2419,8 +2419,21 @@ msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Strava: {error}"
-msgstr ""
+msgid "Copied {count} new file ({size}) to the FIT drop folder {path}"
+msgid_plural "Copied {count} new files ({size}) to the FIT drop folder {path}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"{count} file for the drop folder was still being written by the device; "
+"copied by the next sync"
+msgid_plural ""
+"{count} files for the drop folder were still being written by the device; "
+"copied by the next sync"
+msgstr[0] ""
+msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2435,16 +2448,6 @@ msgid "Already on Strava: {count} activity"
 msgid_plural "Already on Strava: {count} activities"
 msgstr[0] ""
 msgstr[1] ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Strava: {name} was not uploaded: {error}"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Strava: too many uploads for now; the rest wait for the next sync."
-msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2475,24 +2478,6 @@ msgid ""
 "  openexpress sync --apply --all uploads everything (Garmin Connect rejects "
 "duplicates)"
 msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Copied {count} new file ({size}) to the FIT drop folder {path}"
-msgid_plural "Copied {count} new files ({size}) to the FIT drop folder {path}"
-msgstr[0] ""
-msgstr[1] ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"{count} file for the drop folder was still being written by the device; "
-"copied by the next sync"
-msgid_plural ""
-"{count} files for the drop folder were still being written by the device; "
-"copied by the next sync"
-msgstr[0] ""
-msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -12304,6 +12289,26 @@ msgstr ""
 #: openexpress/service.py
 #, python-brace-format
 msgid "{name}: written, but Garmin Connect was not notified (will retry)"
+msgstr ""
+
+#: openexpress/service.py
+#, python-brace-format
+msgid "Strava: {error}"
+msgstr ""
+
+#: openexpress/service.py
+#, python-brace-format
+msgid "Strava: {name} was not uploaded: {error}"
+msgstr ""
+
+#: openexpress/service.py
+#, python-brace-format
+msgid "Strava: too many uploads for now; the rest wait for the next sync."
+msgstr ""
+
+#: openexpress/service.py
+#, python-brace-format
+msgid "FIT drop folder: {error}"
 msgstr ""
 
 #: openexpress/settings.py

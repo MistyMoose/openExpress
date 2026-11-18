@@ -1464,7 +1464,7 @@ def test_the_maps_command_says_when_the_map_is_loaded(server, device_root, xdg, 
         written=["GARMIN/J.img"], unlocks=["GARMIN/J.gma"]))
     assert cli.main(["--path", str(device_root), "maps", "install", "Japan", "--apply"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out[-2:] == ["Wrote 1 map file and 1 unlock files.",
+    assert out[-3:] == ["Wrote 1 map file.", "Unlock files written: 1",
                         "The map will be loaded after the device is unplugged."]
 
 
@@ -2025,3 +2025,31 @@ def test_up_to_date_in_polish_fits_the_software_and_a_map(server):
     finally:
         i18n.setup("en")
     assert words == ("aktualna wersja", "aktualna wersja")
+
+
+@pytest.mark.parametrize(("language", "written", "unlocks", "said"), [
+    ("en", 1, 2, ["Wrote 1 map file.", "Unlock files written: 2"]),
+    ("en", 5, 1, ["Wrote 5 map files.", "Unlock files written: 1"]),
+    ("pl", 1, 1, ["Zapisano 1 plik mapy.", "Zapisane pliki odblokowujące: 1"]),
+    ("pl", 3, 1, ["Zapisano 3 pliki map.", "Zapisane pliki odblokowujące: 1"]),
+    ("pl", 5, 2, ["Zapisano 5 plików map.", "Zapisane pliki odblokowujące: 2"]),
+])
+def test_the_files_written_each_count_in_its_own_words(server, device_root, xdg, monkeypatch,
+                                                       capsys, language, written, unlocks, said):
+    """The map files and the unlock files each with their own count: one plural form cannot
+    agree with two numbers ("1 unlock files")."""
+    from openexpress import cli, i18n
+
+    answer_with(monkeypatch, body=json.dumps(maps_response(server)).encode())
+    monkeypatch.setattr(cli, "_url_salt", lambda: "salt")
+    monkeypatch.setattr(maps, "install", lambda *a, **kw: maps.MapReport(
+        written=[f"GARMIN/J{n}.img" for n in range(written)],
+        unlocks=[f"GARMIN/J{n}.gma" for n in range(unlocks)]))
+    try:
+        code = cli.main(["--lang", language, "--path", str(device_root), "maps", "install",
+                         "Japan", "--apply"])
+    finally:
+        i18n.setup("en")
+    out = capsys.readouterr().out.splitlines()
+    assert code == 0
+    assert out[-3:-1] == said

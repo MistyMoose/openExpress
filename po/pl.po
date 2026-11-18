@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 20:50+0100\n"
+"POT-Creation-Date: 2026-11-18 02:08+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -3061,11 +3061,18 @@ msgstr[2] ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Wrote {count} map file and {unlocks} unlock files."
-msgid_plural "Wrote {count} map files and {unlocks} unlock files."
-msgstr[0] "Zapisano {count} plik mapy; pliki odblokowujące: {unlocks}."
-msgstr[1] "Zapisano {count} pliki map; pliki odblokowujące: {unlocks}."
-msgstr[2] "Zapisano {count} plików map; pliki odblokowujące: {unlocks}."
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
+msgstr[0] "Zapisano {count} plik mapy."
+msgstr[1] "Zapisano {count} pliki map."
+msgstr[2] "Zapisano {count} plików map."
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Unlock files written: {count}"
+msgstr "Zapisane pliki odblokowujące: {count}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -12192,8 +12199,8 @@ msgid ""
 "Garmin's server says that Garmin Connect does not take this device's data "
 "(connect support: Disabled), so it is not synced."
 msgstr ""
-"Serwer Garmina podaje, że Garmin Connect nie przyjmuje danych tego urządzenia "
-"(connect support: Disabled), więc nie jest ono synchronizowane."
+"Serwer Garmina podaje, że Garmin Connect nie przyjmuje danych tego "
+"urządzenia (connect support: Disabled), więc nie jest ono synchronizowane."
 
 #: openexpress/service.py
 #, python-brace-format

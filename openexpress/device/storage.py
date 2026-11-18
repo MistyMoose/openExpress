@@ -114,6 +114,12 @@ class Storage(ABC):
     mass_storage = False
     # A USB drive taken for a Garmin drive for testing (UmsStorage.test_drive).
     test_drive = False
+    # Names of the device's other storages, besides this one (e.g. a Forerunner 645 Music's
+    # "Media" storage, beside the "Primary" one that has GARMIN/): set by mac_storage and
+    # gio_storage when the device has more than one. Music on another storage is not supported
+    # yet (openexpress.music refuses to write there instead of creating its folder here); a
+    # device with one storage (most of them) keeps this empty.
+    other_storages: tuple[str, ...] = ()
     # Whether write_file keeps the file it replaces until the new one is whole (a temporary
     # copy renamed at the end), so both have to fit for a while: what the space checks count.
     # Over MTP the old file is deleted before the new one is sent. (What a failed write

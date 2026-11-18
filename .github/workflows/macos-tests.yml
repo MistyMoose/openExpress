@@ -1,0 +1,47 @@
+# Runs the test suite on macOS, on a GitHub-hosted Apple silicon runner, as docs/macos.md does
+# locally: no display and no PyGObject (the tests of the Linux window are skipped), a home
+# folder of the tests' own, no USB device. GPL-3.0-or-later.
+#
+# Python: 3.13, the engine's in the app (macos/scripts/build-pkg.sh), and 3.11, the oldest
+# pyproject.toml allows. Homebrew gives what the other tests need: gettext and AppStream's
+# rules for the translations, libusb for the PTP tests, p7zip for the installer's.
+name: macOS tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: macos-26  # Apple silicon (arm64)
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.11"]
+    env:
+      OPENEXPRESS_TESTS_NO_DISPLAY: "1"
+      XDG_DATA_DIRS: /opt/homebrew/share  # Homebrew's xgettext does not look there for metainfo.its
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Tools
+        run: brew install gettext appstream libusb p7zip
+
+      - name: Python packages
+        run: |
+          # --no-deps: PyGObject (pyproject.toml) is only the Linux window's.
+          python -m pip install --no-deps -e .
+          python -m pip install "requests>=2.28" "mutagen>=1.45" "pytest>=7"
+
+      - name: Tests
+        run: python -m pytest -q -ra

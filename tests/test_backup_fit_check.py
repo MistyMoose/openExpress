@@ -35,7 +35,7 @@ def test_a_fit_file_cut_short_is_left_out_and_counted(device_root, tmp_path, cap
     st, dev = _device(device_root)
     res = backup.run_backup(dev, st, tmp_path / "bk", keep=1)
     assert res.incomplete == 1
-    kept = {p.name for p in res.path.rglob("*") if p.is_file()}
+    kept = {p.name for p in res.path.rglob("*") if p.is_file() and p.name != backup.SUMMARY}
     assert "2026-10-03-10-00-00.fit" not in kept
     assert {"2026-10-01-10-00-00.fit", "M1.FIT", "GarminDevice.xml"} <= kept
     assert res.files == len(kept)

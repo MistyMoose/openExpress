@@ -91,7 +91,8 @@ def test_a_backup_copies_each_file_once(twice, tmp_path):
     steps = []
     done = backup.run_backup(dev, LocalStorage(root), tmp_path / "bk", keep=1,
                              progress=steps.append)
-    copied = sorted(str(p.relative_to(done.path)) for p in done.path.rglob("*") if p.is_file())
+    copied = sorted(str(p.relative_to(done.path)) for p in done.path.rglob("*")
+                    if p.is_file() and p.name != backup.SUMMARY)
     assert copied == ["FIT_TYPE_2/Settings.fit", "FIT_TYPE_32/M1.FIT",
                       *(f"FIT_TYPE_4/{n}" for n in ACTIVITIES),
                       *(f"FIT_TYPE_61/ECG{n}.FIT" for n in (1, 2, 3)), "GarminDevice.xml"]

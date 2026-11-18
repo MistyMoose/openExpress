@@ -20,6 +20,12 @@ def is_mac() -> bool:
     return sys.platform == "darwin"
 
 
+def has_desktop() -> bool:
+    """Whether the commands of the desktop of Linux are here (LINUX_ONLY_COMMANDS): the
+    command line has them, and with no command it opens the window. Not on macOS."""
+    return not is_mac()
+
+
 def needs_pygobject() -> bool:
     """Whether the command line needs PyGObject to open a device: on Linux (GIO); on macOS
     only the window would, which is not there."""

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 12:09+0100\n"
+"POT-Creation-Date: 2026-11-18 12:10+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -4724,15 +4724,6 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "--free-space cannot be given with --dumps or --crash-logs"
-msgstr ""
-
-#. TRANSLATORS: macOS: {command} is a command of openexpress ("gui", "watch",
-#. "install-desktop"), not to be translated
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"openexpress {command} is only available on Linux. On macOS, use the other "
-"commands (openexpress --help)."
 msgstr ""
 
 #: openexpress/cli.py

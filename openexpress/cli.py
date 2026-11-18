@@ -3654,6 +3654,8 @@ ARGPARSE_MESSAGES = [
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from openexpress import platform
+
     argparse._ = _
     argparse.ngettext = ngettext
     p = argparse.ArgumentParser(
@@ -3668,9 +3670,11 @@ def build_parser() -> argparse.ArgumentParser:
                        examples=", ".join(i18n.available_languages())))
     _device_options(p)
     sub = p.add_subparsers(dest="cmd")
-    # Without a command the application window opens (as from the application menu), and
-    # it is logged as the window. After add_subparsers: it would set "cmd" to None.
-    p.set_defaults(func=cmd_gui, cmd="gui")
+    if platform.has_desktop():
+        # Without a command the application window opens (as from the application menu), and
+        # it is logged as the window. After add_subparsers: it would set "cmd" to None. Where
+        # there is no window (macOS) "cmd" stays None: the commands are listed (_main).
+        p.set_defaults(func=cmd_gui, cmd="gui")
 
     s = sub.add_parser("setup", help=_("configuration: OAuth1 key, environment, locale"))
     s.add_argument("--from-installer", metavar="GarminExpress.exe",
@@ -4011,27 +4015,30 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("remove the files and playlists from the device"))
     s.set_defaults(func=cmd_music)
 
-    # TRANSLATORS: CLI help of the gui command, which opens the application window
-    s = sub.add_parser("gui", help=_("application window"))
-    s.set_defaults(func=cmd_gui)
+    if platform.has_desktop():
+        # TRANSLATORS: CLI help of the gui command, which opens the application window
+        s = sub.add_parser("gui", help=_("application window"))
+        s.set_defaults(func=cmd_gui)
 
     # TRANSLATORS: CLI help of `openexpress engine`; "JSON Lines" is the name of a format
     s = sub.add_parser("engine", help=_("requests and answers as JSON Lines on stdin and "
                                         "stdout, for the macOS app"))
     s.set_defaults(func=cmd_engine)
 
-    s = sub.add_parser("watch", help=_("background service: sync when the device is connected"))
-    s.set_defaults(func=cmd_watch)
+    if platform.has_desktop():  # the background service and the launchers of the desktop
+        s = sub.add_parser("watch",
+                           help=_("background service: sync when the device is connected"))
+        s.set_defaults(func=cmd_watch)
 
-    s = sub.add_parser("install-desktop",
-                       help=_("add an application menu entry and a background sync service"))
-    s.add_argument("--apply", action="store_true",
-                   help=_("write the files (with --remove: delete them)"))
-    s.add_argument("--remove", action="store_true",
-                   help=_("remove the menu entry, icon and service instead"))
-    s.add_argument("--force", action="store_true",
-                   help=_("install even if the Flatpak of openExpress is installed"))
-    s.set_defaults(func=cmd_install_desktop)
+        s = sub.add_parser("install-desktop",
+                           help=_("add an application menu entry and a background sync service"))
+        s.add_argument("--apply", action="store_true",
+                       help=_("write the files (with --remove: delete them)"))
+        s.add_argument("--remove", action="store_true",
+                       help=_("remove the menu entry, icon and service instead"))
+        s.add_argument("--force", action="store_true",
+                       help=_("install even if the Flatpak of openExpress is installed"))
+        s.set_defaults(func=cmd_install_desktop)
     for name in DEVICE_COMMANDS:
         for parser in _with_its_commands(sub.choices[name]):
             _device_options(parser, after_command=True)
@@ -4119,15 +4126,10 @@ def _main(argv: list[str] | None) -> int:
         i18n.setup(args.lang)
     from openexpress import platform
 
-    if platform.is_mac() and args.cmd in platform.LINUX_ONLY_COMMANDS:
-        # The window and the background service are GTK's and systemd's: not on macOS. With
-        # no command at all (which opens the window on Linux) the commands there are are
-        # listed instead.
-        if args.cmd == "gui" and "gui" not in (sys.argv[1:] if argv is None else argv):
-            parser.print_help()
-            return 0
-        _error(linux_only_text(args.cmd))
-        return 1
+    if args.cmd is None:
+        # No command where there is no window to open (build_parser: macOS): the commands.
+        parser.print_help()
+        return 0
     if platform.needs_pygobject() and importlib.util.find_spec("gi") is None:
         # Without PyGObject no command can open a device or a window: one line and exit
         # code 1, not the traceback of the first import of GLib (--help and --version above).
@@ -4159,14 +4161,6 @@ def _main(argv: list[str] | None) -> int:
     finally:
         log.info("end: %s, exit code %s, %.1f s", args.cmd or "-", code,
                  time.monotonic() - started)
-
-
-def linux_only_text(command: str) -> str:
-    """A command of the desktop of Linux (platform.LINUX_ONLY_COMMANDS) run on macOS."""
-    # TRANSLATORS: macOS: {command} is a command of openexpress ("gui", "watch",
-    # "install-desktop"), not to be translated
-    return _("openexpress {command} is only available on Linux. On macOS, use the other "
-             "commands (openexpress --help).").format(command=command)
 
 
 def no_pygobject_text() -> str:

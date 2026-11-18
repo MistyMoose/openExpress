@@ -21,9 +21,13 @@ def _section(title: str, document: str = "README.md") -> str:
 
 
 def _commands() -> dict:
-    from openexpress import cli
+    """The commands of the command line, as on Linux (with those of its desktop)."""
+    from unittest import mock
 
-    parser = cli.build_parser()
+    from openexpress import cli, platform
+
+    with mock.patch.object(platform, "has_desktop", lambda: True):
+        parser = cli.build_parser()
     sub = next(a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction")
     return dict(sub.choices)
 

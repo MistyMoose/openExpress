@@ -64,14 +64,30 @@ def test_importing_the_platform_and_the_storage_of_macos_needs_neither_pygobject
 
 @pytest.mark.parametrize("command", platform.LINUX_ONLY_COMMANDS)
 @pytest.mark.usefixtures("as_mac")
-def test_the_commands_of_the_linux_desktop_say_so_on_macos(command, monkeypatch, capsys,
-                                                          tmp_path):
+def test_the_commands_of_the_linux_desktop_are_not_there_on_macos(command, monkeypatch, capsys,
+                                                                  tmp_path):
     from openexpress import cli
 
     monkeypatch.setenv("HOME", str(tmp_path))  # macOS's folders are under ~/Library
     monkeypatch.setattr(cli.applog, "setup", lambda *a, **k: pytest.fail("not started"))
-    assert cli.main([command]) == 1
-    assert f"openexpress {command} is only available on Linux" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as stopped:
+        cli.main([command])
+    assert stopped.value.code == 2
+    assert f"invalid choice: '{command}'" in capsys.readouterr().err
+    assert command not in _commands()
+
+
+@pytest.mark.parametrize("command", platform.LINUX_ONLY_COMMANDS)
+@pytest.mark.usefixtures("as_linux")
+def test_the_commands_of_the_linux_desktop_are_there_on_linux(command, monkeypatch):
+    assert command in _commands()
+
+
+def _commands() -> set[str]:
+    from openexpress import cli
+
+    parser = cli.build_parser()
+    return set(next(a for a in parser._actions if a.dest == "cmd").choices)
 
 
 @pytest.mark.usefixtures("as_mac")
@@ -115,4 +131,3 @@ def test_no_command_on_macos_lists_the_commands_instead_of_opening_a_window(monk
     assert cli.main([]) == 0
     out = capsys.readouterr()
     assert out.out.startswith("usage: openexpress") and out.err == ""
-    assert cli.main(["gui"]) == 1

@@ -95,7 +95,8 @@ def test_no_command_opens_the_window(monkeypatch, as_linux):
     monkeypatch.setattr(cli, "cmd_gui", lambda args: called.append(args) or 0)
     assert cli.main([]) == 0
     assert cli.main(["--lang", "en"]) == 0
-    assert len(called) == 2
+    assert cli.main(["gui"]) == 0
+    assert len(called) == 3
 
 
 def test_last_sync_is_remembered(xdg):

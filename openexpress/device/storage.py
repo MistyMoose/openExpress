@@ -515,8 +515,8 @@ def _md5_of(chunks) -> str:
 
 
 def _sync_folder(folder: Path) -> None:
-    """Put a folder's entries (a new or renamed file) on the disk. A file system that cannot
-    sync a folder says so (EINVAL): then there is nothing more to put there."""
+    """Put a folder's entries (a file new, renamed or removed, a folder new) on the disk. A file
+    system that cannot sync a folder says so (EINVAL): then there is nothing more to put there."""
     fd = os.open(folder, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
     try:
         os.fsync(fd)
@@ -528,8 +528,11 @@ def _sync_folder(folder: Path) -> None:
 
 
 class LocalStorage(Storage):
-    """Directory on disk: a device in mass storage mode, a copy, or tests. A write counts only
-    once it is on the disk (fsync of the file and of its folder)."""
+    """Directory on disk: a device in mass storage mode, a copy, or tests. A change counts only
+    once it is on the disk: a write (fsync of the file and of its folder), a removal and a new
+    folder (fsync of the folder they are in). A drive's file system (FAT) would else keep the
+    change in memory for about half a minute, and a drive unplugged or gone meanwhile keeps
+    the files removed."""
 
     replaces_atomically = True  # a temporary copy, renamed when whole (_replace)
 
@@ -633,11 +636,15 @@ class LocalStorage(Storage):
 
     def _delete(self, real_path: str) -> None:
         with _os_errors(_("Cannot delete {path}").format(path=real_path)):
-            self._p(real_path).unlink()
+            target = self._p(real_path)
+            target.unlink()
+            _sync_folder(target.parent)
 
     def _mkdir(self, real_path: str) -> None:
         with _os_errors(_("Cannot create directory {path}").format(path=real_path)):
-            self._p(real_path).mkdir()
+            target = self._p(real_path)
+            target.mkdir()
+            _sync_folder(target.parent)
 
     def write_checked(self, path: str, data: bytes, *, error: type[Exception] = DeviceError) -> str:
         """As Storage.write_checked, and its bytes read back whole from the drive after the

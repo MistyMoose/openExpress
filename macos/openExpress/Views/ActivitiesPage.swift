@@ -466,7 +466,7 @@ struct ActivityDetailView: View {
                             }
                         }
                     }
-                    if activity.isOnThisMac, app.strava?.connected == true, app.supports("strava.upload") {
+                    if activity.isOnThisMac, app.strava?.connected == true {
                         Button(stravaSent ? "Sent to Strava" : "Send to Strava") {
                             Task {
                                 stravaSent = (try? await app.engine.stravaUpload(files: [path]))?["failed"]?.intValue == 0

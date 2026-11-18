@@ -40,7 +40,8 @@ struct AccountForm: View {
                     .foregroundStyle(.secondary)
             }
 
-            if app.supports("strava.status") {
+            // Once the engine has answered (Settings can open before).
+            if app.hello != nil {
                 StravaSection()
             }
         }

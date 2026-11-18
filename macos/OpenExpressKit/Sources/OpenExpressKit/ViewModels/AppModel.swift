@@ -89,7 +89,7 @@ public final class AppModel {
                 selection = connectedDevices.first.map { .device($0.unitID) }
                     ?? devices.first.map { .device($0.unitID) } ?? .account
             }
-            if hello?.supports("strava.status") == true { strava = try? await engine.stravaStatus() }
+            strava = try? await engine.stravaStatus()
             await reloadEngineSettings()
             for d in connectedDevices { Task { await model(for: d.unitID)?.refresh() } }
         } catch {
@@ -211,7 +211,7 @@ public final class AppModel {
 
     public func refreshAccount() async {
         account = try? await engine.accountStatus()
-        if supports("strava.status") { strava = try? await engine.stravaStatus() }
+        strava = try? await engine.stravaStatus()
     }
 
     public func signInURL() async throws -> URL { try await engine.signInURL() }

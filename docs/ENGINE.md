@@ -49,7 +49,7 @@ running request at the next safe point (never in the middle of writing one file 
 | `updates.list` | `{"device"}` | `{"updates": [Update], "beta_offered": bool, "state": "current"\|"available"\|"ready"\|"not-installed", "add_ons": [Update]}` |
 | `updates.install` | `{"device", "parts": [...] or "all", "apply": bool}` | as the command line (`updates --install`): `{"exit_code", "lines"}` |
 | `maps.list` | `{"device", "all": bool}` | `{"maps": [Map], "own_maps": [{"file", "size", "title", "path"}], "free": bytes, "more_available": n}`; no maps service for the device: `"maps": []` and `"message"` |
-| `maps.install` / `maps.remove` | `{"device", "maps": [names], "apply": bool}` | `{"dry_run", "maps": [{"name", "done": bool, "exit_code", "lines"} or {"name", "done": false, "code", "reason"}]}`, one map after the other |
+| `maps.install` / `maps.remove` | `{"device", "maps": [names], "apply": bool}` | `{"dry_run", "maps": [{"name", "done": bool, "exit_code", "lines"} or {"name", "done": false, "code", "reason"}]}`, one map after the other, Garmin's maps for the device asked once for all |
 | `maps.update` | `{"device", "apply": bool}` | as `maps update`: every installed map with an update; `{"exit_code", "lines"}` |
 | `apps.list` | `{"device", "builtin"?: bool}` | as `apps`: `{"exit_code", "lines"}` |
 | `apps.install` | `{"device", "name", "allow_permissions"?: bool, "apply": bool}` | as `apps install`: `{"exit_code", "lines"}` |
@@ -69,9 +69,12 @@ running request at the next safe point (never in the middle of writing one file 
 
 `device` is the unit ID as a string; it may be left out when exactly one device is connected.
 A method marked "as the command line" runs that command: `lines` is what it printed (also sent
-as `log` events), `exit_code` its exit code (0 done; 1 a refusal it explains). A request
-holds the device only while it runs: between requests the engine lets it go (on macOS it closes
-its USB session), so another program may take it.
+as `log` events), `exit_code` its exit code (0 done; 1 a refusal it explains). The engine
+keeps a device open (on macOS its USB session) for 8 seconds after the last request on it, so
+that the requests of a page do not each open it again; then it lets it go, so another program
+may take it. It lets it go at once when the device is unplugged, when another program is seen
+holding it, when another openexpress process (a command in a Terminal) waits for it, and when
+the engine ends.
 
 Error codes: `parse_error`, `invalid_request`, `unknown_method`, `invalid_params`,
 `unknown_setting`, `cancelled`, `no_device`, `several_devices`, `device_busy`
@@ -85,8 +88,8 @@ A line that is not JSON, or has no `id`, is answered with `"id": null`.
 
 | Event | Params |
 |---|---|
-| `device.attached` / `device.detached` | `Device` (from USB polling on macOS) |
-| `device.busy` | `{"device", "program", "name"}`: another program holds it (e.g. Garmin Express Service); `device` is null unless its USB serial names a remembered device; `device.attached` follows once it is let go |
+| `device.attached` / `device.detached` | `Device` (from USB polling on macOS, every 2 s) |
+| `device.busy` | `{"device", "program", "name"}`: another program holds it (e.g. Garmin Express Service); `device` is null unless its USB serial names a remembered device; `device.attached` follows once it is let go (looked at every 10 s while it is held). A program that takes a device while nothing changes on USB is seen when a request finds the device held (`device_busy`), the next poll then sending `device.busy` |
 | `progress` | `{"request", "phase", "done", "total", "item"?}`; `phase`: `downloading`, `copying`, `writing`, `checking` (then `item` names the update, map or app), `waiting` (a wait on Garmin Connect, in percent), `reading_activities` (`activities.list`), else the method's own (`backup`, `sync`, `working`) with the step's words as `item` |
 | `log` | `{"level", "message", "request"}`: what the CLI would print as it goes (`info`: its output; `warning`: what it writes to stderr) |
 

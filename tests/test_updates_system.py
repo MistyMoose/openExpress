@@ -248,7 +248,7 @@ def test_the_software_of_a_part_is_shown_with_its_own_versions():
     (available,) = groups
     assert [(r.get_title(), r.get_subtitle()) for r in available.rows] == [
         ("Test GPS Software",
-         "6.10\u00a0→\u00a06.70\u00a0· 12\u00a0B\u00a0· Recommended\u00a0· GUPDATE.GCD")]
+         "6.10\u00a0→\u00a06.70\u00a0· 12\u00a0B\u00a0· Recommended")]
 
 
 @pytest.mark.needs_display
@@ -1005,13 +1005,13 @@ def test_status_with_a_system_update():
         "icon": ("software-update-available-symbolic", 96, False),
         "texts": [("2 updates available", ["title-1"]),  # the words of the device's row
                   (f"{VERSIONS}\u00a0· 12\u00a0B", ["dim-label"]),
-                  ("Test Bundle\u00a0· Recommended\u00a0· GUPDATE.GSP", ["caption", "dim-label"])],
+                  ("Test Bundle\u00a0· Recommended", ["caption", "dim-label"])],
         "buttons": [("Install", True), ("Install All", False), ("Check Again", False)]}
     # Below: only the other updates.
     (available,) = groups
     assert available.title == "Available Updates"
     assert [(r.get_title(), r.get_subtitle()) for r in available.rows] == [
-        ("Test Font", "23.40\u00a0· 4\u00a0B\u00a0· Recommended\u00a0· 006-D0000-00.fnt")]
+        ("Test Font", "23.40\u00a0· 4\u00a0B\u00a0· Recommended")]
     install.emit("clicked")
     assert [u.part_number for u in win.asked] == ["006-V0000-00"]  # the question with the warning
 
@@ -1033,10 +1033,10 @@ def test_status_with_plain_updates_only():
 def test_a_second_system_update_is_listed_as_system_software():
     second = _entry("006-B0000-00", "Test Software", "Firmware", "Garmin", "GUPDATE.GCD", b"fw")
     _win, status, groups, _buttons = _updates_page(_items(BUNDLE_ENTRY, second))
-    assert status["texts"][2][0] == "Test Bundle\u00a0· Recommended\u00a0· GUPDATE.GSP"  # the first on top
+    assert status["texts"][2][0] == "Test Bundle\u00a0· Recommended"  # the first on top
     (available,) = groups
     assert [(r.get_title(), r.get_subtitle()) for r in available.rows] == [
-        ("Device Software", "Test Software\u00a0· 23.40\u00a0· 2\u00a0B\u00a0· Recommended\u00a0· GUPDATE.GCD")]
+        ("Device Software", "Test Software\u00a0· 23.40\u00a0· 2\u00a0B\u00a0· Recommended")]
 
 
 @pytest.mark.needs_display
@@ -1058,7 +1058,7 @@ def test_the_status_in_polish():
     assert current["buttons"] == [("Sprawdź ponownie", False)]
     assert [t for t, _c in system["texts"]] == [
         "Dostępne są 2 aktualizacje", f"{VERSIONS}\u00a0· 12\u00a0B",
-        "Test Bundle\u00a0· Zalecana\u00a0· GUPDATE.GSP"]
+        "Test Bundle\u00a0· Zalecana"]
     assert system["buttons"] == [("Zainstaluj", True), ("Zainstaluj wszystkie", False),
                                  ("Sprawdź ponownie", False)]
     assert groups[0].title == "Dostępne aktualizacje"
@@ -1148,7 +1148,7 @@ def test_status_with_a_beta_system_update():
         # "Beta" in the warning colour, not dimmed like the rest of the line.
         (f"{VERSIONS}\u00a0· Beta\u00a0· 12\u00a0B",
          [["dim-label"], ["heading", "warning"], ["dim-label"], ["dim-label"]]),
-        ("Test Bundle\u00a0· Recommended\u00a0· GUPDATE.GSP", ["caption", "dim-label"]),
+        ("Test Bundle\u00a0· Recommended", ["caption", "dim-label"]),
         ("Garmin offers beta software for this device.", ["caption", "dim-label"])]
 
 
@@ -1158,7 +1158,7 @@ def test_status_says_beta_versions_are_offered_when_none_is_listed():
     items = updates.parse_updates(lower_keys(beta_answer("live")), _test_watch())
     _win, status, _groups, _buttons = _updates_page(items, beta=True)
     assert [t for t, _c in status["texts"]][1:] == [
-        f"{VERSIONS}\u00a0· 12\u00a0B", "Test Bundle\u00a0· Recommended\u00a0· GUPDATE.GSP",
+        f"{VERSIONS}\u00a0· 12\u00a0B", "Test Bundle\u00a0· Recommended",
         "Garmin offers beta software for this device."]
     # Up to date: the line is there as well.
     _win, status, _groups, _buttons = _updates_page([], beta=True)
@@ -1217,7 +1217,7 @@ def test_beta_in_the_window_in_polish(monkeypatch):
     assert warning == (WARNING_PL, ["heading", "warning"])
     assert [t for t, _c in status["texts"]] == [
         "Dostępne są 2 aktualizacje", f"{VERSIONS}\u00a0· Beta\u00a0· 12\u00a0B",
-        "Test Bundle\u00a0· Zalecana\u00a0· GUPDATE.GSP",
+        "Test Bundle\u00a0· Zalecana",
         "Garmin oferuje dla tego urządzenia oprogramowanie w\u00a0wersji beta."]
 
 
@@ -1529,7 +1529,7 @@ def test_status_of_an_update_that_waits_for_the_device():
         "icon": ("software-update-available-symbolic", 96, False),
         "texts": [("Update ready: unplug the device to install it", ["title-1"]),
                   (VERSIONS, ["dim-label"]),  # what to do is in the title
-                  ("Test Bundle\u00a0· Recommended\u00a0· GUPDATE.GSP", ["caption", "dim-label"])],
+                  ("Test Bundle\u00a0· Recommended", ["caption", "dim-label"])],
         "buttons": [("Check Again", False)]}  # nothing to install: no "Install"
     # Not a component to reinstall: only the font is there.
     (advanced,) = groups
@@ -2332,7 +2332,7 @@ def test_after_copying_components_the_page_says_ready_not_up_to_date(monkeypatch
         assert states[-1] == (["006-D0002-00"], ["006-D0000-00"])
         assert [text for text, _styles in status["texts"]] == [
             f"Update ready: {word} the device to install it\u00a0· 1 more available", "23.40",
-            "Test Font\u00a0· Recommended\u00a0· 006-D0000-00.fnt"]
+            "Test Font\u00a0· Recommended"]
 
 @pytest.mark.needs_display
 def test_install_all_copies_every_update_then_ejects_the_drive_once(monkeypatch, in_the_window):

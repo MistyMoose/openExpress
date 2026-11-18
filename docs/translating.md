@@ -20,7 +20,7 @@ GitHub account:
   another translator of the language to accept, when you are unsure of a word or would like a
   correction checked first.
 - **Comments and contexts**: Weblate shows them beside each text, and the rules of this page
-  apply there too. "translator-credits" and the language name are texts like any other
+  apply there too. "translator-credits" is a text like any other
   ([Credits and sending a translation](#credits-and-sending-a-translation)).
 - **Sending**: Weblate sends the translations to this repository in a pull request, merged
   before each release: the tests are run then, and your name goes to `TRANSLATORS`. Weblate also
@@ -101,7 +101,7 @@ python3 -m openexpress --lang de gui   # the window in that language
 ```
 
 A language not yet in `po/LINGUAS` needs its code added there first, on your computer only (the
-project adds it for a release, below).
+project adds it for a release, below); until then the list of languages shows it by its code.
 
 `--lang` (or `OPENEXPRESS_LANG=de`) wins over the language chosen in the Preferences.
 `LANGUAGE=de` works only while the Preferences say "System default". The window opens a
@@ -111,7 +111,7 @@ connected device as usual.
 
 - Translate "translator-credits" into your name, one translator per line: the About dialog
   shows it. Add your language and name to [TRANSLATORS](../TRANSLATORS) too.
-- Translate "English" in the context "language name" into the name of your language in your
-  language ("Deutsch", "Français"). The list of languages in the Preferences shows it.
-- Weblate sends your translation; the project adds your language to `po/LINGUAS`, as a rule
-  once at least 90% of its texts are translated, and your name to `TRANSLATORS`.
+- The name of your language is not a text to translate: the project writes it in your language
+  ("Deutsch", "Français") into the program, for the list of languages in the Preferences.
+- Weblate sends your translation; the project adds your language to `po/LINGUAS` with its name,
+  as a rule once at least 90% of its texts are translated, and your name to `TRANSLATORS`.

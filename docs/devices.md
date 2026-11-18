@@ -22,6 +22,7 @@
 | Forerunner 920XT (part 006-B1765-00) | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) | connects as a USB drive: software updates work (time-zone map updated), sync not confirmed yet | Fedora 44, KDE on Wayland, Flatpak 0.6.20 |
 | Instinct 2S Solar (part 006-B3889-00) | USB drive | [#24](https://github.com/TomaszBojanowski/openExpress/issues/24) | connects as a USB drive; sync works (new activities uploaded, those already in Garmin Connect recognised, no errors); installing the software update of its GPS chip is not confirmed yet | Arch Linux, GNOME on X11, Flatpak 0.7.13 |
 | Forerunner 45 (part 006-B3282-00) | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36), [#30](https://github.com/TomaszBojanowski/openExpress/issues/30) | connects as a USB drive: detected; sync and software updates work (software 5.40); satellite data (experimental): written by a test version, read back whole and taken by the watch, which already had current data before | CachyOS, KDE on Wayland, Flatpak 0.10.0 |
+| Edge 820 (part 006-B2530-00) | USB drive | [#23](https://github.com/TomaszBojanowski/openExpress/issues/23) | connects as a USB drive: detected; reading its files and activities, a backup and a Time Zone Map update (installed) work (software 12.70 when reported); sync checked only as its plan (a dry run); maps are refused, as on every device in this mode | Ubuntu 26.04, openExpress 0.11.0 from source |
 | inReach Mini (1st generation; USB 091e:0b89) | HID (a USB drive for its first minute) | [#31](https://github.com/TomaszBojanowski/openExpress/issues/31) | not supported: it connects with an HID interface and, for about a minute, a small USB drive, then with HID only; it offers neither MTP nor a drive that stays. `openexpress info` says at once that openExpress does not support its connection; `openexpress report` works | Arch Linux ARM (Asahi, aarch64), Hyprland; 0.8.8 from source; 0.8.9 (pip) |
 | zūmo 595LM | – | [#15](https://github.com/TomaszBojanowski/openExpress/issues/15) | detected; software updates and map updates work; the device itself has no Garmin Connect sync or Connect IQ apps | the command line only, in a container on a home server, also built for ARM on a Raspberry Pi; a version before 0.6.20 |
 | Other Garmin watches and bike computers connecting over USB (MTP) | MTP | – | expected to work, untested | – |
@@ -158,7 +159,7 @@ and in the version from source:
 
 Tested in this mode: by the developer on the Varia RTL515 (also copying a component update and
 ejecting the drive in the window); users report software updates working on an inReach Mini 2, a
-Forerunner 55, a Forerunner 920XT and a Forerunner 45, and sync on an Instinct 2S, a
+Forerunner 55, a Forerunner 920XT, a Forerunner 45 and an Edge 820, and sync on an Instinct 2S, a
 Forerunner 45 and a Forerunner 55 (see the table). Reports from other devices in mass storage
 mode are welcome.
 

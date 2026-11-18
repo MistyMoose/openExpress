@@ -389,6 +389,17 @@ def _navigator_status_facts():
         recounted=True)
 
 
+def _map_not_read():
+    """A map of a long name whose folder was not read (its state the longest a map has)."""
+    from openexpress import maps as mp
+
+    m = mp.UniversalMap(name="Made-up City Navigator Europe NTU", map_type="Universal", state=1,
+                        is_reinstall=True, can_uninstall=False, version="2026.20", region="EU",
+                        identifier={}, files=[], files_to_remove=[], hosts=[])
+    m.unseen = True
+    return m
+
+
 def _fill(win, page: str) -> str:
     """Builds `page` of the device view as the window does; returns its section."""
     from openexpress import sync
@@ -419,6 +430,9 @@ def _fill(win, page: str) -> str:
     # The one update to install: the longest name of a component ("Device Software").
     win.update_only = _updates(copied=False)[2]
     win.map_state, win.map_update_count = "available", 1
+    if page == "device-maps-noted":
+        # The longest state a map is named with in the row "Maps", under the count of updates.
+        win.maps_noted = [_map_not_read()]
     sync.SyncState(UNIT).save()  # synced here before
     record_sync(UNIT, uploaded=8, downloaded=4, skipped_known=3, errors=[], lines=[])
     for section in win.sections.values():
@@ -578,8 +592,8 @@ def _min_width(widget) -> int:
     return widget.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
 
 
-DEVICE_PAGES = ["device", "device-update-copied", "device-off-account", "device-drive",
-                "device-refused-drive", "updates-beta",
+DEVICE_PAGES = ["device", "device-maps-noted", "device-update-copied", "device-off-account",
+                "device-drive", "device-refused-drive", "updates-beta",
                 "updates-beta-drive",
                 "updates-beta-copied", "updates-beta-copied-drive", "updates-navigator",
                 "updates-read-navigator", "maps-read-navigator", "status-navigator", "maps",

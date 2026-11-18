@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 20:50+0100\n"
+"POT-Creation-Date: 2026-11-18 19:54+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -368,14 +368,16 @@ msgstr ""
 msgid "Could not delete {path}: {error}"
 msgstr "Nie udało się usunąć {path}: {error}"
 
+#. TRANSLATORS: without the tool no translation is built, so openExpress shows its texts as
+#. they are written in the code
 #: openexpress/catalogs.py
 #, python-brace-format
 msgid ""
 "GNU gettext's {tool} is needed to build the translations (the gettext "
-"package); without it openExpress stays in English."
+"package); without it openExpress is not translated."
 msgstr ""
 "Do zbudowania tłumaczeń potrzebny jest {tool} z GNU gettext (pakiet "
-"gettext); bez niego openExpress pozostaje po angielsku."
+"gettext); bez niego openExpress działa bez tłumaczeń."
 
 #. TRANSLATORS: a type of Connect IQ app openExpress does not know, lower case, after an
 #. app's name in lists
@@ -2252,7 +2254,7 @@ msgstr "aktualizacja skopiowana, urządzenie jej nie zainstalowało"
 #: openexpress/cli.py openexpress/maps.py
 #, python-brace-format
 msgid "up to date"
-msgstr "aktualna"
+msgstr "aktualna wersja"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3061,11 +3063,18 @@ msgstr[2] ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Wrote {count} map file and {unlocks} unlock files."
-msgid_plural "Wrote {count} map files and {unlocks} unlock files."
-msgstr[0] "Zapisano {count} plik mapy; pliki odblokowujące: {unlocks}."
-msgstr[1] "Zapisano {count} pliki map; pliki odblokowujące: {unlocks}."
-msgstr[2] "Zapisano {count} plików map; pliki odblokowujące: {unlocks}."
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
+msgstr[0] "Zapisano {count} plik mapy."
+msgstr[1] "Zapisano {count} pliki map."
+msgstr[2] "Zapisano {count} plików map."
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Unlock files written: {count}"
+msgstr "Zapisane pliki odblokowujące: {count}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -11106,6 +11115,15 @@ msgstr "Eksperymentalne"
 msgid "when on, each sync updates it"
 msgstr "po włączeniu aktualizuje je każda synchronizacja"
 
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, python-brace-format
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
+msgstr "urządzenie przyjmie je po odłączeniu"
+
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop
 #: openexpress/gui/words.py
@@ -11306,14 +11324,6 @@ msgid ""
 msgstr ""
 "Za mało miejsca na {name}: potrzeba {needed}, wolne {free} wraz z jej "
 "starymi plikami. openExpress nie usuwa niczego innego, aby zrobić miejsce."
-
-#. TRANSLATORS: the name of your language in your language ("Polski", "Deutsch",
-#. "Français"), as the list of languages in the Preferences shows it
-#: openexpress/i18n.py
-#, python-brace-format
-msgctxt "language name"
-msgid "English"
-msgstr "Polski"
 
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a
 #. word ("Last seen just now")
@@ -12192,8 +12202,8 @@ msgid ""
 "Garmin's server says that Garmin Connect does not take this device's data "
 "(connect support: Disabled), so it is not synced."
 msgstr ""
-"Serwer Garmina mówi, że Garmin Connect nie przyjmuje danych tego urządzenia "
-"(connect support: Disabled), więc nie jest ono synchronizowane."
+"Serwer Garmina podaje, że Garmin Connect nie przyjmuje danych tego "
+"urządzenia (connect support: Disabled), więc nie jest ono synchronizowane."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -12221,7 +12231,7 @@ msgid ""
 "Garmin Connect does not take its data (connect support: Disabled), so it is "
 "not synced."
 msgstr ""
-"To urządzenie jest podłączone jako dysk USB, a serwer Garmina mówi, że "
+"To urządzenie jest podłączone jako dysk USB, a serwer Garmina podaje, że "
 "Garmin Connect nie przyjmuje jego danych (connect support: Disabled), więc "
 "nie jest synchronizowane."
 
@@ -12854,7 +12864,7 @@ msgid ""
 "be reached ({error})."
 msgstr ""
 "Wysyłka pominięta: nie udało się połączyć z {host}, serwerem Garmina, który "
-"mówi, co wysłać ({error})."
+"wskazuje, co wysłać ({error})."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -12862,7 +12872,7 @@ msgid ""
 "Uploads skipped: {host}, Garmin's server that says what to upload, answered "
 "with an error ({error})."
 msgstr ""
-"Wysyłka pominięta: {host}, serwer Garmina, który mówi, co wysłać, "
+"Wysyłka pominięta: {host}, serwer Garmina, który wskazuje, co wysłać, "
 "odpowiedział błędem ({error})."
 
 #: openexpress/service.py

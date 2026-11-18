@@ -255,11 +255,32 @@ def test_the_language_of_a_file_named_otherwise_is_given(tmp_path):
 
 
 def test_the_name_of_each_language_in_that_language():
-    """From its own catalog ("language name" context): no list of names in the code."""
-    assert i18n.language_name("en") == "English"
-    assert i18n.language_name("pl") == "Polski"
-    assert i18n.language_name("xx") == "xx"  # no catalog: its code
-    assert not hasattr(i18n, "LANGUAGE_NAMES")
+    """Not a text to translate: each name in its own spelling, from the program's table."""
+    names = [i18n.language_name(c) for c in ("en", "pl", "cs", "de", "fr")]
+    assert names == ["English", "Polski", "Čeština", "Deutsch", "Français"]
+    assert i18n.language_name("xx") == "xx"  # a language without a name there: its code
+
+
+def _without_a_name(po_dir=catalogs.PO):
+    return [c for c in catalogs.languages(po_dir) if c not in i18n.LANGUAGE_NAMES]
+
+
+def test_every_language_of_linguas_has_its_name():
+    """A language added to po/LINGUAS needs its name in i18n.LANGUAGE_NAMES too: without it the
+    list of languages would show its code."""
+    assert _without_a_name() == []
+
+
+def test_a_language_of_linguas_without_its_name_is_caught(tmp_path):
+    (tmp_path / "LINGUAS").write_text("pl de\nxx  # made up\n", encoding="utf-8")
+    assert _without_a_name(tmp_path) == ["xx"]
+
+
+def test_the_name_of_a_language_is_no_text_of_the_template():
+    """A translator given "English" may well translate the word ("Anglais"): the names of the
+    languages are not a text to translate."""
+    template = catalogs.TEMPLATE.read_text(encoding="utf-8")
+    assert 'msgctxt "language name"' not in template
 
 
 # --- the decimal separator follows the language of the program --------------------------------

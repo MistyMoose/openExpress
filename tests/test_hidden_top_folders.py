@@ -2362,7 +2362,7 @@ def test_the_command_line_trial_writes_with_apply(trial_cli, capsys):
     assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
     out = capsys.readouterr().out
     _keep_output("2-installed", out)
-    assert "Wrote 3 map files and 1 unlock files." in out
+    assert "Wrote 3 map files.\nUnlock files written: 1\n" in out
     for path, data in NEW_MAP.items():
         assert trial_cli.fake.data_at(path) == data
 
@@ -2591,3 +2591,20 @@ def test_the_operations_of_the_map_trial_stay_as_they_are(navigator, map_downloa
     storage = OverUsb(navigator, fake)
     _install_trial(storage, _trial_maps(storage))
     assert _commands(fake) == TRIAL_OPERATIONS
+
+
+def test_a_map_file_right_in_the_hidden_folder_is_read_as_the_others(navigator):
+    """A map whose files include one right in .System (not in a folder below it): read through
+    the session like those below it, so a map written whole waits for the device to take it
+    in. Folders of the top level, and the files right in one, follow one rule."""
+    right_in = ".System/D0000002Z.img"
+    files = {**NEW_MAP, right_in: b"made-up map, part three " * 8}
+    fake = trial_navigator()
+    for path, data in files.items():
+        fake.add(path, data, hidden=True)
+    storage = OverUsb(navigator, fake)
+    found = _trial_maps(storage, _trial_map(files=files), _other_map())
+    (m,) = [m for m in found if m.name == TRIAL_NAME]
+    assert m.hidden_folder == ".System"
+    assert m.device_sizes[right_in.casefold()] == len(files[right_in])
+    assert m.waiting == maps.WAIT_INSTALL

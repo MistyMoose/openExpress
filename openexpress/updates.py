@@ -532,7 +532,7 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
 
     `components`: how many components the device's GarminDevice.xml lists, for the log."""
     offered = [u for u in updates if u.is_offer]
-    tops = top_folders(storage)
+    tops = hidden_folders.top_folders(storage)
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
     for u in updates:
         place(u, tops, listing)
@@ -594,36 +594,16 @@ def _log_offered(storage: Storage, updates: list[SoftwareUpdate], offered: list[
         log.info(*line)
 
 
-def top_folders(storage: Storage) -> set[str] | None:
-    """The names of the folders of the device's top level that the ordinary listing shows,
-    in lower case; None when they cannot be listed (then no folder is taken for unseen)."""
-    try:
-        return {e.name.casefold() for e in storage.listdir("") if e.is_dir}
-    except DeviceNotResponding:
-        raise
-    except DeviceError:
-        return None
-
-
-def top_folder_not_seen(path: str, tops: set[str] | None) -> str | None:
-    """The folder of the device's top level the file at `path` (with `/`) goes to when the
-    listing does not show it (a car navigator hides its .System from MTP); None when it is
-    seen, when the file goes to the top level itself, or when the top level could not be
-    listed. A folder inside a folder that is seen is made for the write like any other."""
-    parts = [p for p in path.split("/") if p]
-    if len(parts) < 2 or tops is None:
-        return None
-    return None if parts[0].casefold() in tops else parts[0]
-
-
 def place(u: SoftwareUpdate, tops: set[str] | None,
           listing: hidden_folders.Listing | None) -> None:
     """Where the file of `u` goes, the same for an update, a reinstall and a -META entry: the
     folder of the device's top level the listing does not show (hidden_folder; `tops`:
-    top_folders), and what became of reading its folder through openExpress's own session in
-    this connection (hidden_session; `listing`: hidden_folders.kept). Decided here alone, for
-    the page, the command line and the write; what is in that folder is mark_present's."""
-    u.hidden_folder = top_folder_not_seen(u.device_path, tops)
+    hidden_folders.top_folders), and what became of reading its folder through openExpress's
+    own session in this connection (hidden_session; `listing`: hidden_folders.kept). Decided
+    here alone, for the page, the command line and the write; what is in that folder is
+    mark_present's."""
+    u.hidden_folder = hidden_folders.top_not_seen(
+        posixpath.dirname(u.device_path.replace("\\", "/")), tops)
     u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
                         if u.hidden_folder is not None and listing is not None else None)
 
@@ -1034,7 +1014,7 @@ def _install(
     # Never a folder of the device's top level the listing does not show (a car navigator's
     # .System), unless that folder was read through openExpress's own session; nothing is
     # downloaded for an update refused.
-    tops = top_folders(storage)
+    tops = hidden_folders.top_folders(storage)
     listing = hidden_folders.kept(storage)
     for u in updates:
         if reinstall_refused(u):  # never an older version over the device's own

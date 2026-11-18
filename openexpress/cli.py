@@ -2598,10 +2598,12 @@ def change_map(args, client, st, dev, all_maps, m) -> int:
                        "written again.",
                        "{count} files were on the device already and read back the same: not "
                        "written again.", len(rep.kept)).format(count=len(rep.kept)))
-    print(ngettext("Wrote {count} map file and {unlocks} unlock files.",
-                   "Wrote {count} map files and {unlocks} unlock files.",
-                   len(rep.written)).format(count=len(rep.written),
-                                            unlocks=len(rep.unlocks)))
+    # Two counts, two sentences: one plural form could agree with only one of them.
+    print(ngettext("Wrote {count} map file.", "Wrote {count} map files.",
+                   len(rep.written)).format(count=len(rep.written)))
+    # TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+    # (.gma) were written; a label and a number, so that no plural form is needed
+    print(_("Unlock files written: {count}").format(count=len(rep.unlocks)))
     print(_("The map will be loaded after the device is unplugged."))
     return code
 

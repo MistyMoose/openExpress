@@ -432,13 +432,13 @@ def _open_found(found) -> Storage:
     mounted first when it is not (the user chose it; a list mounts nothing)."""
     from openexpress import platform
 
-    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
+    devices = platform.devices()
     if found.kind == "ums":
         if not found.mounted:  # not mounted by the system (KDE): mounted now, chosen
-            found = gio_storage.mount_drive(found)
-        return gio_storage.open_ums_storage(found)
-    gio_storage.mount(found)
-    storage = gio_storage.open_device_storage(found.uri)
+            found = devices.mount_drive(found)
+        return devices.open_ums_storage(found)
+    devices.mount(found)
+    storage = devices.open_device_storage(found.uri)
     if found.usb is not None:
         # Read from the USB device when it was found; an address with names (e.g. an Edge)
         # does not tell the product.
@@ -452,26 +452,25 @@ def open_device_or_drive(wait: bool = False, notify=None) -> Storage:
     line). `wait`, `notify`: as for open_device_storage."""
     from openexpress import platform
 
-    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
+    devices = platform.devices()
     try:
-        storage = gio_storage.open_device_storage(wait=wait, notify=notify)
-    except (gio_storage.SeveralDevices, DeviceNotResponding):
+        storage = devices.open_device_storage(wait=wait, notify=notify)
+    except (devices.SeveralDevices, DeviceNotResponding):
         raise
     except DeviceError:
-        if gio_storage.usb_state() not in (gio_storage.ABSENT, gio_storage.MASS_STORAGE,
-                                           gio_storage.DRIVE_OFF):
+        if devices.usb_state() not in (devices.ABSENT, devices.MASS_STORAGE, devices.DRIVE_OFF):
             raise
         # A drive the system has not mounted is not mounted here: it is chosen (a tile).
-        drives = [d for d in gio_storage.find_ums_devices() if d.mounted]
+        drives = [d for d in devices.find_ums_devices() if d.mounted]
         if not drives:
             raise
         if len(drives) > 1:
             # Their addresses name the user's folder, and --device-uri takes no drive.
-            raise gio_storage.SeveralDevices(
+            raise devices.SeveralDevices(
                 _("Several Garmin devices are connected as USB drives. Connect only one of "
                   "them."), drives) from None
-        return gio_storage.open_ums_storage(drives[0])
-    skipped = sum(1 for d in gio_storage.find_ums_devices() if d.mounted)
+        return devices.open_ums_storage(drives[0])
+    skipped = sum(1 for d in devices.find_ums_devices() if d.mounted)
     if skipped:
         log.info("device: an MTP device is open, %d Garmin drive in mass storage mode skipped",
                  skipped)

@@ -239,8 +239,8 @@ def model_on_usb() -> str | None:
     no device could be opened; None without one."""
     from openexpress import platform
 
-    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
-    return next((name for _usb_id, name, _classes in gio_storage.garmin_usb_summary() if name),
+    devices = platform.devices()
+    return next((name for _usb_id, name, _classes in devices.garmin_usb_summary() if name),
                 None)
 
 
@@ -252,22 +252,22 @@ def build_without_device(error: BaseException | None = None,
     has MTP; then the system, as with a device. Only /sys is read."""
     from openexpress import platform
 
-    gio_storage = platform.devices()  # gio_storage on Linux; on macOS the same names
+    devices = platform.devices()
 
-    state = gio_storage.usb_state()
+    state = devices.usb_state()
     reason = ("several Garmin devices are connected"
-              if isinstance(error, gio_storage.SeveralDevices) else NOT_OPENED.get(state, state))
+              if isinstance(error, devices.SeveralDevices) else NOT_OPENED.get(state, state))
     def described(usb_id: str, name: str | None, classes: list[str | None]) -> str:
         named = f' "{name}"' if name else ""
         interfaces = ", ".join(_interface(c) for c in classes) or "none"
         return f"{usb_id}{named}, interfaces: {interfaces}"
 
-    devices = "; ".join(described(*d) for d in gio_storage.garmin_usb_summary()) or "none"
+    on_usb = "; ".join(described(*d) for d in devices.garmin_usb_summary()) or "none"
     lines = [
         "### Device",
         f"- Not opened: {reason}",
-        f"- Garmin devices on USB: {devices}",
-        f"- MTP support in gvfs: {'no' if gio_storage.mtp_missing() else 'yes'}",
+        f"- Garmin devices on USB: {on_usb}",
+        f"- MTP support in gvfs: {'no' if devices.mtp_missing() else 'yes'}",
         "",
         *_system(logged_in),
     ]

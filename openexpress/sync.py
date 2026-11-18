@@ -292,19 +292,39 @@ class SyncState:
     def pending_path(self, datatype: str, name: str) -> Path:
         return self.pending_dir / datatype / name
 
+    def _safe_pending_path(self, datatype: str, name: str) -> Path | None:
+        """pending_path, or None for a name that is not a plain file name
+        (paths.is_safe_component) or would not stay under pending_dir: a device may give any
+        name over MTP, also one with "..", a separator or a control character (a bit flip or
+        another device bug)."""
+        path = self.pending_path(datatype, name)
+        if not paths.is_safe_component(name) or not paths.is_inside(path, self.pending_dir):
+            return None
+        return path
+
     def pending_files(self, datatype: str) -> list[Path]:
         d = self.pending_dir / datatype
         return sorted(p for p in d.iterdir() if p.is_file()) if d.is_dir() else []
 
     def keep_pending(self, datatype: str, name: str, data: bytes) -> None:
         """Keep a copy of a file whose upload failed, for the next sync (an activity is
-        private: readable by its owner only)."""
-        paths.write_private(self.pending_path(datatype, name), data)
+        private: readable by its owner only). Not kept, one line of the log, for a name that
+        cannot be used as a path on this computer (_safe_pending_path): the upload is already
+        in the report, so nothing here fails the sync."""
+        path = self._safe_pending_path(datatype, name)
+        if path is None:
+            log.warning("sync: a %s file could not be kept for retry: the device gave a name "
+                        "that cannot be used as a path on this computer", datatype)
+            return
+        paths.write_private(path, data)
 
     def drop_pending(self, datatype: str, name: str) -> None:
         """The file is done (uploaded, found in Connect, marked as uploaded): its copy goes.
-        Without it the copy would stay for ever, as the plan skips a file that is done."""
-        self.pending_path(datatype, name).unlink(missing_ok=True)
+        Without it the copy would stay for ever, as the plan skips a file that is done. Nothing
+        to drop for a name _safe_pending_path refuses: keep_pending never kept one."""
+        path = self._safe_pending_path(datatype, name)
+        if path is not None:
+            path.unlink(missing_ok=True)
 
     def unacked(self) -> set[str]:
         """Queue messages already written to the watch whose acknowledgement failed."""

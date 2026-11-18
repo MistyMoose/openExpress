@@ -575,3 +575,63 @@ def test_a_409_is_a_file_connect_already_has(device_root, tmp_path):
     rep = sync.run_uploads(plan, dev, st, SyncClient(statuses={ACT: 409}), state)
     assert (len(rep.duplicates), rep.failed) == (2, [])
     assert all(state.is_completed("FIT_TYPE_4", name) for name in (FIRST, SECOND))
+
+
+# --- a name from the device that is no plain file name is not kept for retry -----------------
+
+
+class _CraftedUploadName(LocalStorage):
+    """The first activity file listed under `bad_name` instead of its real name: a device may
+    give any name over MTP, bit flips and all. Read as a whole FIT file (made up bytes), so
+    its upload is attempted and refused like any other, instead of being skipped as unreadable
+    or still being written."""
+
+    def __init__(self, root, bad_name):
+        super().__init__(root)
+        self.bad_name = bad_name
+
+    def walk_files(self, path):
+        files = super().walk_files(path)
+        if not files:
+            return files
+        real, entry = files[0]
+        folder = real.rsplit("/", 1)[0]
+        return [(f"{folder}/{self.bad_name}", entry), *files[1:]]
+
+    def read(self, path):
+        if path.endswith(self.bad_name):
+            return make_fit(1100000000)
+        return super().read(path)
+
+
+@pytest.mark.parametrize("bad_name", ["esc\\ape.fit", "bad\x07char.fit", "bad\x00null.fit"])
+def test_a_crafted_activity_name_is_not_kept_for_retry(device_root, tmp_path, bad_name, caplog):
+    """A failed upload is kept for the next sync under its name (SyncState.keep_pending). A
+    name that is no plain file name is not kept - one line of the log instead of a path
+    outside the pending folder, or a crash of the whole sync (keep_pending is called from a
+    bare `except`, with no file-by-file guard around it). The other activity's upload still
+    fails normally and is kept."""
+    st = _CraftedUploadName(device_root, bad_name)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    state = sync.SyncState(dev.unit_id, base=tmp_path / "state")
+    plan = sync.plan_uploads(dev, st, UPLOAD_CONFIG, state, only_types={"FIT_TYPE_4"})
+    before = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()}
+    with caplog.at_level(logging.WARNING):
+        rep = sync.run_uploads(plan, dev, st, SyncClient(statuses={ACT: 500}), state)
+    assert len(rep.failed) == 2  # both activities: the server refuses every upload
+    assert any("cannot be used as a path" in r.message for r in caplog.records)
+    pending = state.pending_dir / "FIT_TYPE_4"
+    assert [p.name for p in pending.iterdir()] == [SECOND]  # the crafted name was not kept
+    new = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()} - before
+    assert all(p.is_relative_to((tmp_path / "state").resolve()) for p in new)
+
+
+def test_a_crafted_activity_name_drops_no_pending_file_either(device_root, tmp_path):
+    """drop_pending (a file done: uploaded, or found in Connect) is as careful: nothing is
+    unlinked outside the pending folder for a name that is no plain file name."""
+    bad_name = "bad\x00null.fit"
+    st = _CraftedUploadName(device_root, bad_name)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    state = sync.SyncState(dev.unit_id, base=tmp_path / "state")
+    state.drop_pending("FIT_TYPE_4", bad_name)  # must not raise, must not touch anything above
+    assert not (tmp_path / "state").exists() or list((tmp_path / "state").rglob("*")) == []

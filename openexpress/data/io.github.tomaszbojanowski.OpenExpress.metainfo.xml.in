@@ -99,6 +99,33 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.11.1" date="2026-11-18">
+      <description translate="no">
+        <p>A maintenance release with fixes to the Updates page, USB drives, the device page and the
+        languages.</p>
+        <ul>
+          <li>Updates page: simpler rows. A row no longer shows the file's name (only when two rows
+          have the same title) or "Unspecified"; the file's path is in the row's tooltip; under
+          Reinstall Components the rows with a button come first.</li>
+          <li>On a device seen as a USB drive, a removal reaches the disk at once: unplugging the
+          device right after it no longer undoes it.</li>
+          <li>Device page: the Maps row names a map that is incomplete on the device, could not be
+          read or waits for the device to be unplugged, instead of saying that all installed
+          maps are up to date (tried on made-up maps). The Satellite Data row says the data on
+          the device is current when the device already has newer data from the phone, and right
+          after writing it adds that the device takes it in once unplugged.</li>
+          <li>Command line: after a map is installed, the unlock files written are counted on a line
+          of their own.</li>
+          <li>French is listed under its own name in the list of languages; the names of the
+          languages are no longer texts to translate. Translations as they stand today: Czech
+          and French 1955 of 1959 texts, German 1888; the four new or reworded texts show in
+          English until their translators get to them.</li>
+          <li>The Edge 820 is on the list of devices checked by users, as a USB drive.</li>
+        </ul>
+        <p>Thanks to bruring for testing the Edge 820 (#23), and to the translators on Hosted
+        Weblate: prajzner (Czech), BeGiBue (German) and Alex Giroux (French).</p>
+      </description>
+    </release>
     <release version="0.11.0" date="2026-11-18">
       <description translate="no">
         <p>Car navigators that hide their system folder, such as the Drive 53 EX, and satellite data

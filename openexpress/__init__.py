@@ -1,3 +1,3 @@
 """Unofficial Linux app for Garmin watches and bike computers."""
 
-__version__ = "0.11.0"
+__version__ = "0.11.1"

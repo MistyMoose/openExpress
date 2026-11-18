@@ -25,8 +25,8 @@
 openExpress for Mac is the macOS edition of
 [openExpress](https://github.com/TomaszBojanowski/openExpress) by Tomasz Bojanowski. It is a
 SwiftUI app for Apple silicon Macs, built on openExpress's engine, and does what you would use
-Garmin Express for – without Garmin Express, which on the Mac is an Intel-only app that runs
-under Rosetta 2.
+Garmin Express for – as free software without telemetry, with backups of your device on your
+Mac, your activities with their maps and charts, and a command line beside the app.
 
 > **Not affiliated with, endorsed by or supported by Garmin Ltd.**
 > Garmin, fēnix, Edge, Garmin Connect, Garmin Express and Connect IQ are trademarks of Garmin

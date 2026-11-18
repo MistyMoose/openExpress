@@ -8,11 +8,16 @@ Not affiliated with Garmin. Free software under the GNU GPL v3.0 or later, like 
 
 ## Why
 
-Garmin Express for Mac is an Intel-only app. It runs under Rosetta 2, which macOS 27 is the last
-release to fully support. It also hangs when it installs maps or software: it switches the
-device into a special USB mode, fails to reach it there, and only falls back after about two
-minutes ("Reconnect the device to continue"). openExpress installs maps and software as plain
-files over MTP, so that mode is never needed.
+Garmin Express 7 for Mac was an Intel-only app, running under Rosetta 2, which macOS 27 is the
+last release to fully support. It also hung when it installed maps or software: it switched the
+device into a special USB mode, failed to reach it there, and only fell back after about two
+minutes ("Reconnect the device to continue"). Garmin Express 8 (November 2026, a fresh download:
+7 does not update to it) is native on Apple silicon, and dropped ANT+.
+
+openExpress for Mac does not depend on either: it installs maps and software as plain files
+over MTP, so that USB mode is never needed; it keeps backups of the device on your Mac, shows
+your activities with their maps and charts, and is free software without telemetry. Quit
+Garmin Express while you use it: whichever version, it holds the device.
 
 ## Status
 

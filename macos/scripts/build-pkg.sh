@@ -329,10 +329,14 @@ productbuild --distribution "$WORK/distribution.xml" --resources "$WORK/resource
 
 if [ $DISTRIBUTION = 1 ]; then
     say "Notarization"
+    # json: the formats notarytool offers are normal, json and plist (no plain).
     xcrun notarytool submit "$PKG" --keychain-profile "$NOTARY_PROFILE" --wait \
-        ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --output-format plain | tee "$WORK/notary.txt"
-    grep -q 'status: Accepted' "$WORK/notary.txt" \
-        || die "notarization was not accepted (xcrun notarytool log <id> --keychain-profile $NOTARY_PROFILE)"
+        ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --output-format json > "$WORK/notary.json"
+    NOTARY_ID=$(plutil -extract id raw "$WORK/notary.json" 2>/dev/null || echo "?")
+    NOTARY_STATUS=$(plutil -extract status raw "$WORK/notary.json" 2>/dev/null || echo "?")
+    say "notarization $NOTARY_ID: $NOTARY_STATUS"
+    [ "$NOTARY_STATUS" = Accepted ] \
+        || die "notarization was not accepted (xcrun notarytool log $NOTARY_ID --keychain-profile $NOTARY_PROFILE)"
     xcrun stapler staple "$PKG"
     xcrun stapler validate "$PKG"
     spctl --assess -vv --type install "$PKG"

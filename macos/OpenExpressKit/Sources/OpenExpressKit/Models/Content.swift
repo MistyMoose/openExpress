@@ -191,14 +191,14 @@ public struct AppsList: Codable, Sendable, Hashable {
 
 /// An activity on the device or in its backups (`activities.list`).
 public struct Activity: Codable, Sendable, Hashable, Identifiable {
-    public var start: Date
+    public let start: Date
     public var sport: String
     /// Metres.
     public var distance: Double?
     /// Seconds.
     public var duration: Double?
     /// The FIT file on this computer or the device; nil when the engine sends none.
-    public var fitPath: String?
+    public let fitPath: String?
     public var name: String?
     public var ascent: Double?
     public var calories: Double?
@@ -206,12 +206,17 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
     /// The FIT profile's sport number (1 running, 2 cycling, 38 surfing, …); picks the icon.
     public var sportID: Int?
     /// "device" or "backup".
-    public var source: String?
+    public let source: String?
     /// "complete", "still_being_written", "damaged" or "unreadable".
     public var state: String?
     public var size: Int64?
 
-    public var id: String { (source ?? "") + ":" + (fitPath ?? start.ISO8601Format()) }
+    /// Made once, of `source`, `fitPath` and `start` (which do not change).
+    public let id: String
+
+    private static func id(source: String?, fitPath: String?, start: Date) -> String {
+        (source ?? "") + ":" + (fitPath ?? start.ISO8601Format())
+    }
 
     /// A title worth showing: the engine's `name`, unless that is only the FIT file's name
     /// ("2026-11-13-10-36-39.fit") or the sport again.
@@ -255,6 +260,7 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         self.ascent = ascent
         self.calories = calories
         self.averageHeartRate = averageHeartRate
+        id = Self.id(source: source, fitPath: fitPath, start: start)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -272,6 +278,7 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         source = try? c.decodeIfPresent(String.self, forKey: .source)
         state = try? c.decodeIfPresent(String.self, forKey: .state)
         size = try? c.decodeIfPresent(Int64.self, forKey: .size)
+        id = Self.id(source: source, fitPath: fitPath, start: start)
     }
 
     public func encode(to encoder: any Encoder) throws {

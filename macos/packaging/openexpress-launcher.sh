@@ -18,13 +18,15 @@ if [ -f "$contents/Frameworks/libusb-1.0.dylib" ]; then
     export OPENEXPRESS_LIBUSB
 fi
 
+# The 7-Zip the app carries (7zz, for `setup --from-installer`), never one installed elsewhere.
+if [ -x "$engine/bin/7zz" ]; then
+    OPENEXPRESS_7Z="$engine/bin/7zz"
+    export OPENEXPRESS_7Z
+fi
+
 # Nothing from outside decides which libraries the bundled programs load.
 unset DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FALLBACK_LIBRARY_PATH \
       DYLD_FRAMEWORK_PATH DYLD_FALLBACK_FRAMEWORK_PATH DYLD_VERSIONED_LIBRARY_PATH \
       PYTHONHOME PYTHONPATH PYTHONSTARTUP
-
-# The bundled 7-Zip (7zz, for `setup --from-installer`) before any other on PATH.
-PATH="$engine/bin:${PATH:-/usr/bin:/bin:/usr/sbin:/sbin}"
-export PATH
 
 exec "$engine/bin/python3.13" -I -B -u -X utf8 -m openexpress "$@"

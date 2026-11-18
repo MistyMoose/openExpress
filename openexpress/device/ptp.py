@@ -19,14 +19,12 @@ import io
 import logging
 import os
 import struct
-import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import BinaryIO, Protocol
 
-from openexpress import applog
+from openexpress import applog, platform
 from openexpress.device.storage import DeviceError, named_in_any_case
 from openexpress.i18n import _
 
@@ -370,39 +368,22 @@ _LIBUSB_ERROR_TIMEOUT = -7
 _LIBUSB_OPTION_NO_DEVICE_DISCOVERY = 2
 _libusb = None
 
-# The libusb-1.0 to use instead of any other (a path), e.g. one built for testing.
+# The libusb-1.0 to use instead of any other (a path): the one the macOS app carries, or one
+# built for testing.
 LIBUSB_ENV = "OPENEXPRESS_LIBUSB"
-# The name of the library where a bundle carries its own copy (the macOS app).
-BUNDLED_LIBUSB = "libusb-1.0.dylib" if sys.platform == "darwin" else "libusb-1.0.so.0"
-# Where Homebrew puts it on macOS (Apple silicon, then Intel): not where ctypes looks there.
-HOMEBREW_LIBUSB = ("/opt/homebrew/lib/libusb-1.0.dylib", "/usr/local/lib/libusb-1.0.dylib")
 LINUX_LIBUSB = "libusb-1.0.so.0"
-
-
-def _bundled_libusb() -> list[Path]:
-    """Where an app bundle carries its own libusb, those of them that are there: next to the
-    package (the folder that holds `openexpress`), and in the Frameworks of the macOS app the
-    package is in (…/Contents/Frameworks)."""
-    package = Path(__file__).resolve().parent.parent  # openexpress
-    places = [package.parent / BUNDLED_LIBUSB]
-    places += [folder / "Frameworks" / BUNDLED_LIBUSB
-               for folder in package.parents if folder.name == "Contents"][:1]
-    return [place for place in places if place.is_file()]
 
 
 def libusb_candidates() -> list[str]:
     """The libusb-1.0 to load, in this order: the one LIBUSB_ENV names (then no other), the
-    one bundled with the program, the one the system's library path has, Homebrew's on macOS,
-    and last the name of Linux's."""
+    one the system's library path has, where else this system keeps one (Homebrew's on macOS:
+    platform.libusb_places), and last the name of Linux's."""
     named = os.environ.get(LIBUSB_ENV, "").strip()
     if named:
         return [named]
-    candidates = [str(place) for place in _bundled_libusb()]
     found = ctypes.util.find_library("usb-1.0")
-    if found:
-        candidates.append(found)
-    if sys.platform == "darwin":
-        candidates += [path for path in HOMEBREW_LIBUSB if os.path.isfile(path)]
+    candidates = [found] if found else []
+    candidates += platform.libusb_places()
     candidates.append(LINUX_LIBUSB)
     return list(dict.fromkeys(candidates))
 

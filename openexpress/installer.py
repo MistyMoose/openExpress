@@ -82,16 +82,20 @@ def _key_not_read(path: Path, size: int, check: str) -> SetupError:
                         "report this on GitHub.").format(file=path.name))
 
 
+# The 7-Zip to use instead of any on PATH (a path).
+SEVEN_ZIP_ENV = "OPENEXPRESS_7Z"
+
+
 def _seven_zip() -> str:
-    """The first of 7z, 7za and 7zz in the first folder of PATH that has one: a 7-Zip bundled
-    with the program (the macOS app puts its 7zz first on PATH) wins over one installed
-    elsewhere."""
-    folders = [f for f in os.environ.get("PATH", os.defpath).split(os.pathsep) if f]
-    for folder in folders:
-        for name in ("7z", "7za", "7zz"):
-            path = shutil.which(name, path=folder)
-            if path:
-                return path
+    """The 7-Zip that SEVEN_ZIP_ENV names (the one the macOS app carries), else the first of
+    7z, 7za and 7zz on PATH."""
+    named = os.environ.get(SEVEN_ZIP_ENV, "").strip()
+    if named:
+        return named
+    for name in ("7z", "7za", "7zz"):
+        path = shutil.which(name)
+        if path:
+            return path
     raise SetupError(_("The 7z tool is required (package p7zip or 7zip)."))
 
 

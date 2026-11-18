@@ -104,9 +104,9 @@ def main() -> None:
                         capture_output=True, text=True, check=False).stdout
     if f"OPENEXPRESS_LIBUSB={libusb}" not in ps:
         fail(f"OPENEXPRESS_LIBUSB is not the bundled libusb: {ps[:300]}")
-    if f"PATH={engine_dir}/bin:" not in ps:
-        fail("the engine's bin is not first on PATH")
-    print("environment: OPENEXPRESS_LIBUSB is the bundled libusb, engine/bin first on PATH")
+    if f"OPENEXPRESS_7Z={engine_dir}/bin/7zz" not in ps:
+        fail(f"OPENEXPRESS_7Z is not the bundled 7zz: {ps[:300]}")
+    print("environment: OPENEXPRESS_LIBUSB and OPENEXPRESS_7Z are the bundled libusb and 7zz")
 
     settings = engine.call("settings.get", timeout=args.timeout)["settings"]
     print(f"settings.get: {len(settings)} settings")

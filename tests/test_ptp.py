@@ -948,35 +948,19 @@ def test_libusb_named_in_the_environment_is_the_only_one_tried(monkeypatch, tmp_
         ptp.load_libusb()
 
 
-def test_libusb_bundled_with_the_program_comes_before_the_systems(monkeypatch, tmp_path):
+def test_libusb_of_the_library_path_comes_first_and_linuxs_name_last(monkeypatch, as_linux):
     monkeypatch.delenv(ptp.LIBUSB_ENV, raising=False)
-    bundled = tmp_path / ptp.BUNDLED_LIBUSB
-    monkeypatch.setattr(ptp, "_bundled_libusb", lambda: [bundled])
     monkeypatch.setattr(ptp.ctypes.util, "find_library", lambda name: "/usr/lib/libusb.so")
-    monkeypatch.setattr(ptp.sys, "platform", "linux")
-    assert ptp.libusb_candidates() == [str(bundled), "/usr/lib/libusb.so", ptp.LINUX_LIBUSB]
+    assert ptp.libusb_candidates() == ["/usr/lib/libusb.so", ptp.LINUX_LIBUSB]
 
 
-def test_libusb_of_homebrew_is_tried_on_macos_after_the_library_path(monkeypatch):
+def test_libusb_of_homebrew_is_tried_on_macos_after_the_library_path(monkeypatch, as_mac):
+    from openexpress.platform import macos
+
     monkeypatch.delenv(ptp.LIBUSB_ENV, raising=False)
-    monkeypatch.setattr(ptp, "_bundled_libusb", list)
     monkeypatch.setattr(ptp.ctypes.util, "find_library", lambda name: None)
-    monkeypatch.setattr(ptp.sys, "platform", "darwin")
-    monkeypatch.setattr(ptp.os.path, "isfile", lambda path: path.startswith("/opt/homebrew"))
+    monkeypatch.setattr(macos.os.path, "isfile", lambda path: path.startswith("/opt/homebrew"))
     assert ptp.libusb_candidates() == ["/opt/homebrew/lib/libusb-1.0.dylib", ptp.LINUX_LIBUSB]
-
-
-def test_libusb_is_bundled_next_to_the_package_or_in_the_frameworks_of_the_app(monkeypatch,
-                                                                             tmp_path):
-    app = tmp_path / "openExpress.app" / "Contents"
-    package = app / "Resources" / "lib" / "python3.13" / "openexpress"
-    (package / "device").mkdir(parents=True)
-    (app / "Frameworks").mkdir()
-    (app / "Frameworks" / ptp.BUNDLED_LIBUSB).write_bytes(b"")
-    monkeypatch.setattr(ptp, "__file__", str(package / "device" / "ptp.py"))
-    assert ptp._bundled_libusb() == [app / "Frameworks" / ptp.BUNDLED_LIBUSB]
-    (package.parent / ptp.BUNDLED_LIBUSB).write_bytes(b"")
-    assert ptp._bundled_libusb()[0] == package.parent / ptp.BUNDLED_LIBUSB
 
 
 def test_a_refusal_of_libusb_keeps_its_code():

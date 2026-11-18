@@ -145,8 +145,8 @@ On an Apple silicon Mac with Xcode 26 or later. The script:
    tkinter/Tcl/Tk, IDLE and headers are left out, and the bytecode is compiled;
 3. adds `engine/bin/openexpress` (`macos/packaging/openexpress-launcher.sh`): it runs the
    bundled Python isolated from the user's environment (`-I -B`, no `PYTHONPATH`, no `DYLD_*`),
-   with `OPENEXPRESS_LIBUSB` set to the app's libusb and `engine/bin` (with 7-Zip's `7zz`)
-   first on `PATH`. Every path is found from the script's own place;
+   with `OPENEXPRESS_LIBUSB` set to the app's libusb and `OPENEXPRESS_7Z` to 7-Zip's `7zz` in
+   `engine/bin`. Every path is found from the script's own place;
 4. copies Homebrew's libusb into `Contents/Frameworks` (install name `@rpath/…`) and 7-Zip's
    own macOS build (pinned) into `engine/bin`;
 5. fails if any machine code in the app refers to Homebrew, `/usr/local`, a venv or a path of

@@ -1,6 +1,6 @@
 """What macOS has in place of what Linux gives the program: the folders under ~/Library, the
-start of the computer from sysctl, the mount of a drive from its device number and
-`caffeinate`. Used through the functions of the package (platform), on macOS only.
+start of the computer from sysctl, the mount of a drive from its device number, `caffeinate`
+and Homebrew's libusb. Used through the functions of the package (platform), on macOS only.
 """
 
 from __future__ import annotations
@@ -19,6 +19,9 @@ LIBRARY_FOLDERS = {
     "XDG_CACHE_HOME": "Caches",
     "XDG_STATE_HOME": "Logs",  # the log, where Console and the user both look for it
 }
+
+# Where Homebrew puts libusb (Apple silicon, then Intel): not where ctypes looks.
+HOMEBREW_LIBUSB = ("/opt/homebrew/lib/libusb-1.0.dylib", "/usr/local/lib/libusb-1.0.dylib")
 
 RELEASE_TIMEOUT_S = 5  # how long caffeinate may take to end
 
@@ -66,3 +69,8 @@ def keep_awake():
         process.wait(timeout=RELEASE_TIMEOUT_S)
 
     return release
+
+
+def libusb_places() -> list[str]:
+    """Homebrew's libusb, where it is installed."""
+    return [path for path in HOMEBREW_LIBUSB if os.path.isfile(path)]

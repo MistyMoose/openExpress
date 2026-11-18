@@ -82,21 +82,18 @@ def test_a_payload_without_an_msi_is_refused(tmp_path, files):
 
 
 def test_without_7z_it_says_what_to_install(monkeypatch):
-    monkeypatch.setattr(installer.shutil, "which", lambda name, path=None: None)
+    monkeypatch.setattr(installer.shutil, "which", lambda name: None)
     with pytest.raises(SetupError, match="The 7z tool is required"):
         installer._seven_zip()
 
 
-def test_the_7z_in_the_first_folder_of_path_wins(monkeypatch, tmp_path):
-    """The macOS app puts its own 7zz first on PATH: it is used even where a 7z (whose name
-    comes first) is installed in a later folder."""
-    bundled, other = tmp_path / "app", tmp_path / "brew"
-    for folder, name in ((bundled, "7zz"), (other, "7z")):
-        folder.mkdir()
-        (folder / name).write_text("#!/bin/sh\n")
-        (folder / name).chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bundled}:{other}")
-    assert installer._seven_zip() == str(bundled / "7zz")
+def test_the_7z_named_in_the_environment_wins_over_path(monkeypatch, tmp_path):
+    """The macOS app names its own 7zz: it is used even where a 7z is on PATH."""
+    monkeypatch.setattr(installer.shutil, "which", lambda name: "/usr/bin/7z")
+    monkeypatch.setenv(installer.SEVEN_ZIP_ENV, str(tmp_path / "7zz"))
+    assert installer._seven_zip() == str(tmp_path / "7zz")
+    monkeypatch.delenv(installer.SEVEN_ZIP_ENV)
+    assert installer._seven_zip() == "/usr/bin/7z"
 
 
 @pytest.mark.parametrize("code, fails", [(0, False), (1, False), (2, True)])
@@ -104,7 +101,7 @@ def test_7z_warnings_pass_and_errors_are_told(monkeypatch, tmp_path, code, fails
     """Exit code 1 is a warning (e.g. data after the archive); 2 and more an error, told with
     the end of what 7z said."""
     ran = []
-    monkeypatch.setattr(installer.shutil, "which", lambda name, path=None: "/usr/bin/7z")
+    monkeypatch.setattr(installer.shutil, "which", lambda name: "/usr/bin/7z")
     monkeypatch.setattr(installer.subprocess, "run", lambda cmd, **kw: (
         ran.append(cmd), subprocess.CompletedProcess(cmd, code, "", "x" * 400 + "the end"))[1])
     archive, out = tmp_path / "a.cab", tmp_path / "out"
@@ -429,7 +426,7 @@ def _velopack(tmp_path: Path, entries: dict | None = None, name: str = "GarminEx
 
 
 def _no_7z(monkeypatch):
-    monkeypatch.setattr(installer.shutil, "which", lambda name, path=None: None)
+    monkeypatch.setattr(installer.shutil, "which", lambda name: None)
 
 
 def test_a_velopack_installer_gives_the_key_and_salt_without_7z(monkeypatch, tmp_path):

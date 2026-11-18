@@ -84,12 +84,12 @@ ACCOUNT=()
 [ "${VERIFY_ACCOUNT:-}" = 1 ] && ACCOUNT=(--account)
 "${SCRUB[@]}" "$ENGINE/bin/python3.13" -I -B "$SCRIPTS/verify_engine.py" "$APP" ${ACCOUNT[@]+"${ACCOUNT[@]}"}
 
-say "libusb as loaded, without OPENEXPRESS_LIBUSB (the lookup in Contents/Frameworks)"
+say "libusb as loaded, with OPENEXPRESS_LIBUSB as the launcher sets it"
 # The image dyld mapped libusb_init from (dladdr), and, where the runtime lets DYLD_* through
-# (not hardened), dyld's own list. Python directly: macOS drops DYLD_* on the way through
-# /bin/sh (the launcher).
+# (not hardened), dyld's own list: the bundled libusb, and no other. Python directly: macOS
+# drops DYLD_* on the way through /bin/sh (the launcher).
 LIBUSB="$APP/Contents/Frameworks/libusb-1.0.dylib"
-FROM=$("${SCRUB[@]}" "$ENGINE/bin/python3.13" -I -B -c '
+FROM=$("${SCRUB[@]}" OPENEXPRESS_LIBUSB="$LIBUSB" "$ENGINE/bin/python3.13" -I -B -c '
 import ctypes
 from openexpress.device import ptp
 lib = ptp.load_libusb()
@@ -102,7 +102,8 @@ print(info.fname.decode())')
 echo "libusb_init is in $FROM"
 [ "$FROM" = "$LIBUSB" ] || die "libusb was loaded from $FROM"
 if [[ "$(codesign -dv "$ENGINE/bin/python3.13" 2>&1)" != *runtime* ]]; then
-    LOADED=$("${SCRUB[@]}" DYLD_PRINT_LIBRARIES=1 "$ENGINE/bin/python3.13" -I -B -c \
+    LOADED=$("${SCRUB[@]}" OPENEXPRESS_LIBUSB="$LIBUSB" DYLD_PRINT_LIBRARIES=1 \
+        "$ENGINE/bin/python3.13" -I -B -c \
         'from openexpress.device import ptp; ptp.load_libusb()' 2>&1 | grep -E 'libusb|homebrew' || true)
     echo "$LOADED"
     [ "$(sed 's/^dyld\[[0-9]*\]: <[^>]*> //' <<<"$LOADED")" = "$LIBUSB" ] \
@@ -111,7 +112,8 @@ fi
 
 say "7-Zip: the bundled 7zz is the one used, even with Homebrew's 7z on PATH"
 mkdir -p "$OUT/7z"
-"${SCRUB[@]}" PATH="$ENGINE/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
+"${SCRUB[@]}" PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
+    OPENEXPRESS_7Z="$ENGINE/bin/7zz" \
     "$ENGINE/bin/python3.13" -I -B - "$OUT/7z" "$ENGINE/bin/7zz" <<'EOF'
 import sys, zipfile
 from pathlib import Path

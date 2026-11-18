@@ -88,6 +88,16 @@ def keep_awake():
     return macos.keep_awake()
 
 
+def libusb_places() -> list[str]:
+    """Where this system keeps a libusb-1.0 the library path does not have: Homebrew's on
+    macOS."""
+    if not is_mac():
+        return []
+    from openexpress.platform import macos
+
+    return macos.libusb_places()
+
+
 def secrets():
     """Where the secrets are kept (keychain.Backend): the Keychain on macOS, which takes in
     the file of an earlier version; a file readable by the user alone elsewhere."""

@@ -112,6 +112,12 @@ public final class DeviceModel: Identifiable {
     @ObservationIgnored private var loadTasks: [DevicePage: Task<Void, Never>] = [:]
     /// When each load in flight started, to tell which wait behind another.
     @ObservationIgnored private var loadStarted: [DevicePage: ContinuousClock.Instant] = [:]
+    /// Tracks read for the Activities inspector, by activity id, the most recent last: each
+    /// read is a whole FIT file over MTP, so going back to an activity reads nothing.
+    @ObservationIgnored private var tracks: [String: ActivityTrack] = [:]
+    @ObservationIgnored private var trackOrder: [String] = []
+    /// Tracks kept (the engine sends at most a few thousand points each).
+    public static let trackCacheLimit = 50
     /// An install waiting for the user's confirmation.
     public var pendingPlan: InstallPlan?
     /// The first sync of this device waits for the choice: everything, or new data only.
@@ -266,9 +272,28 @@ public final class DeviceModel: Identifiable {
         mapsChecked = .now
     }
 
+    /// The track already read for an activity, without asking the engine.
+    public func cachedTrack(for activity: Activity) -> ActivityTrack? {
+        guard let t = tracks[activity.id] else { return nil }
+        if trackOrder.last != activity.id {
+            trackOrder.removeAll { $0 == activity.id }
+            trackOrder.append(activity.id)
+        }
+        return t
+    }
+
     public func track(for activity: Activity) async -> ActivityTrack? {
+        if let t = cachedTrack(for: activity) { return t }
         guard let path = activity.fitPath, context.supports("activities.track") else { return nil }
-        return try? await engine.activityTrack(fitPath: path)
+        guard let t = try? await engine.activityTrack(fitPath: path) else { return nil }
+        // A file still being written gives more later: read again next time.
+        if activity.state == nil || activity.state == "complete" {
+            tracks[activity.id] = t
+            trackOrder.removeAll { $0 == activity.id }
+            trackOrder.append(activity.id)
+            while trackOrder.count > Self.trackCacheLimit { tracks[trackOrder.removeFirst()] = nil }
+        }
+        return t
     }
 
     // MARK: Operations

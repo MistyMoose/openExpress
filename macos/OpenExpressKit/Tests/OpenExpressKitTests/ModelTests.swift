@@ -85,6 +85,27 @@ struct ModelTests {
         #expect(methods.filter { $0 == "maps.list" }.count == 2)
     }
 
+    @Test func activityTracksAreReadOnce() async throws {
+        let (app, engine) = makeApp()
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        let activities = MockEngine.sampleActivities(count: DeviceModel.trackCacheLimit + 1)
+        func reads() async -> Int { await engine.calls.filter { $0.method == "activities.track" }.count }
+
+        #expect(model.cachedTrack(for: activities[0]) == nil)
+        let first = await model.track(for: activities[0])
+        #expect(first != nil)
+        #expect(model.cachedTrack(for: activities[0]) == first)
+        _ = await model.track(for: activities[0])
+        #expect(await reads() == 1)
+
+        // Bounded: the one used least recently goes first.
+        for a in activities.dropFirst() { _ = await model.track(for: a) }
+        #expect(await reads() == activities.count)
+        #expect(model.cachedTrack(for: activities[0]) == nil)
+        #expect(model.cachedTrack(for: activities[1]) != nil)
+    }
+
     @Test func attachEventTriggersAutomaticMode() async throws {
         let (app, engine) = makeApp()
         let notifier = RecordingNotifier()

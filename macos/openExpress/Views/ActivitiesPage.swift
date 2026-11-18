@@ -479,7 +479,17 @@ struct ActivityDetailView: View {
         }
         .formStyle(.grouped)
         .task {
-            track = await model.track(for: activity)
+            // A new selection makes a new view: a track read before is shown at once; else
+            // the read waits for the selection to rest, so arrowing through the list reads
+            // only the row it stops on (leaving a row cancels its wait or its read).
+            if let cached = model.cachedTrack(for: activity) {
+                track = cached
+            } else {
+                if activity.fitPath != nil {
+                    do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                }
+                track = await model.track(for: activity)
+            }
             loaded = true
         }
     }

@@ -78,6 +78,16 @@ def mount_id(root) -> str | None:
     return macos.mount_id(root)
 
 
+def keep_awake():
+    """On macOS, the computer kept from idling into sleep (caffeinate): the function that lets
+    it sleep again. None elsewhere, where the desktop is asked (awake)."""
+    if not is_mac():
+        return None
+    from openexpress.platform import macos
+
+    return macos.keep_awake()
+
+
 def secrets():
     """Where the secrets are kept (keychain.Backend): the Keychain on macOS, which takes in
     the file of an earlier version; a file readable by the user alone elsewhere."""

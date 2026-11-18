@@ -1,12 +1,13 @@
 """What macOS has in place of what Linux gives the program: the folders under ~/Library, the
-start of the computer from sysctl and the mount of a drive from its device number. Used through
-the functions of the package (platform), on macOS only.
+start of the computer from sysctl, the mount of a drive from its device number and
+`caffeinate`. Used through the functions of the package (platform), on macOS only.
 """
 
 from __future__ import annotations
 
 import ctypes
 import os
+import subprocess
 from pathlib import Path
 
 APP_NAME = "openExpress"  # the name of the app's folder under ~/Library
@@ -18,6 +19,8 @@ LIBRARY_FOLDERS = {
     "XDG_CACHE_HOME": "Caches",
     "XDG_STATE_HOME": "Logs",  # the log, where Console and the user both look for it
 }
+
+RELEASE_TIMEOUT_S = 5  # how long caffeinate may take to end
 
 
 def app_dir(var: str) -> Path:
@@ -50,3 +53,16 @@ def mount_id(root) -> str | None:
         return str(os.stat(root).st_dev)
     except OSError:
         return None
+
+
+def keep_awake():
+    """`caffeinate -i -w <pid>` started: the computer does not idle into sleep until the
+    function returned is called. "-w" ends it with this process, should that die first."""
+    process = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def release() -> None:
+        process.terminate()
+        process.wait(timeout=RELEASE_TIMEOUT_S)
+
+    return release

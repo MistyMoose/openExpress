@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 17:36+0100\n"
+"POT-Creation-Date: 2026-11-18 19:54+0100\n"
 "PO-Revision-Date: 2026-11-17 19:00+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -367,11 +367,16 @@ msgstr ""
 msgid "Could not delete {path}: {error}"
 msgstr "Nepodařilo se odstranit {path}: {error}"
 
+#. TRANSLATORS: without the tool no translation is built, so openExpress shows its texts as
+#. they are written in the code
 #: openexpress/catalogs.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "GNU gettext's {tool} is needed to build the translations (the gettext "
+#| "package); without it openExpress stays in English."
 msgid ""
 "GNU gettext's {tool} is needed to build the translations (the gettext "
-"package); without it openExpress stays in English."
+"package); without it openExpress is not translated."
 msgstr ""
 "K sestavení překladů je potřeba nástroj {tool} z balíčku GNU gettext. Bez "
 "něj zůstane openExpress v angličtině."

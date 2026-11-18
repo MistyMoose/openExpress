@@ -1,52 +1,48 @@
 """Telling one connection of a device from the next one, on macOS (history._boot, _mount_id):
 the start of the computer from `sysctl kern.boottime` (there is no /proc there), and the mount
 of a mass-storage drive from the device number of its filesystem (there is no mountinfo
-either)."""
+either): platform.boot_id and platform.mount_id."""
 
 import ctypes
-import sys
+import os
 
 import pytest
 
-from openexpress import history
+from openexpress import history, platform
+from openexpress.platform import macos
+
+pytestmark = pytest.mark.usefixtures("as_mac")
 
 
-@pytest.fixture(autouse=True)
-def darwin(monkeypatch):
-    monkeypatch.setattr(sys, "platform", "darwin")
-
-
-def test_boot_dispatches_to_the_darwin_implementation(monkeypatch):
-    monkeypatch.setattr(history, "_boot_darwin", lambda: "made-up-boot-time")
+def test_the_boot_is_the_one_of_the_platform(monkeypatch):
+    monkeypatch.setattr(macos, "boot_id", lambda: "made-up-boot-time")
     assert history._boot() == "made-up-boot-time"
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="kern.boottime is macOS's")
-def test_boot_darwin_reads_the_real_boot_time():
+@pytest.mark.skipif(not platform.is_mac(), reason="kern.boottime is macOS's")
+def test_the_boot_is_the_real_boot_time():
     """A real call into sysctlbyname (no mock): kern.boottime answers with a plausible, stable
     number of seconds."""
-    value = history._boot_darwin()
+    value = macos.boot_id()
     assert value.isdigit()
-    assert value == history._boot_darwin()  # the same while the computer stays up
+    assert value == macos.boot_id()  # the same while the computer stays up
 
 
-def test_boot_darwin_fails_soft_without_libc(monkeypatch):
+def test_the_boot_is_empty_without_libc(monkeypatch):
     def broken(*args, **kwargs):
         raise OSError("no libc here")
 
     monkeypatch.setattr(ctypes, "CDLL", broken)
-    assert history._boot_darwin() == ""
+    assert history._boot() == ""
 
 
-def test_mount_id_darwin_is_the_device_number_of_the_filesystem(tmp_path):
-    import os
-
+def test_the_mount_is_the_device_number_of_the_filesystem(tmp_path):
     assert history._mount_id(tmp_path) == str(os.stat(tmp_path).st_dev)
 
 
-def test_mount_id_darwin_is_none_without_a_root():
+def test_the_mount_is_none_without_a_root():
     assert history._mount_id(None) is None
 
 
-def test_mount_id_darwin_is_none_for_a_path_that_cannot_be_read(tmp_path):
+def test_the_mount_is_none_for_a_path_that_cannot_be_read(tmp_path):
     assert history._mount_id(tmp_path / "does-not-exist") is None

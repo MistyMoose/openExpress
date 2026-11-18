@@ -58,6 +58,26 @@ def app_dir(var: str):
     return macos.app_dir(var)
 
 
+def boot_id() -> str | None:
+    """This start of the computer, on macOS (kern.boottime; "" when it cannot be read); None
+    elsewhere."""
+    if not is_mac():
+        return None
+    from openexpress.platform import macos
+
+    return macos.boot_id()
+
+
+def mount_id(root) -> str | None:
+    """On macOS, which keeps no table of mounts, the ID of the mount of a drive at `root`
+    (the device number of its filesystem); None elsewhere, or when it cannot be read."""
+    if not is_mac():
+        return None
+    from openexpress.platform import macos
+
+    return macos.mount_id(root)
+
+
 def secrets():
     """Where the secrets are kept (keychain.Backend): the Keychain on macOS, which takes in
     the file of an earlier version; a file readable by the user alone elsewhere."""

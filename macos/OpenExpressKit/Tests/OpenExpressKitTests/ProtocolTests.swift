@@ -133,7 +133,7 @@ struct ProtocolTests {
         #expect(strava.configured && !strava.connected)
         #expect(strava.authorizeURL == "https://www.strava.com/oauth/authorize?x=1")
         let apps = try JSONValue(["exit_code": 0, "lines": ["Klimat"]]).decode(AppsList.self)
-        #expect(apps.apps == nil && apps.lines == ["Klimat"])
+        #expect(apps.exitCode == 0 && apps.lines == ["Klimat"])
         let a = try JSONValue(["name": "Morning Run", "source": "backup", "path": "/b/x.fit", "size": 10,
                                "start": "2026-11-17T09:41:00+01:00", "sport": "running", "sport_id": 1,
                                "distance": 5000, "duration": 1500, "ascent": nil, "state": "complete"]).decode(Activity.self)

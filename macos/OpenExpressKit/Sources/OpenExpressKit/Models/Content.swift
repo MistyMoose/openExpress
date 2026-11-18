@@ -189,84 +189,10 @@ public struct MapsList: Codable, Sendable, Hashable {
     public var updatable: [DeviceMap] { maps.filter { $0.installed && $0.status == .update } }
 }
 
-/// A Connect IQ app on the device. `apps.list` answers "as the CLI": the app reads only these
-/// fields, all but the name optional.
-public struct ConnectIQApp: Codable, Sendable, Hashable, Identifiable {
-    public var name: String
-    public var version: String?
-    public var type: String?
-    public var size: Int64?
-    public var enabled: Bool?
-    public var updateAvailable: Bool?
-    public var appID: String?
-
-    public var id: String { appID ?? name }
-
-    enum CodingKeys: String, CodingKey {
-        case name, version, type, size, enabled, updateAvailable
-        case appID = "id"
-    }
-
-    public init(name: String, version: String? = nil, type: String? = nil, size: Int64? = nil,
-                enabled: Bool? = nil, updateAvailable: Bool? = nil, appID: String? = nil) {
-        self.name = name
-        self.version = version
-        self.type = type
-        self.size = size
-        self.enabled = enabled
-        self.updateAvailable = updateAvailable
-        self.appID = appID
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? "?"
-        version = (try? c.decodeIfPresent(String.self, forKey: .version))
-            ?? (try? c.decodeIfPresent(Int.self, forKey: .version)).map { String($0) }
-        type = try? c.decodeIfPresent(String.self, forKey: .type)
-        size = try? c.decodeIfPresent(Int64.self, forKey: .size)
-        enabled = try? c.decodeIfPresent(Bool.self, forKey: .enabled)
-        updateAvailable = try? c.decodeIfPresent(Bool.self, forKey: .updateAvailable)
-        appID = try? c.decodeIfPresent(String.self, forKey: .appID)
-    }
-
-    /// SF Symbol of the kind of app ("watch-app", "watchface", "datafield", "widget", …).
-    public var systemImage: String {
-        switch type?.lowercased() {
-        case "watchface", "watch-face", "watch face": "clock"
-        case "datafield", "data-field", "data field": "square.grid.2x2"
-        case "widget", "glance": "rectangle.stack"
-        case "music", "audio-content-provider": "music.note"
-        default: "app"
-        }
-    }
-}
-
-/// `apps.list` runs `apps` as the command line: `{"exit_code", "lines"}`. A structured
-/// `{"apps": [...]}` is read too, should the engine add one.
+/// `apps.list` runs `apps` as the command line: `{"exit_code", "lines"}`.
 public struct AppsList: Codable, Sendable, Hashable {
-    public var apps: [ConnectIQApp]?
     public var lines: [String]
     public var exitCode: Int?
-
-    public init(apps: [ConnectIQApp]? = nil, lines: [String] = [], exitCode: Int? = 0) {
-        self.apps = apps
-        self.lines = lines
-        self.exitCode = exitCode
-    }
-
-    public init(from decoder: any Decoder) throws {
-        if let list = try? decoder.singleValueContainer().decode([ConnectIQApp].self) {
-            apps = list
-            lines = []
-            exitCode = 0
-        } else {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            apps = try? c.decodeIfPresent([ConnectIQApp].self, forKey: .apps)
-            lines = (try? c.decodeIfPresent([String].self, forKey: .lines)) ?? []
-            exitCode = try? c.decodeIfPresent(Int.self, forKey: .exitCode)
-        }
-    }
 }
 
 /// An activity on the device or in its backups (`activities.list`).

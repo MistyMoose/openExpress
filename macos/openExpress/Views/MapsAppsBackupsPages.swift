@@ -129,9 +129,7 @@ struct AppsPage: View {
 
     var body: some View {
         if let list = model.apps {
-            if let apps = list.apps {
-                structured(apps)
-            } else if list.lines.isEmpty {
+            if list.lines.isEmpty {
                 ContentUnavailableView("No Connect IQ Apps", systemImage: "square.grid.2x2",
                                        description: Text("Apps, watch faces and data fields installed on the device appear here."))
             } else {
@@ -145,30 +143,6 @@ struct AppsPage: View {
             }
         } else {
             PageLoadingView(model: model, page: .apps)
-        }
-    }
-
-    private func structured(_ apps: [ConnectIQApp]) -> some View {
-        List(apps) { app in
-            HStack(spacing: 12) {
-                Image(systemName: app.systemImage)
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: 24)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(app.name)
-                    Text([app.type?.replacingOccurrences(of: "-", with: " ").capitalized, app.version,
-                          app.size.map(Format.bytes)].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if app.updateAvailable == true {
-                    Text("Update available").font(.callout).foregroundStyle(.orange)
-                }
-            }
-            .padding(.vertical, 2)
         }
     }
 }

@@ -162,8 +162,6 @@ public struct StravaStatus: Codable, Sendable, Hashable {
     /// `strava.connect` without `code`: the page to open.
     public var authorizeURL: String?
 
-    public var athlete: String? { athleteName }
-
     enum CodingKeys: String, CodingKey {
         case configured, connected, athleteName, scope
         case authorizeURL = "authorizeUrl"

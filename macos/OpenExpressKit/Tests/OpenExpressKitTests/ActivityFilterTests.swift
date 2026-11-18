@@ -146,7 +146,6 @@ struct SportSymbolTests {
     @Test func iconBySportNumberNameAsIs() {
         let a = Activity(start: .now, sport: "Surfing", sportID: 38)
         #expect(a.systemImage == "figure.surfing")
-        #expect(a.sportName == "Surfing")
         #expect(Activity(start: .now, sport: "Sport 99", sportID: 99).systemImage == "figure.mixed.cardio")
     }
 }

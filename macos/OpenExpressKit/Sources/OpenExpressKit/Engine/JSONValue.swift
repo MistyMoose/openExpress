@@ -28,11 +28,6 @@ public enum JSONValue: Sendable, Hashable {
         }
     }
 
-    public var doubleValue: Double? {
-        if case .number(let d) = self { return d }
-        return nil
-    }
-
     public var boolValue: Bool? {
         if case .bool(let b) = self { return b }
         return nil
@@ -47,8 +42,6 @@ public enum JSONValue: Sendable, Hashable {
         if case .object(let o) = self { return o }
         return nil
     }
-
-    public var isNull: Bool { self == .null }
 }
 
 extension JSONValue: Codable {

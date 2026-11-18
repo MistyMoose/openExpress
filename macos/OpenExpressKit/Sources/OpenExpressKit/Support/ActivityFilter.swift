@@ -163,7 +163,7 @@ public struct ActivityFilter: Equatable, Sendable {
             if !duration.contains(a.duration) { return false }
             if let earliest, a.start < earliest { return false }
             if !text.isEmpty {
-                let haystack = [a.sportName, a.name ?? "", a.start.formatted(date: .abbreviated, time: .shortened)]
+                let haystack = [a.sport, a.name ?? "", a.start.formatted(date: .abbreviated, time: .shortened)]
                 if !haystack.contains(where: { $0.localizedStandardContains(text) }) { return false }
             }
             return true

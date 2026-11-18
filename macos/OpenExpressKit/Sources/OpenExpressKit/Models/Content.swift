@@ -160,7 +160,6 @@ public struct MapsList: Codable, Sendable, Hashable {
     public var free: Int64?
     /// Set when Garmin has no maps service for the device (`maps` is then empty).
     public var message: String?
-    public var moreAvailable: Int?
 
     public init(maps: [DeviceMap], ownMaps: [OwnMap] = [], free: Int64? = nil, message: String? = nil) {
         self.maps = maps
@@ -175,7 +174,6 @@ public struct MapsList: Codable, Sendable, Hashable {
         ownMaps = (try? c.decodeIfPresent([OwnMap].self, forKey: .ownMaps)) ?? []
         free = try? c.decodeIfPresent(Int64.self, forKey: .free)
         message = try? c.decodeIfPresent(String.self, forKey: .message)
-        moreAvailable = try? c.decodeIfPresent(Int.self, forKey: .moreAvailable)
     }
 
     public var installed: [DeviceMap] { maps.filter(\.installed) }
@@ -192,6 +190,7 @@ public struct AppsList: Codable, Sendable, Hashable {
 /// An activity on the device or in its backups (`activities.list`).
 public struct Activity: Codable, Sendable, Hashable, Identifiable {
     public let start: Date
+    /// The sport's name, translated by the engine ("Surfing", "Sport 99").
     public var sport: String
     /// Metres.
     public var distance: Double?
@@ -222,7 +221,7 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
     /// ("2026-11-13-10-36-39.fit") or the sport again.
     public var title: String? {
         guard let name = name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
-        if name.lowercased().hasSuffix(".fit") || name == sportName { return nil }
+        if name.lowercased().hasSuffix(".fit") || name == sport { return nil }
         if name == fileName || name.range(of: #"^\d{4}-\d{2}-\d{2}[-_ T]\d{2}[-_.:]\d{2}"#, options: .regularExpression) != nil {
             return nil
         }
@@ -340,10 +339,6 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         default: "figure.mixed.cardio"
         }
     }
-
-    /// "trail_running" → "Trail Running".
-    /// The engine's `sport` is already the translated display name ("Surfing", "Sport 99").
-    public var sportName: String { sport }
 }
 
 public struct ActivitiesList: Codable, Sendable, Hashable {

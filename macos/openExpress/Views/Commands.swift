@@ -53,7 +53,6 @@ struct OpenExpressCommands: Commands {
 
 enum AboutPanel {
     static let forkURL = URL(string: "https://github.com/bruring/openExpress-mac")!
-    static let upstreamURL = URL(string: "https://github.com/TomaszBojanowski/openExpress")!
 
     static func show() {
         let paragraph = NSMutableParagraphStyle()

@@ -24,7 +24,6 @@ public final class AppModel {
     public private(set) var account: AccountStatus?
     public private(set) var strava: StravaStatus?
     public private(set) var devices: [Device] = []
-    public private(set) var log: [EngineLogLine] = []
     /// The engine's settings (`settings.get` without a key): `copy_fit_to`, `copy_fit_types`,
     /// `backup_dir`, `backup_keep`, …
     public private(set) var engineSettings: [String: JSONValue] = [:]
@@ -187,14 +186,11 @@ public final class AppModel {
             } else {
                 unassignedBusy = b
             }
-        case .log(let line):
-            log.append(line)
-            if log.count > 500 { log.removeFirst(log.count - 500) }
         case .engineRestarted:
             Task { await bootstrap() }
         case .engineStopped(let why):
             engineState = .failed(why)
-        case .progress, .unknown:
+        case .progress, .log, .unknown:
             break
         }
     }

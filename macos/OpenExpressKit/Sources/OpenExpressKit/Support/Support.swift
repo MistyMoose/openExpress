@@ -75,7 +75,7 @@ public enum Format {
         bpm.formatted(.number.precision(.fractionLength(0)))
     }
 
-    public static func relative(_ date: Date, now: Date = .now) -> String {
+    public static func relative(_ date: Date) -> String {
         date.formatted(.relative(presentation: .named, unitsStyle: .wide))
     }
 }

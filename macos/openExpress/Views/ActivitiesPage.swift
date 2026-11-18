@@ -199,7 +199,7 @@ struct ActivitiesPage: View {
                 (max(head(String(localized: title)), widest(values)) + inset).rounded(.up)
             }
             // Icon (20) and its gap (8).
-            sport = min(200, (max(head(String(localized: "Sport")), widest(Set(activities.map(\.sportName))) + 28) + inset).rounded(.up))
+            sport = min(200, (max(head(String(localized: "Sport")), widest(Set(activities.map(\.sport))) + 28) + inset).rounded(.up))
             date = min(220, column("Date", Set(activities.map { ActivitiesPage.formatDate($0.start, compact: false) })))
             compactDate = min(160, column("Date", Set(activities.map { ActivitiesPage.formatDate($0.start, compact: true) })))
             distance = column("Distance", activities.compactMap(\.distance).map(Format.distance))
@@ -279,7 +279,7 @@ struct ActivitiesPage: View {
         Table(rows, selection: $selection, sortOrder: $model.activitySort, columnCustomization: $columns) {
             // The sport first, then when: the engine's `name` repeats the date and the file,
             // so it stays in the inspector.
-            TableColumn("Sport", value: \.sportName) { a in
+            TableColumn("Sport", value: \.sport) { a in
                 SportLabel(activity: a)
             }
             .width(min: 80, ideal: widths.sport, max: 260)
@@ -336,7 +336,7 @@ struct SportLabel: View {
                 .foregroundStyle(.tint)
                 .frame(width: 20)
                 .accessibilityHidden(true)
-            Text(activity.sportName)
+            Text(activity.sport)
                 .lineLimit(1)
         }
     }
@@ -382,12 +382,12 @@ struct ActivityDetailView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         // A title of its own when the activity has one, else the sport.
-                        Text(activity.title ?? activity.sportName)
+                        Text(activity.title ?? activity.sport)
                             .font(.title3.weight(.semibold))
                             .lineLimit(2)
                         Text(activity.title == nil
                              ? activity.start.formatted(date: .complete, time: .shortened)
-                             : "\(activity.sportName) · \(activity.start.formatted(date: .long, time: .shortened))")
+                             : "\(activity.sport) · \(activity.start.formatted(date: .long, time: .shortened))")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }

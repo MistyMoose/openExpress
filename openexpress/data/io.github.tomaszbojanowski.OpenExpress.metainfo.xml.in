@@ -99,6 +99,40 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.11.0" date="2026-11-18">
+      <description translate="no">
+        <p>Car navigators that hide their system folder, such as the Drive 53 EX, and satellite data
+        for the Edge 1050.</p>
+        <ul>
+          <li>Car navigators that hide their system folder (.System), such as the Drive 53 EX, now get
+          software updates and the time zone map from openExpress. It reads that folder through its
+          own USB session, replaces the old file with the new one and reads it back to check it.
+          Confirmed on a real Drive 53 EX: a software update (8.50 → 9.00) and the time zone map from
+          the command line, a reinstall of the time zone map from the window, and a map update (City
+          Navigator North America NT 2027.20, 8.3 GB) from the command line with the trial option. The
+          Updates page installs the same way; that was checked on a simulated device.</li>
+          <li>Their maps are listed with their state. Installing or updating one is, for now, a
+          command-line trial (openexpress maps install NAME --hidden-folder-trial); the window does not
+          install them yet.</li>
+          <li>Maps: under the free space, Maps use says what the maps take; a map with an update names
+          the version offered and what it downloads.</li>
+          <li>A device whose data Garmin Connect does not take, such as a car navigator, is not synced;
+          its page says why.</li>
+          <li>Reinstall Components: when Garmin offers a lower version than the device lists, the row
+          shows both, and Reinstall stays only when the file on the device is the one offered.</li>
+          <li>Satellite data (experimental) now also for the Edge 1050, which keeps its file GPES.bin
+          where the ordinary USB connection shows it: with Satellite Data turned on, a sync writes
+          Garmin's current file, and the Edge unpacks it about two minutes after it is
+          unplugged.</li>
+          <li>While software updates or map files are copied, openExpress keeps the computer from
+          sleeping.</li>
+          <li>Translations: Czech and French are complete; German has 1891 of the 1958 texts; texts not
+          translated yet stay in English.</li>
+        </ul>
+        <p>Thanks to wildwall2150 for testing on the Drive 53 EX (#42), and to prajzner, BeGiBue and
+        Alex Giroux on Hosted Weblate.</p>
+      </description>
+    </release>
     <release version="0.10.6" date="2026-11-16">
       <description translate="no">
         <p>A small maintenance release.</p>

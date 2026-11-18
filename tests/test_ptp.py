@@ -177,9 +177,11 @@ def test_the_line_of_the_log_names_the_operations_that_matter_and_nothing_of_the
     with ptp.Session(device) as session:
         line = ptp.operations_line(session)
     assert line == (
-        "the device lists 13 operations; GetPartialObject yes, SendObject yes, DeleteObject yes, "
+        "the device lists 37 operations; GetPartialObject yes, SendObject yes, DeleteObject yes, "
         "Garmin's hidden listing yes; all: 0x1001 0x1002 0x1003 0x1004 0x1005 0x1007 0x1008 "
-        "0x1009 0x100B 0x100C 0x100D 0x101B 0x9002")
+        "0x1009 0x100A 0x100B 0x100C 0x100D 0x1010 0x1014 0x1015 0x1016 0x1019 0x101B 0x9000 "
+        "0x9001 0x9002 0x9003 0x9004 0x9005 0x9006 0x9007 0x9008 0x9009 0x900A 0x900B 0x9801 "
+        "0x9802 0x9803 0x9804 0x9805 0x9810 0x9811")
     assert not any(word in line for word in ("Made-up", "9.99", "MADEUPSERIAL", "microsoft"))
 
 
@@ -208,9 +210,11 @@ def test_a_device_info_cut_short_is_an_error(cut):
         ptp.operations_supported(data[:keep])
 
 
-def test_a_session_of_its_own_logs_the_operations_once_it_is_open(device, monkeypatch, caplog):
+@pytest.fixture
+def own_session(device, monkeypatch):
+    """gio_storage._exclusive opening the made-up device, nothing unmounted; each opening is
+    a new session over the same cable."""
     import contextlib
-    import logging
     import time
 
     from openexpress.device import gio_storage
@@ -219,16 +223,52 @@ def test_a_session_of_its_own_logs_the_operations_once_it_is_open(device, monkey
     def unmounted(storage, what, closed):
         yield time.monotonic()
 
+    def opened(cls, bus, address):
+        device.reconnect()
+        return device
+
     monkeypatch.setattr(gio_storage, "_unmounted", unmounted)
-    monkeypatch.setattr(ptp.LibusbTransport, "open", classmethod(lambda cls, bus, address: device))
-    storage = types.SimpleNamespace(usb=gio_storage.GarminUsb(None, 3, 14))
+    monkeypatch.setattr(ptp.LibusbTransport, "open", classmethod(opened))
+    return gio_storage._exclusive
+
+
+def _plugged_at(address: int):
+    from openexpress.device import gio_storage
+
+    return types.SimpleNamespace(usb=gio_storage.GarminUsb(None, 3, address))
+
+
+def test_a_session_of_its_own_logs_the_operations_once_it_is_open(device, own_session, caplog):
+    import logging
+
     with caplog.at_level(logging.INFO, logger="openexpress.device.gio_storage"), \
-            gio_storage._exclusive(storage) as session:
+            own_session(_plugged_at(14)) as session:
         assert session.storages() == [STORAGE]
     lines = [r.getMessage() for r in caplog.records if r.name == "openexpress.device.gio_storage"]
     opened = next(i for i, line in enumerate(lines) if line.startswith("PTP: session open after"))
-    assert lines[opened + 1].startswith("PTP: the device lists 13 operations; GetPartialObject yes")
+    assert lines[opened + 1].startswith("PTP: the device lists 37 operations; GetPartialObject yes")
     assert device.operations[:2] == [ptp.OPEN_SESSION, ptp.GET_DEVICE_INFO]
+
+
+def test_the_operations_are_logged_in_full_once_a_connection(device, own_session, caplog):
+    """The device is asked for its operations at every session; the log has their list once
+    a connection, and again only when the device lists others."""
+    import logging
+
+    first, again = _plugged_at(14), _plugged_at(15)  # unplugged and plugged in again
+    with caplog.at_level(logging.INFO, logger="openexpress.device.gio_storage"):
+        for storage in (first, first, again):
+            with own_session(storage) as session:
+                assert session.storages() == [STORAGE]
+        device.supported = device.supported[:-1]
+        with own_session(again):
+            pass
+    said = [r.getMessage() for r in caplog.records if r.getMessage().startswith("PTP: the device")]
+    full = said[0]
+    assert full.startswith("PTP: the device lists 37 operations; GetPartialObject yes")
+    assert said[1:3] == ["PTP: the device lists the same operations as before", full]
+    assert said[3].startswith("PTP: the device lists 36 operations; GetPartialObject yes")
+    assert len(said) == 4 and device.sent(ptp.GET_DEVICE_INFO) == 4
 
 
 # --- hidden objects ----------------------------------------------------------------------

@@ -26,7 +26,7 @@ def _device(uploads=True):
     (True, {"connectsupport": " disabled "}, service.CONNECT_DISABLED),
     (True, {"connectsupport": "Required"}, None),  # a fēnix 8, an Edge 1050
     (True, {}, None),  # Garmin did not refuse it
-    (True, None, None),  # no answer: as today, until Garmin says so
+    (True, None, None),  # no answer: synced, until Garmin says otherwise
 ])
 def test_the_gate_of_a_device_over_mtp(uploads, info, reason):
     assert service.mtp_sync_refusal(_device(uploads), info) == reason
@@ -50,7 +50,7 @@ def test_behind_the_gate_the_account_is_not_asked_of_the_device(monkeypatch):
 
 
 @pytest.mark.parametrize("kept", [{"connectsupport": "Required"}, None])
-def test_without_garmin_s_word_the_device_is_checked_as_today(monkeypatch, kept):
+def test_without_garmin_s_refusal_the_account_is_asked_of_the_device(monkeypatch, kept):
     s, asked = _session(kept, monkeypatch)
     service.check_session(s)
     assert s.sync_refusal is None and asked == [UNIT]

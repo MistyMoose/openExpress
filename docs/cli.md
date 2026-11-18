@@ -179,9 +179,9 @@ Garmin Connect has queued to the device.
 - A device connected as a USB drive is synced the same way when it can be (otherwise the command
   says why); its Connect IQ apps are left in Garmin Connect's queue, and the drive is ejected
   after a sync that wrote to it.
-- For a watch whose **Satellite Data** are on (experimental, turned on on its device page in the
-  window), a line says whether Garmin's current satellite data file was written, was already on
-  the watch or was not written and why; the dry run says whether it would be written.
+- For a device whose **Satellite Data** are on (experimental, turned on on its device page in
+  the window), a line says whether Garmin's current satellite data file was written, was already
+  on the device or was not written and why; the dry run says whether it would be written.
   `--upload-only` leaves them out.
 
 ### courses

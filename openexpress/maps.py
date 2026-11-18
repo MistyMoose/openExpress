@@ -26,7 +26,7 @@ from pathlib import Path
 
 from openexpress import answers, applog, awake, cache, download, hidden_folders, paths
 from openexpress.connect import ApiError, unexpected_answer_text
-from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
+from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage, connection
 from openexpress.errors import UserFacingError
 from openexpress.i18n import _, country_name
 from openexpress.progress import (
@@ -42,8 +42,8 @@ log = logging.getLogger(__name__)
 
 SPACE_MARGIN = 50 * 1024 * 1024
 # How fast a map is written and read back whole into a folder a car navigator hides, at the
-# slowest seen (a software update of 64.7 MB on a Drive 53 EX, written and read back in 9.4 s,
-# its read then slowed by this program's own copying): only for the estimate of the trial.
+# slowest measured (a software update of 64.7 MB on a Drive 53 EX, written and read back in
+# 9.4 s): only for the estimate of the trial, which errs on the long side.
 TRIAL_PACE = 6_900_000  # bytes a second
 WAIT_INSTALL, WAIT_REMOVE = "install", "remove"
 # Writing an unlock file the device refused is tried again after a pause, as Garmin Express
@@ -683,7 +683,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     except Exception as e:  # noqa: BLE001 - only shown: the map check goes on without it
         log.warning("maps: cannot read the map files on the device, none is marked as "
                     "waiting for unplugging: %s", e)
-        log_states(maps)
+        log_states(storage, maps)
         return
     for m in maps:
         paths = {p.casefold() for p in m.all_paths}
@@ -717,7 +717,7 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
             removed.append(m)
     for m in removed:
         m.waiting = WAIT_REMOVE
-    log_states(maps)
+    log_states(storage, maps)
 
 
 def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str, int]) -> bool:
@@ -731,10 +731,20 @@ def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str
     if all(here):
         return False
     new = {f.device_path.casefold() for f in m.files}
+    shared = protected_files(maps, m)
     own_old = [p.casefold() for p in m.files_to_remove
-               if p.casefold() not in new and p.casefold() not in protected_files(maps, m)]
+               if p.casefold() not in new and p.casefold() not in shared]
     old_gone = any(p not in present for p in own_old)
     return old_gone or (any(here) and not m.installed)
+
+
+def on_the_device(m: UniversalMap, paths: list[str]) -> list[str]:
+    """Those of `paths` that are on the device as mark_waiting found its files (device_sizes):
+    a file Garmin lists among the old ones that the device does not have is not removed. All of
+    them when its files are not known."""
+    if m.device_sizes is None:
+        return list(paths)
+    return [p for p in paths if p.casefold() in m.device_sizes]
 
 
 def hidden_space(storage: Storage, m: UniversalMap, removing: list[str]) -> tuple[int, int | None]:
@@ -763,7 +773,7 @@ def download_space(m: UniversalMap) -> tuple[int, int]:
 
 
 def trial_minutes(m: UniversalMap) -> int:
-    """At most how many minutes writing and reading back the files of `m` take (TRIAL_PACE)."""
+    """About how many minutes writing and reading back the files of `m` take, at TRIAL_PACE."""
     return max(1, -(-m.size // (TRIAL_PACE * 60)))
 
 
@@ -847,13 +857,10 @@ def _top_not_seen(paths, tops: set[str] | None) -> str | None:
     """The first folder of the top level among those of `paths` that ordinary MTP does not show
     (`tops`: those it shows, in lower case); None when all are seen, or the top level could not
     be listed."""
-    if tops is None:
-        return None
-    for p in paths:
-        parts = [part for part in p.replace("\\", "/").split("/") if part]
-        if len(parts) > 1 and parts[0].casefold() not in tops:
-            return parts[0]
-    return None
+    from openexpress.updates import top_folder_not_seen
+
+    return next((top for p in paths
+                 if (top := top_folder_not_seen(p.replace("\\", "/"), tops)) is not None), None)
 
 
 def hidden_needed(maps: list[UniversalMap]) -> list[str]:
@@ -905,12 +912,16 @@ def _state_words(m: UniversalMap) -> str:
     return "current"
 
 
-def log_states(maps: list[UniversalMap]) -> None:
+def log_states(storage: Storage, maps: list[UniversalMap]) -> None:
     """One line of the log after the list was matched with the device: each map the device
-    has or takes in when unplugged, with its state (maps only offered are left out)."""
+    has or takes in when unplugged, with its state (maps only offered are left out); a short
+    line when this connection logged the same before."""
     shown = [m for m in maps if m.listed or m.waiting]
-    log.info("maps: states: %s", "; ".join(f"{m.name} {_state_words(m)}" for m in shown)
-             or "no map on the device")
+    states = "; ".join(f"{m.name} {_state_words(m)}" for m in shown) or "no map on the device"
+    if applog.unchanged("maps", connection(storage), states):
+        log.info("maps: the same states as before")
+    else:
+        log.info("maps: states: %s", states)
 
 
 def waiting_message(m: UniversalMap) -> str:
@@ -1114,10 +1125,10 @@ def _install_hidden(m: UniversalMap, removing: list[str], storage: Storage, acti
         raise MapError(no_room_on_computer_text(m.name, need_here + SPACE_MARGIN, free_here))
     log.info("map install: %s %s into %s (the trial): %d files (%s), %d old files to remove",
              m.name, m.version, m.hidden_folder, len(m.files), applog.size(m.size),
-             len(removing))
+             len(on_the_device(m, removing)))
     local = _download(m, session, progress, url_salt)
     unlocks = _activation(m, activate, say_to(progress), strict=True)
-    files = [hidden_folders.MapFile(f.device_path, local[f.device_path], f.size, f.md5)
+    files = [hidden_folders.FileToWrite(f.device_path, local[f.device_path], f.size, f.md5)
              for f in write_order(m)]
     try:
         done = hidden_folders.write_map(

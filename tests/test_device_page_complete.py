@@ -368,7 +368,7 @@ def test_the_apps_page_says_it_in_one_line():
         said = refused_dirs_text(["garmin/apps/media", "garmin/apps/settings"])
     finally:
         i18n.setup("en")
-    assert said == ("Urządzenie nie pozwoliło openExpress utworzyć garmin/apps/media, "
+    assert said == ("Urządzenie nie pozwoliło openExpressowi utworzyć garmin/apps/media, "
                     "garmin/apps/settings w\u00a0tej wersji oprogramowania: aplikacje, które tam "
                     "trafiają, czekają w\u00a0kolejce Garmin Connect.")
 
@@ -594,9 +594,13 @@ def test_the_opening_reads_whether_the_device_has_the_file(tmp_path, clock):
     from openexpress.device.storage import LocalStorage
     from openexpress.gui.device_page import read_satellite
 
+    # GPES.bin unpacked as an Edge 1050 keeps it shown: 01 00, the time of its data, bytes 6-15
+    # as every file of the kind, made-up data.
+    gpes = b"\x01\x00" + (1794500000).to_bytes(4, "big") + satellite.RX_HEADER + bytes(15_960)
     found = {}
     for name, files in (("like a forerunner", {"GARMIN/REMOTESW/CPE.BIN": made_up_cpe()}),
-                        ("like an edge", {"GARMIN/RemoteSW/GPES.bin": b"made up"})):
+                        ("like an edge", {"GARMIN/RemoteSW/GPES.bin": gpes}),
+                        ("another kind", {"GARMIN/RemoteSW/GPES.bin": b"made up"})):
         root = tmp_path / name
         for path, data in files.items():
             (root / path).parent.mkdir(parents=True)
@@ -606,7 +610,10 @@ def test_the_opening_reads_whether_the_device_has_the_file(tmp_path, clock):
                                   storage=LocalStorage(root), satellite=None)
         read_satellite(s)
         found[name] = s.satellite
-    assert found == {"like a forerunner": satellite.State(), "like an edge": None}
+    assert found == {"like a forerunner": satellite.State(),
+                     "like an edge": satellite.State(kind=satellite.RXNETWORKS,
+                                                     files={"GPES.bin": {"time": 1794500000}}),
+                     "another kind": None}
 
 
 @pytest.mark.needs_display

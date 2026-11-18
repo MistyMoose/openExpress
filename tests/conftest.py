@@ -642,6 +642,10 @@ def usb_nodes(tmp_path, monkeypatch) -> Path:
     from openexpress import hidden_folders
 
     monkeypatch.setattr(hidden_folders, "_kept", {})
+    # Nor the lines an earlier test logged for a connection (applog.unchanged).
+    from openexpress import applog
+
+    monkeypatch.setattr(applog, "_last_said", {})
     return folder
 
 

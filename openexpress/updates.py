@@ -29,7 +29,13 @@ from openexpress import (
     known_devices,
     paths,
 )
-from openexpress.device.storage import MAIN_FOLDERS, DeviceError, DeviceNotResponding, Storage
+from openexpress.device.storage import (
+    MAIN_FOLDERS,
+    DeviceError,
+    DeviceNotResponding,
+    Storage,
+    connection,
+)
 from openexpress.errors import UserFacingError
 from openexpress.i18n import N_, _, ngettext
 from openexpress.progress import (
@@ -254,6 +260,12 @@ class SoftwareUpdate:
         return self.hidden_session == hidden_folders.READ
 
     @property
+    def hidden_unread(self) -> bool:
+        """Its file goes to a folder of the top level ordinary MTP does not show that this
+        connection has not read through openExpress's own session: it is not installed."""
+        return self.hidden_folder is not None and not self.hidden_read
+
+    @property
     def is_add_on(self) -> bool:
         """Something the device does not have that Garmin offers to add to it (a voice, a
         vehicle of a car navigator): the server says it is not installed, it is not the device's
@@ -312,6 +324,7 @@ OLDER_SAME_SIZE = "the same size"
 OLDER_DIFFERS = "another file"
 OLDER_NOT_COMPARED = "not compared"
 MD5_DIFFERS = "MD5 differs"
+SIZE_DIFFERS = "size differs"  # followed by both sizes
 
 
 class Presence(NamedTuple):
@@ -355,8 +368,7 @@ def presence(storage: Storage, u: SoftwareUpdate) -> Presence:
         if size is None:
             return Presence(NOT_ON_THE_DEVICE)
         if size != u.size:
-            return Presence(f"size differs ({applog.size(size)} on the device, "
-                            f"{applog.size(u.size)} offered)", real)
+            return _size_differs(size, u, real)
         same = _md5_of(storage, real, size, entry.mtime) == md5
         return Presence(MATCHES if same else MD5_DIFFERS, real)
     except DeviceNotResponding:
@@ -379,7 +391,11 @@ def presence_by_size(listing: hidden_folders.Listing, u: SoftwareUpdate) -> Pres
     u.hidden_size_same = entry.size == u.size
     if u.hidden_size_same:
         return Presence(SAME_SIZE, real)
-    return Presence(f"size differs ({applog.size(entry.size)} on the device, "
+    return _size_differs(entry.size, u, real)
+
+
+def _size_differs(on_device: int, u: SoftwareUpdate, real) -> Presence:
+    return Presence(f"{SIZE_DIFFERS} ({applog.size(on_device)} on the device, "
                     f"{applog.size(u.size)} offered)", real)
 
 
@@ -439,11 +455,11 @@ def _older_offer(storage: Storage, listing, u: SoftwareUpdate) -> str:
         found = presence_by_size(listing, u)
         if found.why == SAME_SIZE:
             return OLDER_SAME_SIZE
-        return OLDER_DIFFERS if found.why.startswith("size differs") else OLDER_NOT_COMPARED
+        return OLDER_DIFFERS if found.why.startswith(SIZE_DIFFERS) else OLDER_NOT_COMPARED
     found = presence(storage, u)
     if found.why == MATCHES:
         return OLDER_SAME_FILE
-    if found.why == MD5_DIFFERS or found.why.startswith("size differs"):
+    if found.why == MD5_DIFFERS or found.why.startswith(SIZE_DIFFERS):
         return OLDER_DIFFERS
     return OLDER_NOT_COMPARED
 
@@ -526,11 +542,6 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
             presence_by_size(listing, u)
         # An older version than the device's: by its file, never by the numbers alone.
         u.older_offer = _older_offer(storage, listing, u) if offers_older(u) else None
-    older = [u for u in updates if u.older_offer is not None]
-    if older:
-        log.info("updates: %d reinstalls of an older version than the device's (%s)",
-                 len(older), ", ".join(f"{u.part_number} {u.installed_version} on the device, "
-                                       f"{u.version} offered: {u.older_offer}" for u in older))
     found = []
     for u in offered:
         if u.hidden_folder is None:
@@ -543,23 +554,44 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
         u.on_device = found[-1].why == MATCHES or (found[-1].why == SAME_SIZE
                                                    and not u.is_system)
         u.changed_on_device = found[-1].why == MD5_DIFFERS
+    _log_offered(storage, updates, offered, found, components)
+    return updates
+
+
+def _log_offered(storage: Storage, updates: list[SoftwareUpdate], offered: list[SoftwareUpdate],
+                 found: list[Presence], components: int | None) -> None:
+    """What mark_present found, in full the first time for this connection and when it
+    changes, else one short line."""
+    said = []
+    older = [u for u in updates if u.older_offer is not None]
+    if older:
+        said.append(("updates: %d reinstalls of an older version than the device's (%s)",
+                     len(older), ", ".join(f"{u.part_number} {u.installed_version} on the "
+                                           f"device, {u.version} offered: {u.older_offer}"
+                                           for u in older)))
     # For each: where its file goes on the device, from the device's folder, and whether it
     # is there; never an address (a download address carries a token).
     named = ", ".join(f"{u.part_number} {u.version} at {_where(u, p)}: {p.why}"
                       for u, p in zip(offered[:LOG_ITEMS], found, strict=False))
     if len(offered) > LOG_ITEMS:
         named += f", … and {len(offered) - LOG_ITEMS} more"
-    log.info("updates: %d offered%s, %d of them already on the device%s", len(offered),
-             f" ({named})" if named else "", sum(1 for u in offered if u.on_device),
-             f"; {components} components listed" if components is not None else "")
+    present = sum(1 for u in offered if u.on_device)
+    said.append(("updates: %d offered%s, %d of them already on the device%s", len(offered),
+                 f" ({named})" if named else "", present,
+                 f"; {components} components listed" if components is not None else ""))
     hidden = sorted({u.hidden_folder for u in offered if u.hidden_folder})
     extra = [u for u in offered if u.is_add_on]
     if hidden or extra:
-        log.info("updates: %d in a top folder not seen (%s), %d add-ons (not installed: %s)",
-                 sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
-                 len(extra), ", ".join(sorted({u.severity or "no importance" for u in extra}))
-                 or "none")
-    return updates
+        said.append(("updates: %d in a top folder not seen (%s), %d add-ons (not installed: %s)",
+                     sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
+                     len(extra), ", ".join(sorted({u.severity or "no importance"
+                                                   for u in extra})) or "none"))
+    if applog.unchanged("updates", connection(storage), said):
+        log.info("updates: %d offered as before, %d of them already on the device",
+                 len(offered), present)
+        return
+    for line in said:
+        log.info(*line)
 
 
 def top_folders(storage: Storage) -> set[str] | None:
@@ -573,12 +605,12 @@ def top_folders(storage: Storage) -> set[str] | None:
         return None
 
 
-def top_folder_not_seen(u: SoftwareUpdate, tops: set[str] | None) -> str | None:
-    """The folder of the device's top level the file of `u` goes to when the listing does not
-    show it (a car navigator hides its .System from MTP); None when it is seen, when the file
-    goes to the top level itself, or when the top level could not be listed. A folder inside
-    a folder that is seen is made for the write like any other."""
-    parts = [p for p in u.device_path.split("/") if p]
+def top_folder_not_seen(path: str, tops: set[str] | None) -> str | None:
+    """The folder of the device's top level the file at `path` (with `/`) goes to when the
+    listing does not show it (a car navigator hides its .System from MTP); None when it is
+    seen, when the file goes to the top level itself, or when the top level could not be
+    listed. A folder inside a folder that is seen is made for the write like any other."""
+    parts = [p for p in path.split("/") if p]
     if len(parts) < 2 or tops is None:
         return None
     return None if parts[0].casefold() in tops else parts[0]
@@ -591,7 +623,7 @@ def place(u: SoftwareUpdate, tops: set[str] | None,
     top_folders), and what became of reading its folder through openExpress's own session in
     this connection (hidden_session; `listing`: hidden_folders.kept). Decided here alone, for
     the page, the command line and the write; what is in that folder is mark_present's."""
-    u.hidden_folder = top_folder_not_seen(u, tops)
+    u.hidden_folder = top_folder_not_seen(u.device_path, tops)
     u.hidden_session = (listing.state_of(posixpath.dirname(u.device_path))
                         if u.hidden_folder is not None and listing is not None else None)
 
@@ -624,6 +656,12 @@ def hidden_software_text(folder: str) -> str:
              "the ordinary USB connection.").format(folder=folder)
 
 
+def power_needed(written: list[SoftwareUpdate]) -> bool:
+    """Whether the device's own software was written into a folder it hides (a car navigator,
+    which installs it once unplugged): then power_text is said."""
+    return any(u.is_system and u.hidden_folder is not None for u in written)
+
+
 def power_text() -> str:
     # TRANSLATORS: after the device's own software was written into the folder a car navigator
     # hides: it installs it once unplugged, and must not lose power meanwhile
@@ -650,7 +688,7 @@ def add_ons_text(count: int) -> str:
 def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
     """Those that may be written: none whose top folder ordinary MTP does not show, unless that
     folder was read through openExpress's own session (hidden_folders)."""
-    return [u for u in updates if u.hidden_folder is None or u.hidden_read]
+    return [u for u in updates if not u.hidden_unread]
 
 
 def add_ons(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -1005,7 +1043,7 @@ def _install(
             raise UpdateError(older_offer_text(u))
     for u in updates:
         place(u, tops, listing)  # as the page and the command line placed it
-        if u.hidden_folder is not None and not u.hidden_read:
+        if u.hidden_unread:
             log.info("software update: %s %s not installed: its top folder %s is not seen",
                      u.part_number, u.version, u.hidden_folder)
             raise UpdateError(not_installed_here_text(u))

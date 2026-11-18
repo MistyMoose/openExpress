@@ -3,7 +3,7 @@ offers the device, so that the next check finding one is no surprise (made-up up
 import types
 
 import pytest
-from fakes import RunNow, software_update
+from fakes import RunNow, in_language, software_update
 from fakes import window as stand_in
 
 from openexpress import i18n, updates
@@ -113,13 +113,10 @@ def test_done_after_a_reinstall_does_not_promise_it_leaves_the_list(language):
 
     reinstalled = _update("006-D0001-00", is_reinstall=True)
     updated = _update("006-D0002-00")
-    i18n.setup(language)
-    try:
+    with in_language(language):
         after_reinstall = UpdatesPage._update_done_text(InstallReport(written=[reinstalled]))
         after_update = UpdatesPage._update_done_text(InstallReport(written=[updated]))
         both = UpdatesPage._update_done_text(InstallReport(written=[reinstalled, updated]))
-    finally:
-        i18n.setup("en")
     assert after_reinstall.endswith("\n" + REINSTALL_STEP[language])
     assert UPDATE_STEP[language] not in after_reinstall
     assert UPDATE_STEP[language] in after_update and UPDATE_STEP[language] in both

@@ -247,8 +247,8 @@ is off for the same reason.
 ### Maps on a car navigator (a trial)
 
 `openexpress maps install NAME --hidden-folder-trial` installs a map into the folder a car
-navigator hides, through openExpress's own USB session; it has not yet been tried on a real
-device. Without `--apply` it changes nothing: it lists the old files it would remove (none that
+navigator hides, through openExpress's own USB session; it was tried once on a real device, a
+Drive 53 EX, with a map update of 8.3 GB. Without `--apply` it changes nothing: it lists the old files it would remove (none that
 other maps use) and the new ones it would write, with their sizes, the space on the device and on
 this computer, an estimate of the time and the largest file, and says what would refuse it (a
 folder not read or not on the device, a file over 4 GiB, a file without a checksum). With
@@ -538,12 +538,17 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   them. openExpress finds them at a sync in its own USB session (the watch leaves the file
   manager for a moment; a Flatpak needs access to USB devices) and, with the switch on, writes
   each when the watch's is older than a day (`GPE.bin`) or four hours (`GPES.bin`); the phone app
-  refreshes them too. A file the watch does not take is said, and the switch turns off. On a
-  watch that hides these files, such as the fēnix 8, the row appears after the first sync, once
-  openExpress has found them.
-  The watch itself decides which satellite data it uses and in which format; openExpress only
-  refreshes the files the watch already keeps, downloaded from Garmin's server as it sends them,
-  without your account or any detail of the watch, and never adds one it does not have.
+  refreshes them too. A file still as written when it is due again, although the watch was
+  unplugged since, counts as not taken: openExpress says so and turns the switch off; until then
+  it waits. On a watch that hides these files, such as the fēnix 8, the row appears after the
+  first sync, once openExpress has found them.
+  An Edge 1050 keeps only `GPES.bin`, where the ordinary USB connection shows it, so its device
+  page shows **Satellite Data** as soon as it is opened. With the switch on, a sync writes the
+  file when the Edge's is older than four hours, in a USB session of openExpress's own; the Edge
+  unpacks it about two minutes after it is unplugged.
+  The device itself decides which satellite data it uses and in which format; openExpress only
+  refreshes the files the device already keeps, downloaded from Garmin's server as it sends them,
+  without your account or any detail of the device, and never adds one it does not have.
 - Adding a device to the account (experimental): a device the account does not list can be
   added from openExpress, as Garmin Express adds one: **Add to Account** on the banner or on the
   device page, or `openexpress register` (a dry run; `--apply` adds it). The confirmation dialog

@@ -30,7 +30,6 @@ from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.requi
 
 from openexpress import applog  # noqa: E402
 from openexpress.device import ptp  # noqa: E402
-from openexpress.device.found import probe as found_probe  # noqa: E402
 from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, re-exported
     ABSENT,
     DRIVE_OFF,
@@ -41,6 +40,7 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     PRESENT,
     STARTING,
     STARTING_PRODUCT,
+    TEST_DRIVE_ENV,
     UNREADABLE,
     UNSUPPORTED,
     USB_GAP_S,
@@ -52,7 +52,6 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     MassStorageNotice,
     NoDevice,
     NotThereYet,
-    TEST_DRIVE_ENV,
     SeveralDevices,
     UnsupportedDevice,
     classify,
@@ -68,6 +67,7 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     usb_place,
     wait_for_device,
 )
+from openexpress.device.found import probe as found_probe  # noqa: E402
 from openexpress.device.storage import (  # noqa: E402
     CopyNotStarted,
     DeviceError,
@@ -322,8 +322,8 @@ class _Attempt:
 
 class GioStorage(Storage):
     # A stall (Storage._stalled) is kept as gvfs stays blocked on the device until it is
-    # unplugged. For the log of a stall: when this process made the storage, and the last answer of the
-    # device to it (time.monotonic).
+    # unplugged. For the log of a stall: when this process made the storage, and the last
+    # answer of the device to it (time.monotonic).
     _opened: float | None = None
     _answered: float | None = None
 

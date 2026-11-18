@@ -35,7 +35,6 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from openexpress.device import ptp
-from openexpress.device.found import probe as found_probe
 from openexpress.device.found import (  # noqa: F401 - the names of platform.devices()
     ABSENT,
     DRIVE_OFF,
@@ -66,8 +65,8 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     ejected_text,
     files_not_offered_text,
     mass_storage_text,
-    no_device_text,
     named_for_testing,
+    no_device_text,
     one_device,
     place_of,
     test_drive_ids,
@@ -75,6 +74,7 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     usb_place,
     wait_for_device,
 )
+from openexpress.device.found import probe as found_probe
 from openexpress.device.storage import (
     CopyNotStarted,
     DeviceError,

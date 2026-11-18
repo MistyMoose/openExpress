@@ -172,7 +172,6 @@ class SystemDevices:
 
     def scan(self) -> list[Seen]:
         from openexpress import platform
-
         from openexpress.device.found import usb_place
 
         found, holders = platform.devices().poll()

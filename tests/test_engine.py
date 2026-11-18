@@ -653,8 +653,15 @@ def test_apps_are_listed_as_data_from_what_the_command_line_reads(running, devic
                                                                   monkeypatch, xdg):
     import uuid
 
-    from test_ciq_music import (IQ_XML_TYPES, PRELOADED, STORE_ID, CountingClient, FakeStore,
-                                out_bin, store_app)
+    from test_ciq_music import (
+        IQ_XML_TYPES,
+        PRELOADED,
+        STORE_ID,
+        CountingClient,
+        FakeStore,
+        out_bin,
+        store_app,
+    )
 
     from openexpress import ciq, cli, service
 

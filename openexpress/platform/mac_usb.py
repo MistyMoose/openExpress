@@ -39,12 +39,12 @@ from openexpress import applog
 from openexpress.device import ptp
 from openexpress.device.found import (
     GARMIN_VID,
+    MASS_STORAGE,
     MASS_STORAGE_CLASS,
     PRESENT,
     STARTING,
     STARTING_PRODUCT,
     DeviceInUse,
-    MASS_STORAGE,
     DriveNotMounted,
     GarminUsb,
     classify,

@@ -45,7 +45,7 @@ class _PyGObjectMissing(importlib.abc.MetaPathFinder):
 
     def find_spec(self, name, path=None, target=None):
         if name.split(".")[0] not in ("gi", "cairo"):
-            return None
+            return
         frame = sys._getframe(1)
         # Up through the modules being imported, to the code that asked for the first of them.
         while frame.f_code.co_filename.startswith("<frozen") or (
@@ -54,7 +54,7 @@ class _PyGObjectMissing(importlib.abc.MetaPathFinder):
                 and frame.f_globals.get("__name__", "").startswith(LINUX_ONLY)):
             frame = frame.f_back
         if frame.f_code.co_filename == CONFTEST or not frame.f_code.co_filename.startswith(TESTS):
-            return None
+            return
         module = frame.f_globals.get("__name__", "")
         raise pytest.skip.Exception(f"needs PyGObject ({module} imports {name})",
                                     allow_module_level=True)

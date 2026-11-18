@@ -11,7 +11,6 @@ from fakes import FakeKeychain
 
 from openexpress.platform import keychain
 
-
 # --- get/set/delete go through whatever backend is installed -----------------------------
 
 

@@ -142,6 +142,19 @@ def test_free_space_and_capacity_come_from_the_storage_info(storage, device):
     assert storage.label == URI + "Internal Storage"
 
 
+def test_the_free_space_and_the_capacity_are_one_question_until_something_changes_them(
+        storage, device):
+    asked = _sent(device, ptp.GET_STORAGE_INFO)
+    storage.free_space(), storage.capacity(), storage.free_space()
+    assert _sent(device, ptp.GET_STORAGE_INFO) == asked + 1
+    storage.write("Music/new.mp3", b"x" * 1000)
+    assert storage.free_space() == device.free  # asked again after the write
+    assert _sent(device, ptp.GET_STORAGE_INFO) == asked + 2
+    storage.refresh()
+    storage.capacity()
+    assert _sent(device, ptp.GET_STORAGE_INFO) == asked + 3
+
+
 # --- writing -------------------------------------------------------------------------------
 
 def test_a_new_file_is_written_into_its_folder_and_listed_at_its_size(storage, device):

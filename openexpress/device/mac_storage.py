@@ -100,6 +100,10 @@ class MacStorage(Storage):
         # Each write that failed after the device made its object: the handle it left behind,
         # by the real path (_discard_partial).
         self._partial: dict[str, int] = {}
+        # The storage's space as the device told it last (GetStorageInfo), until something is
+        # written, deleted or made, or what was listed is dropped (refresh): the free space
+        # and the capacity of one look at the device are one question.
+        self._space_told: ptp.StorageInfo | None = None
         self._closed = False
 
     # --- the session --------------------------------------------------------------------
@@ -200,6 +204,7 @@ class MacStorage(Storage):
     def _note(self, real_path: str, info: ptp.ObjectInfo) -> None:
         """The object now at this real path (just made, or looked at again), in the listing
         of its folder when that is kept."""
+        self._space_told = None
         parent, _name = posixpath.split(real_path)
         listed = self._folders.get(parent)
         if listed is not None:
@@ -210,6 +215,7 @@ class MacStorage(Storage):
     def _forget(self, real_path: str) -> None:
         """Nothing is kept any more of the object at this real path nor, for a folder, of
         what was in it."""
+        self._space_told = None
         parent, name = posixpath.split(real_path)
         listed = self._folders.get(parent)
         if listed is not None:
@@ -362,13 +368,18 @@ class MacStorage(Storage):
         self._note(real_path, self._call(what, lambda s: s.info(handle)))
 
     def _space(self) -> ptp.StorageInfo | None:
+        """The storage's space, asked once until something changes it (_space_told)."""
+        if self._space_told is not None:
+            return self._space_told
         try:
-            return self._call(_("Cannot read the space on the device"),
+            told = self._call(_("Cannot read the space on the device"),
                               lambda s: s.storage_info(self.store))
         except DeviceNotResponding:
             raise
         except DeviceError:
             return None
+        self._space_told = told
+        return told
 
     def free_space(self) -> int | None:
         space = self._space()
@@ -384,6 +395,7 @@ class MacStorage(Storage):
         self._responding()
         with self._lock:
             self._folders.clear()
+            self._space_told = None
         return True
 
     def exclusive_ptp(self):
@@ -399,6 +411,7 @@ class MacStorage(Storage):
                 yield self._session
             finally:
                 self._folders.clear()
+                self._space_told = None
                 if self._session.broken and not self.stalled:
                     self._stall(_("Cannot read the device"), ptp.PtpError("out of step"))
 

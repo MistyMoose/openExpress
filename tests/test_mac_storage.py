@@ -384,10 +384,12 @@ def test_no_garmin_device_on_usb_is_no_device(usb):
         mac_storage.open_device_storage(wait=True)
 
 
-def test_a_garmin_drive_is_told_not_to_be_opened_on_macos(usb):
+def test_a_garmin_drive_is_not_opened_over_mtp_and_said_as_a_drive(usb):
+    """Not waited for over MTP: it is opened as a drive (test_mac_drives)."""
     usb.devices = [_usb("2b4a", classes=("08",), transfer=False)]
     with pytest.raises(found.MassStorageNotice, match="USB drive"):
-        mac_storage.open_device_storage()
+        mac_storage.open_device_storage(wait=True)
+    assert usb.opened == []
 
 
 def test_several_devices_ask_for_device_uri_with_their_places(usb):

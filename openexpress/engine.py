@@ -198,8 +198,8 @@ class SystemDevices:
         Linux, only once it is plugged in again)."""
         from openexpress import platform
 
-        if not platform.is_mac():
-            return None
+        if not platform.is_mac() or getattr(found, "kind", "mtp") == "ums":
+            return None  # a drive has no session to open again
         return platform.devices().hold(found) is not None
 
     def look_again(self) -> None:

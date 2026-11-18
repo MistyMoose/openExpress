@@ -2027,20 +2027,21 @@ def eject_drive(st, files: bool = False, say: Progress = print,
     `files`, the files of Garmin Connect's queue); only then may the cable go out. What it
     does goes to `say`, a failure to `error`. False, with what to do, when it is not
     ejected."""
-    from openexpress.device import gio_storage
+    from openexpress import platform
 
+    devices = platform.devices()  # gio_storage on Linux, mac_storage on macOS
     say(_("Ejecting the device…"))
     try:
-        gio_storage.eject(st)
-    except gio_storage.DriveNotMounted as e:
+        devices.eject(st)
+    except devices.DriveNotMounted as e:
         error(str(e))
         return False
     except DeviceError as e:
         log.info("eject: %s", e)
         error(_("The device was not ejected: {error}").format(error=e))
-        error(gio_storage.not_ejected_text(window=False, files=files))
+        error(devices.not_ejected_text(window=False, files=files))
         return False
-    say(gio_storage.ejected_text(update_waits=not files))
+    say(devices.ejected_text(update_waits=not files))
     return True
 
 

@@ -3,6 +3,10 @@
 tell (the name a device gives itself, its serial, the program that holds it) is read from the
 IORegistry (`ioreg`), which opens nothing either.
 
+A Garmin device in mass storage mode (a drive) is mounted by macOS itself under /Volumes: its
+disks are the IOMedia below its USB device in the IORegistry ("BSD Name"), and where each is
+mounted is asked of `diskutil info` (DiskArbitration). It is ejected with `diskutil eject`.
+
 A device another program holds for itself (Garmin Express Service, which keeps a connected
 watch while it runs) is never asked to let go: opening it with libusb would ask the system to
 take it from that program (USBDeviceOpenSeize). It is said by name instead (DeviceInUse).
@@ -40,9 +44,12 @@ from openexpress.device.found import (
     STARTING,
     STARTING_PRODUCT,
     DeviceInUse,
+    MASS_STORAGE,
+    DriveNotMounted,
     GarminUsb,
     classify,
 )
+from openexpress.device.storage import DeviceError
 
 log = logging.getLogger(__name__)
 
@@ -51,6 +58,7 @@ GARMIN_VENDOR = int(GARMIN_VID, 16)
 _LIBUSB_ERROR_ACCESS = -3
 _LIBUSB_ERROR_BUSY = -6
 IOREG = "/usr/sbin/ioreg"
+DISKUTIL = "/usr/sbin/diskutil"
 KILLALL = "/usr/bin/killall"
 PS = "/bin/ps"
 TOOL_TIMEOUT_S = 10
@@ -72,7 +80,19 @@ def _libusb():
     lib.libusb_get_device_descriptor.restype = ctypes.c_int
     lib.libusb_get_device_descriptor.argtypes = [ctypes.c_void_p,
                                                  ctypes.POINTER(_DeviceDescriptor)]
+    lib.libusb_get_port_numbers.restype = ctypes.c_int
+    lib.libusb_get_port_numbers.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8),
+                                            ctypes.c_int]
     return lib
+
+
+def _port(lib, device, bus: int) -> tuple[int, ...]:
+    """Where a device is plugged in: its bus, then the port at each hub on the way (as the
+    IORegistry's location ID), which stays when the device comes back under another address;
+    () when libusb cannot tell."""
+    ports = (ctypes.c_uint8 * 8)()
+    count = lib.libusb_get_port_numbers(device, ports, len(ports))
+    return (bus, *ports[:count]) if count > 0 else ()
 
 
 # --- who holds a device: the IORegistry ----------------------------------------------------
@@ -101,6 +121,9 @@ class _Registered:
     name: str | None = None  # the name it gives itself (its product string)
     serial: str | None = field(default=None, repr=False)
     holder: Holder | None = None
+    # The BSD names of the disks of a drive that hold a filesystem (the IOMedia below it that
+    # are leaves: a partition, or a whole disk without partitions).
+    media: tuple[str, ...] = ()
 
 
 # The name of the program of each process ID asked (_program_name), so that `ps` is not run
@@ -165,13 +188,33 @@ def registered_devices(read=None) -> dict[tuple[int, int], _Registered]:
     """What the IORegistry tells of each Garmin device on USB, by its place as libusb numbers
     it (bus: the top byte of its location ID; device number: its USB address). Empty when
     `ioreg` cannot be read. `read`: the plist ioreg writes (tests)."""
+    return _registry(read, {(GARMIN_VENDOR, None)})
+
+
+def _read_registry() -> bytes | None:
+    try:
+        return subprocess.run([IOREG, "-a", "-r", "-c", "IOUSBHostDevice", "-l", "-w0"],
+                              capture_output=True, timeout=TOOL_TIMEOUT_S, check=False).stdout
+    except (OSError, subprocess.TimeoutExpired) as e:
+        log.info("USB: the IORegistry could not be read (%s)", type(e).__name__)
+        return None
+
+
+def _media(entry) -> tuple[str, ...]:
+    """The BSD names of the IOMedia below a USB device that are leaves (each holds a
+    filesystem, not partitions), disk4s2 before disk4s10."""
+    names = {e["BSD Name"] for e in _walk(entry.get("IORegistryEntryChildren", []))
+             if e.get("IOObjectClass") == "IOMedia" and e.get("Leaf") is True
+             and isinstance(e.get("BSD Name"), str)}
+    return tuple(sorted(names, key=lambda name: (len(name), name)))
+
+
+def _registry(read, wanted: set[tuple[int, int | None]]) -> dict[tuple[int, int], _Registered]:
+    """registered_devices for the USB devices of `wanted`: (vendor, product), product None for
+    any of the vendor."""
     if read is None:
-        try:
-            read = subprocess.run([IOREG, "-a", "-r", "-c", "IOUSBHostDevice", "-l", "-w0"],
-                                  capture_output=True, timeout=TOOL_TIMEOUT_S,
-                                  check=False).stdout
-        except (OSError, subprocess.TimeoutExpired) as e:
-            log.info("USB: the IORegistry could not be read (%s)", type(e).__name__)
+        read = _read_registry()
+        if read is None:
             return {}
     try:
         entries = plistlib.loads(read) if read else []
@@ -180,7 +223,9 @@ def registered_devices(read=None) -> dict[tuple[int, int], _Registered]:
         return {}
     found = {}
     for entry in _walk(entries if isinstance(entries, list) else [entries]):
-        if entry.get("idVendor") != GARMIN_VENDOR or "USB Address" not in entry:
+        vendor = entry.get("idVendor")
+        if "USB Address" not in entry or ((vendor, None) not in wanted
+                                          and (vendor, entry.get("idProduct")) not in wanted):
             continue
         place = (int(entry.get("locationID", 0)) >> 24, int(entry["USB Address"]))
         holder = parse_holder(entry.get("UsbExclusiveOwner"))
@@ -189,7 +234,7 @@ def registered_devices(read=None) -> dict[tuple[int, int], _Registered]:
         serial = entry.get("USB Serial Number") or entry.get("kUSBSerialNumberString")
         found[place] = _Registered(entry.get("USB Product Name") or None,
                                    serial if isinstance(serial, str) and serial else None,
-                                   holder)
+                                   holder, _media(entry))
     return found
 
 
@@ -217,10 +262,14 @@ class UsbDevice:
     name: str | None = None
     serial: str | None = field(default=None, repr=False)
     holder: Holder | None = None
+    # Garmin's, or that of the USB drive named for testing (found.TEST_DRIVE_ENV).
+    vendor: str = GARMIN_VID
+    port: tuple[int, ...] = ()  # where it is plugged in (_port); () when not known
+    media: tuple[str, ...] = ()  # of a drive: the BSD names of its disks (_Registered.media)
 
     @property
     def usb_id(self) -> str:
-        return f"{GARMIN_VID}:{self.product}"
+        return f"{self.vendor}:{self.product}"
 
     @property
     def mode(self) -> str:
@@ -234,7 +283,8 @@ class UsbDevice:
     def garmin_usb(self) -> GarminUsb:
         """The device as the rest of the program knows one, its serial hidden in the log at
         once (as private as its unit ID)."""
-        usb = GarminUsb(self.product, self.bus, self.address, serial=self.serial)
+        usb = GarminUsb(self.product, self.bus, self.address, serial=self.serial,
+                        vendor=self.vendor)
         applog.hide_usb(usb)
         return usb
 
@@ -335,6 +385,38 @@ def garmin_devices(reuse: bool = False) -> list[UsbDevice]:
     is opened or sent to a device. Empty when libusb is not there (said in the log once).
     `reuse` (the engine's polling): the IORegistry is read again only when the Garmin devices
     on USB changed, or a while after another program was seen holding one (_registered)."""
+    found = _on_usb({(GARMIN_VENDOR, None)})
+    if not found:
+        return []
+    registered = _registered(found, reuse)
+    return [_with(device, registered) for device in found]
+
+
+def drive_devices(test_drive: tuple[str, str] | None = None) -> list[UsbDevice]:
+    """The Garmin devices on USB in mass storage mode (drives), and the USB drive named for
+    testing (`test_drive`: its vendor and product, found.test_drive_ids), with the disks of
+    each (`media`) as the IORegistry tells them now: read anew at each call, as a disk comes a
+    moment after its device and is gone once it is ejected. Nothing is opened."""
+    wanted: set[tuple[int, int | None]] = {(GARMIN_VENDOR, None)}
+    if test_drive is not None:
+        wanted.add((int(test_drive[0], 16), int(test_drive[1], 16)))
+    found = [d for d in _on_usb(wanted) if d.mode == MASS_STORAGE]
+    if not found:
+        return []
+    registered = _registry(None, wanted)
+    return [_with(device, registered) for device in found]
+
+
+def _with(device: UsbDevice, registered: dict) -> UsbDevice:
+    known = registered.get((device.bus, device.address), _Registered())
+    return replace(device, name=known.name, serial=known.serial, holder=known.holder,
+                   media=known.media)
+
+
+def _on_usb(wanted: set[tuple[int, int | None]]) -> list[UsbDevice]:
+    """The USB devices of `wanted` ((vendor, product), product None for any of the vendor), in
+    the order libusb lists them: their descriptors only. Empty when libusb is not there (said
+    in the log once)."""
     try:
         lib = _libusb()
     except ptp.UsbUnavailable as e:
@@ -354,22 +436,18 @@ def garmin_devices(reuse: bool = False) -> list[UsbDevice]:
             descriptor = _DeviceDescriptor()
             if lib.libusb_get_device_descriptor(device, ctypes.byref(descriptor)) < 0:
                 continue
-            if descriptor.idVendor != GARMIN_VENDOR:
+            if ((descriptor.idVendor, None) not in wanted
+                    and (descriptor.idVendor, descriptor.idProduct) not in wanted):
                 continue
             classes, transfer = _interfaces(lib, device)
-            found.append(UsbDevice(lib.libusb_get_bus_number(device),
-                                   lib.libusb_get_device_address(device),
-                                   f"{descriptor.idProduct:04x}", classes, transfer))
+            bus = lib.libusb_get_bus_number(device)
+            found.append(UsbDevice(bus, lib.libusb_get_device_address(device),
+                                   f"{descriptor.idProduct:04x}", classes, transfer,
+                                   vendor=f"{descriptor.idVendor:04x}",
+                                   port=_port(lib, device, bus)))
     finally:
         lib.libusb_free_device_list(devices, 1)
-    if not found:
-        return []
-    registered = _registered(found, reuse)
-    out = []
-    for device in found:
-        known = registered.get((device.bus, device.address), _Registered())
-        out.append(replace(device, name=known.name, serial=known.serial, holder=known.holder))
-    return out
+    return found
 
 
 _said: set[str] = set()
@@ -379,6 +457,91 @@ def _say_once(key: str, *message) -> None:
     if key not in _said:
         _said.add(key)
         log.info(*message)
+
+
+# --- the disks of a drive: diskutil (DiskArbitration) ---------------------------------------
+
+DISK_TIMEOUT_S = 60  # a mount or an eject: the system writes out what it holds first
+
+
+@dataclass(frozen=True)
+class Volume:
+    """A disk of a drive as `diskutil info` tells it."""
+
+    bsd: str  # its BSD name ("disk4s1")
+    whole: str  # the BSD name of the whole disk it is on ("disk4")
+    mount_point: str | None  # where macOS mounted it; None: not mounted
+    name: str | None = None  # the name of the volume ("GARMIN")
+    uuid: str | None = field(default=None, repr=False)  # of its filesystem, when it has one
+    internal: bool = False  # a disk inside the Mac: never a drive's
+
+
+def _diskutil(*args: str, timeout: float = TOOL_TIMEOUT_S) -> subprocess.CompletedProcess:
+    """A run of diskutil; OSError or subprocess.TimeoutExpired when it cannot be run."""
+    return subprocess.run([DISKUTIL, *args], capture_output=True, timeout=timeout, check=False)
+
+
+def volume_info(disk: str) -> Volume | None:
+    """The disk with this BSD name ("disk4s1"), or the volume mounted at this folder, as
+    `diskutil info` tells it; None when there is none (gone, or never there) or diskutil cannot
+    be run."""
+    try:
+        done = _diskutil("info", "-plist", disk)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        log.info("drive: diskutil could not be run (%s)", type(e).__name__)
+        return None
+    if done.returncode != 0 or not done.stdout:
+        return None
+    try:
+        info = plistlib.loads(done.stdout)
+    except Exception as e:  # noqa: BLE001 - not a disk then
+        log.info("drive: what diskutil said could not be read (%s)", type(e).__name__)
+        return None
+
+    def text(key: str) -> str | None:
+        value = info.get(key) if isinstance(info, dict) else None
+        return value if isinstance(value, str) and value else None
+
+    bsd = text("DeviceIdentifier")
+    if bsd is None:
+        return None
+    return Volume(bsd, text("ParentWholeDisk") or bsd, text("MountPoint"), text("VolumeName"),
+                  text("VolumeUUID"), info.get("Internal") is True)
+
+
+def _refused(what: str, done: subprocess.CompletedProcess) -> DeviceError:
+    said = (done.stderr or done.stdout or b"").decode("utf-8", "replace").strip()
+    return DeviceError(f"{what}: {said.splitlines()[-1] if said else done.returncode}")
+
+
+def mount_volume(disk: str, what: str) -> None:
+    """The disk with this BSD name mounted where macOS mounts it (`diskutil mount`);
+    DeviceError (`what`, then why) when it cannot be."""
+    try:
+        done = _diskutil("mount", disk, timeout=DISK_TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise DeviceError(f"{what}: {type(e).__name__}") from e
+    if done.returncode != 0:
+        raise _refused(what, done)
+
+
+def eject_drive_at(mount_point: str, what: str, not_mounted: str) -> Volume:
+    """The drive whose volume is mounted at this folder ejected: `diskutil eject` of its whole
+    disk unmounts every volume of it, writes out what the system holds and tells the device
+    that it may go. Its volume as it was. DriveNotMounted (`not_mounted`) when no volume of a
+    disk outside the Mac is mounted there any more; DeviceError (`what`, then why) when macOS
+    refuses, e.g. while a program uses the drive."""
+    volume = volume_info(mount_point)
+    if (volume is None or volume.internal or volume.mount_point is None
+            or os.path.realpath(volume.mount_point) != os.path.realpath(mount_point)):
+        raise DriveNotMounted(not_mounted)
+    try:
+        done = _diskutil("eject", volume.whole, timeout=DISK_TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise DeviceError(f"{what}: {type(e).__name__}") from e
+    if done.returncode != 0:
+        raise _refused(what, done)
+    return volume
 
 
 # --- the device to ourselves ----------------------------------------------------------------

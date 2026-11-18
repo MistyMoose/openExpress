@@ -32,7 +32,8 @@ DEVICES_NAMES = ("find_devices", "find_all_devices", "find_ums_devices", "probe"
                  "mount_drive", "close_found", "holders", "usb_state", "garmin_usb_summary",
                  "mtp_missing", "ABSENT", "STARTING", "PRESENT", "MASS_STORAGE", "DRIVE_OFF",
                  "UNSUPPORTED", "SeveralDevices", "NotThereYet", "MassStorageNotice",
-                 "UnsupportedDevice")
+                 "UnsupportedDevice", "eject", "ejected_text", "not_ejected_text",
+                 "DriveNotMounted")
 
 
 def test_the_names_of_the_devices_module_are_the_same_on_both_systems():
@@ -41,6 +42,7 @@ def test_the_names_of_the_devices_module_are_the_same_on_both_systems():
     for name in DEVICES_NAMES:
         assert hasattr(mac_storage, name), name
     assert mac_storage.SeveralDevices is found.SeveralDevices
+    assert mac_storage.DriveNotMounted is found.DriveNotMounted
 
 
 def test_gio_storage_has_the_names_of_the_devices_module_too():

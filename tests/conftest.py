@@ -291,6 +291,20 @@ def no_usb_on_macos(monkeypatch, tmp_path):
 
     monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: [])
     monkeypatch.setattr(mac_usb, "registered_devices", lambda read=None: {})
+    # No drive either, and diskutil is never run: no disk of this computer is looked at,
+    # mounted or ejected.
+    monkeypatch.setattr(mac_usb, "drive_devices", lambda test_drive=None: [])
+
+    def no_diskutil(*args, **kwargs):
+        raise AssertionError(f"diskutil {' '.join(args)} run by a test")
+
+    monkeypatch.setattr(mac_usb, "_diskutil", no_diskutil)
+    from openexpress.device import mac_storage
+
+    # Nor what an earlier test saw of drives (ejected ones, their ports, the warnings).
+    monkeypatch.setattr(mac_storage, "_ejected", [])
+    monkeypatch.setattr(mac_storage, "_drive_ports", {})
+    monkeypatch.setattr(mac_storage, "_test_drive_said", set())
     monkeypatch.setattr(mac_usb, "_signal_daemon", lambda name: False)
     monkeypatch.setattr(mac_usb, "daemon_stopped", lambda: False)
     monkeypatch.setattr(mac_usb, "pause_lock_path", lambda: tmp_path / "ptpcamerad.lock")

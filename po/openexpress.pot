@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 15:15+0100\n"
+"POT-Creation-Date: 2026-11-18 15:29+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5281,24 +5281,24 @@ msgstr ""
 msgid "Cannot read the space on the device"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "Cannot mount the device"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "The device is not mounted."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "The drive is not mounted any more. If it was ejected, you can unplug the "
 "cable."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "Cannot eject the device"
 msgstr ""
@@ -5365,14 +5365,14 @@ msgstr ""
 msgid "Report a Device or Problem…"
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "After it was ejected, the watch switched to its Garmin USB mode. Unplug the "
 "cable and leave the device unplugged so it can install the update."
 msgstr ""
 
-#: openexpress/device/gio_storage.py
+#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
 #, python-brace-format
 msgid ""
 "After it was ejected, the watch switched to its Garmin USB mode, which "
@@ -5503,14 +5503,6 @@ msgid ""
 "and plug it in again."
 msgstr ""
 
-#. TRANSLATORS: macOS: a Garmin device connected as a USB drive
-#: openexpress/device/mac_storage.py
-#, python-brace-format
-msgid ""
-"The Garmin device is connected as a USB drive. On macOS openExpress opens "
-"only devices that connect as a media device (MTP)."
-msgstr ""
-
 #. TRANSLATORS: macOS: --device-uri was given an address of another form; {example}
 #. is one of the form it takes ("mtp://[usb:008,037]/")
 #: openexpress/device/mac_storage.py
@@ -5524,6 +5516,32 @@ msgstr ""
 #: openexpress/device/mac_storage.py
 #, python-brace-format
 msgid "Cannot open the device: {error}"
+msgstr ""
+
+#. TRANSLATORS: macOS: the drive of a Garmin device could not be ejected after a sync
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"Do not unplug the cable yet: the device may not see the files from Garmin "
+"Connect. Close any program that uses the drive and eject it in the Finder."
+msgstr ""
+
+#. TRANSLATORS: macOS: the drive of a Garmin device could not be ejected after an update
+#. was copied to it
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"Do not unplug the cable yet: the device may not see the update. Close any "
+"program that uses the drive and eject it in the Finder."
+msgstr ""
+
+#. TRANSLATORS: macOS: a Garmin device is on USB as a drive, but macOS has not mounted it
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgid ""
+"The Garmin device is connected as a USB drive, but macOS has not mounted it. "
+"Wait a moment; if it does not appear in the Finder, unplug the cable and "
+"plug it in again."
 msgstr ""
 
 #: openexpress/device/ptp.py

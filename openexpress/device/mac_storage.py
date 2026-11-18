@@ -12,6 +12,12 @@ done through the lent session drops it too.
 
 A device is addressed as mtp://[usb:BUS,DEVICE]/ (its place on USB, new at each plugging in),
 the older form of gvfs's addresses, which --device-uri takes as well.
+
+A Garmin device in mass storage mode (a drive) is mounted by macOS itself, under /Volumes: it
+is found by its disks below its USB device (mac_usb.drive_devices), opened as a UmsStorage on
+the folder where its volume is mounted (addressed as file:///Volumes/…), and ejected after a
+write (eject: `diskutil eject`), as gio_storage does on Linux. A drive has no session: nothing
+is held open of it between the engine's requests.
 """
 
 from __future__ import annotations
@@ -22,8 +28,11 @@ import os
 import posixpath
 import threading
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from openexpress.device import ptp
 from openexpress.device.found import probe as found_probe
@@ -37,6 +46,7 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     PRESENT,
     STARTING,
     STARTING_PRODUCT,
+    TEST_DRIVE_ENV,
     UNREADABLE,
     UNSUPPORTED,
     USB_GAP_S,
@@ -53,11 +63,14 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     UnsupportedDevice,
     device_uri,
     distinct_devices,
+    ejected_text,
     files_not_offered_text,
     mass_storage_text,
     no_device_text,
+    named_for_testing,
     one_device,
     place_of,
+    test_drive_ids,
     unsupported_device_text,
     usb_place,
     wait_for_device,
@@ -67,6 +80,7 @@ from openexpress.device.storage import (
     DeviceError,
     DeviceNotResponding,
     Entry,
+    LocalStorage,
     Storage,
     UmsStorage,
     entry_named,
@@ -506,11 +520,18 @@ def poll() -> tuple[list[FoundDevice], dict[tuple[int, int], str]]:
     holders() of them. The IORegistry (a run of `ioreg`) is read again only when the Garmin
     devices on USB changed, or a while after another program was seen holding one
     (mac_usb.garmin_devices, `reuse`); the name of a holder is asked once (mac_usb)."""
-    devices = _offering_mtp(_usb_devices(reuse=True))
+    on_usb = _usb_devices(reuse=True)
+    devices = _offering_mtp(on_usb)
     held = {(d.bus, d.address): d.holder.name for d in devices
             if d.holder is not None and not d.holder.this_process
             and not d.holder.camera_daemon}
-    return [_found(d) for d in devices], held
+    # The drives only while one is on USB (or one is named for testing): their disks are
+    # asked of the IORegistry and diskutil at each look.
+    _look_at_usb([*on_usb, *_test_drives_on_usb()], _clock())
+    drives = (find_ums_devices()
+              if any(d.mode == MASS_STORAGE for d in on_usb) or _test_drive() is not None
+              else [])
+    return [*(_found(d) for d in devices), *drives], held
 
 
 def look_again() -> None:
@@ -522,41 +543,37 @@ def wanted_elsewhere(found: FoundDevice) -> bool:
     """Whether another process of the program waits for this device, which this one holds
     (mac_usb.check_free): the engine lets it go then."""
     place = usb_place(found.usb)
-    return place is not None and mac_usb.wanted_elsewhere(*place)
-
-
-def find_ums_devices() -> list[FoundDevice]:
-    """Garmin drives: not opened on macOS (yet); usb_state tells them."""
-    return []
+    return found.kind != "ums" and place is not None and mac_usb.wanted_elsewhere(*place)
 
 
 def find_all_devices() -> list[FoundDevice]:
+    """Every Garmin device found, MTP devices first, then Garmin drives (`kind` tells them
+    apart), for a list to choose from. Nothing is opened or mounted, and of a drive only the
+    folders on the way to its GarminDevice.xml are looked at."""
     return [*find_devices(), *find_ums_devices()]
 
 
 def mount(dev: FoundDevice) -> None:
-    """Nothing to mount: the device is opened over USB as it is."""
+    """Nothing to mount: an MTP device is opened over USB as it is (a drive: mount_drive)."""
 
 
-def mount_drive(dev: FoundDevice) -> FoundDevice:
-    raise MassStorageNotice(not_ready_text(MASS_STORAGE))
-
-
-def open_ums_storage(dev: FoundDevice) -> UmsStorage:
-    raise MassStorageNotice(not_ready_text(MASS_STORAGE))
-
-
-def usb_state() -> str:
+def usb_state(clock=None) -> str:
     """As gio_storage.usb_state, from libusb: ABSENT, STARTING (only 091e:0003 besides what
-    cannot be used), PRESENT, MASS_STORAGE or UNSUPPORTED. DRIVE_OFF is not told apart here
-    (it needs the drive seen before)."""
-    modes = [d.mode for d in _usb_devices()]
-    if not modes:
+    cannot be used), PRESENT, MASS_STORAGE, UNSUPPORTED, or DRIVE_OFF: those that are not
+    drives (or cannot be used) are 091e:0003 at a port where a Garmin drive was (_drive_ports),
+    a watch in its Garmin USB mode after its drive was ejected."""
+    devices = _usb_devices()
+    _look_at_usb([*devices, *_test_drives_on_usb()], (clock or _clock)())
+    if not devices:
         return ABSENT
-    others = [m for m in modes if m not in (MASS_STORAGE, UNSUPPORTED)]
+    others = [d for d in devices if d.mode not in (MASS_STORAGE, UNSUPPORTED)]
     if not others:
-        return MASS_STORAGE if MASS_STORAGE in modes else UNSUPPORTED
-    return PRESENT if PRESENT in others else STARTING
+        return MASS_STORAGE if any(d.mode == MASS_STORAGE for d in devices) else UNSUPPORTED
+    if any(d.mode == PRESENT for d in others):
+        return PRESENT
+    with _drives_lock:
+        drives = all(d.port and d.port in _drive_ports for d in others)
+    return DRIVE_OFF if drives else STARTING
 
 
 def garmin_products_on_usb() -> list[str]:
@@ -600,9 +617,9 @@ def not_ready_text(state: str) -> str:
     if state == PRESENT:
         return files_not_offered_text()
     if state == MASS_STORAGE:
-        # TRANSLATORS: macOS: a Garmin device connected as a USB drive
-        return _("The Garmin device is connected as a USB drive. On macOS openExpress opens "
-                 "only devices that connect as a media device (MTP).")
+        return drive_notice_text()
+    if state == DRIVE_OFF:
+        return drive_off_text(ejected_update_waits())
     if state == UNSUPPORTED:
         found = next((d for d in mac_usb.garmin_devices() if d.mode == UNSUPPORTED), None)
         return unsupported_device_text(found.name if found else None,
@@ -687,7 +704,10 @@ def hold(found: FoundDevice) -> MacStorage | None:
     """The device opened for a request of the engine, found by its poll: the storage kept open
     since the request before, what was listed of it dropped (the device may have written
     files meanwhile), or opened now (open_found). None for a device that stopped responding
-    at its place: the request opens it its own way and says so."""
+    at its place: the request opens it its own way and says so; None for a drive, which has
+    no session to keep (the request opens its folder)."""
+    if found.kind == "ums":
+        return None
     place = usb_place(found.usb)
     kept = _kept_open(place)
     if kept is not None:
@@ -701,7 +721,9 @@ def hold(found: FoundDevice) -> MacStorage | None:
 def close_found(found: FoundDevice) -> None:
     """The storage open of a device find_devices found, closed: the device let go (the engine
     lets it go between requests, so that another program may take it). Nothing when none is
-    open."""
+    open, nor for a drive (nothing of it is held)."""
+    if found.kind == "ums":
+        return
     with _open_lock:
         open_storage = _open.get(usb_place(found.usb))
     if open_storage is not None:
@@ -728,7 +750,344 @@ def _storage_with_device_file(session: ptp.Session, found: FoundDevice) -> MacSt
 # --- a short look at a device found, for a list to choose from -----------------------------
 
 def probe(found: FoundDevice) -> DeviceSummary:
-    """Read only GarminDevice.xml of a device from find_all_devices (found.probe). Here the
+    """Read only GarminDevice.xml of a device from find_all_devices (found.probe). An MTP
     device is opened for it (a session of the program's own) and stays open, kept for what
-    comes next (`storage`)."""
-    return found_probe(found, open_found, log)
+    comes next (`storage`); of a drive only its folder is read."""
+    return found_probe(found, _probe_storage, log)
+
+
+def _probe_storage(found: FoundDevice) -> Storage | str:
+    if found.kind != "ums":
+        return open_found(found)
+    path = _path_of(found.uri)
+    if path is None:
+        return UNREADABLE
+    storage = UmsStorage(Path(path), found.uri, found.usb, found.name)
+    return storage if storage.exists("GARMIN/GarminDevice.xml") else NO_DEVICE_FILE
+
+
+# --- Garmin drives: found, mounted, opened --------------------------------------------------
+#
+# macOS mounts a drive by itself, under /Volumes. Its disks are those below its USB device in
+# the IORegistry (mac_usb.drive_devices); where each is mounted, diskutil tells.
+
+# The address of a Garmin drive that is not mounted, in the place of the folder it has not got
+# yet: its disk.
+UNMOUNTED_DRIVE = "ums-volume:/dev/"
+_test_drive_said: set[str] = set()  # the warnings about the drive named for testing, told
+
+
+def _test_drive() -> tuple[str, str] | None:
+    """(vendor, product) of the USB drive named in TEST_DRIVE_ENV, for testing; None."""
+    return test_drive_ids(_test_drive_said, log)
+
+
+def _drives() -> list[mac_usb.UsbDevice]:
+    """The Garmin devices in mass storage mode on USB, and the drive named for testing (said
+    once in the log, as a warning), with their disks."""
+    drives = mac_usb.drive_devices(_test_drive())
+    for d in drives:
+        if d.vendor != GARMIN_VID:
+            named_for_testing(d.vendor, d.product, _test_drive_said, log)
+    return drives
+
+
+def _path_of(uri: str) -> str | None:
+    """The folder of a file:// address; None for any other."""
+    parsed = urlparse(uri)
+    return unquote(parsed.path) if parsed.scheme == "file" and parsed.path else None
+
+
+def find_ums_devices() -> list[FoundDevice]:
+    """The Garmin devices in mass storage mode whose volume macOS mounted and that have
+    GARMIN/GarminDevice.xml (in any letter case), then those whose disk is not mounted
+    (`mounted` False: to be mounted when chosen, mount_drive). A drive ejected by openExpress
+    is left out until it is unplugged; one whose disk has not come yet is only said in the
+    log. Only the folders on the way to GarminDevice.xml are read."""
+    drives = _drives()
+    _look_at_usb(drives, _clock(), drives_only=True)
+    found = []
+    for d in drives:
+        usb = d.garmin_usb()
+        if ejected_by_us(usb):
+            log.info("device: a Garmin drive (USB %s) ejected by openExpress, skipped until it "
+                     "is unplugged", usb.usb_id)
+            continue
+        volumes = [v for v in (mac_usb.volume_info(m) for m in d.media) if v is not None]
+        if not volumes:
+            log.info("device: a Garmin drive (USB %s) has no disk mounted or to mount yet: "
+                     "waiting for macOS", usb.usb_id)
+            continue
+        drive = _mounted_drive(d, usb, [v for v in volumes if v.mount_point is not None])
+        if drive is None and not any(v.mount_point is not None for v in volumes):
+            volume = volumes[0]
+            log.info("device: a Garmin drive (USB %s) is not mounted, listed to be mounted",
+                     usb.usb_id)
+            drive = FoundDevice(UNMOUNTED_DRIVE + volume.bsd, volume.name or d.name or "", False,
+                                volume, _with_volume(usb, volume), kind="ums")
+        if drive is not None:
+            found.append(drive)
+    return found
+
+
+def _with_volume(usb: GarminUsb, volume: mac_usb.Volume) -> GarminUsb:
+    """`usb` with the UUID of its volume, hidden in the log at once."""
+    from dataclasses import replace
+
+    from openexpress import applog
+
+    usb = replace(usb, volume_uuid=volume.uuid)
+    applog.hide_usb(usb)
+    return usb
+
+
+def _mounted_drive(d: mac_usb.UsbDevice, usb: GarminUsb,
+                   mounted: list[mac_usb.Volume]) -> FoundDevice | None:
+    """The drive at the first of its mounted volumes that has GARMIN/GarminDevice.xml; None
+    (said in the log, without the folder) when none has."""
+    for volume in mounted:
+        try:
+            has_xml = LocalStorage(Path(volume.mount_point)).exists("GARMIN/GarminDevice.xml")
+        except (DeviceError, OSError):
+            has_xml = False
+        if has_xml:
+            return FoundDevice(Path(volume.mount_point).as_uri(),
+                               volume.name or os.path.basename(volume.mount_point), True,
+                               volume, _with_volume(usb, volume), kind="ums")
+    if mounted:
+        log.info("device: a Garmin drive (USB %s) without GARMIN/GarminDevice.xml, skipped",
+                 usb.usb_id)
+    return None
+
+
+def mount_drive(dev: FoundDevice) -> FoundDevice:
+    """A Garmin drive chosen while it is not mounted, mounted where macOS mounts it
+    (`diskutil mount`): the drive as find_ums_devices finds a mounted one. DeviceError when it
+    cannot be mounted."""
+    what = _("Cannot mount the device")
+    volume = dev.volume
+    if not isinstance(volume, mac_usb.Volume):
+        raise DeviceError(what)
+    mac_usb.mount_volume(volume.bsd, what)
+    mounted = mac_usb.volume_info(volume.bsd)
+    if mounted is None or mounted.mount_point is None:
+        raise DeviceError(what)
+    log.info("device: mounted the Garmin drive (USB %s)",
+             dev.usb.usb_id if dev.usb is not None else "?")
+    return FoundDevice(Path(mounted.mount_point).as_uri(),
+                       mounted.name or os.path.basename(mounted.mount_point), True, mounted,
+                       dev.usb, kind="ums")
+
+
+def open_ums_storage(dev: FoundDevice) -> UmsStorage:
+    """The storage of a Garmin device in mass storage mode that find_ums_devices found."""
+    path = _path_of(dev.uri)
+    try:
+        if path is None:
+            raise DeviceError("not a local folder")
+        st = UmsStorage(Path(path), dev.uri, dev.usb, dev.name)
+    except DeviceError:
+        # Unplugged since it was found.
+        raise NotThereYet(_("The device is not mounted.")) from None
+    log.info("device: opened in mass storage mode (%s:, USB %s)", dev.uri.split(":", 1)[0],
+             st.usb_id or "?")
+    return st
+
+
+# --- a Garmin drive ejected by openExpress ---------------------------------------------------
+#
+# As on Linux (gio_storage): a Garmin device in mass storage mode may take a file written to it
+# only once the computer lets go of its drive, so after a write the drive is ejected before
+# the cable may go out. Ejected, it stays on USB without a disk (or comes back as 091e:0003, a
+# watch in its Garmin USB mode): until it is unplugged openExpress does not open it again.
+# Where a device is plugged in is its port (bus and hub ports: mac_usb.UsbDevice.port), which
+# stays when it comes back under another device number.
+
+
+@dataclass
+class _Ejected:
+    """A drive ejected by openExpress that is still plugged in, as far as is known: until its
+    port is empty for USB_GAP_S, or another device than it (not in its Garmin USB mode) is
+    there."""
+
+    usb: GarminUsb
+    port: tuple[int, ...]  # () when not known: it ends when its device number is gone
+    update_waits: bool = False  # an update copied to it waits for the device to install it
+    on_unplugged: Callable[[], None] | None = None  # told once, when it is seen unplugged
+    empty_since: float | None = None
+    garmin_usb_mode: bool = False  # 091e:0003 seen at its port since it was ejected
+
+
+_ejected: list[_Ejected] = []
+# The ports where a Garmin drive was seen in this run, with since when nothing is there (None:
+# something is): a Garmin device 091e:0003 at such a port is that watch in its Garmin USB mode
+# after its drive was ejected (DRIVE_OFF), not a device starting.
+_drive_ports: dict[tuple[int, ...], float | None] = {}
+_drives_lock = threading.Lock()
+
+
+def _look_at_usb(devices: list[mac_usb.UsbDevice], now: float, drives_only: bool = False) -> None:
+    """What is on USB now (`devices`; `drives_only`: the drives alone, so that nothing is
+    taken for gone), for _drive_ports and the drives ejected by us; those seen unplugged are
+    told (on_unplugged) and said in the log."""
+    told = []
+    with _drives_lock:
+        here = {d.port for d in devices if d.port}
+        for d in devices:
+            if d.port and d.mode == MASS_STORAGE:
+                _drive_ports[d.port] = None
+            elif d.port and d.mode != STARTING:
+                _drive_ports.pop(d.port, None)
+        if not drives_only:
+            for port, gone in list(_drive_ports.items()):
+                if port in here:
+                    _drive_ports[port] = None
+                elif gone is None:
+                    _drive_ports[port] = now
+                elif now - gone >= USB_GAP_S:
+                    del _drive_ports[port]
+        for entry in list(_ejected):
+            gone, unplugged, said = _look_at(entry, devices, now, drives_only)
+            if gone:
+                _ejected.remove(entry)
+                log.info("device: the drive ejected by openExpress %s (USB %s)", said,
+                         entry.usb.usb_id)
+                if unplugged and entry.on_unplugged is not None:
+                    told.append(entry.on_unplugged)
+    for tell in told:  # outside the lock: it may write a file
+        try:
+            tell()
+        except Exception as e:  # noqa: BLE001 - optional; only for what is said later
+            log.warning("device: an unplugging not kept (%s)", type(e).__name__)
+
+
+def _look_at(entry: _Ejected, devices: list[mac_usb.UsbDevice], now: float,
+             drives_only: bool) -> tuple[bool, bool, str]:
+    """(whether the ejected drive is gone, whether it was unplugged, what to say of it)."""
+    usb = entry.usb
+    itself = next((d for d in devices if (d.bus, d.address) == (usb.bus, usb.address)
+                   and d.product == usb.product and d.vendor == usb.vendor), None)
+    if itself is not None:
+        entry.empty_since = None
+        return False, False, ""  # still there, ejected
+    there = next((d for d in devices if entry.port and d.port == entry.port), None)
+    if there is None:
+        if drives_only:
+            return False, False, ""  # only the drives were looked at: not known
+        if not entry.port:
+            return True, False, "is not at its place on USB any more"
+        if entry.empty_since is None:
+            entry.empty_since = now
+        if now - entry.empty_since >= USB_GAP_S:
+            return True, True, "was unplugged"
+        return False, False, ""
+    entry.empty_since = None
+    if there.product == STARTING_PRODUCT and there.vendor == GARMIN_VID:
+        entry.garmin_usb_mode = True  # on the cable, in its Garmin USB mode
+        return False, False, ""
+    if entry.garmin_usb_mode:
+        return True, False, "is back on USB, not seen unplugged"
+    return True, True, "was unplugged and plugged in again"
+
+
+def _test_drives_on_usb() -> list[mac_usb.UsbDevice]:
+    """The drive named for testing on USB, when one of ours was ejected: not a Garmin device,
+    so that its unplugging is seen too."""
+    with _drives_lock:
+        testing = any(e.usb.for_testing for e in _ejected)
+    return [d for d in mac_usb.drive_devices(_test_drive()) if d.vendor != GARMIN_VID] \
+        if testing else []
+
+
+def _forget_unplugged() -> None:
+    _look_at_usb([*_usb_devices(), *_test_drives_on_usb()], _clock())
+
+
+def note_ejected(usb: GarminUsb, port: tuple[int, ...] = (), update_waits: bool = False,
+                 on_unplugged: Callable[[], None] | None = None) -> None:
+    """Keep that openExpress ejected the drive of `usb`, plugged in at `port`."""
+    with _drives_lock:
+        _ejected.append(_Ejected(usb, port, update_waits, on_unplugged))
+
+
+def ejected_by_us(usb: GarminUsb | None) -> bool:
+    """Whether this drive was ejected by openExpress and is still on USB: then it is neither
+    opened nor listed, also when macOS mounts it again, until it is unplugged."""
+    if usb is None:
+        return False
+    with _drives_lock:
+        return any(e.usb == usb and (e.usb.bus, e.usb.address) == (usb.bus, usb.address)
+                   and e.usb.vendor == usb.vendor for e in _ejected)
+
+
+def ejected_drive_waits() -> bool:
+    """Whether a drive ejected by openExpress is still plugged in: the cable can go out."""
+    _forget_unplugged()
+    with _drives_lock:
+        return bool(_ejected)
+
+
+def ejected_update_waits() -> bool:
+    """Whether a drive ejected by openExpress with an update copied to it is still plugged
+    in: the device installs it only once it is unplugged."""
+    with _drives_lock:
+        return any(e.update_waits for e in _ejected)
+
+
+def eject(storage, update_waits: bool = False,
+          on_unplugged: Callable[[], None] | None = None) -> None:
+    """Eject the drive of a Garmin device in mass storage mode (`storage`: a UmsStorage):
+    macOS writes out what it still holds, unmounts every volume of its disk and tells the
+    device that it may go (`diskutil eject`). The drive is then not opened again until it is
+    unplugged (ejected_by_us). `update_waits`: an update copied to it waits for the device;
+    `on_unplugged`: called once it is seen unplugged (while this program looks at USB).
+    DriveNotMounted when it is not mounted any more; DeviceError when macOS refuses, e.g.
+    while a program uses the drive."""
+    usb = getattr(storage, "usb", None)
+    # Its port before it goes: a watch may switch to its Garmin USB mode at once.
+    place = usb_place(usb)
+    port = next((d.port for d in _drives() if place is not None
+                 and (d.bus, d.address) == place), ())
+    if port:
+        with _drives_lock:
+            _drive_ports[port] = None
+    mac_usb.eject_drive_at(
+        str(storage.root), _("Cannot eject the device"),
+        _("The drive is not mounted any more. If it was ejected, you can unplug the cable."))
+    if usb is not None:
+        note_ejected(usb, port, update_waits, on_unplugged)
+    log.info("device: ejected (USB %s)", getattr(storage, "usb_id", None) or "?")
+
+
+def not_ejected_text(window: bool = True, files: bool = False) -> str:
+    """After a failed eject: the cable must stay in, and what to do (`files`: after a sync
+    wrote the files of Garmin Connect's queue, not an update). The same words in the app and
+    on the command line (`window` is for gio_storage's names)."""
+    if files:
+        # TRANSLATORS: macOS: the drive of a Garmin device could not be ejected after a sync
+        return _("Do not unplug the cable yet: the device may not see the files from Garmin "
+                 "Connect. Close any program that uses the drive and eject it in the Finder.")
+    # TRANSLATORS: macOS: the drive of a Garmin device could not be ejected after an update
+    # was copied to it
+    return _("Do not unplug the cable yet: the device may not see the update. Close any "
+             "program that uses the drive and eject it in the Finder.")
+
+
+def drive_off_text(update_waits: bool = False) -> str:
+    """A watch back on USB as 091e:0003 after its drive was ejected (DRIVE_OFF)."""
+    if update_waits:
+        return _("After it was ejected, the watch switched to its Garmin USB mode. Unplug the "
+                 "cable and leave the device unplugged so it can install the update.")
+    return _("After it was ejected, the watch switched to its Garmin USB mode, which "
+             "openExpress does not use. Unplug the cable and plug it in again.")
+
+
+def drive_notice_text() -> str:
+    """A Garmin drive on USB that cannot be opened: ejected by openExpress, or its disk not
+    mounted (yet)."""
+    if ejected_drive_waits():
+        return ejected_text()
+    # TRANSLATORS: macOS: a Garmin device is on USB as a drive, but macOS has not mounted it
+    return _("The Garmin device is connected as a USB drive, but macOS has not mounted it. "
+             "Wait a moment; if it does not appear in the Finder, unplug the cable and plug "
+             "it in again.")

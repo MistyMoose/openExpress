@@ -345,6 +345,8 @@ PACKAGE = Path(openexpress.__file__).parent
 # over MTP.
 DRIVE_ONLY = {("device/gio_storage.py", "find_ums_devices"),
               ("device/gio_storage.py", "open_ums_storage"),
+              ("device/mac_storage.py", "_mounted_drive"),
+              ("device/mac_storage.py", "open_ums_storage"),
               ("service.py", "eject_drive")}
 
 

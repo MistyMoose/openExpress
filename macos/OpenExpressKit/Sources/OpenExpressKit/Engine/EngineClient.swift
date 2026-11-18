@@ -36,7 +36,7 @@ public actor EngineClient: EngineConnection {
 
     private struct Pending {
         let method: String
-        let continuation: CheckedContinuation<JSONValue, any Error>
+        let continuation: CheckedContinuation<Data, any Error>
         let progress: (@Sendable (EngineProgress) -> Void)?
     }
 
@@ -69,6 +69,17 @@ public actor EngineClient: EngineConnection {
 
     public func call(_ method: String, params: JSONValue?,
                      progress: (@Sendable (EngineProgress) -> Void)?) async throws -> JSONValue {
+        let line = try await callLine(method, params: params, progress: progress)
+        do {
+            return try JSONDecoder().decode(EngineUntypedResultLine.self, from: line).result ?? .null
+        } catch {
+            throw EngineError.unexpectedResult(method: method, detail: String(describing: error))
+        }
+    }
+
+    /// The response line itself: the caller decodes its result, once.
+    public func callLine(_ method: String, params: JSONValue?,
+                         progress: (@Sendable (EngineProgress) -> Void)?) async throws -> Data {
         if process == nil {
             if stopping || gaveUp { throw EngineError.notRunning }
             try launch()
@@ -80,7 +91,7 @@ public actor EngineClient: EngineConnection {
         var line = try EngineRequest(id: id, method: method, params: params).line()
         line.append(0x0A)
         return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<JSONValue, any Error>) in
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, any Error>) in
                 pending[id] = Pending(method: method, continuation: cont, progress: progress)
                 do {
                     guard let input else { throw EngineError.terminated }
@@ -161,22 +172,27 @@ public actor EngineClient: EngineConnection {
     }()
 
     private func receive(_ line: String) {
-        guard let message = EngineIncoming.parse(line) else {
+        let data = Data(line.utf8)
+        guard let envelope = EngineEnvelope.of(data) else {
             Self.log.debug("engine: not a message: \(line, privacy: .private)")
             return
         }
-        switch message {
-        case .response(let id, let result):
+        if let id = envelope.id {
+            // The result stays bytes here: the caller decodes it into what it expects.
             guard let p = pending.removeValue(forKey: id) else { return }
-            switch result {
-            case .success(let value): p.continuation.resume(returning: value)
-            case .failure(.remote("cancelled", _, _)): p.continuation.resume(throwing: EngineError.cancelled)
-            case .failure(let error): p.continuation.resume(throwing: error)
+            switch envelope.engineError {
+            case nil: p.continuation.resume(returning: data)
+            case .remote("cancelled", _, _)?: p.continuation.resume(throwing: EngineError.cancelled)
+            case let error?: p.continuation.resume(throwing: error)
             }
-        case .event(let event):
-            if case .progress(let progress) = event { pending[progress.request]?.progress?(progress) }
-            broadcaster.yield(event)
+            return
         }
+        guard envelope.event != nil, case .event(let event)? = EngineIncoming.parse(line) else {
+            Self.log.debug("engine: not a message: \(line, privacy: .private)")
+            return
+        }
+        if case .progress(let progress) = event { pending[progress.request]?.progress?(progress) }
+        broadcaster.yield(event)
     }
 
     private func cancel(request id: Int) {

@@ -123,6 +123,12 @@ public enum EngineCoding {
         return d
     }
 
+    /// The result of a response line (`{"id": 1, "result": {…}}`), decoded straight from
+    /// its bytes into a model.
+    public static func decodeResult<T: Decodable>(_ type: T.Type, fromLine line: Data) throws -> T {
+        try decoder().decode(EngineResultLine<T>.self, from: line).result
+    }
+
     public static func encoder() -> JSONEncoder {
         let e = JSONEncoder()
         e.keyEncodingStrategy = .convertToSnakeCase

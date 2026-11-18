@@ -13,6 +13,11 @@ public protocol EngineConnection: AnyObject, Sendable {
     func call(_ method: String, params: JSONValue?,
               progress: (@Sendable (EngineProgress) -> Void)?) async throws -> JSONValue
 
+    /// Like `call`, but gives the response line as the engine wrote it (`{"id", "result"}`),
+    /// so a typed result is decoded once from its bytes, not through a `JSONValue`.
+    func callLine(_ method: String, params: JSONValue?,
+                  progress: (@Sendable (EngineProgress) -> Void)?) async throws -> Data
+
     /// A new stream of every event from now on; each subscriber gets its own.
     func events() async -> AsyncStream<EngineEvent>
 
@@ -25,11 +30,18 @@ extension EngineConnection {
         try await call(method, params: params, progress: nil)
     }
 
+    /// An engine without lines of its own (the mock): its result, written as one.
+    public func callLine(_ method: String, params: JSONValue?,
+                         progress: (@Sendable (EngineProgress) -> Void)?) async throws -> Data {
+        let value = try await call(method, params: params, progress: progress)
+        return try JSONEncoder().encode(JSONValue.object(["result": value]))
+    }
+
     func call<T: Decodable>(_ method: String, params: JSONValue? = nil, as: T.Type,
                             progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> T {
-        let value = try await call(method, params: params, progress: progress)
+        let line = try await callLine(method, params: params, progress: progress)
         do {
-            return try value.decode(T.self)
+            return try EngineCoding.decodeResult(T.self, fromLine: line)
         } catch {
             throw EngineError.unexpectedResult(method: method, detail: String(describing: error))
         }

@@ -201,6 +201,27 @@ struct SupportTests {
         #expect(list.backups[0].url.lastPathComponent == "2026-11-15 (08.30.00)")
     }
 
+    @Test func typedResultStraightFromTheLine() throws {
+        let list = ActivitiesList(activities: MockEngine.sampleActivities(count: 5), total: 5)
+        let result = String(decoding: try EngineCoding.encoder().encode(list), as: UTF8.self)
+        let line = Data(#"{"id": 12, "result": \#(result)}"#.utf8)
+
+        let envelope = try #require(EngineEnvelope.of(line))
+        #expect(envelope.id == 12 && envelope.engineError == nil && envelope.event == nil)
+        let direct = try EngineCoding.decodeResult(ActivitiesList.self, fromLine: line)
+        #expect(direct.total == 5 && direct.activities.map(\.id) == list.activities.map(\.id))
+        // The same as through the untyped value.
+        guard case .response(12, .success(let value))? = EngineIncoming.parse(String(decoding: line, as: UTF8.self))
+        else { Issue.record("not a response"); return }
+        #expect(try value.decode(ActivitiesList.self) == direct)
+
+        let error = try #require(EngineEnvelope.of(Data(#"{"id": 3, "error": {"code": "device_busy", "message": "m", "data": {"program": "X"}}}"#.utf8)))
+        #expect(error.engineError?.busyProgram == "X")
+        #expect(EngineEnvelope.of(Data(#"{"event": "log", "params": {"level": "info", "message": "x"}}"#.utf8))?.event == "log")
+        #expect(EngineEnvelope.of(Data("Traceback (most recent call last):".utf8)) == nil)
+        #expect(EngineEnvelope.of(Data("[1, 2]".utf8)) == nil)
+    }
+
     @Test func formats() {
         #expect(Format.duration(605) == "10:05")
         #expect(Format.duration(3725) == "1:02:05")

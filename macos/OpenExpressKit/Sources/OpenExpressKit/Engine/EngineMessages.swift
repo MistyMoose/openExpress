@@ -87,6 +87,39 @@ public enum EngineIncoming: Sendable, Equatable {
     }
 }
 
+/// What the client routes a line by (`id`, `error`, `event`), decoded without building the
+/// result: a typed result is then decoded once, straight from the line's bytes.
+struct EngineEnvelope: Decodable {
+    struct RemoteError: Decodable {
+        var code: String?
+        var message: String?
+        var data: JSONValue?
+    }
+
+    var id: Int?
+    var error: RemoteError?
+    var event: String?
+
+    /// nil for a line that is not a JSON object.
+    static func of(_ line: Data) -> EngineEnvelope? {
+        try? JSONDecoder().decode(EngineEnvelope.self, from: line)
+    }
+
+    var engineError: EngineError? {
+        error.map { .remote(code: $0.code ?? "error", message: $0.message ?? "", data: $0.data) }
+    }
+}
+
+/// `{"id": …, "result": T}`: only the result is decoded.
+struct EngineResultLine<T: Decodable>: Decodable {
+    var result: T
+}
+
+/// `{"id": …, "result": …}` as an untyped value; a missing result is null.
+struct EngineUntypedResultLine: Decodable {
+    var result: JSONValue?
+}
+
 /// An event: no id, at any time (docs/ENGINE.md, "Events").
 public enum EngineEvent: Sendable, Equatable {
     case deviceAttached(Device)

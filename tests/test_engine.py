@@ -416,6 +416,15 @@ def three_activities(device_root, monkeypatch):
     return reads
 
 
+def test_an_activity_file_that_cannot_be_read_still_has_a_start(running, device_root):
+    """The app needs a time for every row: an unreadable file gets its time of change."""
+    (device_root / "GARMIN" / "Activity" / "2026-10-04-10-00-00.fit").write_bytes(b"not a FIT")
+    listed = running.ask("activities.list")["result"]["activities"]
+    broken = next(a for a in listed if a["name"] == "2026-10-04-10-00-00.fit")
+    assert broken["state"] in ("unreadable", "damaged")
+    assert all(a["start"] for a in listed)
+
+
 def test_activities_list_tells_each_file_it_reads_as_progress_then_that_all_are_read(
         running, three_activities):
     request_id = running.send("activities.list", {"limit": 10})

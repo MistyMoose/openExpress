@@ -1292,18 +1292,18 @@ class Engine:
                 activities.save_summaries(dev.unit_id, found)
         reading.done()
         out = []
-        for r in read:
+        for r in read:  # `start`: the file's own time where the file does not tell it
             act, summary = r.activity, r.summary
             entry = {"name": act.name, "source": act.source.value, "path": act.path,
                      "size": act.size,
                      "backup": act.backup.isoformat() if act.backup else None}
             if summary is None:
-                entry.update(start=None, sport=None, sport_id=None, distance=None,
+                entry.update(start=_iso(act.mtime), sport=None, sport_id=None, distance=None,
                              duration=None, ascent=None, state="unreadable")
             else:
                 state = summary.state
                 entry.update(
-                    start=_iso(summary.start or summary.created),
+                    start=_iso(summary.start or summary.created or act.mtime),
                     sport=(activities.sport_name(summary.sport)
                            if summary.sport is not None else None),
                     sport_id=summary.sport, distance=summary.distance,

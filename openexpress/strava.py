@@ -1,40 +1,10 @@
-"""Strava upload: OAuth2 authorization-code sign-in, token refresh, and uploading FIT files
-to Strava's API (POST /uploads, polled until Strava has matched the file to an activity or
-reports an error). The user registers their own Strava API application (client ID and
-secret, free, at strava.com/settings/api, Authorization Callback Domain "localhost") - this
-program ships with none of its own, as it does with no Garmin application key either
-(settings.py).
+"""Strava upload: OAuth2 sign-in, token refresh, and uploading FIT files to Strava's API (POST
+/uploads, polled until Strava has matched the file to an activity). The user registers their own
+Strava API application (strava.com/settings/api, Authorization Callback Domain "localhost"):
+this program ships with none, as it ships with no Garmin application key either.
 
-Public API, used by this module's own CLI commands (`strava connect|disconnect|status|upload`,
-cli.py) and by the macOS app (openexpress/engine.py, not part of this module):
-
-  - status() -> Status
-        What is configured and connected now, read only (no network).
-  - authorize_url(redirect_uri) -> str
-        The address of Strava's consent page for `redirect_uri`; NotConfigured when no
-        client ID/secret is saved yet (connect(), or save_client() directly).
-  - connect_with_code(code, redirect_uri) -> Status
-        Exchange the code Strava's redirect sent to `redirect_uri` for a token, saved for
-        later uploads. The macOS app runs its own browser and callback and calls this once
-        it has the code; connect() below does both itself, for the command line.
-  - disconnect() -> bool
-        Revoke the token at Strava (best effort) and remove what is saved of it.
-  - upload_files(paths, apply, progress=None) -> UploadReport
-        Upload the named FIT files, each once (a local record keeps what was sent, so a file
-        already uploaded is never read or sent again); `apply` False only says what would be
-        sent. sync.py's sync integration (cli.py's `sync`, Settings.strava_upload) and the
-        `strava upload FILE...` command both call this.
-
-connect() is the CLI-only interactive flow: it saves the client ID/secret (once; later runs
-reuse what is saved), opens the browser at authorize_url() for a one-shot local HTTP server
-on 127.0.0.1 (a random free port, as Strava's callback domain "localhost" allows any port),
-and exchanges the code that server receives.
-
-Tokens and the client ID/secret are kept with auth.store.save_secret/read_secret/delete_secret
-(the macOS Keychain, items "strava_client" and "strava_token"; on Linux, or where the Keychain
-cannot be reached, 0600 files of the same names). The local record of what has already been
-uploaded (never sent to Strava) is a plain file in the data directory, next to sync.py's own
-records of each device: data_dir()/strava/uploaded.json.
+The client ID/secret and the token are kept with auth.store (the macOS Keychain, or 0600
+files); what was already uploaded is recorded in data_dir()/strava/uploaded.json.
 """
 
 from __future__ import annotations
@@ -47,7 +17,7 @@ import threading
 import time
 import webbrowser
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -97,12 +67,8 @@ class NotConnected(StravaError):
 
 
 class RateLimited(StravaError):
-    """Strava answered 429: too many requests for now (its X-RateLimit-* headers, if any, in
-    `usage`). The files after this one wait for the next call of upload_files."""
-
-    def __init__(self, message: str, usage: str = ""):
-        super().__init__(message)
-        self.usage = usage
+    """Strava answered 429: too many requests for now. The files after this one wait for the
+    next call of upload_files."""
 
 
 @dataclass
@@ -152,12 +118,13 @@ class UploadReport:
 # --- the client ID/secret and the token, saved with auth.store -------------------------
 
 
-def _client_path() -> Path:
-    return paths.config_dir() / f"{CLIENT_ITEM}.json"
+def _secret_path(item: str) -> Path:
+    """The file `item` is kept in where the Keychain is not used."""
+    return paths.config_dir() / f"{item}.json"
 
 
 def load_client() -> Client | None:
-    text = read_secret(CLIENT_ITEM, _client_path())
+    text = read_secret(CLIENT_ITEM, _secret_path(CLIENT_ITEM))
     if text is None:
         return None
     try:
@@ -169,39 +136,35 @@ def load_client() -> Client | None:
 
 
 def save_client(client: Client) -> None:
-    save_secret(CLIENT_ITEM,
-               json.dumps({"client_id": client.client_id, "client_secret": client.client_secret}),
-               _client_path())
+    save_secret(CLIENT_ITEM, json.dumps(asdict(client)), _secret_path(CLIENT_ITEM))
 
 
-def _token_path() -> Path:
-    return paths.config_dir() / f"{TOKEN_ITEM}.json"
+def _token_from(data: dict) -> Token:
+    """The Token in `data` (as save_token writes it); KeyError, TypeError or ValueError when
+    it is not one."""
+    return Token(
+        access_token=str(data["access_token"]), refresh_token=str(data["refresh_token"]),
+        expires_at=int(data.get("expires_at") or 0), athlete_id=data.get("athlete_id"),
+        athlete_name=data.get("athlete_name"), scope=str(data.get("scope") or SCOPE))
 
 
 def load_token() -> Token | None:
-    text = read_secret(TOKEN_ITEM, _token_path())
+    text = read_secret(TOKEN_ITEM, _secret_path(TOKEN_ITEM))
     if text is None:
         return None
     try:
-        data = json.loads(text)
-        return Token(
-            access_token=str(data["access_token"]), refresh_token=str(data["refresh_token"]),
-            expires_at=int(data.get("expires_at") or 0), athlete_id=data.get("athlete_id"),
-            athlete_name=data.get("athlete_name"), scope=str(data.get("scope") or SCOPE))
+        return _token_from(json.loads(text))
     except (ValueError, KeyError, TypeError):
         log.warning("strava: the saved token is damaged")
         return None
 
 
 def save_token(token: Token) -> None:
-    save_secret(TOKEN_ITEM, json.dumps({
-        "access_token": token.access_token, "refresh_token": token.refresh_token,
-        "expires_at": token.expires_at, "athlete_id": token.athlete_id,
-        "athlete_name": token.athlete_name, "scope": token.scope}), _token_path())
+    save_secret(TOKEN_ITEM, json.dumps(asdict(token)), _secret_path(TOKEN_ITEM))
 
 
 def delete_token() -> bool:
-    return delete_secret(TOKEN_ITEM, _token_path())
+    return delete_secret(TOKEN_ITEM, _secret_path(TOKEN_ITEM))
 
 
 # --- the local record of what has already been uploaded --------------------------------
@@ -324,10 +287,8 @@ def connect_with_code(code: str, redirect_uri: str) -> Status:
         raise StravaError(_("{what} failed: {error}").format(
             what=what, error=_answer_text(data, resp)))
     athlete = data.get("athlete") or {}
-    token = Token(
-        access_token=data["access_token"], refresh_token=data["refresh_token"],
-        expires_at=int(data.get("expires_at") or 0), athlete_id=athlete.get("id"),
-        athlete_name=_athlete_name(athlete), scope=SCOPE)
+    token = _token_from({**data, "athlete_id": athlete.get("id"),
+                         "athlete_name": _athlete_name(athlete), "scope": SCOPE})
     save_token(token)
     log.info("strava: connected (athlete id known: %s)", token.athlete_id is not None)
     return status()
@@ -500,10 +461,9 @@ def _refresh(token: Token) -> Token:
         raise NotConnected(_("The Strava sign-in has expired: {error}. Run: "
                              "openexpress strava connect").format(
             error=_answer_text(data, resp)))
-    new = Token(access_token=data["access_token"],
-               refresh_token=data.get("refresh_token") or token.refresh_token,
-               expires_at=int(data.get("expires_at") or 0), athlete_id=token.athlete_id,
-               athlete_name=token.athlete_name, scope=token.scope)
+    new = replace(token, access_token=data["access_token"],
+                  refresh_token=data.get("refresh_token") or token.refresh_token,
+                  expires_at=int(data.get("expires_at") or 0))
     save_token(new)
     log.info("strava: token refreshed")
     return new
@@ -534,13 +494,18 @@ def _authed_request(method: str, url: str, token: Token, **kw) -> tuple[requests
 _DUPLICATE_RE = re.compile(r"duplicate of activity (\d+)")
 
 
-def _poll(token: Token, upload_id, first: dict, timeout: float = POLL_TIMEOUT
-         ) -> tuple[Token, int | None, bool]:
+def _check_rate(resp: requests.Response, message: str) -> None:
+    """RateLimited with `message` when Strava answered 429."""
+    if resp.status_code == 429:
+        raise RateLimited(message)
+
+
+def _poll(token: Token, upload_id, first: dict) -> tuple[Token, int | None, bool]:
     """Wait for Strava to finish processing an upload: its activity_id, and whether it is a
     duplicate of one already there (its error message says so: not an error for this
     program). Raises RateLimited (429) and StravaError for anything else."""
     body = first
-    deadline = time.monotonic() + timeout
+    deadline = time.monotonic() + POLL_TIMEOUT
     while True:
         error = body.get("error")
         if error:
@@ -555,9 +520,7 @@ def _poll(token: Token, upload_id, first: dict, timeout: float = POLL_TIMEOUT
             raise StravaError(_("Strava did not finish processing the upload in time"))
         time.sleep(1.5)
         resp, token = _authed_request("GET", f"{UPLOAD_URL}/{upload_id}", token)
-        if resp.status_code == 429:
-            raise RateLimited(_("Strava: too many requests for now"),
-                              usage=resp.headers.get("X-RateLimit-Usage", ""))
+        _check_rate(resp, _("Strava: too many requests for now"))
         body = _json(resp)
 
 
@@ -569,9 +532,7 @@ def _upload_one(token: Token, name: str, data: bytes,
     files = {"file": (name, data, "application/octet-stream")}
     form = {"data_type": "fit", "external_id": ext_id}
     resp, token = _authed_request("POST", UPLOAD_URL, token, data=form, files=files)
-    if resp.status_code == 429:
-        raise RateLimited(_("Strava: too many uploads for now"),
-                          usage=resp.headers.get("X-RateLimit-Usage", ""))
+    _check_rate(resp, _("Strava: too many uploads for now"))
     body = _json(resp)
     if not resp.ok:
         raise StravaError(_("Strava upload failed: {error}").format(
@@ -584,18 +545,10 @@ def _upload_one(token: Token, name: str, data: bytes,
 
 def upload_files(paths_: Iterable[str | Path], apply: bool,
                  progress: Callable[[str], None] | None = None) -> UploadReport:
-    """Upload the FIT files named by `paths_` to Strava, each once: a file whose external_id
-    (external_id()) is already in the local record is a duplicate, not read or sent again -
-    also across different calls, so a file already sent by an earlier sync or an earlier
-    `strava upload` is never sent twice. `apply` False only says what would be sent (no
-    network, no token needed, unless a file turns out to be a duplicate already, which the
-    local record alone can say). NotConnected/NotConfigured are raised at once, before any
-    file is sent, when `apply` is true and no token is saved - the caller (cli.py's `strava
-    upload`, or the sync integration, which catches it around the whole call) decides what
-    that means; once a token is there, a 429 (RateLimited) stops the rest of the list for
-    this call (`rate_limited` on the report), but any other failure of one file is reported
-    and does not stop the others - as sync.py's own uploads to Garmin Connect, and so that
-    Settings.strava_upload never fails a sync for a reason that is only one file's."""
+    """Upload the FIT files named by `paths_` to Strava, each once: a file already in the local
+    record (by external_id()) is a duplicate, not sent again. `apply` False only says what
+    would be sent, with no network. NotConnected/NotConfigured are raised before any file is
+    sent; a 429 stops the rest of the list (`rate_limited`), any other failure only its file."""
     progress = say_to(progress)
     report = UploadReport()
     items = [Path(p) for p in paths_]

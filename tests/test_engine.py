@@ -712,8 +712,9 @@ def _track_fit(count: int) -> bytes:
 
 
 def test_the_track_of_a_fit_file_gives_its_positions_with_time_heart_rate_and_altitude(
-        running, tmp_path):
-    path = tmp_path / "run.fit"
+        running, backups):
+    path = backups / "1234567890" / "2026-11-18 (10.00.00)" / "FIT_TYPE_4" / "run.fit"
+    path.parent.mkdir(parents=True)
     path.write_bytes(_track_fit(3))
     points = running.ask("activities.track", {"fit": str(path)})["result"]["points"]
     assert len(points) == 3
@@ -724,17 +725,29 @@ def test_the_track_of_a_fit_file_gives_its_positions_with_time_heart_rate_and_al
     assert points[1]["time"].startswith("2024-11-08T")  # ISO, with the offset
 
 
+@pytest.mark.parametrize("where", ["outside", "escaping"])
+def test_a_local_track_outside_the_backups_is_refused(running, backups, tmp_path, where):
+    """A device's listing with a name that begins with "/" must not read a file of this
+    computer: only a copy in the backup folder is read."""
+    path = tmp_path / "elsewhere.fit"
+    path.write_bytes(_track_fit(3))
+    asked = str(path) if where == "outside" else f"{backups}/../elsewhere.fit"
+    error = running.ask("activities.track", {"fit": asked})["error"]
+    assert error["code"] == "invalid_params"
+
+
 def test_a_long_track_is_thinned_to_2000_points_keeping_its_last(tmp_path):
     points = engine.track(_track_fit(5001))["points"]
     assert len(points) <= engine.TRACK_POINTS
     assert points[-1]["hr"] == 120 + 5000 % 50
 
 
-def test_the_track_of_a_file_on_the_device_is_read_from_it(running, device_root):
+def test_the_track_of_a_file_on_the_device_is_read_from_it(running, device_root, backups):
     (device_root / "GARMIN" / "Activity" / "run.fit").write_bytes(_track_fit(2))
     result = running.ask("activities.track", {"fit": "GARMIN/Activity/run.fit"})
     assert len(result["result"]["points"]) == 2
-    error = running.ask("activities.track", {"fit": "/no/such/file.fit"})["error"]
+    gone = f"{backups}/1234567890/no such backup/run.fit"  # a copy since removed
+    error = running.ask("activities.track", {"fit": gone})["error"]
     assert error["code"] == "not_found"
 
 

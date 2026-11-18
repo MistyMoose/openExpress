@@ -1618,11 +1618,18 @@ class Engine:
 
     def activities_track(self, req: Request) -> dict:
         """The track of an activity (`fit`): a FIT file of this computer (a copy in a
-        backup, an absolute path), else the path of the file on the device that
-        activities.list gave (`device`, or the only one connected), read in its turn."""
+        backup, an absolute path within the backup folder), else the path of the file on the
+        device that activities.list gave (`device`, or the only one connected), read in its
+        turn."""
+        from openexpress import paths
+
         path = _text(req.params, "fit")
         local = Path(path).expanduser()
         if local.is_absolute():
+            # Only a copy in a backup: a path that came from a device's listing (a name
+            # beginning with "/") must not read any file of this computer.
+            if not paths.is_inside(local, self._backups()):
+                raise _invalid("fit")
             try:
                 data = local.read_bytes()
             except OSError as e:

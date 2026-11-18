@@ -1718,7 +1718,8 @@ def cmd_sync(args) -> int:
     if after.drop_error is not None:
         raise after.drop_error
     # A drive the sync wrote to is ejected, so that the watch takes the files.
-    if st.mass_storage and summary.wrote_to_device and not _eject_drive(st, files=True):
+    if st.mass_storage and summary.wrote_to_device and not service.eject_drive(
+            st, files=True):
         return 1  # the cable must stay in
     return code
 
@@ -2051,27 +2052,6 @@ def _print_staged(staged, st) -> None:
     print(_to_install_staged(st, len(staged)))
 
 
-def _eject_drive(st, files: bool = False) -> bool:
-    """After a write to a Garmin drive: eject it, so that the device takes the update (or,
-    `files`, the files of Garmin Connect's queue); only then may the cable go out. False,
-    with what to do, when it is not ejected."""
-    from openexpress.device import gio_storage
-
-    print(_("Ejecting the device…"))
-    try:
-        gio_storage.eject(st)
-    except gio_storage.DriveNotMounted as e:
-        _error(str(e))
-        return False
-    except DeviceError as e:
-        log.info("eject: %s", e)
-        _error(_("The device was not ejected: {error}").format(error=e))
-        _error(gio_storage.not_ejected_text(window=False, files=files))
-        return False
-    print(gio_storage.ejected_text(update_waits=not files))
-    return True
-
-
 def _print_not_installed(untaken) -> None:
     """Updates copied, and not installed by the device although it was unplugged since
     (updates.not_installed): what became of each; nothing to eject or to unplug for them."""
@@ -2122,6 +2102,7 @@ def _print_hidden(updates_shown, add_ons, lines: bool = False) -> None:
 
 
 def cmd_updates(args) -> int:
+    from openexpress import service
     from openexpress import updates as upd
 
     st, dev = open_device(args)
@@ -2264,7 +2245,7 @@ def cmd_updates(args) -> int:
                           unit_id=dev.unit_id, offered=items)
     n = len(rep.written)
     print("\n" + ngettext("Copied {count} file.", "Copied {count} files.", n).format(count=n))
-    if n and getattr(st, "mass_storage", False) and not _eject_drive(st):
+    if n and getattr(st, "mass_storage", False) and not service.eject_drive(st):
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:
         print(_(upd.finish_steps(rep.written)))

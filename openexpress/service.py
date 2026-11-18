@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from openexpress import answers, applog, known_devices, paths, satellite, sync
+from openexpress import answers, applog, console, known_devices, paths, satellite, sync
 from openexpress.auth import store
 from openexpress.connect import (
     ApiError,
@@ -2016,6 +2016,29 @@ def after_sync(s: DeviceSession, apply: bool, progress: Progress | None = None,
                 log.info("strava: %d activity file still being written by the device, staged "
                          "by the next sync", out.strava.incomplete)
     return out
+
+
+def eject_drive(st, files: bool = False, say: Progress = print,
+                error: Progress = console.error) -> bool:
+    """After a write to a Garmin drive: eject it, so that the device takes the update (or,
+    `files`, the files of Garmin Connect's queue); only then may the cable go out. What it
+    does goes to `say`, a failure to `error`. False, with what to do, when it is not
+    ejected."""
+    from openexpress.device import gio_storage
+
+    say(_("Ejecting the device…"))
+    try:
+        gio_storage.eject(st)
+    except gio_storage.DriveNotMounted as e:
+        error(str(e))
+        return False
+    except DeviceError as e:
+        log.info("eject: %s", e)
+        error(_("The device was not ejected: {error}").format(error=e))
+        error(gio_storage.not_ejected_text(window=False, files=files))
+        return False
+    say(gio_storage.ejected_text(update_waits=not files))
+    return True
 
 
 def _install_queued_apps(s, messages, progress, errors, received: list) -> list[dict]:

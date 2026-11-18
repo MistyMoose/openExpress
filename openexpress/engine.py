@@ -1122,7 +1122,7 @@ class Engine:
                                   "bytes": dropped.bytes, "incomplete": dropped.incomplete}
         out["strava"] = self._strava_after_sync(after)
         if st.mass_storage and summary.wrote_to_device:
-            out["ejected"] = cli._eject_drive(st, files=True)
+            out["ejected"] = service.eject_drive(st, files=True)
         return out
 
     def updates_list(self, req: Request, a: Attached) -> dict:

@@ -345,7 +345,7 @@ PACKAGE = Path(openexpress.__file__).parent
 # over MTP.
 DRIVE_ONLY = {("device/gio_storage.py", "find_ums_devices"),
               ("device/gio_storage.py", "open_ums_storage"),
-              ("cli.py", "_eject_drive")}
+              ("service.py", "eject_drive")}
 
 
 def _caught(handler) -> set[str]:

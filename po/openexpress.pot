@@ -2694,16 +2694,6 @@ msgid_plural "Updates copied, waiting for the device to install them:"
 msgstr[0] ""
 msgstr[1] ""
 
-#: openexpress/cli.py
-#, ignore-reused, python-brace-format
-msgid "Ejecting the device…"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "The device was not ejected: {error}"
-msgstr ""
-
 #. TRANSLATORS: `openexpress updates`: heading above the updates openExpress copied that the
 #. device has not installed although it was unplugged since
 #: openexpress/cli.py
@@ -12309,6 +12299,16 @@ msgstr ""
 #: openexpress/service.py
 #, python-brace-format
 msgid "FIT drop folder: {error}"
+msgstr ""
+
+#: openexpress/service.py
+#, ignore-reused, python-brace-format
+msgid "Ejecting the device…"
+msgstr ""
+
+#: openexpress/service.py
+#, python-brace-format
+msgid "The device was not ejected: {error}"
 msgstr ""
 
 #: openexpress/settings.py

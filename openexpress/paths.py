@@ -20,23 +20,17 @@ FLATPAK_INFO = Path("/.flatpak-info")
 
 def xdg(var: str, default: str) -> Path:
     """The XDG base folder in the variable `var` (e.g. XDG_DATA_HOME); `default` below the
-    home folder when the variable is not set or empty. Linux only: macOS has no XDG, so
-    _app_dir does not call this there."""
+    home folder when the variable is not set or empty."""
     value = os.environ.get(var)
     return Path(value) if value else Path.home() / default
 
 
 def _app_dir(var: str, default: str, mac_library_folder: str) -> Path:
-    """XDG directory for the app; on macOS the app's folder under ~/Library/<mac_library_folder>
-    instead, with no need for XDG variables or GLib to find it. `var` is still honoured when it
-    is set on macOS too (as `xdg` does on Linux): that lets a test (or a user who wants it
-    elsewhere) redirect the folder the same way on every platform."""
-    override = os.environ.get(var)
-    if override:
-        return Path(override) / APP_NAME
-    if sys.platform == "darwin":
+    """XDG directory for the app; on macOS, unless `var` is set, the app's folder under
+    ~/Library/<mac_library_folder>."""
+    if sys.platform == "darwin" and not os.environ.get(var):
         return Path.home() / "Library" / mac_library_folder / APP_NAME_MAC
-    return Path.home() / default / APP_NAME
+    return xdg(var, default) / APP_NAME
 
 
 def config_dir() -> Path:
@@ -60,9 +54,7 @@ def cache_dir() -> Path:
 
 
 def in_flatpak() -> bool:
-    # There is no Flatpak on macOS; every helper below this point stays inert there because
-    # of this early "no".
-    return sys.platform != "darwin" and FLATPAK_INFO.exists()
+    return FLATPAK_INFO.exists()
 
 
 def flatpak_data_dir() -> Path:
@@ -139,20 +131,17 @@ def device_dir(unit_id: int) -> Path:
 
 
 def default_backup_dir() -> Path:
-    # macOS always keeps Documents at ~/Documents (no XDG-style user-dirs file to read, so no
-    # GLib is needed to ask for it); the fallback below is already the right answer there.
-    if sys.platform != "darwin":
-        try:
-            import gi
+    try:
+        import gi
 
-            gi.require_version("GLib", "2.0")
-            from gi.repository import GLib
+        gi.require_version("GLib", "2.0")
+        from gi.repository import GLib
 
-            docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
-            if docs:
-                return Path(docs) / "Garmin" / "Backups"
-        except (ImportError, ValueError):
-            pass
+        docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
+        if docs:
+            return Path(docs) / "Garmin" / "Backups"
+    except (ImportError, ValueError):
+        pass
     return Path.home() / "Documents" / "Garmin" / "Backups"
 
 

@@ -515,7 +515,9 @@ struct ActivityDetailView: View {
 }
 
 struct RouteMap: View {
-    let track: ActivityTrack
+    private let coordinates: [CLLocationCoordinate2D]
+    private let isLoop: Bool
+    private let camera: MapCameraPosition
     @Environment(\.colorSchemeContrast) private var contrast
     /// Bumped when the window comes back into view: see `.id` below.
     @State private var renderPass = 0
@@ -525,12 +527,11 @@ struct RouteMap: View {
     @State private var size: CGSize = .zero
     @State private var settled = false
 
-    private var coordinates: [CLLocationCoordinate2D] {
-        RouteGeometry.drawable(track.points).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-    }
-
-    private var camera: MapCameraPosition {
-        RouteGeometry.cameraRect(track.points).map { .rect($0) } ?? .automatic
+    init(track: ActivityTrack) {
+        let points = RouteGeometry.drawable(track.points)
+        coordinates = points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        isLoop = RouteGeometry.isLoop(points)
+        camera = RouteGeometry.cameraRect(points).map { .rect($0) } ?? .automatic
     }
 
     var body: some View {
@@ -553,8 +554,7 @@ struct RouteMap: View {
     }
 
     private var map: some View {
-        let isLoop = RouteGeometry.isLoop(track.points)
-        return Map(initialPosition: camera, interactionModes: [.pan, .zoom]) {
+        Map(initialPosition: camera, interactionModes: [.pan, .zoom]) {
             MapPolyline(coordinates: coordinates)
                 .stroke(.orange, style: StrokeStyle(lineWidth: contrast == .increased ? 6 : 4,
                                                     lineCap: .round, lineJoin: .round))

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 02:24+0100\n"
+"POT-Creation-Date: 2026-11-18 17:36+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -11322,14 +11322,6 @@ msgid ""
 msgstr ""
 "Za mało miejsca na {name}: potrzeba {needed}, wolne {free} wraz z jej "
 "starymi plikami. openExpress nie usuwa niczego innego, aby zrobić miejsce."
-
-#. TRANSLATORS: the name of your language in your language ("Polski", "Deutsch",
-#. "Français"), as the list of languages in the Preferences shows it
-#: openexpress/i18n.py
-#, python-brace-format
-msgctxt "language name"
-msgid "English"
-msgstr "Polski"
 
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a
 #. word ("Last seen just now")

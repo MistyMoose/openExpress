@@ -7,49 +7,27 @@ tests/conftest.py's `no_real_keychain` (autouse) already keeps every other test 
 the real Keychain by accident; the tests here install backends of their own on top of it."""
 
 import pytest
+from fakes import FakeKeychain
 
 from openexpress.platform import keychain
-
-
-class FakeBackend(keychain.Backend):
-    """An in-memory stand-in for the real Keychain: {account: data}, one SERVICE implied."""
-
-    def __init__(self):
-        self.items: dict[str, bytes] = {}
-
-    def get(self, account: str) -> bytes | None:
-        return self.items.get(account)
-
-    def set(self, account: str, data: bytes) -> None:
-        self.items[account] = data
-
-    def delete(self, account: str) -> bool:
-        return self.items.pop(account, None) is not None
-
-
-@pytest.fixture(autouse=True)
-def restore_backend():
-    """Every test here installs its own backend; none of it must leak into the next test."""
-    yield
-    keychain.use_backend(None)
 
 
 # --- get/set/delete go through whatever backend is installed -----------------------------
 
 
 def test_get_is_none_for_an_item_that_was_never_set():
-    keychain.use_backend(FakeBackend())
+    keychain.use_backend(FakeKeychain())
     assert keychain.get("connect_auth") is None
 
 
 def test_set_then_get_returns_the_same_bytes():
-    keychain.use_backend(FakeBackend())
+    keychain.use_backend(FakeKeychain())
     keychain.set("connect_auth", b"token-bytes-made-up")
     assert keychain.get("connect_auth") == b"token-bytes-made-up"
 
 
 def test_set_on_an_existing_item_replaces_it_not_duplicates_it():
-    fake = FakeBackend()
+    fake = FakeKeychain()
     keychain.use_backend(fake)
     keychain.set("connect_auth", b"first")
     keychain.set("connect_auth", b"second")
@@ -58,7 +36,7 @@ def test_set_on_an_existing_item_replaces_it_not_duplicates_it():
 
 
 def test_delete_says_whether_something_was_removed():
-    keychain.use_backend(FakeBackend())
+    keychain.use_backend(FakeKeychain())
     assert keychain.delete("connect_auth") is False  # nothing to remove
     keychain.set("connect_auth", b"x")
     assert keychain.delete("connect_auth") is True
@@ -68,7 +46,7 @@ def test_delete_says_whether_something_was_removed():
 
 def test_each_account_of_the_service_is_independent():
     """connect_auth and consumer (and a Strava token later) never collide."""
-    keychain.use_backend(FakeBackend())
+    keychain.use_backend(FakeKeychain())
     keychain.set("connect_auth", b"a")
     keychain.set("consumer", b"b")
     assert (keychain.get("connect_auth"), keychain.get("consumer")) == (b"a", b"b")
@@ -81,7 +59,7 @@ def test_use_backend_none_resolves_the_default_again_lazily(monkeypatch):
 
     def fake_default():
         resolved.append(1)
-        return FakeBackend()
+        return FakeKeychain()
 
     monkeypatch.setattr(keychain, "default_backend", fake_default)
     keychain.use_backend(None)

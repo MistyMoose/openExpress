@@ -13,6 +13,7 @@ import threading
 import time
 
 import pytest
+from test_ownmaps import img_header
 
 import openexpress
 from openexpress import __version__, backup, engine
@@ -318,18 +319,6 @@ def test_backups_list_gives_each_backup_of_the_device_newest_first_and_the_devic
     assert running.ask("backups.list", {"device": "42"})["result"] == {"backups": []}
 
 
-def _img(title: bytes) -> bytes:
-    """The start of a map's .img file with this name in its header (as test_ownmaps.py makes
-    one): no real map is kept in the tests."""
-    head = bytearray(512)
-    head[0x10:0x17], head[0x41:0x48] = b"DSKIMG\0", b"GARMIN\0"
-    first, rest = title[:20], title[20:50]
-    head[0x49:0x49 + 20] = first.ljust(20, b" ") if rest else first.ljust(20, b"\0")
-    head[0x65:0x65 + len(rest)] = rest
-    head[0x1FE:0x200] = b"\x55\xaa"
-    return bytes(head)
-
-
 def _a_map(name, file, *, installed=True, update=False):
     from openexpress import maps
 
@@ -346,8 +335,8 @@ def test_a_map_tells_the_version_the_device_has_from_its_header_when_garmin_offe
 
     garmin = device_root / "Garmin"  # the device's map folder, as Garmin names it
     garmin.mkdir(exist_ok=True)
-    (garmin / "D1.img").write_bytes(_img(b"TopoActive Europe, West 2026.11") + bytes(100))
-    (garmin / "D2.img").write_bytes(_img(b"CourseView Pacific") + bytes(100))
+    (garmin / "D1.img").write_bytes(img_header(b"TopoActive Europe, West 2026.11") + bytes(100))
+    (garmin / "D2.img").write_bytes(img_header(b"CourseView Pacific") + bytes(100))
     offered = [_a_map("TopoActive Western Europe", "D1.img", update=True),
                _a_map("CourseView Pacific", "D2.img", update=True),
                _a_map("TopoActive Central Europe", "D3.img"),

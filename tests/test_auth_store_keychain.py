@@ -5,35 +5,20 @@ Keychain write of it succeeds. Linux (and macOS when the Keychain cannot be reac
 the 0600 file, as it always did (test_auth.py).
 
 Every test here installs its own fake Keychain backend (openexpress.platform.keychain,
-FakeBackend below) and forces platform.is_mac() True, so that the macOS path runs and is
+fakes.FakeKeychain) and forces platform.is_mac() True, so that the macOS path runs and is
 checked whatever system this suite itself runs on; tests/conftest.py's `no_real_keychain`
 (autouse) means nothing in this file could reach the real Keychain even without that."""
 
 import json
 
 import pytest
+from fakes import FakeKeychain
 
 from openexpress import paths, settings
 from openexpress.auth import store
 from openexpress.auth.store import ConnectAuth
 from openexpress.platform import keychain
 from openexpress.settings import Consumer
-
-
-class FakeBackend(keychain.Backend):
-    """An in-memory stand-in for the real Keychain: {account: data}."""
-
-    def __init__(self):
-        self.items: dict[str, bytes] = {}
-
-    def get(self, account: str) -> bytes | None:
-        return self.items.get(account)
-
-    def set(self, account: str, data: bytes) -> None:
-        self.items[account] = data
-
-    def delete(self, account: str) -> bool:
-        return self.items.pop(account, None) is not None
 
 
 class _Unreachable(keychain.Backend):
@@ -60,10 +45,9 @@ def on_macos(monkeypatch):
 
 @pytest.fixture
 def fake_keychain():
-    fake = FakeBackend()
+    fake = FakeKeychain()
     keychain.use_backend(fake)
-    yield fake
-    keychain.use_backend(None)
+    return fake
 
 
 def login_file():

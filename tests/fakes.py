@@ -11,6 +11,8 @@ import types
 from collections import namedtuple
 from dataclasses import dataclass
 
+from openexpress.platform import keychain
+
 Call = namedtuple("Call", "title fn done failed device in_page button failed_title")
 
 
@@ -1274,3 +1276,19 @@ def satellite_server(monkeypatch, *answers) -> SatelliteServer:
     server = SatelliteServer(*answers)
     monkeypatch.setattr(useragent, "session", lambda *a, **kw: server)
     return server
+
+
+class FakeKeychain(keychain.Backend):
+    """An in-memory stand-in for the real Keychain: {account: data}, one SERVICE implied."""
+
+    def __init__(self):
+        self.items: dict[str, bytes] = {}
+
+    def get(self, account: str) -> bytes | None:
+        return self.items.get(account)
+
+    def set(self, account: str, data: bytes) -> None:
+        self.items[account] = data
+
+    def delete(self, account: str) -> bool:
+        return self.items.pop(account, None) is not None

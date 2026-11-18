@@ -8,7 +8,7 @@ from fakes import RunNow, step_words
 from fakes import window as stand_in
 
 from openexpress import ciq, music, proto
-from openexpress.device.storage import LocalStorage
+from openexpress.device.storage import DeviceError, LocalStorage
 from openexpress.device.xmldevice import parse
 
 IQ_XML_TYPES = """
@@ -151,6 +151,54 @@ def test_music_layout_and_playlist(iq_device, tmp_path):
     assert pl == "Music/Run_ mix.m3u8"
     assert (st.root / pl).read_text() == "Music/Artist A/Album B/01 Song.mp3\n"
     assert music.list_playlists(dev, st) == ["Music/Run_ mix.m3u8"]
+
+
+# --- a device with more than one storage (e.g. a Forerunner 645 Music) ----------------------
+# Full support is deferred (no such device to test): the listing stays empty, and a write
+# refuses rather than create the media folder on the wrong storage.
+
+def test_copy_refuses_the_wrong_storage_when_the_music_folder_is_missing(iq_device, tmp_path):
+    st, dev = iq_device
+    st.other_storages = ("Media",)
+    src = tmp_path / "song.mp3"
+    src.write_bytes(b"ID3" + b"\x00" * 50)
+    tracks = music.scan([src], dev)
+    plan = music.plan_copy(tracks, dev, st)
+    before = sorted(p.name for p in st.root.rglob("*"))
+    with pytest.raises(DeviceError, match=r"another storage \(Media\)"):
+        music.copy(plan, st)
+    assert sorted(p.name for p in st.root.rglob("*")) == before  # nothing created
+
+
+def test_write_playlist_refuses_the_wrong_storage_when_the_music_folder_is_missing(iq_device):
+    st, dev = iq_device
+    st.other_storages = ("Media",)
+    before = sorted(p.name for p in st.root.rglob("*"))
+    with pytest.raises(DeviceError, match=r"another storage \(Media\)"):
+        music.write_playlist(dev, st, "mix", ["Music/song.mp3"])
+    assert sorted(p.name for p in st.root.rglob("*")) == before
+
+
+def test_copy_is_not_refused_once_the_music_folder_already_exists(iq_device, tmp_path):
+    st, dev = iq_device
+    (st.root / "Music").mkdir()
+    st.other_storages = ("Media",)  # the device has another storage, but Music is here already
+    src = tmp_path / "song.mp3"
+    src.write_bytes(b"ID3" + b"\x00" * 50)
+    tracks = music.scan([src], dev)
+    plan = music.plan_copy(tracks, dev, st)
+    music.copy(plan, st)  # does not raise
+    assert music.plan_copy(tracks, dev, st).to_copy == []
+
+
+def test_list_device_notes_once_that_the_media_folder_may_be_on_another_storage(
+        iq_device, caplog):
+    st, dev = iq_device
+    st.other_storages = ("Media",)
+    with caplog.at_level("INFO", logger="openexpress"):
+        items = music.list_device(dev, st)
+    assert items == []  # the listing stays as is: empty, not an error
+    assert sum("may be on Media" in r.getMessage() for r in caplog.records) == 1
 
 
 # --- only the kinds of media that the device declares -----------------------------------------

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 15:29+0100\n"
+"POT-Creation-Date: 2026-11-18 16:00+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -11300,6 +11300,16 @@ msgstr ""
 #: openexpress/music.py
 #, python-brace-format
 msgid "This device does not accept audiobooks"
+msgstr ""
+
+#. TRANSLATORS: error: the device has more than one storage (e.g. a Forerunner 645
+#. Music's small Primary storage, beside its Media one) and openExpress cannot yet
+#. write music to the one that is not open; {names} is the other storage(s)' name(s)
+#: openexpress/music.py
+#, python-brace-format
+msgid ""
+"This device keeps its music on another storage ({names}), which openExpress "
+"cannot write to yet."
 msgstr ""
 
 #: openexpress/music.py

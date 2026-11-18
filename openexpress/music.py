@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from openexpress import applog
-from openexpress.device.storage import Storage
+from openexpress.device.storage import DeviceError, Storage
 from openexpress.device.xmldevice import GarminDevice
 from openexpress.errors import UserFacingError
 from openexpress.i18n import N_, _, human_size, ngettext
@@ -81,6 +81,20 @@ def media_dir(device: GarminDevice, kind: str) -> str:
             "audiobook": _("This device does not accept audiobooks"),
         }[kind])
     return files[0].path.strip("/")
+
+
+def _require_media_storage(storage: Storage, base: str) -> None:
+    """Refuse to make the media folder `base` (e.g. "Music") on `storage` when the device
+    keeps other storages too (Storage.other_storages) and it is not there yet: it may belong
+    on one of them instead, which openExpress cannot write to yet (full support needs a
+    device to test). A single-storage device (other_storages empty) is never refused here."""
+    if storage.other_storages and not storage.exists(base):
+        # TRANSLATORS: error: the device has more than one storage (e.g. a Forerunner 645
+        # Music's small Primary storage, beside its Media one) and openExpress cannot yet
+        # write music to the one that is not open; {names} is the other storage(s)' name(s)
+        raise DeviceError(_("This device keeps its music on another storage ({names}), "
+                            "which openExpress cannot write to yet.").format(
+            names=", ".join(storage.other_storages)))
 
 
 def supported_kinds(device: GarminDevice) -> list[str]:
@@ -192,10 +206,18 @@ class DeviceMedia:
 
 def list_device(device: GarminDevice, storage: Storage) -> list[DeviceMedia]:
     out = []
+    other_storage_noted = False
     for kind, dt in KINDS.items():
         files = device.targets(dt)
         if not files:
             continue
+        if (storage.other_storages and not other_storage_noted
+                and not storage.exists(files[0].path)):
+            # Not an error: the listing stays empty for a folder that may be on another
+            # storage (openexpress.music, full support deferred for lack of a device to test).
+            log.info("music: the device's media folder is not on this storage; it may be on "
+                     "%s", ", ".join(storage.other_storages))
+            other_storage_noted = True
         exts = supported_extensions(device, kind)
         for path, e in storage.walk_files(files[0].path):
             if path.rsplit(".", 1)[-1].lower() in exts:
@@ -218,6 +240,10 @@ class CopyPlan:
     already: list[tuple[Track, str]] = field(default_factory=list)
     # Of `to_copy`: the files that are on the device with another size, and that size.
     replaced: dict[str, int] = field(default_factory=dict)
+    # The top-level media folders (e.g. "Music") the files of `to_copy` go under, each once:
+    # what copy() makes sure of before writing (_require_media_storage), so as not to create
+    # one on the wrong storage of a device that has more than one.
+    media_bases: set[str] = field(default_factory=set)
 
     @property
     def size(self) -> int:
@@ -267,6 +293,7 @@ def plan_copy(tracks: list[Track], device: GarminDevice, storage: Storage) -> Co
             plan.already.append((t, dest))
             continue
         plan.to_copy.append((t, dest))
+        plan.media_bases.add(media_dir(device, t.kind))
         if on_device is not None:
             plan.replaced[dest] = on_device  # copying writes over it
     return plan
@@ -282,6 +309,8 @@ def copy(plan: CopyPlan, storage: Storage,
          progress: Callable[[str], None] | None = None) -> list[str]:
     """`progress`: how many files and bytes, never a file nor a track - the names are the
     user's own ("Copying music · 3 of 25 · 120 MB of 1.2 GB")."""
+    for base in plan.media_bases:
+        _require_media_storage(storage, base)
     storage.require_space(plan.size, SPACE_MARGIN, error=MusicError)
     written = []
     say = say_to(progress)
@@ -325,6 +354,7 @@ def _playlist_path(device: GarminDevice, name: str) -> str:
 def write_playlist(device: GarminDevice, storage: Storage, name: str,
                    device_paths: list[str]) -> str:
     path = _playlist_path(device, name)
+    _require_media_storage(storage, posixpath.dirname(path))
     body = "".join(p + "\n" for p in device_paths).encode("utf-8")
     return storage.write_checked(path, body)
 

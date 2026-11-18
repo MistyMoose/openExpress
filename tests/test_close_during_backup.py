@@ -125,7 +125,7 @@ def test_the_message_after_a_backup_says_how_much_and_not_where(device_root, bac
     win.backup_row = None
     MainWindow.backup(win)
     (made,) = (backups / str(device.unit_id)).iterdir()
-    files = [p for p in made.rglob("*") if p.is_file()]
+    files = [p for p in made.rglob("*") if p.is_file() and p.name != ".summary.json"]
     shown_unit_id = str(device.unit_id) in told[0]
     assert not shown_unit_id
     size = human_size(sum(p.stat().st_size for p in files))

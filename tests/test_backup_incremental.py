@@ -42,7 +42,9 @@ def ticking_clock(monkeypatch):
 
 
 def _names(folder) -> set[str]:
-    return {str(p.relative_to(folder)) for p in folder.rglob("*") if p.is_file()}
+    """The files of a backup, not its summary (backup.SUMMARY)."""
+    return {str(p.relative_to(folder)) for p in folder.rglob("*") if p.is_file()
+            and p != folder / backup.SUMMARY}
 
 
 def test_the_first_backup_of_a_device_copies_everything_and_links_nothing(device_root, tmp_path):
@@ -151,3 +153,34 @@ def test_linking_works_the_same_whatever_keep_is(device_root, tmp_path, keep):
     backup.run_backup(dev, st, tmp_path / "bk", keep=keep)
     second = backup.run_backup(dev, st, tmp_path / "bk", keep=keep)
     assert second.linked == DEVICE_FILES - 1
+
+
+def test_each_backup_says_how_many_files_it_has_and_their_size_in_its_summary(
+        device_root, tmp_path, monkeypatch):
+    st, dev = _device(device_root)
+    first = backup.run_backup(dev, st, tmp_path / "bk", keep=3)
+    second = backup.run_backup(dev, st, tmp_path / "bk", keep=3)
+    walked = [backup.backup_sizes([p])[0] for p in (second.path, first.path)]
+    assert walked == [(DEVICE_FILES, second.bytes), (DEVICE_FILES, first.bytes)]
+    looked = []
+    monkeypatch.setattr(backup.os, "scandir", lambda p: looked.append(p) or os.scandir(p))
+    assert backup.backup_sizes([second.path, first.path]) == walked
+    assert looked == []  # the summaries told it, no file was looked at
+
+
+def test_a_backup_without_a_summary_is_counted_each_file_shared_with_another_looked_at_once(
+        device_root, tmp_path):
+    st, dev = _device(device_root)
+    first = backup.run_backup(dev, st, tmp_path / "bk", keep=3)
+    second = backup.run_backup(dev, st, tmp_path / "bk", keep=3)
+    (first.path / backup.SUMMARY).unlink()  # as a backup of an earlier version
+    (second.path / backup.SUMMARY).write_text("damaged")
+    (second.path / "link").symlink_to(device_root / "notes.txt")  # never counted
+    sizes = backup.backup_sizes([second.path, first.path])
+    assert sizes == [(DEVICE_FILES, second.bytes), (DEVICE_FILES, first.bytes)]
+    counted: dict = {}
+    backup._count_files(second.path, counted)
+    looked = dict(counted)
+    backup._count_files(first.path, counted)
+    # The first backup adds only its own GarminDevice.xml: the others are the same inodes.
+    assert len(counted) == len(looked) + 1

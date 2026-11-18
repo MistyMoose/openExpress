@@ -1363,7 +1363,7 @@ class Engine:
     def backups_list(self, req: Request) -> dict:
         """The backups of a device (`device`: its unit ID, connected or not; else the only
         one connected) in the backup folder, the newest first."""
-        from openexpress.backup import backups_of
+        from openexpress.backup import backup_sizes, backups_of
 
         wanted = req.params.get("device")
         if wanted is None:
@@ -1372,17 +1372,11 @@ class Engine:
             unit_id = int(wanted)
         else:
             raise _invalid("device")
-        out = []
-        for when, folder in backups_of(self._backups(), unit_id):
-            files, size = 0, 0
-            for p in folder.rglob("*"):
-                with contextlib.suppress(OSError):
-                    if p.is_file() and not p.is_symlink():
-                        files += 1
-                        size += p.stat().st_size
-            out.append({"path": str(folder), "date": _iso(when.timestamp()), "files": files,
-                        "bytes": size})
-        return {"backups": out}
+        found = backups_of(self._backups(), unit_id)
+        sizes = backup_sizes([folder for _when, folder in found])
+        return {"backups": [{"path": str(folder), "date": _iso(when.timestamp()),
+                             "files": files, "bytes": size}
+                            for (when, folder), (files, size) in zip(found, sizes)]}
 
 
 # The version at the end of a map's name in its file's header ("TopoActive Europe, West

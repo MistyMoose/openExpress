@@ -6,10 +6,13 @@ skipped. The `keep` most recent backups are retained.
 
 A file with the same relative path, size and modification time as in the previous backup is
 hard-linked from it instead of read from the device again (copied where links cannot be made).
+Each backup keeps how many files it has and their size in a hidden file of its own (SUMMARY),
+so that a list of backups reads that, not every file.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import posixpath
@@ -34,6 +37,8 @@ SKIP_PREFIXES = ("MEDIA_", "IQ")
 SKIP_TYPES = {"ErrorShutdownReports", "ULFLogs", "ExpressRequest", "WiFiConfiguration"}
 STAMP = "%Y-%m-%d (%H.%M.%S)"
 PARTIAL_PREFIX = ".partial-"
+# In each backup's folder: {"files": …, "bytes": …}, what it holds besides this file.
+SUMMARY = ".summary.json"
 
 
 @dataclass
@@ -265,6 +270,7 @@ def run_backup(
     partial.mkdir()
     try:
         done = _copy_files(device, storage, partial, previous, progress)
+        _write_summary(partial, done)
         partial.rename(target)
     except BaseException:
         shutil.rmtree(partial, ignore_errors=True)
@@ -275,3 +281,73 @@ def run_backup(
              done.copied, applog.size(done.copied_bytes), done.linked,
              applog.size(done.linked_bytes), done.incomplete, len(done.removed))
     return done
+
+
+def _write_summary(folder: Path, done: BackupResult) -> None:
+    """SUMMARY written in the backup's folder; a failure only said in the log (a list of the
+    backups counts the files then)."""
+    try:
+        (folder / SUMMARY).write_text(json.dumps({"files": done.files, "bytes": done.bytes}))
+    except OSError as e:
+        log.info("backup: no summary written (%s)", type(e).__name__)
+
+
+def _read_summary(folder: Path) -> tuple[int, int] | None:
+    try:
+        told = json.loads((folder / SUMMARY).read_text())
+        files, size = told["files"], told["bytes"]
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    if not all(type(n) is int and n >= 0 for n in (files, size)):
+        return None
+    return files, size
+
+
+def backup_sizes(folders: list[Path]) -> list[tuple[int, int]]:
+    """(files, bytes) of each backup in `folders`: what its SUMMARY says, else its files
+    counted (regular files only, never a symbolic link; SUMMARY left out). A file hard-linked
+    from another backup is looked at once (the backups of a device share most of their
+    files): its size kept by its inode."""
+    sizes: dict[tuple[int, int], int] = {}
+    out = []
+    for folder in folders:
+        told = _read_summary(folder)
+        if told is None:
+            told = _count_files(folder, sizes)
+        out.append(told)
+    return out
+
+
+def _count_files(folder: Path, sizes: dict[tuple[int, int], int]) -> tuple[int, int]:
+    """(files, bytes) in `folder` and below; `sizes`: the size of each file looked at, by
+    (device, inode), for the next folders."""
+    try:
+        device = folder.stat().st_dev
+    except OSError:
+        return 0, 0
+    files = total = 0
+    todo = [folder]
+    while todo:
+        here = todo.pop()
+        try:
+            with os.scandir(here) as listing:
+                entries = list(listing)
+        except OSError:
+            continue
+        for entry in entries:
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    todo.append(Path(entry.path))
+                    continue
+                if not entry.is_file(follow_symlinks=False) or (
+                        here == folder and entry.name == SUMMARY):
+                    continue
+                size = sizes.get((device, entry.inode()))
+                if size is None:
+                    st = entry.stat(follow_symlinks=False)
+                    size = sizes[(st.st_dev, st.st_ino)] = st.st_size
+            except OSError:
+                continue
+            files += 1
+            total += size
+    return files, total

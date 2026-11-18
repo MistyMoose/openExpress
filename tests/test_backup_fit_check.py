@@ -81,7 +81,8 @@ def test_whole_files_are_all_backed_up(device_root, tmp_path):
     dev = parse(st.read("GARMIN/GarminDevice.xml"))
     res = backup.run_backup(dev, st, tmp_path / "bk", keep=1)
     assert res.incomplete == 0
-    assert res.files == len([p for p in res.path.rglob("*") if p.is_file()]) >= 4
+    assert res.files == len([p for p in res.path.rglob("*")
+                             if p.is_file() and p.name != backup.SUMMARY]) >= 4
 
 
 def test_the_words_of_the_summary():
@@ -152,7 +153,8 @@ def _stale(device_root, *paths, **how):
 
 
 def _kept(res):
-    return {p.name: p.read_bytes() for p in res.path.rglob("*") if p.is_file()}
+    return {p.name: p.read_bytes() for p in res.path.rglob("*")
+            if p.is_file() and p.name != backup.SUMMARY}
 
 
 def test_a_file_read_cut_short_is_read_again_after_a_refresh_and_backed_up_whole(

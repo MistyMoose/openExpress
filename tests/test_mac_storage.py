@@ -554,7 +554,7 @@ def test_the_name_of_a_holder_is_asked_of_ps_once_a_process(monkeypatch):
 
 
 def test_a_device_held_for_the_engine_stays_open_and_is_listed_anew_at_each_request(
-        usb, monkeypatch):
+        usb, monkeypatch, caplog):
     (device,) = mac_storage.find_devices()
     first = mac_storage.hold(device)
     assert usb.opened == [(8, 37)]
@@ -566,8 +566,11 @@ def test_a_device_held_for_the_engine_stays_open_and_is_listed_anew_at_each_requ
     assert mac_storage.hold(device) is first
     assert first._folders == {}  # the device may have written files since
     assert usb.opened == [(8, 37)]
-    # What the request opens by its address is that one, without a look at USB.
-    assert mac_storage.open_device_storage(URI) is first and looks == []
+    # What the request opens by its address is that one, without a look at USB, and the log
+    # does not say it was opened again.
+    with caplog.at_level("INFO", logger="openexpress"):
+        assert mac_storage.open_device_storage(URI) is first and looks == []
+    assert not any("opened over" in r.getMessage() for r in caplog.records)
     mac_storage.close_found(device)
     assert first.closed
     monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: list(usb.devices))

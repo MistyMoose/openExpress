@@ -607,7 +607,12 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
     (found.wait_for_device): raises DeviceError (NotThereYet, SeveralDevices,
     MassStorageNotice, UnsupportedDevice, NoDevice, DeviceInUse) when there is none to open.
     With `wait`, a Garmin device on USB that does not offer MTP yet (its Garmin USB mode) is
-    waited for up to WAIT_FOR_DEVICE_S, and `notify` is called once with a line saying so."""
+    waited for up to WAIT_FOR_DEVICE_S, and `notify` is called once with a line saying so. A
+    device open in this process already (the engine keeps it between requests) is used as it
+    is: nothing to wait for, and no line saying it was opened."""
+    kept = _kept_open(place_of(uri)) if uri is not None else None
+    if kept is not None:
+        return kept
     return wait_for_device(
         lambda: _open_device_storage(uri), usb_state=usb_state, products=garmin_products_on_usb,
         not_ready_text=not_ready_text, starting_text=garmin_mode_text, log=log, over="USB",
@@ -615,9 +620,6 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
 
 
 def _open_device_storage(uri: str | None) -> MacStorage:
-    kept = _kept_open(place_of(uri)) if uri is not None else None
-    if kept is not None:
-        return kept  # open in this process (the engine keeps it between requests)
     found = find_devices()
     if uri is None:
         return open_found(one_device(found))

@@ -112,21 +112,19 @@ class _SecurityBackend(Backend):
             None, keys, values, len(pairs),
             ctypes.byref(self._dict_key_cb), ctypes.byref(self._dict_value_cb))
 
-    def _query(self, account: str) -> ctypes.c_void_p:
+    def _query(self, account: str, *extra: tuple[ctypes.c_void_p, ctypes.c_void_p]
+               ) -> ctypes.c_void_p:
+        """The item `account` of SERVICE, with the `extra` (key, value) pairs."""
         return self._cfdict([
             (self._k_class, self._k_class_generic),
             (self._k_service, self._cfstr(SERVICE)),
             (self._k_account, self._cfstr(account)),
+            *extra,
         ])
 
     def get(self, account: str) -> bytes | None:
-        query = self._cfdict([
-            (self._k_class, self._k_class_generic),
-            (self._k_service, self._cfstr(SERVICE)),
-            (self._k_account, self._cfstr(account)),
-            (self._k_return_data, self._k_true),
-            (self._k_match_limit, self._k_match_limit_one),
-        ])
+        query = self._query(account, (self._k_return_data, self._k_true),
+                            (self._k_match_limit, self._k_match_limit_one))
         result = ctypes.c_void_p()
         status = self._sec.SecItemCopyMatching(query, ctypes.byref(result))
         self._cf.CFRelease(query)
@@ -144,12 +142,7 @@ class _SecurityBackend(Backend):
     def set(self, account: str, data: bytes) -> None:
         value = self._cf.CFDataCreate(None, data, len(data))
         try:
-            add = self._cfdict([
-                (self._k_class, self._k_class_generic),
-                (self._k_service, self._cfstr(SERVICE)),
-                (self._k_account, self._cfstr(account)),
-                (self._k_value_data, value),
-            ])
+            add = self._query(account, (self._k_value_data, value))
             status = self._sec.SecItemAdd(add, None)
             self._cf.CFRelease(add)
             if status == _ERR_DUPLICATE_ITEM:

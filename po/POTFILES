@@ -56,7 +56,6 @@ openexpress/maps.py
 openexpress/music.py
 openexpress/netstatus.py
 openexpress/ownmaps.py
-openexpress/platform/mac_usb.py
 openexpress/progress.py
 openexpress/proto.py
 openexpress/service.py

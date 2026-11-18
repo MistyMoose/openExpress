@@ -40,10 +40,10 @@ from openexpress.device.found import (
     PRESENT,
     STARTING,
     STARTING_PRODUCT,
+    DeviceInUse,
     GarminUsb,
     classify,
 )
-from openexpress.i18n import _
 
 log = logging.getLogger(__name__)
 
@@ -298,26 +298,6 @@ def _say_once(key: str, *message) -> None:
 
 
 # --- the device to ourselves ----------------------------------------------------------------
-
-class DeviceInUse(ptp.UsbUnavailable):
-    """Another program holds the device for itself: it is not taken from it. The text names
-    the program and says what to do."""
-
-    def __init__(self, holder: Holder):
-        self.holder = holder
-        if holder.camera_daemon:
-            # TRANSLATORS: macOS: its camera service holds the device; "ptpcamerad" is the
-            # name of a program, not to be translated
-            text = _("macOS's camera service (ptpcamerad) is using the device, for Image "
-                     "Capture or Photos. Quit them, then unplug the device and plug it in "
-                     "again.")
-        else:
-            # TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
-            # device, so openExpress cannot open it
-            text = _("{program} is using the device. Quit it, then try again.").format(
-                program=holder.name)
-        super().__init__(text)
-
 
 def check_free(bus: int, address: int) -> None:
     """DeviceInUse when another program than this one and the camera service holds the device

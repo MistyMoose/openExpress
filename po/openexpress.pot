@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 11:48+0100\n"
+"POT-Creation-Date: 2026-11-18 11:49+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5193,6 +5193,22 @@ msgstr ""
 msgid "Garmin;Fenix;Connect;sync;"
 msgstr ""
 
+#. TRANSLATORS: macOS: its camera service holds the device; "ptpcamerad" is the
+#. name of a program, not to be translated
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
+"macOS's camera service (ptpcamerad) is using the device, for Image Capture "
+"or Photos. Quit them, then unplug the device and plug it in again."
+msgstr ""
+
+#. TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
+#. device, so openExpress cannot open it
+#: openexpress/device/found.py openexpress/engine.py
+#, python-brace-format
+msgid "{program} is using the device. Quit it, then try again."
+msgstr ""
+
 #: openexpress/device/found.py
 #, python-brace-format
 msgid ""
@@ -5787,13 +5803,6 @@ msgstr ""
 #: openexpress/engine.py
 #, python-brace-format
 msgid "No connected device has the unit ID {device}."
-msgstr ""
-
-#. TRANSLATORS: macOS: another program (e.g. "Garmin Express Service") holds the
-#. device, so openExpress cannot open it
-#: openexpress/engine.py openexpress/platform/mac_usb.py
-#, python-brace-format
-msgid "{program} is using the device. Quit it, then try again."
 msgstr ""
 
 #: openexpress/engine.py
@@ -11597,15 +11606,6 @@ msgstr ""
 #: openexpress/ownmaps.py
 #, python-brace-format
 msgid "{path} is still on the device; nothing was taken off the list."
-msgstr ""
-
-#. TRANSLATORS: macOS: its camera service holds the device; "ptpcamerad" is the
-#. name of a program, not to be translated
-#: openexpress/platform/mac_usb.py
-#, python-brace-format
-msgid ""
-"macOS's camera service (ptpcamerad) is using the device, for Image Capture "
-"or Photos. Quit them, then unplug the device and plug it in again."
 msgstr ""
 
 #. TRANSLATORS: how far a step of a long task is: "3 of 8", "412.0 MB of 1.5 GB"

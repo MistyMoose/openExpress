@@ -41,6 +41,7 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     UNSUPPORTED,
     USB_GAP_S,
     WAIT_FOR_DEVICE_S,
+    DeviceInUse,
     DeviceSummary,
     DriveNotMounted,
     FoundDevice,
@@ -566,7 +567,7 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
                         sleep=time.sleep, clock=time.monotonic) -> MacStorage:
     """The storage of the device that has GARMIN/GarminDevice.xml, as gio_storage opens one:
     raises DeviceError (NotThereYet, SeveralDevices, MassStorageNotice, UnsupportedDevice,
-    NoDevice, mac_usb.DeviceInUse) when there is none to open. With `wait`, a Garmin device
+    NoDevice, DeviceInUse) when there is none to open. With `wait`, a Garmin device
     on USB that does not offer MTP yet (its Garmin USB mode) is waited for up to
     WAIT_FOR_DEVICE_S, and `notify` is called once with a line saying so."""
     started = clock()
@@ -580,7 +581,7 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
             log.info("device: opened over USB after %.1f s (USB %s)", clock() - started,
                      st.usb_id or "?")
             return st
-        except (SeveralDevices, DeviceNotResponding, mac_usb.DeviceInUse):
+        except (SeveralDevices, DeviceNotResponding, DeviceInUse):
             raise  # nothing that waiting would change
         except DeviceError as e:
             state = usb_state()
@@ -653,7 +654,7 @@ def open_found(found: FoundDevice) -> MacStorage:
         return open_storage
     try:
         transport = mac_usb.open_transport(*place)
-    except mac_usb.DeviceInUse:
+    except DeviceInUse:
         raise
     except ptp.PtpError as e:
         # TRANSLATORS: error: the USB device could not be opened ({error}: why)

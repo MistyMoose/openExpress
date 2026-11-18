@@ -391,9 +391,7 @@ def error_of(e: BaseException) -> EngineError:
         return e
     if isinstance(e, Cancelled):
         return EngineError("cancelled", _("The request was cancelled."))
-    from openexpress.platform import mac_usb
-
-    if isinstance(e, mac_usb.DeviceInUse):
+    if isinstance(e, found.DeviceInUse):
         return EngineError("device_busy", str(e), {"program": e.holder.name})
     table = (
         (found.SeveralDevices, "several_devices"),

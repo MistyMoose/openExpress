@@ -7,15 +7,15 @@ body:
     attributes:
       value: |
         **Privacy:** never paste `openexpress info` output, `GarminDevice.xml`, files from
-        `~/.config/openexpress` or your e-mail address – use the device report instead.
+        `~/Library/Application Support/openexpress` or your e-mail address – use the device report
+        instead. On Linux, report to [openExpress](https://github.com/TomaszBojanowski/openExpress/issues).
   - type: textarea
     id: report
     attributes:
       label: Device report
       description: |
-        In the window: main menu (☰) → **Report a Device or Problem…** → **Copy**.
-        Or in a terminal: `openexpress report`
-        (Flatpak: `flatpak run io.github.tomaszbojanowski.OpenExpress report`).
+        In a terminal:
+        `"/Applications/openExpress for Mac.app/Contents/Resources/engine/bin/openexpress" report`
         No device detected? The report still works: it says what is connected over USB.
       render: markdown
     validations:

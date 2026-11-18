@@ -18,7 +18,9 @@ from openexpress.device.storage import Storage
 from openexpress.device.xmldevice import GarminDevice
 from openexpress.i18n import human_size
 
-ISSUE_FORM = "https://github.com/TomaszBojanowski/openExpress/issues/new"
+# openExpress for Mac's reports go to its own repository: openExpress is Linux's.
+ISSUE_FORM = ("https://github.com/bruring/openExpress-mac/issues/new" if sys.platform == "darwin"
+              else "https://github.com/TomaszBojanowski/openExpress/issues/new")
 ISSUE_TEMPLATE = "device_report.yml"
 ISSUE_URL = f"{ISSUE_FORM}?template={ISSUE_TEMPLATE}"
 # Longer addresses are refused by web servers (GitHub answers 414 somewhere above 8 kB).

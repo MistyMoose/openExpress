@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: openExpress on Linux
+    url: https://github.com/TomaszBojanowski/openExpress/issues
+    about: openExpress for Mac is built on openExpress; problems on Linux go there.
   - name: Garmin account or watch problems not related to openExpress
     url: https://support.garmin.com/
     about: openExpress is an unofficial app; Garmin support can't help with it, but it can help with your watch or account.

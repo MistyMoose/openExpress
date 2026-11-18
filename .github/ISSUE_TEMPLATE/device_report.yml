@@ -6,12 +6,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing openExpress! Reports for devices that are not yet in the
-        [list of supported devices](https://github.com/TomaszBojanowski/openExpress/blob/main/docs/devices.md)
+        Thanks for testing openExpress for Mac! Reports for devices that are not yet in the
+        [list of supported devices](https://github.com/bruring/openExpress-mac/blob/main/docs/devices.md)
         are the most valuable help right now – **also when everything works**.
+        On Linux, report to [openExpress](https://github.com/TomaszBojanowski/openExpress/issues) instead.
 
         **Privacy:** don't paste `openexpress info` output, your `GarminDevice.xml` or files
-        from `~/.config/openexpress` – they contain your device's serial number, unit ID,
+        from `~/Library/Application Support/openexpress` – they contain your device's serial number, unit ID,
         map unlock codes or login token. The report below contains none of these, and the
         log is already filtered.
   - type: textarea
@@ -19,9 +20,8 @@ body:
     attributes:
       label: Device report
       description: |
-        In the window: main menu (☰) → **Report a Device or Problem…** → **Copy**.
-        Or in a terminal: `openexpress report`
-        (Flatpak: `flatpak run io.github.tomaszbojanowski.OpenExpress report`).
+        In a terminal, with the device connected:
+        `"/Applications/openExpress for Mac.app/Contents/Resources/engine/bin/openexpress" report`
       render: markdown
     validations:
       required: true

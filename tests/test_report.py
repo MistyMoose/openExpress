@@ -1,3 +1,4 @@
+import sys
 
 import pytest
 from fakes import device_session, window_methods
@@ -114,8 +115,10 @@ def test_issue_address_fills_in_the_title_and_the_report():
     assert report.issue_url("x", None).endswith("&report=x")
     assert _query(report.issue_url("x", None))["title"] == ["[Device] unknown"]
     # The address of the empty form: the issue form with its template alone.
-    assert report.ISSUE_URL == ("https://github.com/TomaszBojanowski/openExpress/issues/new"
-                                "?template=device_report.yml")
+    repository = ("bruring/openExpress-mac" if sys.platform == "darwin"
+                  else "TomaszBojanowski/openExpress")
+    expected = f"https://github.com/{repository}/issues/new?template=device_report.yml"
+    assert expected == report.ISSUE_URL
 
 
 def test_issue_address_has_a_length_limit():

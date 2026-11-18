@@ -1969,7 +1969,7 @@ def test_the_row_and_the_page_tell_the_same_summary_when_the_free_space_was_not_
                        client=None)
     made = read_page(s)
     page_title = words.status_summary(made.crashes, made.errors_known, made.free,
-                                      made.capacity, datetime.now())[1]
+                                      made.capacity, clock.current)[1]
     row = row_subtitle_for(s)
     # The same summary: the page's title, the row's sentence.
     assert (page_title, row) == ("Little Free Space", "Little free space"), (page_title, row)
@@ -2001,7 +2001,7 @@ def test_after_a_failed_reading_the_row_tells_what_the_page_tells(tmp_path, cloc
                        client=None)
     made = status.read(s)
     summary = words.status_summary(made.crashes, made.errors_known, made.free,
-                                   made.capacity, datetime.now())
+                                   made.capacity, clock.current)
     row = row_subtitle_for(s)
     assert summary.title == "1 Crash in the Last 30 Days"
     assert row == summary.row == "1 crash in the last 30 days", f"row says {row!r}"

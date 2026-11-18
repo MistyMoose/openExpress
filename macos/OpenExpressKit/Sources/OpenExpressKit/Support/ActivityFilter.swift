@@ -232,7 +232,8 @@ public struct ActivityTotals: Equatable, Sendable {
                 .formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
         }
         if ascent > 0 {
-            parts.append(String(localized: "\(Measurement(value: ascent, unit: UnitLength.meters).formatted(.measurement(width: .abbreviated, usage: .asProvided))) ascent"))
+            // As the Ascent column says it (Format.elevation): feet where roads are in miles.
+            parts.append(String(localized: "\(Format.elevation(ascent)) ascent"))
         }
         return parts.joined(separator: " · ")
     }

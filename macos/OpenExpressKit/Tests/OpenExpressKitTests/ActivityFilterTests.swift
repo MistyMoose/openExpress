@@ -127,6 +127,8 @@ struct ActivityFilterTests {
         #expect(t.duration == (28 + 55 + 90 + 180 + 45) * 60)
         #expect(t.ascent == 120)
         #expect(t.summary(of: 6).hasPrefix("6 activities · "))
+        // The ascent in the units of the Ascent column (feet where roads are in miles).
+        #expect(t.summary(of: 6).hasSuffix("· \(Format.elevation(120)) ascent"))
         #expect(ActivityTotals(Array(Self.list.prefix(2))).summary(of: 6).hasPrefix("2 of 6 activities · "))
         #expect(ActivityTotals([]).summary(of: 6) == "0 of 6 activities")
     }

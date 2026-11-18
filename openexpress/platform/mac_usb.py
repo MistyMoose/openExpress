@@ -310,6 +310,25 @@ def _registered(found: list[UsbDevice], reuse: bool) -> dict:
     return registered
 
 
+_context_lock = threading.Lock()
+_context: ctypes.c_void_p | None = None
+
+
+def _context_of_the_process(lib) -> ctypes.c_void_p | None:
+    """One libusb context for the life of the process, never exited: on macOS libusb stops its
+    thread of USB events in the libusb_exit of its last context, and a device coming or going
+    at that moment deadlocks both (seen with an Edge 1040 plugged in again while the engine
+    looked at USB). With this one kept, the context of a transport is never the last."""
+    global _context
+    with _context_lock:
+        if _context is None:
+            context = ctypes.c_void_p()
+            if lib.libusb_init(ctypes.byref(context)) < 0:
+                return None
+            _context = context
+        return _context
+
+
 def garmin_devices(reuse: bool = False) -> list[UsbDevice]:
     """Every Garmin device on USB (vendor 091e), whatever mode it is in, in the order libusb
     lists them, with what the IORegistry tells of each (its name, serial and holder). Nothing
@@ -321,31 +340,28 @@ def garmin_devices(reuse: bool = False) -> list[UsbDevice]:
     except ptp.UsbUnavailable as e:
         _say_once("libusb", "USB: no libusb, no device can be found: %s", e)
         return []
-    context = ctypes.c_void_p()
-    if lib.libusb_init(ctypes.byref(context)) < 0:
+    context = _context_of_the_process(lib)
+    if context is None:
         return []
     found = []
+    devices = ctypes.POINTER(ctypes.c_void_p)()
+    count = lib.libusb_get_device_list(context, ctypes.byref(devices))
+    if count < 0:
+        return []
     try:
-        devices = ctypes.POINTER(ctypes.c_void_p)()
-        count = lib.libusb_get_device_list(context, ctypes.byref(devices))
-        if count < 0:
-            return []
-        try:
-            for i in range(count):
-                device = ctypes.c_void_p(devices[i])
-                descriptor = _DeviceDescriptor()
-                if lib.libusb_get_device_descriptor(device, ctypes.byref(descriptor)) < 0:
-                    continue
-                if descriptor.idVendor != GARMIN_VENDOR:
-                    continue
-                classes, transfer = _interfaces(lib, device)
-                found.append(UsbDevice(lib.libusb_get_bus_number(device),
-                                       lib.libusb_get_device_address(device),
-                                       f"{descriptor.idProduct:04x}", classes, transfer))
-        finally:
-            lib.libusb_free_device_list(devices, 1)
+        for i in range(count):
+            device = ctypes.c_void_p(devices[i])
+            descriptor = _DeviceDescriptor()
+            if lib.libusb_get_device_descriptor(device, ctypes.byref(descriptor)) < 0:
+                continue
+            if descriptor.idVendor != GARMIN_VENDOR:
+                continue
+            classes, transfer = _interfaces(lib, device)
+            found.append(UsbDevice(lib.libusb_get_bus_number(device),
+                                   lib.libusb_get_device_address(device),
+                                   f"{descriptor.idProduct:04x}", classes, transfer))
     finally:
-        lib.libusb_exit(context)
+        lib.libusb_free_device_list(devices, 1)
     if not found:
         return []
     registered = _registered(found, reuse)

@@ -20,6 +20,7 @@ from openexpress.platform import mac_usb
 # The functions conftest replaces in every test (no_usb_on_macos), as they are, for the tests of
 # their own.
 REGISTERED_DEVICES = mac_usb.registered_devices
+GARMIN_DEVICES = mac_usb.garmin_devices  # the real one; conftest stubs it for every test
 DAEMON_STOPPED = mac_usb.daemon_stopped
 
 XML = (b'<Device xmlns="http://www.garmin.com/xmlschemas/GarminDevice/v2">'
@@ -668,6 +669,30 @@ def test_a_garmin_device_on_usb_hides_its_serial_in_the_log(monkeypatch):
 ])
 def test_the_mode_of_a_device_by_its_product_and_its_interfaces(product, classes, mode):
     assert _usb(product, classes=classes).mode == mode
+
+
+def test_the_looks_at_usb_share_one_libusb_context_that_is_never_exited(monkeypatch):
+    """On macOS the libusb_exit of the last context stops libusb's thread of USB events, and
+    deadlocks when a device comes or goes then: the looks keep one context for good."""
+    calls = []
+
+    class Lib:
+        def libusb_init(self, ref):
+            calls.append("init")
+            return 0
+
+        def libusb_get_device_list(self, context, ref):
+            calls.append("list")
+            return 0
+
+        def __getattr__(self, name):
+            return lambda *args: calls.append(name) or 0
+
+    monkeypatch.setattr(mac_usb, "_libusb", Lib)
+    monkeypatch.setattr(mac_usb, "_context", None)
+    assert GARMIN_DEVICES() == [] and GARMIN_DEVICES() == []
+    assert calls.count("init") == 1 and "libusb_exit" not in calls
+    assert calls.count("list") == 2
 
 
 class ClaimingLibusb:

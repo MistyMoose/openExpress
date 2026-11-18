@@ -53,7 +53,7 @@ public actor MockEngine: EngineConnection {
         account = switch scenario {
         case .firstRun: AccountStatus(signedIn: false, account: nil, setupDone: false)
         case .signedOut: AccountStatus(signedIn: false, account: nil, setupDone: true)
-        default: AccountStatus(signedIn: true, account: "j***@b***.net", setupDone: true)
+        default: AccountStatus(signedIn: true, account: "d***@e***.com", setupDone: true)
         }
         let fenix = Device(
             unitID: Self.fenixID, name: "fēnix 8 – 47 mm, AMOLED", partNumber: "006-B4536-00",
@@ -182,7 +182,7 @@ public actor MockEngine: EngineConnection {
                 throw EngineError.remote(code: "invalid_ticket", message: "That address has no sign-in ticket.", data: nil)
             }
             account.signedIn = true
-            account.account = "j***@b***.net"
+            account.account = "d***@e***.com"
             return ["account": .string(account.account!)]
         case "account.sign_out":
             let was = account.signedIn

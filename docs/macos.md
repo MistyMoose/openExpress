@@ -28,7 +28,7 @@ Garmin Express while you use it: whichever version, it holds the device.
 | Installing and removing maps, sync | tested from the command line on a fēnix 8; from the Mac app, not yet |
 | Devices connected as a USB drive (mass storage) | found, backed up, synced and ejected like on Linux; tested with made-up drives and a disk image, not yet with a real Garmin drive |
 | Mac app | runs against the engine; under development |
-| Installer (.pkg, no Homebrew needed) | builds and passes its checks; ad-hoc signed until there is a Developer ID |
+| Installer (.pkg, no Homebrew needed) | released: signed with a Developer ID and notarized (0.11.0-mac.1) |
 
 Devices tested on the Mac: fēnix 8 47 mm AMOLED. The upstream project lists the devices it was
 tested with in [devices.md](devices.md).
@@ -90,10 +90,10 @@ engine="/Applications/openExpress for Mac.app/Contents/Resources/engine/bin/open
 "$engine" login --manual
 ```
 
-Until the package is signed with a Developer ID and notarized, macOS refuses to open a
-downloaded copy ("cannot verify that it is free of malware"): Control-click it > Open, or
-System Settings > Privacy & Security > Open Anyway. A package built on the same Mac opens as
-it is.
+The released package is signed with a Developer ID and notarized, so it opens as it is. A
+package you build yourself without a Developer ID is signed ad hoc: a downloaded copy of it
+macOS refuses to open ("cannot verify that it is free of malware"): Control-click it > Open,
+or System Settings > Privacy & Security > Open Anyway. On the Mac that built it, it opens.
 
 **Keychain:** the sign-in and the app key are Keychain items that only the program which saved
 them may read without asking. The first time the app's engine reads items an earlier engine
@@ -195,6 +195,7 @@ a Developer ID (a paid Apple Developer Program membership):
 xcrun notarytool store-credentials openexpress-notary \
     --apple-id you@example.com --team-id TEAMID --password <app-specific password>
 
+RELEASE=mac.1 \
 DEVELOPER_ID_APP="Developer ID Application: Your Name (TEAMID)" \
 DEVELOPER_ID_INSTALLER="Developer ID Installer: Your Name (TEAMID)" \
 NOTARY_PROFILE=openexpress-notary \

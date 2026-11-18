@@ -350,6 +350,36 @@ def test_a_request_that_finds_the_device_held_has_the_next_look_ask_who_holds_it
     assert devices.looks_again == 1
 
 
+def test_a_device_that_does_not_answer_holds_up_no_other(device_root, tmp_path):
+    """Probed side by side: the one that answers is attached and told while the other is
+    still being waited for (a fēnix 8 stuck after its USB connection reset)."""
+    import shutil
+
+    other = tmp_path / "other"
+    shutil.copytree(device_root, other)
+    slow_key = "mtp://[usb:001,010]/"
+    devices = FakeDevices(**{slow_key: other, KEY: device_root})  # the one that waits first
+    answer = threading.Event()
+    probe = devices.probe
+
+    def slow_probe(found):
+        if found.uri == slow_key:
+            assert answer.wait(10)
+        return probe(found)
+
+    devices.probe = slow_probe
+    running = Running(devices)
+    try:
+        request = running.send("devices.list")
+        _wait_until(lambda: len(running.events("device.attached")) == 1)
+        answer.set()
+        assert len(running.response(request)["result"]["devices"]) == 2
+        assert len(running.events("device.attached")) == 2
+    finally:
+        answer.set()
+        running.stop()
+
+
 def test_a_unit_id_not_connected_is_a_no_device_error(running):
     error = running.ask("device.info", {"device": "42"})["error"]
     assert error["code"] == "no_device" and error["data"] == {"device": "42"}

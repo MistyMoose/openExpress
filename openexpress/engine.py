@@ -702,6 +702,7 @@ class Engine:
                 log.info("engine: another openexpress process waits for a device; let go")
                 for key in list(self._open):
                     self._let_go_now(key)
+            to_probe: list[Attached] = []
             for key, s in seen.items():
                 before = self._attached.get(key)
                 if s.holder is not None:
@@ -726,11 +727,31 @@ class Engine:
                         "device": str(a.unit_id) if a.unit_id else None,
                         "program": s.holder, "name": a.description or a.usb_name})
                     continue
-                self._probe(a)
-                self._attached[key] = a
-                self.event("device.attached", self.device_json(a))
+                to_probe.append(a)
+            self._probe_each(to_probe)
             self._scanned = True
             return list(self._attached.values())
+
+    def _probe_each(self, devices: list[Attached]) -> None:
+        """The devices that came, probed side by side, each attached and told as soon as its
+        own probe is over: a device that does not answer (one stuck after its USB connection
+        reset, until its transaction is cancelled) never holds up the others."""
+        lock = threading.Lock()
+
+        def probe(a: Attached) -> None:
+            self._probe(a)
+            with lock:
+                self._attached[a.key] = a
+                self.event("device.attached", self.device_json(a))
+
+        threads = [threading.Thread(target=probe, args=(a,), name=f"probe {a.key}", daemon=True)
+                   for a in devices[1:]]
+        for thread in threads:
+            thread.start()
+        if devices:
+            probe(devices[0])  # the first in this thread: one device needs no other
+        for thread in threads:
+            thread.join()
 
     def _probe(self, a: Attached) -> None:
         """What its GarminDevice.xml says, in the device's turn (no request is on it); the

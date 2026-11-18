@@ -145,11 +145,29 @@ class Storage(ABC):
         usb = self.usb
         return usb.usb_id if usb is not None else None
 
+    # The first stall of this storage (DeviceNotResponding): every later operation of it fails
+    # at once with it (_responding), as the device is not asked again until it is unplugged; a
+    # device plugged in again is a new storage.
+    _stalled: DeviceNotResponding | None = None
+
     @property
     def stalled(self) -> bool:
         """Whether the device stopped responding to this storage (over MTP: a step with no
         answer within its time limit); then every operation of it fails at once."""
-        return False
+        return self._stalled is not None
+
+    def _responding(self) -> None:
+        """DeviceNotResponding again, with the same words, once the storage has stalled."""
+        if self._stalled is not None:
+            again = DeviceNotResponding(str(self._stalled))
+            again.usb = self._stalled.usb
+            raise again
+
+    def _stalled_during(self, what: str) -> DeviceNotResponding:
+        """The device stopped responding during `what`: the error, kept by the storage."""
+        self._stalled = DeviceNotResponding.during(what)
+        self._stalled.usb = self.usb
+        return self._stalled
 
     def exclusive_ptp(self):
         """A context manager that gives a PTP session (`openexpress.device.ptp.Session`)

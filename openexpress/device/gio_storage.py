@@ -318,11 +318,8 @@ class _Attempt:
 
 
 class GioStorage(Storage):
-    # The first stall of this storage (DeviceNotResponding): every later operation of it fails
-    # at once with it, as gvfs stays blocked on the device until it is unplugged; a device
-    # plugged in again is a new storage.
-    _stalled: DeviceNotResponding | None = None
-    # For the log of a stall: when this process made the storage, and the last answer of the
+    # A stall (Storage._stalled) is kept as gvfs stays blocked on the device until it is
+    # unplugged. For the log of a stall: when this process made the storage, and the last answer of the
     # device to it (time.monotonic).
     _opened: float | None = None
     _answered: float | None = None
@@ -340,17 +337,6 @@ class GioStorage(Storage):
     def _f(self, real: str) -> Gio.File:
         return self.root.resolve_relative_path(real) if real else self.root
 
-    @property
-    def stalled(self) -> bool:
-        return self._stalled is not None
-
-    def _responding(self) -> None:
-        """DeviceNotResponding again, with the same words, once the storage has stalled."""
-        if self._stalled is not None:
-            again = DeviceNotResponding(str(self._stalled))
-            again.usb = self._stalled.usb
-            raise again
-
     def _step(self, start, what: str, name: str, context=None) -> None:
         """One step of a read from the device, waited for (_wait) at most STALL_S: with no
         answer by then the device stopped responding (DeviceNotResponding, whatever its answer
@@ -360,11 +346,10 @@ class GioStorage(Storage):
         try:
             _wait(start, STALL_S, what, name, context=context, quiet=True)
         except GioTimedOut as e:
-            self._stalled = DeviceNotResponding.during(what)
-            self._stalled.usb = self.usb
+            stalled = self._stalled_during(what)
             note_stalled(self.usb)
             self._log_stall(name, started)
-            raise self._stalled from e
+            raise stalled from e
         except Exception:
             self._answered_now(name, started)  # a refusal is an answer too
             raise

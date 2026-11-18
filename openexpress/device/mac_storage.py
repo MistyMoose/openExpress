@@ -100,26 +100,17 @@ class MacStorage(Storage):
         # Each write that failed after the device made its object: the handle it left behind,
         # by the real path (_discard_partial).
         self._partial: dict[str, int] = {}
-        self._stalled: DeviceNotResponding | None = None
         self._closed = False
 
     # --- the session --------------------------------------------------------------------
-
-    @property
-    def stalled(self) -> bool:
-        return self._stalled is not None
 
     @property
     def closed(self) -> bool:
         return self._closed
 
     def _responding(self) -> None:
-        """DeviceNotResponding again, with the same words, once the storage has stalled;
-        DeviceError once it is closed."""
-        if self._stalled is not None:
-            again = DeviceNotResponding(str(self._stalled))
-            again.usb = self._stalled.usb
-            raise again
+        """As Storage._responding; DeviceError once it is closed."""
+        super()._responding()
         if self._closed:
             raise DeviceError(_("The connection to the device is closed."))
 
@@ -138,13 +129,12 @@ class MacStorage(Storage):
                 raise DeviceError(f"{what}: {e}") from e
 
     def _stall(self, what: str, error: Exception) -> DeviceNotResponding:
-        self._stalled = DeviceNotResponding.during(what)
-        self._stalled.usb = self.usb
+        stalled = self._stalled_during(what)
         note_stalled(self.usb)
         log.warning("device: the PTP session broke off (%s: %s); the device is let go",
                     type(error).__name__, error)
         self._release()
-        return self._stalled
+        return stalled
 
     def close(self) -> None:
         """The session closed and the device let go (the camera service goes on); nothing can
@@ -415,7 +405,7 @@ class MacStorage(Storage):
                 yield self._session
             finally:
                 self._folders.clear()
-                if self._session.broken and self._stalled is None:
+                if self._session.broken and not self.stalled:
                     self._stall(_("Cannot read the device"), ptp.PtpError("out of step"))
 
 

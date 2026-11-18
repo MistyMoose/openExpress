@@ -73,8 +73,10 @@ def potfiles() -> list[str]:
 def _tool(name: str) -> str:
     found = shutil.which(name)
     if found is None:
+        # TRANSLATORS: without the tool no translation is built, so openExpress shows its texts as
+        # they are written in the code
         raise CatalogError(_("GNU gettext's {tool} is needed to build the translations (the "
-                             "gettext package); without it openExpress stays in English.")
+                             "gettext package); without it openExpress is not translated.")
                            .format(tool=name))
     return found
 

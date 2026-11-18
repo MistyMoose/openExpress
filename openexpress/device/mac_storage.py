@@ -25,8 +25,8 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-from openexpress import applog
 from openexpress.device import ptp
+from openexpress.device.found import probe as found_probe
 from openexpress.device.found import (  # noqa: F401 - the names of platform.devices()
     ABSENT,
     DRIVE_OFF,
@@ -651,40 +651,7 @@ def _storage_with_device_file(session: ptp.Session, found: FoundDevice) -> MacSt
 # --- a short look at a device found, for a list to choose from -----------------------------
 
 def probe(found: FoundDevice) -> DeviceSummary:
-    """Read only GarminDevice.xml of a device from find_all_devices, as gio_storage.probe: no
-    account, no server. Here the device is opened for it (a session of the program's own) and
-    stays open, kept for what comes next (`storage`). Raises only DeviceNotResponding; else
-    without details the summary says why. One log line, without the address or the unit ID."""
-    from openexpress.device.xmldevice import parse
-
-    summary = _probe(found, parse)
-    if summary.ok:
-        applog.hide_unit_id(summary.unit_id)  # as hide_device: never in the log
-    log.info("device: probed %s (USB %s): %s", found.kind,
-             found.usb.usb_id if found.usb is not None else "?",
-             "details read" if summary.ok else summary.reason)
-    return summary
-
-
-def _probe(found: FoundDevice, parse) -> DeviceSummary:
-    try:
-        storage = open_found(found)
-    except NotThereYet:
-        return DeviceSummary(found, reason=NO_DEVICE_FILE)
-    except DeviceNotResponding:
-        raise
-    except Exception as e:  # noqa: BLE001 - a summary, never an error; the reason is kept
-        log.info("device: probe could not open it (%s: %s)", type(e).__name__,
-                 applog.redact(str(e)))
-        return DeviceSummary(found, reason=UNREADABLE)
-    try:
-        device = parse(storage.read("GARMIN/GarminDevice.xml"))
-    except DeviceNotResponding:
-        raise
-    except Exception as e:  # noqa: BLE001 - the error may quote the file; only its kind
-        log.debug("device: probe could not read GarminDevice.xml (%s)", type(e).__name__)
-        return DeviceSummary(found, reason=UNREADABLE)
-    summary = DeviceSummary(found, device.description, device.part_number,
-                            device.software_version_str, device.unit_id or None)
-    summary.device, summary.storage = device, storage
-    return summary
+    """Read only GarminDevice.xml of a device from find_all_devices (found.probe). Here the
+    device is opened for it (a session of the program's own) and stays open, kept for what
+    comes next (`storage`)."""
+    return found_probe(found, open_found, log)

@@ -12,6 +12,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from openexpress import applog
 from openexpress.device import ptp
 from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import OrdinaryStop
@@ -362,6 +363,57 @@ class DeviceSummary:
     @property
     def ok(self) -> bool:
         return self.reason is None
+
+
+def probe(found: FoundDevice, open_storage: Callable[[FoundDevice], Storage | str],
+          log: logging.Logger) -> DeviceSummary:
+    """Read only GarminDevice.xml of a device from find_all_devices: no account, no server.
+    open_storage(found) gives its storage, or why there are no details (NO_DEVICE_FILE,
+    UNREADABLE). Raises only DeviceNotResponding (nothing more is asked of such a device);
+    else without details the summary says why. An MTP device read keeps what was opened
+    (`device`, `storage`), for the window to count its activities later. One line in `log`,
+    without the address or the unit ID."""
+    from openexpress.device.xmldevice import parse
+
+    summary = _probe(found, open_storage, parse, log)
+    if summary.ok:
+        applog.hide_unit_id(summary.unit_id)  # as hide_device: never in the log
+    log.info("device: probed %s (USB %s): %s", found.kind,
+             found.usb.usb_id if found.usb is not None else "?",
+             "details read" if summary.ok else summary.reason)
+    return summary
+
+
+def _probe(found: FoundDevice, open_storage, parse, log: logging.Logger) -> DeviceSummary:
+    if not found.mounted:
+        return DeviceSummary(found, reason=NOT_MOUNTED)
+    try:
+        storage = open_storage(found)
+    except NotThereYet:
+        return DeviceSummary(found, reason=NO_DEVICE_FILE)
+    except DeviceNotResponding:
+        raise  # not one more device that cannot be read: nothing more is asked of it
+    except Exception as e:  # noqa: BLE001 - a summary, never an error; the reason is kept
+        # Its kind and message (an MTP address in it carries the serial number: filtered
+        # here, before the log's own filter); e.g. a device unplugged while gvfs still has it.
+        log.info("device: probe could not open it (%s: %s)", type(e).__name__,
+                 applog.redact(str(e)))
+        return DeviceSummary(found, reason=UNREADABLE)
+    if isinstance(storage, str):
+        return DeviceSummary(found, reason=storage)
+    try:
+        device = parse(storage.read("GARMIN/GarminDevice.xml"))
+    except DeviceNotResponding:
+        raise
+    except Exception as e:  # noqa: BLE001 - the error may quote the file; only its kind
+        log.debug("device: probe could not read GarminDevice.xml (%s)", type(e).__name__)
+        return DeviceSummary(found, reason=UNREADABLE)
+    # Without <Id> the parser gives 0: no unit ID, never one to merge entries by.
+    summary = DeviceSummary(found, device.description, device.part_number,
+                            device.software_version_str, device.unit_id or None)
+    if found.kind == "mtp":
+        summary.device, summary.storage = device, storage
+    return summary
 
 
 def distinct_devices(summaries: list[DeviceSummary]) -> list[DeviceSummary]:

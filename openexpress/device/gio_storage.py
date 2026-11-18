@@ -30,6 +30,7 @@ from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.requi
 
 from openexpress import applog  # noqa: E402
 from openexpress.device import ptp  # noqa: E402
+from openexpress.device.found import probe as found_probe  # noqa: E402
 from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, re-exported
     ABSENT,
     DRIVE_OFF,
@@ -1937,60 +1938,20 @@ def _mtp_storage(uri: str, usb: GarminUsb | None) -> GioStorage:
 # --- a short look at a device found, for a list to choose from -----------------------------
 
 def probe(found: FoundDevice) -> DeviceSummary:
-    """Read only GarminDevice.xml of a device from find_all_devices: no session, no account,
-    no server, no PTP, nothing mounted. Raises only DeviceNotResponding (nothing more is
-    asked of such a device); else without details the summary says why. One log line,
-    without the address or the unit ID. An MTP device read keeps what was opened (`device`,
-    `storage`), for the window to count its activities later."""
-    from openexpress.device.xmldevice import parse
-
-    summary = _probe(found, parse)
-    if summary.ok:
-        applog.hide_unit_id(summary.unit_id)  # as hide_device: never in the log
-    log.info("device: probed %s (USB %s): %s", found.kind,
-             found.usb.usb_id if found.usb is not None else "?",
-             "details read" if summary.ok else summary.reason)
-    return summary
+    """Read only GarminDevice.xml of a device from find_all_devices (found.probe): no session,
+    no PTP, nothing mounted."""
+    return found_probe(found, _probe_storage, log)
 
 
-def _probe(found: FoundDevice, parse) -> DeviceSummary:
-    if not found.mounted:
-        return DeviceSummary(found, reason=NOT_MOUNTED)
-    try:
-        if found.kind == "ums":
-            path = Gio.File.new_for_uri(found.uri).get_path()
-            if path is None:
-                return DeviceSummary(found, reason=UNREADABLE)
-            storage: Storage = UmsStorage(Path(path), found.uri, found.usb, found.name)
-            if not storage.exists("GARMIN/GarminDevice.xml"):
-                return DeviceSummary(found, reason=NO_DEVICE_FILE)
-        else:
-            storage = _mtp_storage(found.uri, found.usb)
-    except NotThereYet:
-        return DeviceSummary(found, reason=NO_DEVICE_FILE)
-    except DeviceNotResponding:
-        raise  # not one more device that cannot be read: nothing more is asked of it
-    except Exception as e:  # noqa: BLE001 - a summary, never an error; the reason is kept
-        from openexpress import applog
-
-        # Its kind and message (an MTP address in it carries the serial number: filtered
-        # here, before the log's own filter); e.g. a device unplugged while gvfs still has it.
-        log.info("device: probe could not open it (%s: %s)", type(e).__name__,
-                 applog.redact(str(e)))
-        return DeviceSummary(found, reason=UNREADABLE)
-    try:
-        device = parse(storage.read("GARMIN/GarminDevice.xml"))
-    except DeviceNotResponding:
-        raise
-    except Exception as e:  # noqa: BLE001 - the error may quote the file; only its kind
-        log.debug("device: probe could not read GarminDevice.xml (%s)", type(e).__name__)
-        return DeviceSummary(found, reason=UNREADABLE)
-    # Without <Id> the parser gives 0: no unit ID, never one to merge entries by.
-    summary = DeviceSummary(found, device.description, device.part_number,
-                            device.software_version_str, device.unit_id or None)
-    if found.kind == "mtp":
-        summary.device, summary.storage = device, storage
-    return summary
+def _probe_storage(found: FoundDevice) -> Storage | str:
+    """The storage probe reads, or why there are no details."""
+    if found.kind != "ums":
+        return _mtp_storage(found.uri, found.usb)
+    path = Gio.File.new_for_uri(found.uri).get_path()
+    if path is None:
+        return UNREADABLE
+    storage = UmsStorage(Path(path), found.uri, found.usb, found.name)
+    return storage if storage.exists("GARMIN/GarminDevice.xml") else NO_DEVICE_FILE
 
 
 # --- the device to ourselves, for PTP ----------------------------------------------------

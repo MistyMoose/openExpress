@@ -183,3 +183,60 @@ def test_after_sync_keeps_an_error_of_the_drop_folder_in_its_result(device_root,
     after = service.after_sync(_session(device_root, copy_fit_to=str(taken)), apply=True)
     assert after.dropped is None and isinstance(after.drop_error, OSError)
     assert after.problems()[0].startswith("FIT drop folder: ")
+
+
+class _CountingStorage(LocalStorage):
+    """The device's files, each read counted by its name."""
+
+    def __init__(self, root):
+        super().__init__(root)
+        self.reads: list[str] = []
+
+    def read(self, path):
+        self.reads.append(os.path.basename(path))
+        return super().read(path)
+
+
+def test_files_the_drop_folder_has_are_taken_from_it_and_not_read_from_the_device(
+        device_root, tmp_path):
+    st = _CountingStorage(device_root)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    drop, staging = tmp_path / "drop", tmp_path / "staging"
+    sync.run_drop_folder(dev, st, drop)
+    (drop / "2026-10-02-10-00-00.fit").unlink()  # the program watching it took it away
+    st.reads.clear()
+    res = sync.run_drop_folder(dev, st, staging, copies=drop)
+    assert set(res.copied) == ACTIVITY_NAMES
+    assert st.reads == ["2026-10-02-10-00-00.fit"]  # only the one the drop folder lost
+    for name in ACTIVITY_NAMES:
+        assert (staging / name).read_bytes() == (
+            device_root / "GARMIN/Activity" / name).read_bytes()
+    assert res.bytes == sum((staging / n).stat().st_size for n in ACTIVITY_NAMES)
+
+
+def test_a_copy_that_is_not_a_whole_fit_file_is_read_from_the_device_instead(
+        device_root, tmp_path):
+    st = _CountingStorage(device_root)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    drop = tmp_path / "drop"
+    drop.mkdir()
+    (drop / "2026-10-01-10-00-00.fit").write_bytes(b"the user's own file of this name")
+    st.reads.clear()
+    res = sync.run_drop_folder(dev, st, tmp_path / "staging", copies=drop)
+    assert set(res.copied) == ACTIVITY_NAMES
+    assert sorted(st.reads) == sorted(ACTIVITY_NAMES)
+
+
+def test_after_sync_stages_for_strava_from_the_drop_folder_without_reading_the_device_again(
+        device_root, tmp_path, monkeypatch):
+    from openexpress import service, strava
+
+    monkeypatch.setattr(strava, "upload_files", lambda paths, apply, progress=None:
+                        strava.UploadReport())
+    s = _session(device_root, copy_fit_to=str(tmp_path / "drop"), strava_upload=True)
+    s.storage = _CountingStorage(device_root)
+    after = service.after_sync(s, apply=True)
+    assert set(after.dropped.copied) == ACTIVITY_NAMES and after.strava_error is None
+    assert sorted(s.storage.reads) == sorted(ACTIVITY_NAMES)  # each once, for the drop folder
+    pending = strava.pending_dir(s.device.unit_id)
+    assert {p.name for p in pending.glob("*.fit")} == ACTIVITY_NAMES

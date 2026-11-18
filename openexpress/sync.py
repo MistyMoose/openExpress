@@ -1291,19 +1291,50 @@ def _write_new(dest: Path, name: str, data: bytes) -> bool:
         tmp.unlink(missing_ok=True)
 
 
+def _from_copy(copy: Path, dest: Path, name: str) -> tuple[bool, int] | None:
+    """A whole FIT file at `copy` (a copy of the device's file of that name made by this sync,
+    or an earlier one) put under `name` in `dest`, as _write_new puts one: hard-linked where it
+    can be, else written. (written, its size); None when there is no such copy: the device's
+    file is read instead."""
+    try:
+        data = copy.read_bytes()
+    except OSError:
+        return None
+    if incompleteness(data):
+        return None
+    try:
+        os.link(copy, dest / name)
+        return True, len(data)
+    except FileExistsError:
+        return False, len(data)
+    except OSError:
+        return _write_new(dest, name, data), len(data)
+
+
 def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
                     types: frozenset[str] | None = None,
-                    progress: Callable[[str], None] | None = None) -> DropFolderResult:
+                    progress: Callable[[str], None] | None = None,
+                    copies: Path | None = None) -> DropFolderResult:
     """The files of plan_drop_folder copied into `dest` (made if it does not exist yet). A FIT
     file the device is still writing (incompleteness, as an upload checks it) is left for the
-    next sync. A file already there is never overwritten (_write_new)."""
+    next sync. A file already there is never overwritten (_write_new). `copies`: a folder that
+    may have whole copies of the device's files under their names (the drop folder, for the
+    staging of Strava): those are taken from there, not read from the device again."""
     progress = say_to(progress)
     dest.mkdir(parents=True, exist_ok=True)
     planned = plan_drop_folder(device, storage, dest, types)
     result = DropFolderResult()
+    taken = 0
     for n, f in enumerate(planned, 1):
         # TRANSLATORS: a step of the progress of a sync ("… · 2 of 5")
         progress(Step(_("Copying to the drop folder"), n, len(planned)))
+        done = _from_copy(copies / f.name, dest, f.name) if copies is not None else None
+        if done is not None:
+            taken += 1
+            if done[0]:
+                result.copied.append(f.name)
+                result.bytes += done[1]
+            continue
         data = storage.read(f.device_path)
         why = incompleteness(data)
         if why:
@@ -1314,6 +1345,7 @@ def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
         if _write_new(dest, f.name, data):
             result.copied.append(f.name)
             result.bytes += len(data)
-    log.info("drop folder: %d files copied (%s), %d still being written left for the next sync",
-             len(result.copied), applog.size(result.bytes), result.incomplete)
+    log.info("drop folder: %d files copied (%s; %d of them from a copy on this computer), %d "
+             "still being written left for the next sync", len(result.copied),
+             applog.size(result.bytes), taken, result.incomplete)
     return result

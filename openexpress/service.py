@@ -1994,8 +1994,11 @@ def after_sync(s: DeviceSession, apply: bool, progress: Progress | None = None,
 
     dev, st = s.device, s.storage
     out = AfterSyncResult(drop_folder=drop_folder_dest(s.settings, copy_fit_to))
+    copies = None  # the drop folder, when it has the activities Strava takes
     if out.drop_folder is not None:
         types = sync.drop_folder_types(s.settings.copy_fit_types)
+        if sync.ACTIVITY_TYPE in types:
+            copies = out.drop_folder
         try:
             if apply:
                 out.dropped = sync.run_drop_folder(dev, st, out.drop_folder, types,
@@ -2007,7 +2010,7 @@ def after_sync(s: DeviceSession, apply: bool, progress: Progress | None = None,
             out.drop_error = e
     if s.settings.strava_upload:
         try:
-            out.strava = strava.after_sync(dev, st, apply, progress)
+            out.strava = strava.after_sync(dev, st, apply, progress, copies=copies)
         except Exception as e:  # noqa: BLE001 - in the result: Strava never fails the sync
             log.warning("strava: after the sync: %s", type(e).__name__)
             out.strava_error = e

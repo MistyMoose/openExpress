@@ -216,10 +216,13 @@ class AfterSync:
     incomplete: int = 0  # files the device was still writing: staged by the next sync
 
 
-def after_sync(dev, storage, apply: bool, progress=None) -> AfterSync:
+def after_sync(dev, storage, apply: bool, progress=None,
+               copies: Path | None = None) -> AfterSync:
     """What a sync does for Strava (Settings.strava_upload): the device's new activity FIT
     files staged in pending_dir and those not sent yet uploaded; in a dry run, how many would
-    be staged (no network). The callers (cli's and the engine's sync) never let it fail the
+    be staged (no network). `copies`: the FIT drop folder when it takes activities, whose
+    copies are staged from there, not read from the device a second time
+    (sync.run_drop_folder). The callers (cli's and the engine's sync) never let it fail the
     sync."""
     from openexpress import sync
 
@@ -227,7 +230,8 @@ def after_sync(dev, storage, apply: bool, progress=None) -> AfterSync:
     pending = pending_dir(dev.unit_id)
     if not apply:
         return AfterSync(planned=len(sync.plan_drop_folder(dev, storage, pending, activities)))
-    dropped = sync.run_drop_folder(dev, storage, pending, activities, progress=progress)
+    dropped = sync.run_drop_folder(dev, storage, pending, activities, progress=progress,
+                                   copies=copies)
     waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
     return AfterSync(report=upload_files(waiting, apply=True, progress=progress),
                      incomplete=dropped.incomplete)

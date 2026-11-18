@@ -29,7 +29,7 @@ import sys
 import tempfile
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from openexpress import applog
@@ -291,8 +291,7 @@ def garmin_devices() -> list[UsbDevice]:
     out = []
     for device in found:
         known = registered.get((device.bus, device.address), _Registered())
-        out.append(UsbDevice(device.bus, device.address, device.product, device.classes,
-                             device.file_transfer, known.name, known.serial, known.holder))
+        out.append(replace(device, name=known.name, serial=known.serial, holder=known.holder))
     return out
 
 
@@ -401,6 +400,11 @@ def pause_lock_path() -> Path:
     return Path(tempfile.gettempdir()) / f"openexpress-{os.getuid()}-ptpcamerad.lock"
 
 
+def _open_pause_lock() -> int:
+    """The lock file opened (made if it is not there); OSError when it cannot be."""
+    return os.open(pause_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+
+
 def _hold() -> None:
     """The lock file held shared by this process (waited for while another one is waking
     ptpcamerad, a moment); nothing when it cannot be opened."""
@@ -408,7 +412,7 @@ def _hold() -> None:
     if _held is not None:
         return
     try:
-        fd = os.open(pause_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        fd = _open_pause_lock()
     except OSError as e:
         log.info("USB: the lock of %s not held (%s)", CAMERA_DAEMON, type(e).__name__)
         return
@@ -429,7 +433,7 @@ def _nobody_pausing():
     until the block ends); False when one does. True when the file cannot be opened: nothing
     tells of another process."""
     try:
-        fd = os.open(pause_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        fd = _open_pause_lock()
     except OSError:
         yield True
         return

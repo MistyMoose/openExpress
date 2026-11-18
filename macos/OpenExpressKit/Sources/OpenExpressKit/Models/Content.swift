@@ -297,8 +297,8 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         try c.encodeIfPresent(size, forKey: .size)
     }
 
-    /// Sport names as the FIT profile has them ("running", "cycling", "hiking", …).
-    public var systemImage: String { Self.systemImage(sportID: sportID, sport: sport) }
+    /// The sport's SF Symbol, by its FIT number.
+    public var systemImage: String { Self.systemImage(sportID: sportID) }
 
     /// SF Symbols by FIT sport number (the engine's table in activities.py).
     public static let sportSymbols: [Int: String] = [
@@ -316,28 +316,11 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
 
     /// Every symbol the app may draw for a sport (checked to exist by a test: an unknown
     /// name draws nothing).
-    public static var allSportSymbols: Set<String> {
-        Set(sportSymbols.values).union(["running", "cycling", "hiking", "walking", "swimming", "open_water",
-                                        "training", "alpine_skiing", "mountaineering", "surfing", ""]
-            .map { systemImage(sportID: nil, sport: $0) })
-    }
+    public static var allSportSymbols: Set<String> { Set(sportSymbols.values) }
 
-    public static func systemImage(sportID: Int?, sport: String) -> String {
-        if let sportID, let symbol = sportSymbols[sportID] { return symbol }
-        // Without a number: the names of older engines and of FIT's profile.
-        return switch sport.lowercased().replacingOccurrences(of: " ", with: "_") {
-        case "running", "trail_running", "treadmill_running": "figure.run"
-        case "cycling", "road_cycling", "mountain_biking", "gravel_cycling", "e_biking": "figure.outdoor.cycle"
-        case "hiking": "figure.hiking"
-        case "walking": "figure.walk"
-        case "swimming", "lap_swimming": "figure.pool.swim"
-        case "open_water", "open_water_swimming": "figure.open.water.swim"
-        case "training", "strength_training": "figure.strengthtraining.traditional"
-        case "alpine_skiing", "skiing": "figure.skiing.downhill"
-        case "mountaineering": "mountain.2"
-        case "surfing": "figure.surfing"
-        default: "figure.mixed.cardio"
-        }
+    /// By FIT sport number; a sport not in the table (or none) gets the generic one's.
+    public static func systemImage(sportID: Int?) -> String {
+        sportID.flatMap { sportSymbols[$0] } ?? sportSymbols[0]!
     }
 }
 

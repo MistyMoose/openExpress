@@ -730,7 +730,7 @@ struct SportScopeBar<Trailing: View>: View {
                             ScopeButton(selected: selected) {
                                 filter.select(sport: item.sport, extending: NSEvent.modifierFlags.contains(.command))
                             } label: {
-                                ScopeLabel(systemImage: symbols[item.sport] ?? Activity.systemImage(sportID: nil, sport: item.sport), title: item.sport, count: item.count)
+                                ScopeLabel(systemImage: symbols[item.sport] ?? Activity.systemImage(sportID: nil), title: item.sport, count: item.count)
                             }
                             .opacity(item.count == 0 && !selected ? 0.45 : 1)
                             .help("Click to show only \(item.sport); ⌘-click to add or remove it")

@@ -98,6 +98,9 @@ struct ModelTests {
         #expect(model.cachedTrack(for: activities[0]) == first)
         _ = await model.track(for: activities[0])
         #expect(await reads() == 1)
+        // Named by its device: with several connected the engine cannot tell which one.
+        #expect(await engine.calls.last { $0.method == "activities.track" }?.params?["device"]?.stringValue
+                == MockEngine.fenixID)
 
         // Bounded: the one used least recently goes first.
         for a in activities.dropFirst() { _ = await model.track(for: a) }

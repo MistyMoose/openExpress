@@ -162,8 +162,10 @@ extension EngineConnection {
         return try await call("activities.list", params: .object(p), as: ActivitiesList.self, progress: progress).activities
     }
 
-    public func activityTrack(fitPath: String) async throws -> ActivityTrack {
-        try await call("activities.track", params: ["fit": .string(fitPath)], as: ActivityTrack.self)
+    /// `unitID`: the device the file is on (the engine needs it when several are connected).
+    public func activityTrack(fitPath: String, unitID: String) async throws -> ActivityTrack {
+        try await call("activities.track", params: ["fit": .string(fitPath), "device": .string(unitID)],
+                       as: ActivityTrack.self)
     }
 
     public func backups(_ unitID: String) async throws -> [BackupSnapshot] {

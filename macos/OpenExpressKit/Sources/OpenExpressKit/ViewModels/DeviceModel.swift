@@ -285,7 +285,7 @@ public final class DeviceModel: Identifiable {
     public func track(for activity: Activity) async -> ActivityTrack? {
         if let t = cachedTrack(for: activity) { return t }
         guard let path = activity.fitPath, context.supports("activities.track") else { return nil }
-        guard let t = try? await engine.activityTrack(fitPath: path) else { return nil }
+        guard let t = try? await engine.activityTrack(fitPath: path, unitID: unitID) else { return nil }
         // A file still being written gives more later: read again next time.
         if activity.state == nil || activity.state == "complete" {
             tracks[activity.id] = t

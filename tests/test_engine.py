@@ -617,7 +617,7 @@ def held_backup(monkeypatch):
         first.set()
         go.wait(10)
         progress(Step("Copying to the backup", 2, 3))
-        return backup._CopyTally()
+        return backup.BackupResult(target, 0, 0, [])
 
     monkeypatch.setattr(backup, "_copy_files", copy_files)
     return first, go

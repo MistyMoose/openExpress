@@ -87,6 +87,8 @@ public final class DeviceModel: Identifiable {
     public private(set) var betaOffered = false
     public private(set) var updatesChecked: Date?
     public private(set) var maps: MapsList?
+    /// When `maps.list` last answered.
+    @ObservationIgnored private var mapsChecked: Date?
     /// Free space on the device, as `maps.list` last said it, else as `device.info` did.
     public var freeSpace: Int64? { maps?.free ?? device.storage?.free }
     public private(set) var apps: AppsList?
@@ -172,6 +174,11 @@ public final class DeviceModel: Identifiable {
     /// Loads a page the first time it is shown; later visits show what was read (Refresh
     /// reads again).
     public func loadIfNeeded(_ page: DevicePage) async {
+        // The Overview reads updates and maps too: a first visit to those pages while it
+        // runs waits for it instead of asking the Garmin server a second time.
+        if page == .updates || page == .maps, let overview = loadTasks[.overview] {
+            await overview.value
+        }
         if loaded.contains(page), loadTasks[page] == nil { return }
         await load(page)
     }
@@ -218,14 +225,18 @@ public final class DeviceModel: Identifiable {
                     update(device: try await engine.deviceInfo(unitID))
                     if device.busyBy == nil {
                         if updatesChecked == nil { try await loadUpdates(progress) }
-                        if maps == nil { maps = try await engine.maps(unitID, progress: progress) }
+                        if maps == nil { try await loadMaps(progress) }
+                        // What the Updates and Maps pages show is read now: their first
+                        // visit shows it (their Refresh reads again).
+                        if updatesChecked != nil, maps != nil { loaded.insert(.updates) }
+                        if maps != nil { loaded.insert(.maps) }
                     }
                 }
             case .updates:
                 try await loadUpdates(progress)
-                maps = try await engine.maps(unitID, progress: progress)
+                try await loadMaps(progress)
             case .maps:
-                maps = try await engine.maps(unitID, progress: progress)
+                try await loadMaps(progress)
             case .apps:
                 apps = try await engine.apps(unitID, progress: progress)
             case .activities:
@@ -248,6 +259,11 @@ public final class DeviceModel: Identifiable {
         updates = list.updates
         betaOffered = list.betaOffered
         updatesChecked = .now
+    }
+
+    private func loadMaps(_ progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws {
+        maps = try await engine.maps(unitID, progress: progress)
+        mapsChecked = .now
     }
 
     public func track(for activity: Activity) async -> ActivityTrack? {
@@ -398,9 +414,10 @@ public final class DeviceModel: Identifiable {
         }
     }
 
-    /// Runs the automatic backup and sync on connection: backup → sync → updates + maps.
+    /// Runs the automatic backup and sync on connection: backup → sync → updates + maps
+    /// (unless both were read since `checkedSince`, by the Overview of this connection).
     /// Never installs anything. Returns a one-line summary for the notification.
-    public func automaticBackupAndSync() async -> String {
+    public func automaticBackupAndSync(checkedSince: Date? = nil) async -> String {
         var lines: [String] = []
         backUp()
         await waitForOperation()
@@ -415,7 +432,11 @@ public final class DeviceModel: Identifiable {
         } else if errorMessage == nil, let o = lastOutcome {
             lines.append(o)
         }
-        await load(.updates)
+        if let since = checkedSince, let u = updatesChecked, let m = mapsChecked, u >= since, m >= since {
+            // Read moments ago: the Garmin server is not asked again.
+        } else {
+            await load(.updates)
+        }
         let n = installAllParts.count
         let m = mapUpdates.count
         if n > 0 { lines.append(String(localized: "\(n) software update(s) available.")) }

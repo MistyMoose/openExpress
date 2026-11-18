@@ -43,13 +43,46 @@ struct ModelTests {
         await app.runAutomatic(MockEngine.fenixID)
         let methods = await engine.calls.map(\.method)
         let tail = methods.filter { ["device.backup", "device.sync", "updates.list", "maps.list", "updates.install", "maps.install", "maps.update"].contains($0) }
-        #expect(Array(tail.drop { $0 != "device.backup" }) == ["device.backup", "device.sync", "updates.list", "maps.list"])
+        // Updates and maps are read once, by the Overview of this connection, not again
+        // after the sync.
+        #expect(tail == ["updates.list", "maps.list", "device.backup", "device.sync"])
         #expect(!methods.contains("updates.install"))
         #expect(notifier.notes.count == 1)
         #expect(notifier.notes.first?.1.contains("Synced") == true)
         let model = try #require(app.model(for: MockEngine.fenixID))
         #expect(model.installAllParts.count == 2)
         #expect(app.pendingUpdatesCount == 3) // 2 software + 1 map
+    }
+
+    @Test func automaticModeOnAReconnectionChecksUpdatesOnce() async throws {
+        let (app, engine) = makeApp()
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        await model.load(.overview)
+        await app.runAutomatic(MockEngine.fenixID)
+        // Checked before this run: the run asks once, after the sync.
+        let methods = await engine.calls.map(\.method)
+        #expect(methods.filter { $0 == "updates.list" }.count == 2)
+        #expect(methods.filter { $0 == "maps.list" }.count == 2)
+        #expect(Array(methods.drop { $0 != "device.sync" }.filter { $0 == "updates.list" }).count == 1)
+    }
+
+    @Test func overviewReadsUpdatesAndMapsForTheirPagesToo() async throws {
+        let (app, engine) = makeApp()
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        await model.loadIfNeeded(.overview)
+        await model.loadIfNeeded(.updates)
+        await model.loadIfNeeded(.maps)
+        var methods = await engine.calls.map(\.method)
+        #expect(methods.filter { $0 == "updates.list" }.count == 1)
+        #expect(methods.filter { $0 == "maps.list" }.count == 1)
+        #expect(model.loaded.isSuperset(of: [.overview, .updates, .maps]))
+        // Refresh reads anew.
+        await model.load(.updates)
+        methods = await engine.calls.map(\.method)
+        #expect(methods.filter { $0 == "updates.list" }.count == 2)
+        #expect(methods.filter { $0 == "maps.list" }.count == 2)
     }
 
     @Test func attachEventTriggersAutomaticMode() async throws {

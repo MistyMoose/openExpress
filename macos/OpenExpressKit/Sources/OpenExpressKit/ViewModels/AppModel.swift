@@ -200,8 +200,9 @@ public final class AppModel {
         guard !automaticRuns.contains(unitID), let m = model(for: unitID) else { return }
         automaticRuns.insert(unitID)
         defer { automaticRuns.remove(unitID) }
+        let started = Date.now
         await m.refresh()
-        let summary = await m.automaticBackupAndSync()
+        let summary = await m.automaticBackupAndSync(checkedSince: started)
         if settings.notificationsEnabled, !summary.isEmpty {
             notifier?.notify(title: m.device.name, body: summary)
         }

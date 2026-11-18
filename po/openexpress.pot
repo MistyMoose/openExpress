@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 11:12+0100\n"
+"POT-Creation-Date: 2026-11-18 11:48+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5200,6 +5200,40 @@ msgid ""
 "and music are not supported in this mode."
 msgstr ""
 
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
+"No Garmin device (MTP) found. Connect the device with a USB cable and unlock "
+"it if it asks to allow the connection."
+msgstr ""
+
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
+"The Garmin device is connected, but it does not offer its files. Check its "
+"screen: if it is locked with a PIN or asks something, unlock it or confirm."
+msgstr ""
+
+#. TRANSLATORS: in the words about a Garmin device openExpress cannot use, after
+#. "Connected:", when the device gives USB no name
+#: openexpress/device/found.py openexpress/device/gio_storage.py
+#: openexpress/device/mac_storage.py
+#, python-brace-format
+msgctxt "in a sentence"
+msgid "Garmin device"
+msgstr ""
+
+#. TRANSLATORS: on the command line while the only Garmin device on USB is one openExpress
+#. cannot use; {name}: the name it gives USB (e.g. "Garmin USB inReach"); {id}: its USB ID
+#. (e.g. "091e:0b89"); "openexpress report" is a command, not to be translated
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
+"openExpress works with devices that connect as a media device (MTP) or a USB "
+"drive. This one uses a different connection. Connected: {name} (USB {id}). "
+"To report it, run openexpress report."
+msgstr ""
+
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "the Flatpak is missing the permission to copy files to the device"
@@ -5322,14 +5356,6 @@ msgstr ""
 msgid "Unsupported connection"
 msgstr ""
 
-#. TRANSLATORS: in the words about a Garmin device openExpress cannot use, after
-#. "Connected:", when the device gives USB no name
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, python-brace-format
-msgctxt "in a sentence"
-msgid "Garmin device"
-msgstr ""
-
 #. TRANSLATORS: the words of the window while the only Garmin device on USB is one
 #. openExpress cannot use; {name}: the name it gives USB (e.g. "Garmin USB inReach");
 #. {id}: its USB ID (e.g. "091e:0b89"); {item}: the item of the main menu, "Report a
@@ -5345,16 +5371,6 @@ msgstr ""
 #: openexpress/device/gio_storage.py openexpress/gui/app.py
 #, python-brace-format
 msgid "Report a Device or Problem…"
-msgstr ""
-
-#. TRANSLATORS: the same on the command line; "openexpress report" is a command, not to be
-#. translated
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, python-brace-format
-msgid ""
-"openExpress works with devices that connect as a media device (MTP) or a USB "
-"drive. This one uses a different connection. Connected: {name} (USB {id}). "
-"To report it, run openexpress report."
 msgstr ""
 
 #: openexpress/device/gio_storage.py
@@ -5415,20 +5431,6 @@ msgstr ""
 msgid ""
 "The device is still starting. Wait until it shows its usual screen, or "
 "unplug it and plug it in again."
-msgstr ""
-
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, python-brace-format
-msgid ""
-"The Garmin device is connected, but it does not offer its files. Check its "
-"screen: if it is locked with a PIN or asks something, unlock it or confirm."
-msgstr ""
-
-#: openexpress/device/gio_storage.py openexpress/device/mac_storage.py
-#, python-brace-format
-msgid ""
-"No Garmin device (MTP) found. Connect the device with a USB cable and unlock "
-"it if it asks to allow the connection."
 msgstr ""
 
 #: openexpress/device/gio_storage.py

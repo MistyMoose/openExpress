@@ -55,8 +55,11 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     UnsupportedDevice,
     classify,
     distinct_devices,
+    files_not_offered_text,
     mass_storage_text,
+    no_device_text,
     place_of,
+    unsupported_device_text,
     usb_place,
 )
 from openexpress.device.storage import (  # noqa: E402
@@ -1642,23 +1645,19 @@ def unsupported_text(window: bool = True) -> str:
     its USB ID) and how to report it: in the window, from its menu (the item named with the
     menu's own words); on the command line (`window` False), with `openexpress report`."""
     usb_id, name = _unsupported_name()
+    if not window:
+        return unsupported_device_text(name, usb_id)
     # TRANSLATORS: in the words about a Garmin device openExpress cannot use, after
     # "Connected:", when the device gives USB no name
     name = name or pgettext("in a sentence", "Garmin device")
-    if window:
-        # TRANSLATORS: the words of the window while the only Garmin device on USB is one
-        # openExpress cannot use; {name}: the name it gives USB (e.g. "Garmin USB inReach");
-        # {id}: its USB ID (e.g. "091e:0b89"); {item}: the item of the main menu, "Report a
-        # Device or Problem…" in your language (put your language's quotation marks around it)
-        return _("openExpress works with devices that connect as a media device (MTP) or a "
-                 "USB drive. This one uses a different connection. Connected: {name} (USB "
-                 "{id}). To report it, choose “{item}” in the main menu.").format(
-            name=name, id=usb_id, item=_("Report a Device or Problem…"))
-    # TRANSLATORS: the same on the command line; "openexpress report" is a command, not to be
-    # translated
-    return _("openExpress works with devices that connect as a media device (MTP) or a USB "
-             "drive. This one uses a different connection. Connected: {name} (USB {id}). To "
-             "report it, run openexpress report.").format(name=name, id=usb_id)
+    # TRANSLATORS: the words of the window while the only Garmin device on USB is one
+    # openExpress cannot use; {name}: the name it gives USB (e.g. "Garmin USB inReach");
+    # {id}: its USB ID (e.g. "091e:0b89"); {item}: the item of the main menu, "Report a
+    # Device or Problem…" in your language (put your language's quotation marks around it)
+    return _("openExpress works with devices that connect as a media device (MTP) or a "
+             "USB drive. This one uses a different connection. Connected: {name} (USB "
+             "{id}). To report it, choose “{item}” in the main menu.").format(
+        name=name, id=usb_id, item=_("Report a Device or Problem…"))
 
 
 def _garmin_at_ports() -> list[tuple[UsbPort, str, bool]]:
@@ -1868,16 +1867,14 @@ def not_ready_text(state: str) -> str:
         return _("The device is still starting. Wait until it shows its usual screen, or "
                  "unplug it and plug it in again.")
     if state == PRESENT:
-        return _("The Garmin device is connected, but it does not offer its files. Check its "
-                 "screen: if it is locked with a PIN or asks something, unlock it or confirm.")
+        return files_not_offered_text()
     if state == MASS_STORAGE:
         return drive_notice_text()
     if state == DRIVE_OFF:
         return drive_off_text(ejected_update_waits())
     if state == UNSUPPORTED:
         return unsupported_text(window=False)
-    return _("No Garmin device (MTP) found. Connect the device with a USB cable "
-             "and unlock it if it asks to allow the connection.")
+    return no_device_text()
 
 
 def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,

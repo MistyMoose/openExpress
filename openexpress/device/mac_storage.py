@@ -52,8 +52,11 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     UnsupportedDevice,
     device_uri,
     distinct_devices,
+    files_not_offered_text,
     mass_storage_text,
+    no_device_text,
     place_of,
+    unsupported_device_text,
     usb_place,
 )
 from openexpress.device.storage import (
@@ -545,21 +548,16 @@ def not_ready_text(state: str) -> str:
     if state == STARTING:
         return garmin_mode_text()
     if state == PRESENT:
-        return _("The Garmin device is connected, but it does not offer its files. Check its "
-                 "screen: if it is locked with a PIN or asks something, unlock it or confirm.")
+        return files_not_offered_text()
     if state == MASS_STORAGE:
         # TRANSLATORS: macOS: a Garmin device connected as a USB drive
         return _("The Garmin device is connected as a USB drive. On macOS openExpress opens "
                  "only devices that connect as a media device (MTP).")
     if state == UNSUPPORTED:
         found = next((d for d in mac_usb.garmin_devices() if d.mode == UNSUPPORTED), None)
-        return _("openExpress works with devices that connect as a media device (MTP) or a USB "
-                 "drive. This one uses a different connection. Connected: {name} (USB {id}). To "
-                 "report it, run openexpress report.").format(
-            name=(found.name if found else None) or pgettext("in a sentence", "Garmin device"),
-            id=found.usb_id if found else f"{GARMIN_VID}:?")
-    return _("No Garmin device (MTP) found. Connect the device with a USB cable "
-             "and unlock it if it asks to allow the connection.")
+        return unsupported_device_text(found.name if found else None,
+                                       found.usb_id if found else f"{GARMIN_VID}:?")
+    return no_device_text()
 
 
 # --- opening one --------------------------------------------------------------------------

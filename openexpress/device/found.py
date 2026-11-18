@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from openexpress.device.storage import DeviceError
 from openexpress.errors import OrdinaryStop
-from openexpress.i18n import _
+from openexpress.i18n import _, pgettext
 
 GARMIN_VID = "091e"
 
@@ -177,6 +177,33 @@ def mass_storage_text() -> str:
     backup and updates work, and the device page says why a drive is not synced."""
     return _("The device is connected in mass storage mode (as a USB drive): apps, maps and "
              "music are not supported in this mode.")
+
+
+def no_device_text() -> str:
+    """No Garmin device on USB (ABSENT)."""
+    return _("No Garmin device (MTP) found. Connect the device with a USB cable "
+             "and unlock it if it asks to allow the connection.")
+
+
+def files_not_offered_text() -> str:
+    """A Garmin device on USB in its normal mode (PRESENT) whose files are not offered."""
+    return _("The Garmin device is connected, but it does not offer its files. Check its "
+             "screen: if it is locked with a PIN or asks something, unlock it or confirm.")
+
+
+def unsupported_device_text(name: str | None, usb_id: str) -> str:
+    """Why a Garmin device on USB cannot be used (UNSUPPORTED), which one it is (`name`: the
+    name it gives USB, if any; `usb_id`) and that `openexpress report` reports it: the words
+    of the command line."""
+    # TRANSLATORS: in the words about a Garmin device openExpress cannot use, after
+    # "Connected:", when the device gives USB no name
+    name = name or pgettext("in a sentence", "Garmin device")
+    # TRANSLATORS: on the command line while the only Garmin device on USB is one openExpress
+    # cannot use; {name}: the name it gives USB (e.g. "Garmin USB inReach"); {id}: its USB ID
+    # (e.g. "091e:0b89"); "openexpress report" is a command, not to be translated
+    return _("openExpress works with devices that connect as a media device (MTP) or a USB "
+             "drive. This one uses a different connection. Connected: {name} (USB {id}). To "
+             "report it, run openexpress report.").format(name=name, id=usb_id)
 
 
 # --- a short look at a device found, for a list to choose from -----------------------------

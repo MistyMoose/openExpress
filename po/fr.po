@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-17 20:50+0100\n"
-"PO-Revision-Date: 2026-11-17 21:09+0000\n"
+"PO-Revision-Date: 2026-11-18 05:45+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/fr/>\n"
@@ -8909,7 +8909,7 @@ msgstr "Soutenez le projet"
 #: openexpress/gui/report_dialog.py
 #, python-brace-format
 msgid "translator-credits"
-msgstr "translator-credits"
+msgstr "alex giroux"
 
 #. TRANSLATORS: a chip on the tile of a device on the start page (its tooltip says when
 #. the check found it), and under the software version on the device page
@@ -11348,7 +11348,7 @@ msgstr ""
 #, python-brace-format
 msgctxt "language name"
 msgid "English"
-msgstr "Anglais"
+msgstr "Francais"
 
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a
 #. word ("Last seen just now")

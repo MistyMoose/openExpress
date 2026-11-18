@@ -6,6 +6,7 @@ too; the metainfo is translated through gettext from its template, its release n
 English; after tools/update-template.sh and tools/update-translations.sh Polish has the
 template's date and every other language is as it was (its translators', in Weblate). GNU gettext's tools are needed; made-up catalogs only where one is written."""
 
+import json
 import os
 import re
 import shutil
@@ -299,6 +300,39 @@ def test_after_the_scripts_the_weblate_flags_are_in_the_template_and_polish(tmp_
                    if not set(flags) <= set(found.get(key, []))}
         assert missing == {}, path.name
 
+
+@needs_gettext
+@pytest.mark.parametrize("guess", [True, False])
+def test_a_guess_from_an_older_wording_is_not_shown(tmp_path, monkeypatch, guess):
+    """A translation of an older wording that Weblate's msgmerge carries over to the new one is
+    a guess (fuzzy): it is not built, so the program says the text as the code has it until a
+    translator confirms it - here the message of a missing tool of gettext, in a made-up
+    language. Confirmed, the same translation is said."""
+    monkeypatch.setattr(catalogs.shutil, "which", lambda name: None)
+    with pytest.raises(catalogs.CatalogError) as raised:
+        catalogs._tool("{tool}")  # the message's own text, its {tool} kept
+    msgid = str(raised.value)
+    po = tmp_path / "po"
+    po.mkdir()
+    (po / "LINGUAS").write_text("xx\n", encoding="utf-8")
+    (po / "xx.po").write_text(
+        'msgid ""\nmsgstr ""\n"Content-Type: text/plain; charset=UTF-8\\n"\n'
+        '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n"Language: xx\\n"\n\n'
+        + ("#, fuzzy, python-brace-format\n" if guess else "#, python-brace-format\n")
+        + f"msgid {json.dumps(msgid)}\nmsgstr \"made-up {{tool}} translation\"\n",
+        encoding="utf-8")
+    monkeypatch.undo()
+    catalogs.build(tmp_path / "locale", po)
+    monkeypatch.setattr(i18n, "LOCALE_DIR", tmp_path / "locale")
+    monkeypatch.setattr(catalogs.shutil, "which", lambda name: None)
+    i18n.setup("xx")
+    try:
+        with pytest.raises(catalogs.CatalogError) as raised:
+            catalogs._tool("msgfmt")
+    finally:
+        i18n.setup("en")
+    said = str(raised.value)
+    assert said == (msgid.format(tool="msgfmt") if guess else "made-up msgfmt translation")
 
 PO_TEXT = """\
 msgid ""

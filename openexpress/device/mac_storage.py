@@ -524,7 +524,7 @@ def open_ums_storage(dev: FoundDevice) -> UmsStorage:
     raise MassStorageNotice(not_ready_text(MASS_STORAGE))
 
 
-def usb_state(clock=time.monotonic) -> str:
+def usb_state() -> str:
     """As gio_storage.usb_state, from libusb: ABSENT, STARTING (only 091e:0003 besides what
     cannot be used), PRESENT, MASS_STORAGE or UNSUPPORTED. DRIVE_OFF is not told apart here
     (it needs the drive seen before)."""

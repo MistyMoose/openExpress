@@ -66,7 +66,7 @@ class Engine:
                          f"{self.proc.stderr.read().decode(errors='replace')[-2000:]}")
                 self.buffer += chunk
 
-    def close(self) -> str:
+    def close(self) -> None:
         try:
             self.call("shutdown", timeout=20)
         finally:
@@ -75,7 +75,6 @@ class Engine:
         log = self.proc.stderr.read().decode(errors="replace")
         if code != 0:
             fail(f"the engine exited with {code}: {log[-2000:]}")
-        return log
 
 
 def main() -> None:

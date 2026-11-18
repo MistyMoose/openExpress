@@ -220,11 +220,11 @@ def load_summaries(unit_id: int) -> dict[tuple, fit.ActivitySummary | None]:
     return kept
 
 
-def save_summaries(unit_id: int, found: DeviceActivities) -> bool:
+def save_summaries(unit_id: int, found: DeviceActivities) -> None:
     """What `found` has read, written for its device: only of the files it lists now (a file
     gone from the device and its backups goes from the file too), and not of a file the
-    device was still writing or that could not be read (read again next time). Whether it
-    was written; a failure is a line of the log, never an error."""
+    device was still writing or that could not be read (read again next time). A failure is
+    a line of the log, never an error."""
     listed = {a.key for a in found.listing}
     kept = [(key, s) for key, s in found._kept.items() if key in listed and s is not None
             and s.state is not fit.FileState.STILL_BEING_WRITTEN]
@@ -235,8 +235,6 @@ def save_summaries(unit_id: int, found: DeviceActivities) -> bool:
         paths.write_private(summaries_path(unit_id), json.dumps(data, separators=(",", ":")))
     except (OSError, ValueError) as e:
         log.warning("activities: the summaries not kept (%s)", type(e).__name__)
-        return False
-    return True
 
 
 def forget_summaries(unit_id: int) -> None:
@@ -257,8 +255,8 @@ class DeviceActivities:
         self.listing: list[Activity] = []
         self.read: list[Read] = []  # those of `listing` read so far, in its order
         self._kept: dict[tuple, fit.ActivitySummary | None] = {} if kept is None else kept
-        # How many files were read (not found kept) since it was made: save_summaries then.
-        self.newly_read = 0
+        # Whether a file was read (not found kept) since it was made: save_summaries then.
+        self.newly_read = False
 
     @property
     def left(self) -> int:
@@ -317,7 +315,7 @@ class DeviceActivities:
             data = self.read_file(activity)
             size += len(data or b"")
             self._kept[activity.key] = _summary(data)
-            self.newly_read += 1
+            self.newly_read = True
         found = [Read(a, self._kept[a.key]) for a in batch]
         self.read += found
         if to_read:

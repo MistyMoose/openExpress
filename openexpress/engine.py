@@ -1421,10 +1421,10 @@ def installed_map_version(storage, m) -> str | None:
 TRACK_POINTS = 2000
 
 
-def track(data: bytes, most: int = TRACK_POINTS) -> dict:
+def track(data: bytes) -> dict:
     """The points of an activity's FIT file that have a position, in their order (time, and
-    heart rate, altitude, speed where the record gives them), at most `most`: every n-th one
-    then, the last one always kept."""
+    heart rate, altitude, speed where the record gives them), at most TRACK_POINTS: every n-th
+    one then, the last one always kept."""
     from openexpress import fit
 
     try:
@@ -1432,8 +1432,8 @@ def track(data: bytes, most: int = TRACK_POINTS) -> dict:
                    if s.latitude is not None and s.longitude is not None]
     except fit.FitError as e:
         raise EngineError("not_fit", str(e)) from e
-    if len(samples) > most:
-        step = -(-len(samples) // most)  # rounded up
+    if len(samples) > TRACK_POINTS:
+        step = -(-len(samples) // TRACK_POINTS)  # rounded up
         last = samples[-1]
         samples = samples[::step]
         if samples[-1] is not last:

@@ -258,6 +258,31 @@ def test_a_device_another_program_holds_is_told_busy_and_its_requests_refused_wi
     assert "Garmin Express Service is using the device" in error["message"]
 
 
+def test_devices_list_reads_the_remembered_devices_and_the_settings_once_for_the_whole_list(
+        running, monkeypatch):
+    from openexpress import known_devices
+
+    for n in range(3):
+        known_devices.remember(1000 + n, f"Watch {n}", "006-B0000-00", "1.00", "mtp")
+    running.ask("devices.list")  # attached first: its events read on their own
+    loads = {"known": 0, "settings": 0}
+    load_known, load_settings = known_devices.load, settings_mod.Settings.load.__func__
+
+    def count_known():
+        loads["known"] += 1
+        return load_known()
+
+    def count_settings(cls):
+        loads["settings"] += 1
+        return load_settings(cls)
+
+    monkeypatch.setattr(known_devices, "load", count_known)
+    monkeypatch.setattr(settings_mod.Settings, "load", classmethod(count_settings))
+    listed = running.ask("devices.list")["result"]["devices"]
+    assert [d["unit_id"] for d in listed] == [UNIT, "1002", "1001", "1000"]
+    assert loads == {"known": 1, "settings": 1}
+
+
 def test_a_busy_device_is_named_by_the_unit_id_its_usb_serial_gives_when_it_is_remembered():
     assert engine.unit_id_by_serial("499602D2", {1234567890: None}) == 1234567890
     assert engine.unit_id_by_serial("1234567890", {1234567890: None}) == 1234567890

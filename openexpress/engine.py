@@ -730,24 +730,29 @@ class Engine:
             self.checkpoint(req)
             return function(req, a)
 
-    def device_json(self, a: Attached, storage=None) -> dict:
-        """A `Device` (docs/ENGINE.md, Objects)."""
+    def device_json(self, a: Attached, storage=None, known: dict | None = None,
+                    backups: Path | None = None) -> dict:
+        """A `Device` (docs/ENGINE.md, Objects). `known` (known_devices.load()) and `backups`
+        (the backup folder) when the caller has them already, for a list of devices."""
         from openexpress import known_devices
 
-        entry = known_devices.load().get(a.unit_id) if a.unit_id else None
+        if known is None and a.unit_id:
+            known = known_devices.load()
+        entry = known.get(a.unit_id) if a.unit_id else None
         out = self._device_fields(a.unit_id, entry, a.description or a.usb_name or "",
-                                  a.part_number, a.software)
+                                  a.part_number, a.software, backups)
         if storage is not None:
             out["storage"] = {"free": storage.free_space(), "capacity": storage.capacity()}
         out.update(connected=True, busy_by=a.busy_by)
         return out
 
-    def _device_fields(self, unit_id, entry, description, part_number, software) -> dict:
+    def _device_fields(self, unit_id, entry, description, part_number, software,
+                       backups: Path | None = None) -> dict:
         from openexpress import service
         from openexpress.backup import backups_of
 
         last = service.load_last_sync(unit_id) if unit_id else None
-        snapshots = backups_of(self._backups(), unit_id) if unit_id else []
+        snapshots = backups_of(backups or self._backups(), unit_id) if unit_id else []
         return {
             "unit_id": str(unit_id) if unit_id else None,
             "name": entry.shown_name if entry is not None else description,
@@ -983,12 +988,15 @@ class Engine:
         from openexpress import known_devices
 
         connected = self.scan()
-        out = [self.device_json(a) for a in connected]
+        # Read once for the whole list: the remembered devices and the backup folder.
+        known, backups = known_devices.load(), self._backups()
+        out = [self.device_json(a, known=known, backups=backups) for a in connected]
         here = {a.unit_id for a in connected if a.unit_id}
-        for entry in known_devices.in_order(known_devices.load()):
+        for entry in known_devices.in_order(known):
             if entry.unit_id not in here:
                 out.append(self._device_fields(entry.unit_id, entry, entry.description,
-                                               entry.part_number, entry.software_version))
+                                               entry.part_number, entry.software_version,
+                                               backups))
         return {"devices": out}
 
     def device_info(self, req: Request, a: Attached) -> dict:

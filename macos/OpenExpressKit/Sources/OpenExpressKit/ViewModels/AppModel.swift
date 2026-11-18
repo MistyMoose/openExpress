@@ -80,25 +80,35 @@ public final class AppModel {
 
     private func bootstrap() async {
         do {
+            // `hello` first: it says which methods there are. The rest at once.
             hello = try await engine.hello(client: Self.clientName)
-            account = try await engine.accountStatus()
-            try await reloadDevices()
+            let engine = self.engine
+            async let accountStatus = engine.accountStatus()
+            async let deviceList = engine.devices()
+            async let stravaStatus = try? engine.stravaStatus()
+            async let allSettings = try? engine.settings()
+            account = try await accountStatus
+            apply(devices: try await deviceList)
             engineState = .ready
             if account?.setupDone == false { isShowingSetup = true }
             if selection == nil {
                 selection = connectedDevices.first.map { .device($0.unitID) }
                     ?? devices.first.map { .device($0.unitID) } ?? .account
             }
-            strava = try? await engine.stravaStatus()
-            await reloadEngineSettings()
+            // Nothing of a device's page needs Strava or the engine's settings.
             for d in connectedDevices { Task { await model(for: d.unitID)?.refresh() } }
+            strava = await stravaStatus
+            if let all = await allSettings { engineSettings = all }
         } catch {
             engineState = .failed(error.localizedDescription)
         }
     }
 
     public func reloadDevices() async throws {
-        let list = try await engine.devices()
+        apply(devices: try await engine.devices())
+    }
+
+    private func apply(devices list: [Device]) {
         devices = list
         for d in list { ensureModel(d) }
     }

@@ -52,12 +52,15 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     MassStorageNotice,
     NoDevice,
     NotThereYet,
+    TEST_DRIVE_ENV,
     SeveralDevices,
     UnsupportedDevice,
     classify,
     distinct_devices,
+    ejected_text,
     files_not_offered_text,
     mass_storage_text,
+    named_for_testing,
     no_device_text,
     one_device,
     place_of,
@@ -990,35 +993,14 @@ def drives_on_usb() -> frozenset[UsbAddress]:
     return frozenset(address for address, _product in _mass_storage_on_usb())
 
 
-# For testing only, not for ordinary use: the mounted USB drive with the USB IDs in this
-# variable ("VVVV:PPPP", as lsusb shows them) is taken for a Garmin drive too, e.g. a pendrive
-# with a copy of a watch's GARMIN folder, so that the way of a watch connected as a USB drive
-# can be tried without one. The log says so once, as a warning.
-TEST_DRIVE_ENV = "OPENEXPRESS_TEST_DRIVE_USB"
-_TEST_DRIVE_IDS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
+# For testing only: the mounted USB drive named in TEST_DRIVE_ENV is taken for a Garmin drive
+# too (found.named_for_testing).
 _test_drive_said: set[str] = set()  # the warnings about it already in the log
-
-
-def _warn_once(key: str, *message) -> None:
-    if key not in _test_drive_said:
-        _test_drive_said.add(key)
-        log.warning(*message)
 
 
 def _named_for_testing(vendor: str, product: str) -> bool:
     """Whether the USB device vendor:product is the drive named in TEST_DRIVE_ENV."""
-    value = os.environ.get(TEST_DRIVE_ENV, "").strip().lower()
-    if not value:
-        return False
-    if not _TEST_DRIVE_IDS.fullmatch(value):
-        _warn_once("form", "device: %s is not in the form VVVV:PPPP (four hexadecimal digits "
-                   "each), ignored", TEST_DRIVE_ENV)
-        return False
-    if value != f"{vendor}:{product}":
-        return False
-    _warn_once(value, "device: %s: the USB drive %s is taken for a Garmin drive, for testing "
-               "only", TEST_DRIVE_ENV, value)
-    return True
+    return named_for_testing(vendor, product, _test_drive_said, log)
 
 
 def garmin_ums(mount) -> GarminUsb | None:
@@ -1486,15 +1468,6 @@ def ejected_update_waits() -> bool:
     in: the device installs it only once it is unplugged."""
     with _ejected_lock:
         return any(e.update_waits for e in _ejected)
-
-
-def ejected_text(update_waits: bool = False) -> str:
-    """A drive ejected by openExpress: the cable can go out now (and only now); with an update
-    copied to it, that it is to stay unplugged."""
-    if update_waits:
-        return _("The device is ejected. Unplug the cable and leave the device unplugged so it "
-                 "can install the update.")
-    return _("The device is ejected. You can unplug the cable.")
 
 
 def not_ejected_text(window: bool = True, files: bool = False) -> str:

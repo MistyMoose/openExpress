@@ -11,6 +11,7 @@ state and its words.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -88,6 +89,48 @@ def place_of(uri: str, whole: bool = True) -> tuple[int, int] | None:
     found = (_USB_ADDRESS_URI.fullmatch(uri.strip()) if whole
              else _USB_ADDRESS_URI.match(uri))
     return (int(found.group(1)), int(found.group(2))) if found else None
+
+
+# For testing only, not for ordinary use: the USB drive with the USB IDs in this variable
+# ("VVVV:PPPP", as lsusb or System Information shows them) is taken for a Garmin drive too, e.g.
+# a pendrive with a copy of a watch's GARMIN folder, so that the way of a watch connected as a
+# USB drive can be tried without one. The log says so once, as a warning (each system keeps
+# what it said: `said`).
+TEST_DRIVE_ENV = "OPENEXPRESS_TEST_DRIVE_USB"
+_TEST_DRIVE_IDS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
+
+
+def _warn_once(said: set[str], log: logging.Logger, key: str, *message) -> None:
+    if key not in said:
+        said.add(key)
+        log.warning(*message)
+
+
+def test_drive_ids(said: set[str], log: logging.Logger) -> tuple[str, str] | None:
+    """(vendor, product) of the drive named in TEST_DRIVE_ENV, in lower case; None when none
+    is named, or the value is not of the form VVVV:PPPP (said once in `log`)."""
+    value = os.environ.get(TEST_DRIVE_ENV, "").strip().lower()
+    if not value:
+        return None
+    if not _TEST_DRIVE_IDS.fullmatch(value):
+        _warn_once(said, log, "form", "device: %s is not in the form VVVV:PPPP (four "
+                   "hexadecimal digits each), ignored", TEST_DRIVE_ENV)
+        return None
+    vendor, product = value.split(":")
+    return vendor, product
+
+
+def named_for_testing(vendor: str, product: str, said: set[str],
+                      log: logging.Logger) -> bool:
+    """Whether the USB device vendor:product is the drive named in TEST_DRIVE_ENV; the first
+    time it is, a warning in `log`."""
+    ids = test_drive_ids(said, log)
+    if ids is None or ids != (vendor.lower(), product.lower()):
+        return False
+    value = ":".join(ids)
+    _warn_once(said, log, value, "device: %s: the USB drive %s is taken for a Garmin drive, "
+               "for testing only", TEST_DRIVE_ENV, value)
+    return True
 
 
 # --- the states of the Garmin devices on USB ------------------------------------------------
@@ -197,6 +240,15 @@ class DeviceInUse(ptp.UsbUnavailable):
 
 class DriveNotMounted(DeviceError):
     """The drive to eject is not mounted any more: ejected or unmounted meanwhile."""
+
+
+def ejected_text(update_waits: bool = False) -> str:
+    """A drive ejected by openExpress: the cable can go out now (and only now); with an update
+    copied to it, that it is to stay unplugged."""
+    if update_waits:
+        return _("The device is ejected. Unplug the cable and leave the device unplugged so it "
+                 "can install the update.")
+    return _("The device is ejected. You can unplug the cable.")
 
 
 def mass_storage_text() -> str:

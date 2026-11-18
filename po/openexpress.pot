@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 14:16+0100\n"
+"POT-Creation-Date: 2026-11-18 15:15+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5178,6 +5178,18 @@ msgstr ""
 #: openexpress/device/found.py
 #, python-brace-format
 msgid ""
+"The device is ejected. Unplug the cable and leave the device unplugged so it "
+"can install the update."
+msgstr ""
+
+#: openexpress/device/found.py
+#, python-brace-format
+msgid "The device is ejected. You can unplug the cable."
+msgstr ""
+
+#: openexpress/device/found.py
+#, python-brace-format
+msgid ""
 "The device is connected in mass storage mode (as a USB drive): apps, maps "
 "and music are not supported in this mode."
 msgstr ""
@@ -5289,18 +5301,6 @@ msgstr ""
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "Cannot eject the device"
-msgstr ""
-
-#: openexpress/device/gio_storage.py
-#, python-brace-format
-msgid ""
-"The device is ejected. Unplug the cable and leave the device unplugged so it "
-"can install the update."
-msgstr ""
-
-#: openexpress/device/gio_storage.py
-#, python-brace-format
-msgid "The device is ejected. You can unplug the cable."
 msgstr ""
 
 #: openexpress/device/gio_storage.py

@@ -87,6 +87,8 @@ public final class DeviceModel: Identifiable {
     public private(set) var betaOffered = false
     public private(set) var updatesChecked: Date?
     public private(set) var maps: MapsList?
+    /// Free space on the device, as `maps.list` last said it, else as `device.info` did.
+    public var freeSpace: Int64? { maps?.free ?? device.storage?.free }
     public private(set) var apps: AppsList?
     public private(set) var activities: [Activity]?
     public private(set) var backups: [BackupSnapshot]?
@@ -291,14 +293,14 @@ public final class DeviceModel: Identifiable {
         }
         pendingPlan = InstallPlan(items: items,
                                   action: .installAll(parts: software.map(\.part), updateMaps: !mapsToUpdate.isEmpty),
-                                  freeNow: maps?.free ?? device.storage?.free)
+                                  freeNow: freeSpace)
     }
 
     /// Installs a map not yet on the device; a large one is confirmed first.
     public func requestInstall(map: DeviceMap) {
         let plan = InstallPlan(
             items: [.init(id: "map:" + map.name, kind: .map, name: map.name, change: map.versionChange, size: map.size)],
-            action: .installMap(map.name), freeNow: maps?.free ?? device.storage?.free)
+            action: .installMap(map.name), freeNow: freeSpace)
         if map.size >= InstallPlan.largeMap {
             pendingPlan = plan
         } else {

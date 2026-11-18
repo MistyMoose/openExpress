@@ -41,7 +41,7 @@ struct MapsPage: View {
                     Gauge(value: storage.usedFraction) {
                         Text("Device storage")
                     } currentValueLabel: {
-                        Text("\(Format.bytes(maps.free ?? storage.free)) free")
+                        Text("\(Format.bytes(model.freeSpace ?? storage.free)) free")
                     }
                     .gaugeStyle(.linearCapacity)
                 }
@@ -70,7 +70,7 @@ struct MapsPage: View {
             if !available.isEmpty {
                 Section("Available") {
                     ForEach(available) { map in
-                        let fits = map.size <= (maps.free ?? model.device.storage?.free ?? .max)
+                        let fits = map.size <= (model.freeSpace ?? .max)
                         MapRow(map: map) {
                             Button(map.size >= InstallPlan.largeMap ? "Install…" : "Install") { model.requestInstall(map: map) }
                                 .buttonStyle(.glass)

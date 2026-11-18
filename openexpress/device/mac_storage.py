@@ -424,7 +424,13 @@ class MacStorage(Storage):
 
 _open: dict[tuple[int, int], MacStorage] = {}
 _open_lock = threading.Lock()
-_stalled_at: set[tuple[int, int]] = set()
+# The places on USB of devices that stopped responding, and when. Such a device is left out of
+# what is found for STALL_RETRY_S, then tried again: opening it cancels the transaction it was
+# left in (ptp.Session.open), which brings back a device that stays at its place (a fēnix 8,
+# its USB connection reset as it started), where gvfs on Linux can only wait for a new place.
+_stalled_at: dict[tuple[int, int], float] = {}
+STALL_RETRY_S = 10.0
+_clock = time.monotonic
 
 
 def _forget_open(storage: MacStorage) -> None:
@@ -451,17 +457,19 @@ atexit.register(close_all)
 
 
 def note_stalled(usb: GarminUsb | None) -> None:
-    """The device at `usb` stopped responding: left out of what is found while it stays at its
-    place on USB (unplugged, or restarted, it gets another one)."""
+    """The device at `usb` stopped responding: left out of what is found for STALL_RETRY_S."""
     place = usb_place(usb)
     if place is not None:
-        _stalled_at.add(place)
+        _stalled_at[place] = _clock()
 
 
 def _still_stalled(places: set[tuple[int, int]]) -> set[tuple[int, int]]:
-    """The places of devices that stopped responding that are still taken; the others are
-    forgotten."""
-    _stalled_at.intersection_update(places)
+    """The places of devices that stopped responding that are still taken and not tried again
+    yet; the others are forgotten."""
+    now = _clock()
+    for place, since in list(_stalled_at.items()):
+        if place not in places or now - since >= STALL_RETRY_S:
+            del _stalled_at[place]
     return set(_stalled_at)
 
 

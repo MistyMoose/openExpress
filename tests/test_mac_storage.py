@@ -267,7 +267,7 @@ def test_a_silent_device_stopped_responding_and_is_let_go(storage, device):
     with pytest.raises(DeviceNotResponding):
         storage.exclusive_ptp()
     assert len(device.transfers) == asked
-    assert mac_storage._stalled_at == {(8, 37)}
+    assert set(mac_storage._stalled_at) == {(8, 37)}
 
 
 def test_close_ends_the_session_and_nothing_is_asked_afterwards(storage, device):
@@ -435,15 +435,25 @@ def test_a_device_without_garmin_device_xml_is_closed_again(usb):
     assert usb.device.closed and not usb.device.session_open
 
 
-def test_a_device_that_stopped_responding_is_left_out_while_it_stays_on_usb(usb):
+def test_a_device_that_stopped_responding_is_left_out_a_while_then_tried_again(usb,
+                                                                              monkeypatch):
+    """Tried again at the same place: opening it cancels what it was left in (a fēnix 8 that
+    reset its USB connection as it started came back so, and only so)."""
+    now = [1000.0]
+    monkeypatch.setattr(mac_storage, "_clock", lambda: now[0])
     usb.device = _fake()
     st = mac_storage.open_device_storage()
     usb.device.silent = True
     with pytest.raises(DeviceNotResponding):
         st.read("GARMIN/Activity/2026-11-17-09-30-00.fit")
     assert mac_storage.find_devices() == []
+    now[0] += mac_storage.STALL_RETRY_S - 1
+    assert mac_storage.find_devices() == []
+    now[0] += 1
+    assert len(mac_storage.find_devices()) == 1
+    mac_storage.note_stalled(_usb().garmin_usb())
     usb.devices = []
-    mac_storage.find_devices()  # unplugged: forgotten
+    mac_storage.find_devices()  # unplugged: forgotten at once
     usb.devices = [_usb()]
     assert len(mac_storage.find_devices()) == 1
 

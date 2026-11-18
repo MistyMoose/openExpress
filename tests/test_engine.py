@@ -762,11 +762,6 @@ def test_the_strava_upload_after_a_sync_is_off_until_turned_on_as_setup_s_option
         "error"]["code"] == "invalid_params"
 
 
-def test_strava_methods_are_not_available_without_strava_py(running, monkeypatch):
-    monkeypatch.setitem(sys.modules, "openexpress.strava", None)
-    assert running.ask("strava.status")["error"]["code"] == "not_available"
-
-
 def test_strava_connect_gives_the_consent_page_first_then_trades_the_code_for_the_token(
         running, monkeypatch):
     import dataclasses

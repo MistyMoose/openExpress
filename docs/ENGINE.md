@@ -78,7 +78,7 @@ Error codes: `parse_error`, `invalid_request`, `unknown_method`, `invalid_params
 (`data.program`), `device_unsupported`, `device_not_responding`, `device_error`,
 `not_signed_in`, `setup_needed`, `not_found`, `not_fit`, `invalid_ticket`, `unauthorized`, `clock_skew`,
 `server_error`, `network`, `first_sync_choice`, `stopped` (e.g. another sync is running),
-`not_available` (Strava without strava.py), `failed` (any other refusal), `internal`.
+`failed` (any other refusal), `internal`.
 A line that is not JSON, or has no `id`, is answered with `"id": null`.
 
 ## Events

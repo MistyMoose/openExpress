@@ -39,11 +39,6 @@ def devices():
     return gio_storage
 
 
-def find_devices():
-    """The Garmin devices that can be opened over MTP here (found.FoundDevice)."""
-    return devices().find_devices()
-
-
 def open_device_storage(uri: str | None = None, wait: bool = False, notify=None):
     """The storage of the connected device that has GARMIN/GarminDevice.xml (`uri`: the one
     named with --device-uri), as the module of this system opens it (devices)."""

@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import dataclasses
-import importlib
 import json
 import logging
 import os
@@ -154,13 +153,11 @@ class SystemDevices:
     def scan(self) -> list[Seen]:
         from openexpress import platform
 
+        from openexpress.device.found import usb_place
+
         found = platform.devices().find_all_devices()
         holders = self._holders() if found else {}
-        seen = []
-        for f in found:
-            place = (getattr(f.usb, "bus", None), getattr(f.usb, "address", None))
-            seen.append(Seen(f.uri, f, holders.get(place)))
-        return seen
+        return [Seen(f.uri, f, holders.get(usb_place(f.usb))) for f in found]
 
     @staticmethod
     def _holders() -> dict[tuple[int, int], str]:
@@ -363,13 +360,10 @@ def error_of(e: BaseException) -> EngineError:
         return e
     if isinstance(e, Cancelled):
         return EngineError("cancelled", _("The request was cancelled."))
-    try:
-        from openexpress.platform import mac_usb
+    from openexpress.platform import mac_usb
 
-        if isinstance(e, mac_usb.DeviceInUse):
-            return EngineError("device_busy", str(e), {"program": e.holder.name})
-    except ImportError:  # pragma: no cover - mac_usb imports everywhere
-        pass
+    if isinstance(e, mac_usb.DeviceInUse):
+        return EngineError("device_busy", str(e), {"program": e.holder.name})
     table = (
         (found.SeveralDevices, "several_devices"),
         ((found.MassStorageNotice, found.UnsupportedDevice), "device_unsupported"),
@@ -938,30 +932,18 @@ class Engine:
         settings.save()
         return {"key": key, "value": self._setting(Settings.load(), key)}
 
-    @staticmethod
-    def _strava():
-        """strava.py, when this version has it; else the methods are not available."""
-        try:
-            return importlib.import_module("openexpress.strava")
-        except ImportError as e:
-            if getattr(e, "name", None) not in ("openexpress.strava", None):
-                raise
-            raise EngineError("not_available",
-                              _("Strava is not available in this version.")) from None
-
-    @staticmethod
-    def _strava_status(strava) -> dict:
-        return dataclasses.asdict(strava.status())
-
     def strava_status(self, req: Request) -> dict:
-        return self._strava_status(self._strava())
+        from openexpress import strava
+
+        return dataclasses.asdict(strava.status())
 
     def strava_connect(self, req: Request) -> dict:
         """The app's own browser flow (strava.py): `client_id` and `client_secret` of the
         user's Strava API application saved when given; with `code` (from Strava's redirect
         to `redirect_uri`) the token asked for and saved; without it the address of Strava's
         consent page for `redirect_uri` given back (`authorize_url`), to open."""
-        strava = self._strava()
+        from openexpress import strava
+
         p = req.params
         client_id, secret = p.get("client_id"), p.get("client_secret")
         if client_id or secret:
@@ -974,18 +956,21 @@ class Engine:
             raise _missing("redirect_uri")
         code = p.get("code")
         if code is None:
-            return {**self._strava_status(strava),
+            return {**dataclasses.asdict(strava.status()),
                     "authorize_url": strava.authorize_url(redirect_uri)}
         if not isinstance(code, str) or not code:
             raise _invalid("code")
         return dataclasses.asdict(strava.connect_with_code(code, redirect_uri))
 
     def strava_disconnect(self, req: Request) -> dict:
-        return {"removed": self._strava().disconnect()}
+        from openexpress import strava
+
+        return {"removed": strava.disconnect()}
 
     def strava_upload(self, req: Request) -> dict:
         """As `strava upload FILE… [--apply]`: FIT files of this computer sent to Strava."""
-        strava = self._strava()
+        from openexpress import strava
+
         files = _names(req.params, "files")
         apply = _flag(req.params, "apply")
         return dataclasses.asdict(strava.upload_files(files, apply=apply,
@@ -997,10 +982,9 @@ class Engine:
         None when the setting is off; never an error of the sync (said in "error")."""
         if not getattr(settings, "strava_upload", False):
             return None
-        from openexpress import sync
+        from openexpress import strava, sync
 
         try:
-            strava = self._strava()
             pending = strava.pending_dir(dev.unit_id)
             types = frozenset({sync.ACTIVITY_TYPE})
             if not apply:
@@ -1009,8 +993,6 @@ class Engine:
             waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
             return dataclasses.asdict(strava.upload_files(waiting, apply=True,
                                                           progress=progress))
-        except Cancelled:
-            raise
         except Exception as e:  # noqa: BLE001 - Strava never fails the sync
             log.warning("engine: strava after the sync: %s", type(e).__name__)
             return {"error": error_of(e).message}
@@ -1231,8 +1213,6 @@ class Engine:
             try:
                 done = self.run_command(req, [*self.command_line(a), "maps", command,
                                               *(["--apply"] if apply else []), "--", name])
-            except Cancelled:
-                raise
             except Exception as e:  # noqa: BLE001 - the error of this map, then the next
                 error = error_of(e)
                 out.append({"name": name, "done": False, "code": error.code,

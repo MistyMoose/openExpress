@@ -49,6 +49,16 @@ class FakeObject:
         return 1 if self.hidden else 0
 
 
+@dataclass
+class _ExtraStorage:
+    """A storage besides the fake's own (STORAGE, `self.free`/`self.objects`): empty of files,
+    as a small Primary storage is beside a device's Media one (test_mac_storage, more than
+    one storage)."""
+    description: str
+    capacity: int
+    free: int
+
+
 class FakeDevice:
     """Implements `ptp.Transport`. `transfers` records every transfer written to it."""
 
@@ -57,6 +67,10 @@ class FakeDevice:
         self.read_chunk = read_chunk  # split answers into reads of this size
         self.objects: dict[int, FakeObject] = {}
         self.free = 500 * 1024 * 1024
+        # Every storage ID the device lists (GetStorageIds): STORAGE (self.free, self.objects)
+        # plus, for a test of a device with more than one, each added by add_storage (empty,
+        # of its own capacity and free space).
+        self.extra_storages: dict[int, _ExtraStorage] = {}
         self.refuse: dict[int, int] = {}  # operation -> response code
         self.refuse_names: dict[str, int] = {}  # file name -> code, at SendObjectInfo
         self.refuse_delete_names: dict[str, int] = {}  # file name -> code, at DeleteObject
@@ -97,6 +111,11 @@ class FakeDevice:
                                                  hidden if last else False)
             parent = found
         return parent
+
+    def add_storage(self, store_id: int, description: str, capacity: int, free: int) -> None:
+        """A second storage the device has, besides STORAGE: empty of files (GetObjectHandles
+        of it returns none), its own description, capacity and free space (GetStorageInfo)."""
+        self.extra_storages[store_id] = _ExtraStorage(description, capacity, free)
 
     def handle(self, path: str) -> int | None:
         parent = ptp.ROOT
@@ -202,15 +221,24 @@ class FakeDevice:
         if operation == ptp.GET_DEVICE_INFO:
             return ptp.OK, self.device_info()
         if operation == ptp.GET_STORAGE_IDS:
-            return ptp.OK, struct.pack("<II", 1, STORAGE)
+            ids = [STORAGE, *self.extra_storages]
+            return ptp.OK, struct.pack(f"<I{len(ids)}I", len(ids), *ids)
         if operation == ptp.GET_STORAGE_INFO:
-            return ptp.OK, (struct.pack("<HHHQQI", 3, 2, 0, 2 * self.free, self.free, 0xFFFFFFFF)
-                            + ptp.ptp_string("Internal") + ptp.ptp_string(""))
+            extra = self.extra_storages.get(params[0]) if params else None
+            if params and params[0] != STORAGE and extra is None:
+                return (ptp.INVALID_STORAGE_ID,)
+            capacity, free, description = (
+                (extra.capacity, extra.free, extra.description) if extra is not None
+                else (2 * self.free, self.free, "Internal"))
+            return ptp.OK, (struct.pack("<HHHQQI", 3, 2, 0, capacity, free, 0xFFFFFFFF)
+                            + ptp.ptp_string(description) + ptp.ptp_string(""))
         if operation in (ptp.GET_OBJECT_HANDLES, ptp.GARMIN_GET_OBJECT_IDS):
             hidden = operation == ptp.GARMIN_GET_OBJECT_IDS
             if hidden and not self.supports_hidden:
                 return (ptp.OPERATION_NOT_SUPPORTED,)
             parent = params[1] if hidden else params[2]
+            if params[0] in self.extra_storages:
+                return ptp.OK, struct.pack("<I", 0)  # an extra storage has no files of its own
             if params[0] != STORAGE:
                 return (ptp.INVALID_STORAGE_ID,)
             if parent != ptp.ROOT and (parent not in self.objects

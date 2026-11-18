@@ -85,7 +85,7 @@ from openexpress.device.storage import (
     UmsStorage,
     entry_named,
 )
-from openexpress.i18n import _, pgettext
+from openexpress.i18n import _, human_size, pgettext
 from openexpress.platform import mac_usb
 
 log = logging.getLogger(__name__)
@@ -735,16 +735,53 @@ def _storage_with_device_file(session: ptp.Session, found: FoundDevice) -> MacSt
         stores = session.storages()
     except ptp.PtpError as e:
         raise DeviceError(_("Cannot open the device: {error}").format(error=e)) from e
+    storages: list[tuple[MacStorage, ptp.StorageInfo | None]] = []
+    chosen: MacStorage | None = None
     for store in stores:
         try:
-            description = session.storage_info(store).description
+            info = session.storage_info(store)
         except ptp.PtpRefused:
-            description = ""
-        st = MacStorage(session, store, found.usb, found.uri, description)
-        if st.exists("GARMIN/GarminDevice.xml"):
-            return st
-    raise NotThereYet(_("GARMIN/GarminDevice.xml not found on device {uri}").format(
-        uri=found.uri))
+            info = None
+        st = MacStorage(session, store, found.usb, found.uri,
+                        info.description if info else "")
+        storages.append((st, info))
+        if chosen is None and st.exists("GARMIN/GarminDevice.xml"):
+            chosen = st
+    _log_storages(storages, chosen)
+    if chosen is None:
+        raise NotThereYet(_("GARMIN/GarminDevice.xml not found on device {uri}").format(
+            uri=found.uri))
+    # A device with more than one storage (e.g. a Forerunner 645 Music's small Primary,
+    # beside its Media one): music.py refuses to create its folder on the wrong one.
+    chosen.other_storages = tuple(_storage_name(st, info) for st, info in storages
+                                  if st is not chosen)
+    return chosen
+
+
+def _storage_name(st: MacStorage, info: ptp.StorageInfo | None) -> str:
+    """A storage's name for the log and `Storage.other_storages`: its description, as the
+    device gives it, or its store ID in hex when the device would not say it (PtpRefused) -
+    never its serial number or unit ID."""
+    return (info.description if info else "") or f"{st.store:08x}"
+
+
+def _log_storages(storages: list[tuple[MacStorage, ptp.StorageInfo | None]],
+                  chosen: MacStorage | None) -> None:
+    """One line naming every storage the device has (never its serial number or unit ID),
+    its capacity and free space where the device said them, and which one has
+    GARMIN/GarminDevice.xml."""
+    parts = []
+    for st, info in storages:
+        name = _storage_name(st, info)
+        if info and info.capacity:
+            parts.append(f"{name} ({human_size(info.capacity, localize=False)}, "
+                         f"{human_size(info.free, localize=False)} free)")
+        else:
+            parts.append(name)
+    which = _storage_name(chosen, next((i for s, i in storages if s is chosen), None)) \
+        if chosen is not None else "none"
+    log.info("device: %d storage%s: %s; GARMIN on %s", len(storages),
+             "" if len(storages) == 1 else "s", ", ".join(parts), which)
 
 
 # --- a short look at a device found, for a list to choose from -----------------------------

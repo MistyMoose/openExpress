@@ -4,6 +4,7 @@ ptp_fake: no USB device is listed or opened, ptpcamerad is never signalled, and 
 made up. Nothing here needs PyGObject."""
 
 import plistlib
+import re
 import signal
 import struct
 import time
@@ -435,6 +436,32 @@ def test_a_device_without_garmin_device_xml_is_closed_again(usb):
     with pytest.raises(found.NotThereYet, match="GarminDevice.xml not found"):
         mac_storage.open_device_storage()
     assert usb.device.closed and not usb.device.session_open
+
+
+# --- a device with more than one storage (e.g. a Forerunner 645 Music) ----------------------
+
+def test_every_storage_is_logged_and_the_others_are_kept_on_the_one_opened(usb, caplog):
+    fake = _fake()
+    fake.add_storage(0x00020002, "Media", 4_000_000_000, 1_000_000_000)
+    usb.device = fake
+    with caplog.at_level("INFO", logger="openexpress"):
+        st = mac_storage.open_device_storage()
+    assert st.other_storages == ("Media",)
+    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("device: "))
+    assert line.startswith("device: 2 storages: ")
+    assert "Media (4.0 GB, 1.0 GB free)" in line
+    assert "; GARMIN on Internal" in line
+    # Never the device's serial number or unit ID.
+    assert "MADEUPSERIAL" not in line and "3000000001" not in line
+
+
+def test_a_single_storage_device_has_no_other_storages(usb, caplog):
+    with caplog.at_level("INFO", logger="openexpress"):
+        st = mac_storage.open_device_storage()
+    assert st.other_storages == ()
+    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("device: "))
+    assert re.match(r"device: 1 storage: Internal \([0-9.]+ [kMG]B, [0-9.]+ [kMG]B free\); "
+                    r"GARMIN on Internal", line)
 
 
 def test_a_device_that_stopped_responding_is_left_out_a_while_then_tried_again(usb,

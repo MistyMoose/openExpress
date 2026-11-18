@@ -217,14 +217,14 @@ public final class DeviceModel: Identifiable {
                     update(device: try await engine.deviceInfo(unitID))
                     if device.busyBy == nil {
                         if updatesChecked == nil { try await loadUpdates(progress) }
-                        if maps == nil { maps = try await engine.maps(unitID, all: true, progress: progress) }
+                        if maps == nil { maps = try await engine.maps(unitID, progress: progress) }
                     }
                 }
             case .updates:
                 try await loadUpdates(progress)
-                maps = try await engine.maps(unitID, all: true, progress: progress)
+                maps = try await engine.maps(unitID, progress: progress)
             case .maps:
-                maps = try await engine.maps(unitID, all: true, progress: progress)
+                maps = try await engine.maps(unitID, progress: progress)
             case .apps:
                 apps = try await engine.apps(unitID, progress: progress)
             case .activities:
@@ -256,23 +256,20 @@ public final class DeviceModel: Identifiable {
 
     // MARK: Operations
 
-    public func sync(firstRun: FirstSyncChoice? = nil) {
+    public func sync(firstRun: FirstSync? = nil) {
         needsFirstSyncChoice = false
-        let choice: FirstSync? = firstRun.map { $0 == .everything ? .all : .baseline }
         run(.sync) { [engine, unitID] progress in
-            let r = try await engine.sync(unitID, apply: true, firstRun: choice, progress: progress)
+            let r = try await engine.sync(unitID, firstRun: firstRun, progress: progress)
             return Self.summary(of: r)
         } then: { [weak self] in
             await self?.load(.overview)
         }
     }
 
-    public enum FirstSyncChoice: Sendable { case everything, newOnly }
-
     public func backUp() {
         // Folder and number kept: the engine's `backup_dir` and `backup_keep`.
         run(.backup) { [engine, unitID] progress in
-            let r = try await engine.backup(unitID, apply: true, progress: progress)
+            let r = try await engine.backup(unitID, progress: progress)
             return Self.summary(of: r)
         } then: { [weak self] in
             self?.device.lastBackup = .now
@@ -317,11 +314,11 @@ public final class DeviceModel: Identifiable {
             run(.installUpdates) { [engine, unitID] progress in
                 var problems: [String] = []
                 if !parts.isEmpty {
-                    let r = try await engine.installUpdates(unitID, parts: parts, apply: true, progress: progress)
+                    let r = try await engine.installUpdates(unitID, parts: parts, progress: progress)
                     if let m = r.failureMessage { problems.append(m) }
                 }
                 if updateMaps {
-                    let r = try await engine.updateAllMaps(unitID, apply: true, progress: progress)
+                    let r = try await engine.updateAllMaps(unitID, progress: progress)
                     if let m = r.failureMessage { problems.append(m) }
                 }
                 if !problems.isEmpty { return problems.joined(separator: "\n") }
@@ -338,7 +335,7 @@ public final class DeviceModel: Identifiable {
     /// Installs one software part (a beta, chosen by itself) without asking.
     public func install(_ update: SoftwareUpdate) {
         run(.installUpdates) { [engine, unitID] progress in
-            let r = try await engine.installUpdates(unitID, parts: [update.part], apply: true, progress: progress)
+            let r = try await engine.installUpdates(unitID, parts: [update.part], progress: progress)
             return r.failureMessage ?? String(localized: "Unplug the device to install the software.")
         } then: { [weak self] in
             await self?.load(.updates)
@@ -347,7 +344,7 @@ public final class DeviceModel: Identifiable {
 
     public func updateAllMaps() {
         run(.mapsUpdate) { [engine, unitID] progress in
-            try await engine.updateAllMaps(unitID, apply: true, progress: progress).failureMessage
+            try await engine.updateAllMaps(unitID, progress: progress).failureMessage
         } then: { [weak self] in
             await self?.load(.maps)
         }
@@ -355,9 +352,8 @@ public final class DeviceModel: Identifiable {
 
     public func maps(_ action: MapAction, _ names: [String]) {
         guard !names.isEmpty else { return }
-        if action == .update { return updateAllMaps() }
         run(action == .install ? .mapsInstall : .mapsRemove) { [engine, unitID] progress in
-            try await engine.maps(action, unitID, names: names, apply: true, progress: progress).failureMessage
+            try await engine.maps(action, unitID, names: names, progress: progress).failureMessage
         } then: { [weak self] in
             await self?.load(.maps)
         }

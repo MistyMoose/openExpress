@@ -79,18 +79,16 @@ extension EngineConnection {
         try await call("device.info", params: ["device": .string(unitID)], as: Device.self)
     }
 
-    public func backup(_ unitID: String, destination: URL? = nil, keep: Int? = nil, apply: Bool = true,
+    /// Into the engine's `backup_dir`, keeping its `backup_keep`.
+    public func backup(_ unitID: String,
                        progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> BackupResult {
-        var p: [String: JSONValue] = ["device": .string(unitID), "apply": .bool(apply)]
-        if let destination { p["dest"] = .string(destination.path) }
-        if let keep { p["keep"] = .number(Double(keep)) }
-        return try await call("device.backup", params: .object(p), as: BackupResult.self, progress: progress)
+        try await call("device.backup", params: ["device": .string(unitID), "apply": true], as: BackupResult.self,
+                       progress: progress)
     }
 
-    public func sync(_ unitID: String, apply: Bool = true, types: [String]? = nil, firstRun: FirstSync? = nil,
+    public func sync(_ unitID: String, firstRun: FirstSync? = nil,
                      progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> SyncResult {
-        var p: [String: JSONValue] = ["device": .string(unitID), "apply": .bool(apply)]
-        if let types { p["types"] = .array(types.map { .string($0) }) }
+        var p: [String: JSONValue] = ["device": .string(unitID), "apply": true]
         if let firstRun { p["first_run"] = .string(firstRun.rawValue) }
         return SyncResult(raw: try await call("device.sync", params: .object(p), progress: progress))
     }
@@ -103,35 +101,36 @@ extension EngineConnection {
     }
 
     /// `parts`: nil installs all.
-    public func installUpdates(_ unitID: String, parts: [String]?, apply: Bool = true,
+    public func installUpdates(_ unitID: String, parts: [String]?,
                                progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> OperationResult {
         let partsValue: JSONValue = parts.map { .array($0.map { .string($0) }) } ?? .string("all")
         return OperationResult(raw: try await call(
             "updates.install",
-            params: ["device": .string(unitID), "parts": partsValue, "apply": .bool(apply)],
+            params: ["device": .string(unitID), "parts": partsValue, "apply": true],
             progress: progress))
     }
 
-    public func maps(_ unitID: String, all: Bool = true,
+    /// Every map Garmin has for the device, installed or not.
+    public func maps(_ unitID: String,
                      progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> MapsList {
-        try await call("maps.list", params: ["device": .string(unitID), "all": .bool(all)], as: MapsList.self,
+        try await call("maps.list", params: ["device": .string(unitID), "all": true], as: MapsList.self,
                        progress: progress)
     }
 
     /// `maps.install` / `maps.remove`, one map after the other.
-    public func maps(_ action: MapAction, _ unitID: String, names: [String], apply: Bool = true,
+    public func maps(_ action: MapAction, _ unitID: String, names: [String],
                      progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> OperationResult {
         OperationResult(raw: try await call(
             "maps.\(action.rawValue)",
-            params: ["device": .string(unitID), "maps": .array(names.map { .string($0) }), "apply": .bool(apply)],
+            params: ["device": .string(unitID), "maps": .array(names.map { .string($0) }), "apply": true],
             progress: progress))
     }
 
     /// `maps.update`: every installed map that has an update.
-    public func updateAllMaps(_ unitID: String, apply: Bool = true,
+    public func updateAllMaps(_ unitID: String,
                               progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> OperationResult {
         OperationResult(raw: try await call(
-            "maps.update", params: ["device": .string(unitID), "apply": .bool(apply)], progress: progress))
+            "maps.update", params: ["device": .string(unitID), "apply": true], progress: progress))
     }
 
     // MARK: Apps, activities, backups
@@ -141,16 +140,13 @@ extension EngineConnection {
         try await call("apps.list", params: ["device": .string(unitID)], as: AppsList.self, progress: progress)
     }
 
-    /// The first read of a device takes a while (every FIT file over MTP); it reports
-    /// `progress` with phase `reading_activities`, done/total in files.
-    /// Every activity: the engine keeps their summaries on disk, so only the first read is slow.
-    public static var allActivities: Int { 100_000 }
-
-    public func activities(_ unitID: String?, limit: Int? = Self.allActivities,
+    /// Every activity (a limit of 100,000): the engine keeps their summaries on disk, so only
+    /// the first read is slow (every FIT file over MTP); it reports `progress` with phase
+    /// `reading_activities`, done/total in files.
+    public func activities(_ unitID: String?,
                            progress: (@Sendable (EngineProgress) -> Void)? = nil) async throws -> [Activity] {
-        var p: [String: JSONValue] = [:]
+        var p: [String: JSONValue] = ["limit": 100_000]
         if let unitID { p["device"] = .string(unitID) }
-        if let limit { p["limit"] = .number(Double(limit)) }
         return try await call("activities.list", params: .object(p), as: ActivitiesList.self, progress: progress).activities
     }
 
@@ -198,15 +194,18 @@ extension EngineConnection {
     }
 
     /// `strava.upload`: `{"uploaded", "duplicates", "failed", "skipped", "rate_limited"}`.
-    public func stravaUpload(files: [String], apply: Bool = true) async throws -> JSONValue {
-        try await call("strava.upload", params: ["files": .array(files.map { .string($0) }), "apply": .bool(apply)])
+    public func stravaUpload(files: [String]) async throws -> JSONValue {
+        try await call("strava.upload", params: ["files": .array(files.map { .string($0) }), "apply": true])
     }
 }
 
-public enum MapAction: String, Sendable { case install, update, remove }
+public enum MapAction: String, Sendable { case install, remove }
 
 struct DevicesList: Decodable { var devices: [Device] }
 
 /// The first sync of a device must say what to upload (`first_sync_choice` otherwise):
 /// everything on it, or only what is new from now on.
-public enum FirstSync: String, Sendable { case all, baseline }
+public enum FirstSync: String, Sendable {
+    case everything = "all"
+    case newOnly = "baseline"
+}

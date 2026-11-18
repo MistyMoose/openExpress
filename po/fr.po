@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 00:05+0100\n"
+"POT-Creation-Date: 2026-11-17 20:50+0100\n"
 "PO-Revision-Date: 2026-11-17 21:09+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
@@ -821,7 +821,8 @@ msgstr "le dossier GARMIN est introuvable sur l’appareil"
 #, python-brace-format
 msgid "An unfinished file may have been left on the device: {paths}."
 msgid_plural "Unfinished files may have been left on the device: {paths}."
-msgstr[0] "Un fichier inachevé a peut-être été laissé sur l’appareil : {paths}."
+msgstr[0] ""
+"Un fichier inachevé a peut-être été laissé sur l’appareil : {paths}."
 msgstr[1] ""
 "Des fichiers inachevés ont peut-être été laissés sur l’appareil : {paths}."
 
@@ -1004,8 +1005,8 @@ msgstr ""
 msgid ""
 "Cannot make a copy of the app list ({name}): {error}. Nothing was changed."
 msgstr ""
-"Impossible de faire une copie de la liste des applications ({name}) : {error}"
-". Rien n’a été modifié."
+"Impossible de faire une copie de la liste des applications ({name}) : "
+"{error}. Rien n’a été modifié."
 
 #. TRANSLATORS: how a copy of the app list differs from the order on the device
 #: openexpress/ciq.py
@@ -1127,7 +1128,8 @@ msgstr "Langage système"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Copy of the device's diagnostic files at each connection: on"
-msgstr "Copie des fichiers de diagnostic de l’appareil à chaque connexion : sur"
+msgstr ""
+"Copie des fichiers de diagnostic de l’appareil à chaque connexion : sur"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -1206,8 +1208,8 @@ msgid ""
 "The hidden crash logs, not copied yet, may hold more crashes: to count them, "
 "add --crash-logs --apply."
 msgstr ""
-"Les logs de crash cachés, pas encore copiés, peuvent contenir d’autres crashs"
-" : pour les compter, ajoutez --crash-logs --s’applique."
+"Les logs de crash cachés, pas encore copiés, peuvent contenir d’autres "
+"crashs : pour les compter, ajoutez --crash-logs --s’applique."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -1354,8 +1356,8 @@ msgstr ""
 #, python-brace-format
 msgid "update file not installed by the device: {name} {version} ({size})"
 msgstr ""
-"fichier de mise à jour non installé par l’appareil : {name} {version} ("
-"{size})"
+"fichier de mise à jour non installé par l’appareil : {name} {version} "
+"({size})"
 
 #. TRANSLATORS: `diagnostics --free-space`: an update the device will install, its file
 #. kept; {file}: the name of the file on the device
@@ -1840,7 +1842,8 @@ msgstr[1] "J’écrirais {path} ({count} points)"
 #, python-brace-format
 msgid "Dry run: nothing was written. Add --apply to write it."
 msgid_plural "Dry run: nothing was written. Add --apply to write them."
-msgstr[0] "Essai à blanc : rien n’a été écrit. Ajoutez — postulez pour l’écrire."
+msgstr[0] ""
+"Essai à blanc : rien n’a été écrit. Ajoutez — postulez pour l’écrire."
 msgstr[1] ""
 "Essai à blanc : rien n’a été écrit. Ajoutez — postulez pour les rédiger."
 
@@ -2568,7 +2571,8 @@ msgstr "endommagé : {count} B après la fin ne sont pas de fichier FIT"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Warning: Garmin Connect did not confirm processing of {item}"
-msgstr "Avertissement : Garmin Connect n’a pas confirmé le traitement de {item}"
+msgstr ""
+"Avertissement : Garmin Connect n’a pas confirmé le traitement de {item}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2606,8 +2610,8 @@ msgstr[0] ""
 "Marqué {count} fichier comme déjà téléchargé. La prochaine 'synchronisation' "
 "ne téléversera que les nouvelles données."
 msgstr[1] ""
-"Marqué {count} fichiers comme déjà téléchargés. La prochaine « "
-"synchronisation » ne téléversera que les nouvelles données."
+"Marqué {count} fichiers comme déjà téléchargés. La prochaine "
+"« synchronisation » ne téléversera que les nouvelles données."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2618,7 +2622,8 @@ msgstr "Sauvegarde {device} vers {path}"
 #, python-brace-format
 msgid "Dry run: about {count} file would be copied. Add --apply."
 msgid_plural "Dry run: about {count} files would be copied. Add --apply."
-msgstr[0] "Essai à sec : environ {count} fichier serait copié. Ajouter --applique."
+msgstr[0] ""
+"Essai à sec : environ {count} fichier serait copié. Ajouter --applique."
 msgstr[1] ""
 "Essai à blanc : environ {count} fichiers seraient copiés. Ajouter --applique."
 
@@ -2681,7 +2686,8 @@ msgstr[1] "Débranchez l'appareil pour les installer."
 msgid "Update copied, waiting for the device to install it:"
 msgid_plural "Updates copied, waiting for the device to install them:"
 msgstr[0] "Mise à jour copiée, en attente de son installation par l'appareil :"
-msgstr[1] "Mises à jour copiées ; en attente de leur installation par l’appareil :"
+msgstr[1] ""
+"Mises à jour copiées ; en attente de leur installation par l’appareil :"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2902,7 +2908,8 @@ msgid "{count} more map is available (openexpress maps --all)."
 msgid_plural "{count} more maps are available (openexpress maps --all)."
 msgstr[0] ""
 "{count} carte supplémentaire est disponible (openexpress maps — toutes)."
-msgstr[1] "{count} d’autres cartes sont disponibles (openexpress maps — toutes)."
+msgstr[1] ""
+"{count} d’autres cartes sont disponibles (openexpress maps — toutes)."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3049,7 +3056,8 @@ msgid_plural "Wrote {count} map files and {unlocks} unlock files."
 msgstr[0] ""
 "J’ai écrit {count} fichier cartographique et {unlocks} déverrouillé les "
 "fichiers."
-msgstr[1] "J’ai écrit {count} fichiers cartographiques et {unlocks} déverrouillé."
+msgstr[1] ""
+"J’ai écrit {count} fichiers cartographiques et {unlocks} déverrouillé."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3239,8 +3247,10 @@ msgstr ""
 #, python-brace-format
 msgid "{count} more app is registered and waits for the device"
 msgid_plural "{count} more apps are registered and wait for the device"
-msgstr[0] "{count}'application supplémentaire est enregistrée et attend l’appareil"
-msgstr[1] "{count} plus d’applications sont enregistrées et attendent l’appareil"
+msgstr[0] ""
+"{count}'application supplémentaire est enregistrée et attend l’appareil"
+msgstr[1] ""
+"{count} plus d’applications sont enregistrées et attendent l’appareil"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3429,8 +3439,8 @@ msgstr ""
 msgid ""
 "The server has not queued the app yet; run `openexpress sync` in a moment."
 msgstr ""
-"Le serveur n’a pas encore mis l’application en file d’attente ; exécutez « "
-"OpenExpress Sync » dans un instant."
+"Le serveur n’a pas encore mis l’application en file d’attente ; exécutez "
+"« OpenExpress Sync » dans un instant."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3545,8 +3555,8 @@ msgid ""
 "To change it back, connect {old} and run `openexpress primary set --apply`, "
 "or change it in Garmin Connect."
 msgstr ""
-"Pour le reconfigurer, connectez {old} et exécutez « openexpress primary "
-"set --apply », ou modifiez-le dans Garmin Connect."
+"Pour le reconfigurer, connectez {old} et exécutez « openexpress primary set "
+"--apply », ou modifiez-le dans Garmin Connect."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3763,8 +3773,8 @@ msgstr "{model} est déjà sur le compte Garmin {account}."
 msgid ""
 "{model} ({part}, software {version}) is not on the Garmin account {account}."
 msgstr ""
-"{model} ({part}, {version} logiciel) n’est pas sur le compte Garmin {account}"
-"."
+"{model} ({part}, {version} logiciel) n’est pas sur le compte Garmin "
+"{account}."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3775,8 +3785,8 @@ msgstr "Je l’ajouterais comme appareil actif : POST {address}"
 #, python-brace-format
 msgid "with its GarminDevice.xml ({size}; it holds the device's Unit ID)."
 msgstr ""
-"avec son GarminDevice.xml ({size} ; elle contient l’ID d’unité de l’appareil)"
-"."
+"avec son GarminDevice.xml ({size} ; elle contient l’ID d’unité de "
+"l’appareil)."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4622,8 +4632,8 @@ msgid ""
 "add the connected device to your Garmin account (experimental; a dry run "
 "without --apply)"
 msgstr ""
-"ajoutez l’appareil connecté à votre compte Garmin (expérimental ; essai "
-"sans --apply)"
+"ajoutez l’appareil connecté à votre compte Garmin (expérimental ; essai sans "
+"--apply)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5526,8 +5536,8 @@ msgid ""
 msgstr ""
 "openExpress fonctionne avec des périphériques qui se connectent en tant que "
 "périphérique média (MTP) ou en clé USB. Celui-ci utilise une connexion "
-"différente. Connecté : {name} (USB {id}). Pour le signaler, choisissez « "
-"{item} » dans le menu principal."
+"différente. Connecté : {name} (USB {id}). Pour le signaler, choisissez "
+"« {item} » dans le menu principal."
 
 #: openexpress/device/gio_storage.py openexpress/gui/app.py
 #, python-brace-format
@@ -5625,8 +5635,8 @@ msgid ""
 msgstr ""
 "openExpress lit l’appareil via MTP via gvfs, et gvfs sur ce système n’a "
 "aucun support MTP. Installez-le (Fedora : sudo dnf install gvfs-mtp ; Arch : "
-"sudo pacman -s gvfs-mtp ; Debian et Ubuntu : sudo apt install gvfs-backends)"
-", déconnectez-vous et reconnectez-vous, puis rebranchez l’appareil."
+"sudo pacman -s gvfs-mtp ; Debian et Ubuntu : sudo apt install gvfs-"
+"backends), déconnectez-vous et reconnectez-vous, puis rebranchez l’appareil."
 
 #: openexpress/device/gio_storage.py
 #, python-brace-format
@@ -6448,7 +6458,8 @@ msgstr "Cet appareil n’est pas enregistré à votre compte Garmin"
 #: openexpress/gui/app.py
 #, python-brace-format
 msgid "Could not check whether this device belongs to your Garmin account"
-msgstr "Impossible de vérifier si cet appareil appartient à votre compte Garmin"
+msgstr ""
+"Impossible de vérifier si cet appareil appartient à votre compte Garmin"
 
 #. TRANSLATORS: title when no device is plugged in: plug it in with a USB cable
 #. ("connect", not Garmin Connect)
@@ -8281,7 +8292,8 @@ msgstr "Playlists (.m3u, .m3u8)"
 msgid "{size} will be copied to the device ({count} file already there)."
 msgid_plural ""
 "{size} will be copied to the device ({count} files already there)."
-msgstr[0] "{size} sera copié sur l’appareil ({count} fichier est déjà présent)."
+msgstr[0] ""
+"{size} sera copié sur l’appareil ({count} fichier est déjà présent)."
 msgstr[1] "{size} sera copié sur l’appareil ({count} fichiers déjà présents)."
 
 #. TRANSLATORS: first line of the confirmation before a playlist is added: how many songs it
@@ -8818,8 +8830,8 @@ msgid ""
 "The log is in your clipboard. Paste it into the “Log” field of the form or "
 "into a comment."
 msgstr ""
-"Le journal se trouve dans votre bloc-notes. Collez-le dans le champ « "
-"Journal » du formulaire ou dans un commentaire."
+"Le journal se trouve dans votre bloc-notes. Collez-le dans le champ "
+"« Journal » du formulaire ou dans un commentaire."
 
 #: openexpress/gui/report_dialog.py
 #, python-brace-format
@@ -9018,7 +9030,8 @@ msgstr "Appareils"
 #: openexpress/gui/start.py
 #, python-brace-format
 msgid "Device not connected – connect it to sync or update"
-msgstr "Appareil non connecté – connectez-le pour synchroniser ou mettre à jour"
+msgstr ""
+"Appareil non connecté – connectez-le pour synchroniser ou mettre à jour"
 
 #: openexpress/gui/start.py openexpress/gui/words.py
 #, python-brace-format
@@ -9421,7 +9434,8 @@ msgstr "{name} {version}"
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "Waits to be installed; removing the file would cancel the update"
-msgstr "attend d’être installé ; supprimer le fichier annulerait la mise à jour"
+msgstr ""
+"attend d’être installé ; supprimer le fichier annulerait la mise à jour"
 
 #. TRANSLATORS: subtitle of a row of "Free Up Space" whose title is an update: openExpress
 #. copied it, the device did not install it; followed by the size of its file
@@ -10026,7 +10040,8 @@ msgstr "Réinstaller les composants"
 msgid "{count} component already on the device; useful for troubleshooting"
 msgid_plural ""
 "{count} components already on the device; useful for troubleshooting"
-msgstr[0] "{count} composant déjà présent sur l’appareil ; utile pour le dépannage"
+msgstr[0] ""
+"{count} composant déjà présent sur l’appareil ; utile pour le dépannage"
 msgstr[1] ""
 "{count} composants déjà présents sur l’appareil ; utile pour le dépannage"
 
@@ -10503,7 +10518,8 @@ msgstr "{count} uniquement dans les sauvegardes"
 msgid "The device {names} stopped responding. Unplug it and plug it in again."
 msgid_plural ""
 "The devices {names} stopped responding. Unplug them and plug them in again."
-msgstr[0] "L’appareil {names} cessé de répondre. Débranchez-le et rebranchez-le."
+msgstr[0] ""
+"L’appareil {names} cessé de répondre. Débranchez-le et rebranchez-le."
 msgstr[1] ""
 "Les appareils {names} cessé de répondre. Débranchez-les et branchez-les à "
 "nouveau."
@@ -10515,7 +10531,8 @@ msgid "The device stopped responding. Unplug it and plug it in again."
 msgid_plural ""
 "The devices stopped responding. Unplug them and plug them in again."
 msgstr[0] "L’appareil a cessé de répondre. Débranchez-le et rebranchez-le."
-msgstr[1] "Les appareils ont cessé de répondre. Débranchez-les et rebranchez-les."
+msgstr[1] ""
+"Les appareils ont cessé de répondre. Débranchez-les et rebranchez-les."
 
 #. TRANSLATORS: a distance in kilometres on the page of an activity ("10.24 km")
 #: openexpress/gui/words.py
@@ -12280,8 +12297,8 @@ msgid ""
 "Could not check whether this device belongs to your Garmin account "
 "({error}). Nothing was synced."
 msgstr ""
-"Impossible de vérifier si cet appareil appartient à votre compte Garmin ("
-"{error}). Rien n’a été synchronisé."
+"Impossible de vérifier si cet appareil appartient à votre compte Garmin "
+"({error}). Rien n’a été synchronisé."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -13253,7 +13270,8 @@ msgstr "Non spécifiée"
 #: openexpress/updates.py
 #, python-brace-format
 msgid "On the device {on_device}, Garmin offers {offered}: the same file."
-msgstr "Sur l’appareil {on_device}, Garmin propose {offered} : le même fichier."
+msgstr ""
+"Sur l’appareil {on_device}, Garmin propose {offered} : le même fichier."
 
 #. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
 #. the device ({on_device}) is higher than the one Garmin offers ({offered}); its file is
@@ -13277,8 +13295,8 @@ msgid ""
 "On the device {on_device}, Garmin offers {offered}, an older version: not "
 "reinstalled."
 msgstr ""
-"Sur l’appareil {on_device}, Garmin propose {offered},une version antérieure "
-": non réinstallée."
+"Sur l’appareil {on_device}, Garmin propose {offered},une version "
+"antérieure : non réinstallée."
 
 #. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
 #. the device ({on_device}) is higher than the one Garmin offers ({offered}), while its
@@ -13383,8 +13401,8 @@ msgstr[0] ""
 "{count} module complémentaire absent de l’appareil n’est pas répertorié : "
 "openExpress ne permet pas encore l’installation de modules complémentaires."
 msgstr[1] ""
-"{count} modules complémentaires absents de l’appareil ne sont pas répertoriés"
-" : openExpress ne permet pas encore l’installation de modules "
+"{count} modules complémentaires absents de l’appareil ne sont pas "
+"répertoriés : openExpress ne permet pas encore l’installation de modules "
 "complémentaires."
 
 #: openexpress/updates.py

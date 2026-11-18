@@ -12,7 +12,7 @@ import logging
 
 import pytest
 
-from openexpress import applog, cli, known_devices, service
+from openexpress import applog, cli, known_devices, paths, service
 from openexpress.auth import store
 from openexpress.device.storage import LocalStorage, UmsStorage
 from openexpress.device.xmldevice import parse
@@ -37,7 +37,7 @@ def login(environment="production"):
 
 def damage_login():
     login()
-    store._path().write_text("{")
+    (paths.config_dir() / "connect_auth.json").write_text("{")
 
 
 def damage_key():

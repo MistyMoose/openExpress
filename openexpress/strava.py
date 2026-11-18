@@ -48,8 +48,7 @@ CALLBACK_TIMEOUT = 180
 # How long polling an upload waits for Strava to finish processing it.
 POLL_TIMEOUT = 60
 
-# The Keychain items on macOS (auth.store.read_secret/save_secret/delete_secret); the file
-# names everywhere else.
+# The names of the secrets (auth.store.read_secret/save_secret/delete_secret).
 CLIENT_ITEM = "strava_client"
 TOKEN_ITEM = "strava_token"
 
@@ -118,13 +117,8 @@ class UploadReport:
 # --- the client ID/secret and the token, saved with auth.store -------------------------
 
 
-def _secret_path(item: str) -> Path:
-    """The file `item` is kept in where the Keychain is not used."""
-    return paths.config_dir() / f"{item}.json"
-
-
 def load_client() -> Client | None:
-    text = read_secret(CLIENT_ITEM, _secret_path(CLIENT_ITEM))
+    text = read_secret(CLIENT_ITEM)
     if text is None:
         return None
     try:
@@ -136,7 +130,7 @@ def load_client() -> Client | None:
 
 
 def save_client(client: Client) -> None:
-    save_secret(CLIENT_ITEM, json.dumps(asdict(client)), _secret_path(CLIENT_ITEM))
+    save_secret(CLIENT_ITEM, json.dumps(asdict(client)))
 
 
 def _token_from(data: dict) -> Token:
@@ -149,7 +143,7 @@ def _token_from(data: dict) -> Token:
 
 
 def load_token() -> Token | None:
-    text = read_secret(TOKEN_ITEM, _secret_path(TOKEN_ITEM))
+    text = read_secret(TOKEN_ITEM)
     if text is None:
         return None
     try:
@@ -160,11 +154,11 @@ def load_token() -> Token | None:
 
 
 def save_token(token: Token) -> None:
-    save_secret(TOKEN_ITEM, json.dumps(asdict(token)), _secret_path(TOKEN_ITEM))
+    save_secret(TOKEN_ITEM, json.dumps(asdict(token)))
 
 
 def delete_token() -> bool:
-    return delete_secret(TOKEN_ITEM, _secret_path(TOKEN_ITEM))
+    return delete_secret(TOKEN_ITEM)
 
 
 # --- the local record of what has already been uploaded --------------------------------

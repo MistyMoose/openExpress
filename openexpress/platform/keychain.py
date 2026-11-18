@@ -1,7 +1,8 @@
 """macOS Keychain: generic-password items of one service, "openExpress", each keyed by its
 own account name (here called `item`) — e.g. "connect_auth" for the Garmin OAuth1 token,
-"consumer" for the application key (auth/store.py, which migrates the files of an earlier
-version into the Keychain the first time each is read), and the Strava token (strava.py).
+"consumer" for the application key (auth/store.py), and the Strava token (strava.py).
+platform.secrets() gives the store of these secrets: KeychainSecrets on macOS, which moves the
+file of an earlier version into the Keychain the first time it is read; FileSecrets elsewhere.
 
 The Security framework's item API (SecItemAdd, SecItemCopyMatching, SecItemUpdate,
 SecItemDelete) is called through ctypes, with CoreFoundation strings and dictionaries built by
@@ -13,7 +14,13 @@ callers keep their file instead, as on Linux. Tests inject a backend of their ow
 from __future__ import annotations
 
 import ctypes
+import hashlib
+import logging
 from abc import ABC, abstractmethod
+
+from openexpress import paths
+
+log = logging.getLogger(__name__)
 
 
 SERVICE = "openExpress"
@@ -32,7 +39,8 @@ class KeychainError(OSError):
 
 
 class Backend(ABC):
-    """get/set/delete of one generic-password item of SERVICE, keyed by `account`."""
+    """get/set/delete of one secret, keyed by `account` (in the Keychain: a generic-password
+    item of SERVICE)."""
 
     @abstractmethod
     def get(self, account: str) -> bytes | None:
@@ -202,3 +210,97 @@ def set(account: str, data: bytes) -> None:
 def delete(account: str) -> bool:
     """Whether the item `account` of SERVICE was removed (False: there was none)."""
     return _current().delete(account)
+
+
+class FileSecrets(Backend):
+    """Each secret in a file of its own, `<item>.json` in the config folder, readable by the
+    user alone (paths.write_private)."""
+
+    def path(self, item: str):
+        return paths.config_dir() / f"{item}.json"
+
+    def get(self, item: str) -> bytes | None:
+        path = self.path(item)
+        return path.read_bytes() if path.exists() else None
+
+    def set(self, item: str, data: bytes) -> None:
+        paths.write_private(self.path(item), data)
+
+    def delete(self, item: str) -> bool:
+        path = self.path(item)
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
+
+    def stamp(self, item: str) -> str | None:
+        """When the file was written and its size; None: there is none."""
+        try:
+            st = self.path(item).stat()
+        except OSError:
+            return None
+        return f"{st.st_mtime_ns}-{st.st_size}"
+
+
+class KeychainSecrets(Backend):
+    """The Keychain; where it cannot be reached, the file of FileSecrets instead. A file of an
+    earlier version (or of a Keychain write that failed) is moved into the Keychain the first
+    time it is read, and removed once that succeeds. In its methods, get, set and delete are
+    the functions of this module: the Keychain itself."""
+
+    def __init__(self) -> None:
+        self.files = FileSecrets()
+
+    def get(self, item: str) -> bytes | None:
+        try:
+            data = get(item)
+        except OSError as e:
+            log.info("keychain: %s not reachable (%s); the file is used instead", item, e)
+            data = None
+        if data is not None:
+            return data
+        data = self.files.get(item)
+        if data is not None:
+            self._move_in(item, data)
+        return data
+
+    def _move_in(self, item: str, data: bytes) -> None:
+        """`data`, just read from its file, saved into the Keychain; the file removed only once
+        that succeeds, so that it stays the next read's fallback."""
+        try:
+            set(item, data)
+        except OSError as e:
+            log.info("keychain: %s could not be moved there yet (%s); its file is kept", item, e)
+            return
+        self.files.path(item).unlink(missing_ok=True)
+        log.info("keychain: %s moved from its file into the Keychain", item)
+
+    def set(self, item: str, data: bytes) -> None:
+        try:
+            set(item, data)
+        except OSError as e:
+            log.warning("keychain: %s could not be saved (%s); kept as a file instead", item, e)
+            self.files.set(item, data)
+            return
+        self.files.delete(item)  # a file still there from before
+
+    def delete(self, item: str) -> bool:
+        """Whether the item or its file was removed (either, or both, as a move half done may
+        leave one of each)."""
+        removed = False
+        try:
+            removed = delete(item)
+        except OSError as e:
+            log.warning("keychain: %s could not be removed (%s)", item, e)
+        return self.files.delete(item) or removed
+
+    def stamp(self, item: str) -> str | None:
+        """A hash of the item (nothing in the Keychain says when it was written), else the
+        stamp of its file."""
+        try:
+            data = get(item)
+        except OSError:
+            data = None
+        if data is not None:
+            return f"keychain-{len(data)}-{hashlib.sha256(data).hexdigest()[:16]}"
+        return self.files.stamp(item)

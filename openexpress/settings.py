@@ -169,8 +169,7 @@ class Settings:
         )
 
 
-# The Keychain item's name on macOS (auth.store.read_secret/save_secret); the file's name
-# everywhere.
+# The secret's name (auth.store.read_secret/save_secret; its file: consumer.json).
 CONSUMER_ITEM = "consumer"
 
 
@@ -181,7 +180,7 @@ def consumer_path() -> Path:
 def load_consumer() -> Consumer:
     from openexpress.auth.store import read_secret
 
-    text = read_secret(CONSUMER_ITEM, consumer_path())
+    text = read_secret(CONSUMER_ITEM)
     if text is None:
         raise SetupError(_(
             "openExpress is not set up yet. It needs the Garmin Express installer for Windows "
@@ -215,8 +214,7 @@ def save_consumer(consumer: Consumer) -> None:
     save_secret(
         CONSUMER_ITEM,
         json.dumps({"key": consumer.key, "secret": consumer.secret,
-                   "url_salt": consumer.url_salt}, indent=2),
-        consumer_path(),
+                    "url_salt": consumer.url_salt}, indent=2),
     )
 
 

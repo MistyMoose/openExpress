@@ -1,8 +1,9 @@
 """What differs between the systems openExpress runs on, chosen here once: on Linux the devices
 are found and opened through GIO (gvfs: device/gio_storage.py), on macOS over USB by the
-program itself (device/mac_storage.py, platform/mac_usb.py). Nothing is imported here until it
-is asked for, so that importing this package never needs PyGObject or libusb; the modules of
-this package (mac_usb, and others) are imported by name where they are used.
+program itself (device/mac_storage.py, platform/mac_usb.py); macOS's folders, secrets and the
+rest are in platform/macos.py and platform/keychain.py. A function that answers None leaves
+the caller to its own (Linux) way. Nothing is imported here until it is asked for, so that
+importing this package never needs PyGObject or libusb.
 """
 
 from __future__ import annotations
@@ -44,6 +45,14 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None)
     """The storage of the connected device that has GARMIN/GarminDevice.xml (`uri`: the one
     named with --device-uri), as the module of this system opens it (devices)."""
     return devices().open_device_storage(uri, wait=wait, notify=notify)
+
+
+def secrets():
+    """Where the secrets are kept (keychain.Backend): the Keychain on macOS, which takes in
+    the file of an earlier version; a file readable by the user alone elsewhere."""
+    from openexpress.platform import keychain
+
+    return keychain.KeychainSecrets() if is_mac() else keychain.FileSecrets()
 
 
 def at_start() -> None:

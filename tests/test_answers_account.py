@@ -10,7 +10,7 @@ from fakes import DEVICES_PATH, make_client
 from test_primary_both_roles import LIST, READ_TRAINING, SET_TRAINING, Account
 from test_primary_both_roles import device as made_up_device  # noqa: F401 - the fixture
 
-from openexpress import answers, service
+from openexpress import answers, paths, service
 
 
 def test_opening_a_device_again_uses_the_list_kept(monkeypatch, clock):
@@ -167,7 +167,8 @@ def test_the_login_is_part_of_the_key():
     client = make_client([{"unitid": UNIT}])
     store.save(store.ConnectAuth("one", "one-secret"))
     service.require_account_device(client, UNIT)
-    store._path().write_text(store._path().read_text() + " ")  # written again elsewhere
+    login = paths.config_dir() / "connect_auth.json"
+    login.write_text(login.read_text() + " ")  # written again elsewhere
     service.require_account_device(client, UNIT)
     assert client.http.paths() == [DEVICES_PATH, DEVICES_PATH]
 

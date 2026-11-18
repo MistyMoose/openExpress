@@ -18,7 +18,9 @@ struct ActivitiesPage: View {
     @State private var compactDate = false
     /// Measured from the list when it changes (see `ColumnWidths`).
     @State private var widths = ColumnWidths()
-    @State private var tableWidth: CGFloat = 0
+    /// The table's width as last measured. Not state: a resize changes the view only when
+    /// `fitColumns` picks other columns, not on every frame.
+    @State private var tableWidth = MeasuredWidth()
 
     private var all: [Activity] { model.activities ?? [] }
 
@@ -48,7 +50,7 @@ struct ActivitiesPage: View {
                             // A new set of columns lays the table out afresh at their widths.
                             .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, widths: widths))
                             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
-                                tableWidth = width
+                                tableWidth.value = width
                                 fitColumns(to: width)
                             }
                     }
@@ -74,7 +76,7 @@ struct ActivitiesPage: View {
         }
         .onChange(of: model.activities == nil) { demo() }
         .onChange(of: model.activities, initial: true) { widths = ColumnWidths(all) }
-        .onChange(of: widths) { if tableWidth > 0 { fitColumns(to: tableWidth) } }
+        .onChange(of: widths) { if tableWidth.value > 0 { fitColumns(to: tableWidth.value) } }
         .onChange(of: search) { _, new in model.activityFilter.text = new }
         .onExitCommand(perform: resetSearch)
         .onChange(of: selection) { _, new in
@@ -164,6 +166,11 @@ struct ActivitiesPage: View {
         }
     }
 
+    /// A width kept across renders without being observed.
+    final class MeasuredWidth {
+        var value: CGFloat = 0
+    }
+
     /// What lays the table out afresh when it changes.
     struct TableLayout: Hashable {
         var hidden: Set<String>
@@ -220,6 +227,8 @@ struct ActivitiesPage: View {
         }
     }
 
+    private static let debugLayout = ProcessInfo.processInfo.environment["OEDEBUG_LAYOUT"] != nil
+
     /// Makes the columns fit the width: first Avg HR and Ascent go, then Date takes its
     /// compact form, then Duration and Distance go. Sport and Date always stay.
     private func fitColumns(to width: CGFloat) {
@@ -239,7 +248,7 @@ struct ActivitiesPage: View {
         ]
         for step in steps where needed() > width { step() }
         // Development: `OEDEBUG_LAYOUT=1` logs the measured widths and what was chosen.
-        if ProcessInfo.processInfo.environment["OEDEBUG_LAYOUT"] != nil {
+        if Self.debugLayout {
             NSLog("openExpress layout: table %.0f, needed %.0f; widths %@; compact date %d; columns %@",
                   width, needed(), String(describing: widths), compact ? 1 : 0, visible.joined(separator: " · "))
         }

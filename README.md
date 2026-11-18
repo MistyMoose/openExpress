@@ -99,6 +99,7 @@ devices that connect over USB (MTP) should work too – reports are welcome.
 | Edge 1040 | MTP | [#8](https://github.com/TomaszBojanowski/openExpress/issues/8), [#10](https://github.com/TomaszBojanowski/openExpress/issues/10) |
 | Edge 540 | MTP | [#18](https://github.com/TomaszBojanowski/openExpress/issues/18), [#28](https://github.com/TomaszBojanowski/openExpress/issues/28) |
 | Drive 53 EX | MTP | a user; [#42](https://github.com/TomaszBojanowski/openExpress/issues/42) |
+| Venu 2S | MTP | [#60](https://github.com/TomaszBojanowski/openExpress/issues/60) (read-only: another account) |
 | inReach Mini 2 | USB drive | [#11](https://github.com/TomaszBojanowski/openExpress/issues/11) |
 | Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
 | Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |

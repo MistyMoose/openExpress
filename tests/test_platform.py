@@ -26,17 +26,30 @@ def test_the_devices_are_found_by_gio_on_linux_and_over_usb_on_macos(monkeypatch
     assert platform.devices() is mac_storage and not platform.needs_pygobject()
 
 
+# What the command line, service, report and engine ask of platform.devices().
+DEVICES_NAMES = ("find_devices", "find_all_devices", "find_ums_devices", "probe",
+                 "distinct_devices", "open_device_storage", "open_ums_storage", "mount",
+                 "mount_drive", "close_found", "holders", "usb_state", "garmin_usb_summary",
+                 "mtp_missing", "ABSENT", "STARTING", "PRESENT", "MASS_STORAGE", "DRIVE_OFF",
+                 "UNSUPPORTED", "SeveralDevices", "NotThereYet", "MassStorageNotice",
+                 "UnsupportedDevice")
+
+
 def test_the_names_of_the_devices_module_are_the_same_on_both_systems():
-    """What the command line, service and report ask of platform.devices(), on macOS."""
     from openexpress.device import mac_storage
 
-    for name in ("find_devices", "find_all_devices", "find_ums_devices", "probe",
-                 "distinct_devices", "open_device_storage", "open_ums_storage", "mount",
-                 "mount_drive", "usb_state", "garmin_usb_summary", "mtp_missing", "ABSENT",
-                 "STARTING", "PRESENT", "MASS_STORAGE", "DRIVE_OFF", "UNSUPPORTED",
-                 "SeveralDevices", "NotThereYet", "MassStorageNotice", "UnsupportedDevice"):
+    for name in DEVICES_NAMES:
         assert hasattr(mac_storage, name), name
     assert mac_storage.SeveralDevices is found.SeveralDevices
+
+
+def test_gio_storage_has_the_names_of_the_devices_module_too():
+    pytest.importorskip("gi")
+    from openexpress.device import gio_storage
+
+    for name in DEVICES_NAMES:
+        assert hasattr(gio_storage, name), name
+    assert gio_storage.holders() == {}
 
 
 def test_importing_the_platform_and_the_storage_of_macos_needs_neither_pygobject_nor_libusb():

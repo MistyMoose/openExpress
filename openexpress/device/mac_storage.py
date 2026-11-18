@@ -520,6 +520,15 @@ def garmin_usb_summary() -> list[tuple[str, str | None, list[str | None]]]:
     return [(d.usb_id, d.name, list(d.classes)) for d in mac_usb.garmin_devices()]
 
 
+def holders() -> dict[tuple[int, int], str]:
+    """The other programs that hold a Garmin device for themselves (the IORegistry), by its
+    place on USB: not this process, nor the camera service, which is paused while the device
+    is open."""
+    return {place: r.holder.name for place, r in mac_usb.registered_devices().items()
+            if r.holder is not None and not r.holder.this_process
+            and not r.holder.camera_daemon}
+
+
 def mtp_missing() -> bool:
     """MTP is the program's own here: never missing."""
     return False

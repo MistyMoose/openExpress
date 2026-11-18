@@ -1822,6 +1822,16 @@ def mtp_missing() -> bool:
     return missing
 
 
+def holders() -> dict[tuple[int, int], str]:
+    """The other programs that hold a Garmin device, by its place on USB: none known here, as
+    gvfs shares a device (one held elsewhere: held_elsewhere_text)."""
+    return {}
+
+
+def close_found(found: FoundDevice) -> None:
+    """Nothing: gvfs keeps the device, open to every program."""
+
+
 def held_elsewhere_text() -> str:
     """The sentence added when the wait for a device in its normal mode ran out: KDE's kmtpd
     (kio-extras, in kiod6) may hold it over MTP, so gvfs cannot offer it. Once Dolphin started

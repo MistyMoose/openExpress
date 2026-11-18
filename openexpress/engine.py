@@ -155,23 +155,10 @@ class SystemDevices:
 
         from openexpress.device.found import usb_place
 
-        found = platform.devices().find_all_devices()
-        holders = self._holders() if found else {}
+        devices = platform.devices()
+        found = devices.find_all_devices()
+        holders = devices.holders() if found else {}
         return [Seen(f.uri, f, holders.get(usb_place(f.usb))) for f in found]
-
-    @staticmethod
-    def _holders() -> dict[tuple[int, int], str]:
-        """The other programs that hold a Garmin device, by its place on USB (macOS: the
-        IORegistry); none where that cannot be told (Linux: gvfs shares a device)."""
-        from openexpress import platform
-
-        if not platform.is_mac():
-            return {}
-        from openexpress.platform import mac_usb
-
-        return {place: r.holder.name for place, r in mac_usb.registered_devices().items()
-                if r.holder is not None and not r.holder.this_process
-                and not r.holder.camera_daemon}
 
     def probe(self, found):
         """What its GarminDevice.xml says (found.DeviceSummary); the device let go after."""
@@ -194,10 +181,7 @@ class SystemDevices:
         """The device let go between requests: on macOS its session closed."""
         from openexpress import platform
 
-        if platform.is_mac():
-            from openexpress.device import mac_storage
-
-            mac_storage.close_found(found)
+        platform.devices().close_found(found)
 
 
 def battery_of(storage) -> int | None:

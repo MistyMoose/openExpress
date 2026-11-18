@@ -28,8 +28,9 @@ def devices():
     """The module that finds and opens the Garmin devices here: gio_storage on Linux,
     mac_storage on macOS. Both have the same names for it: find_devices, find_all_devices,
     find_ums_devices, probe, distinct_devices, open_device_storage, open_ums_storage, mount,
-    mount_drive, usb_state (and its states ABSENT, STARTING, PRESENT, MASS_STORAGE, DRIVE_OFF,
-    UNSUPPORTED), garmin_usb_summary, mtp_missing and the errors of found.py."""
+    mount_drive, close_found, holders, usb_state (and its states ABSENT, STARTING, PRESENT,
+    MASS_STORAGE, DRIVE_OFF, UNSUPPORTED), garmin_usb_summary, mtp_missing and the errors of
+    found.py."""
     if is_mac():
         from openexpress.device import mac_storage
 

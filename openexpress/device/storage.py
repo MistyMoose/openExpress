@@ -190,7 +190,7 @@ class Storage(ABC):
                 if strict:
                     raise
                 return None
-            match = _entry_named(entries, part)
+            match = entry_named(entries, part)
             if match is None:
                 return None
             real = posixpath.join(real, match.name) if real else match.name
@@ -422,7 +422,7 @@ class Storage(ABC):
                 found = entries(real)
                 if found is None:
                     return None
-                entry = _entry_named(found, part)
+                entry = entry_named(found, part)
                 if entry is None:
                     return None
                 real = posixpath.join(real, entry.name) if real else entry.name
@@ -461,7 +461,7 @@ def named_in_any_case(items, name: str):
     return next((item for item in items if item.name.casefold() == wanted), None)
 
 
-def _entry_named(entries: list[Entry], name: str) -> Entry | None:
+def entry_named(entries, name: str):
     """The entry of this name in its exact letter case, else the first in any
     (named_in_any_case): what looking a path up takes."""
     exact = next((e for e in entries if e.name == name), None)

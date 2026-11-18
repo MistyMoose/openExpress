@@ -62,6 +62,7 @@ from openexpress.device.storage import (
     Entry,
     Storage,
     UmsStorage,
+    entry_named,
 )
 from openexpress.errors import OrdinaryStop
 from openexpress.i18n import _, pgettext
@@ -85,16 +86,6 @@ def place_of(uri: str) -> tuple[int, int] | None:
 
 def _entry(info: ptp.ObjectInfo) -> Entry:
     return Entry(info.name, info.is_dir, 0 if info.is_dir else info.size, info.modified)
-
-
-def _named(items: list[ptp.ObjectInfo], name: str) -> ptp.ObjectInfo | None:
-    """The object of this name in its exact letter case, else the first in any (a real path
-    is as listed; one in another case is taken as Storage.resolve takes it)."""
-    exact = next((o for o in items if o.name == name), None)
-    if exact is not None:
-        return exact
-    wanted = name.casefold()
-    return next((o for o in items if o.name.casefold() == wanted), None)
 
 
 class MacStorage(Storage):
@@ -202,13 +193,13 @@ class MacStorage(Storage):
     def _object(self, real_path: str, what: str) -> ptp.ObjectInfo | None:
         """The object at this real path, from the listing of its folder; None: not there."""
         parent, name = posixpath.split(real_path)
-        return _named(self._objects(parent, what), name) if name else None
+        return entry_named(self._objects(parent, what), name) if name else None
 
     def _known(self, real_path: str) -> ptp.ObjectInfo | None:
         """The object at this real path if its folder was listed already; nothing is asked."""
         parent, name = posixpath.split(real_path)
         listed = self._folders.get(parent)
-        return _named(listed, name) if listed is not None and name else None
+        return entry_named(listed, name) if listed is not None and name else None
 
     def _folder_handle(self, real_path: str, what: str) -> int:
         if not real_path:
@@ -240,7 +231,7 @@ class MacStorage(Storage):
         parent, name = posixpath.split(real_path)
         listed = self._folders.get(parent)
         if listed is not None:
-            gone = _named(listed, name)
+            gone = entry_named(listed, name)
             self._folders[parent] = [o for o in listed if o is not gone]
         for path in [p for p in self._folders if p == real_path
                      or p.startswith(real_path + "/")]:

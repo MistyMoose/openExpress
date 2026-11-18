@@ -467,20 +467,45 @@ def _still_stalled(places: set[tuple[int, int]]) -> set[tuple[int, int]]:
 
 # --- finding the devices --------------------------------------------------------------------
 
-def _usb_devices() -> list[mac_usb.UsbDevice]:
-    """The Garmin devices on USB but those that stopped responding."""
-    devices = mac_usb.garmin_devices()
+def _usb_devices(reuse: bool = False) -> list[mac_usb.UsbDevice]:
+    """The Garmin devices on USB but those that stopped responding (`reuse`: as
+    mac_usb.garmin_devices)."""
+    devices = mac_usb.garmin_devices(reuse=True) if reuse else mac_usb.garmin_devices()
     stalled = _still_stalled({(d.bus, d.address) for d in devices})
     return [d for d in devices if (d.bus, d.address) not in stalled]
+
+
+def _offering_mtp(devices: list[mac_usb.UsbDevice]) -> list[mac_usb.UsbDevice]:
+    return [d for d in devices if d.mode == PRESENT and d.file_transfer]
+
+
+def _found(d: mac_usb.UsbDevice) -> FoundDevice:
+    return FoundDevice(device_uri(d.bus, d.address),
+                       d.name or pgettext("in a sentence", "Garmin device"), True,
+                       usb=d.garmin_usb())
 
 
 def find_devices() -> list[FoundDevice]:
     """The Garmin devices on USB that offer MTP (a file transfer interface, not in their Garmin
     USB mode). Nothing is opened."""
-    return [FoundDevice(device_uri(d.bus, d.address),
-                        d.name or pgettext("in a sentence", "Garmin device"), True,
-                        usb=d.garmin_usb())
-            for d in _usb_devices() if d.mode == PRESENT and d.file_transfer]
+    return [_found(d) for d in _offering_mtp(_usb_devices())]
+
+
+def poll() -> tuple[list[FoundDevice], dict[tuple[int, int], str]]:
+    """For the engine's polling, from one look at USB: what find_all_devices finds, and the
+    holders() of them. The IORegistry (a run of `ioreg`) is read again only when the Garmin
+    devices on USB changed, or a while after another program was seen holding one
+    (mac_usb.garmin_devices, `reuse`); the name of a holder is asked once (mac_usb)."""
+    devices = _offering_mtp(_usb_devices(reuse=True))
+    held = {(d.bus, d.address): d.holder.name for d in devices
+            if d.holder is not None and not d.holder.this_process
+            and not d.holder.camera_daemon}
+    return [_found(d) for d in devices], held
+
+
+def look_again() -> None:
+    """The next poll reads the IORegistry: a request found the device held."""
+    mac_usb.look_again()
 
 
 def find_ums_devices() -> list[FoundDevice]:

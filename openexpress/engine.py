@@ -19,7 +19,8 @@ is let go (on macOS its USB session is closed), so that another program may take
 
 Devices are found by polling (platform.devices(): mac_storage on macOS, gio_storage on Linux):
 `device.attached` and `device.detached` when they come and go, `device.busy` when another
-program holds one (on macOS the IORegistry names it, platform/mac_usb.py).
+program holds one (on macOS the IORegistry names it, platform/mac_usb.py; read again only when
+the devices on USB change, or now and then while another program holds one).
 """
 
 from __future__ import annotations
@@ -154,9 +155,7 @@ class SystemDevices:
 
         from openexpress.device.found import usb_place
 
-        devices = platform.devices()
-        found = devices.find_all_devices()
-        holders = devices.holders() if found else {}
+        found, holders = platform.devices().poll()
         return [Seen(f.uri, f, holders.get(usb_place(f.usb))) for f in found]
 
     def probe(self, found):
@@ -167,6 +166,12 @@ class SystemDevices:
             return platform.devices().probe(found)
         finally:
             self.release(found)
+
+    def look_again(self) -> None:
+        """The next scan looks at who holds the devices again (a request found one held)."""
+        from openexpress import platform
+
+        platform.devices().look_again()
 
     def options(self, found) -> dict:
         """How the command line names the device (its options --device-uri, --path)."""
@@ -721,6 +726,8 @@ class Engine:
                           {"device": wanted})
 
     def _on_device(self, req: Request, function):
+        from openexpress.device.found import DeviceInUse
+
         a = self.resolve(req.params)
         if a.busy_by is not None:
             raise EngineError("device_busy", _("{program} is using the device. Quit it, then "
@@ -728,7 +735,11 @@ class Engine:
                               {"program": a.busy_by, "device": str(a.unit_id or "")})
         with self._turns_of(a.key).turn(req.cancel, then=lambda: self.devices.release(a.found)):
             self.checkpoint(req)
-            return function(req, a)
+            try:
+                return function(req, a)
+            except DeviceInUse:
+                self.devices.look_again()  # the next scan tells it busy
+                raise
 
     def device_json(self, a: Attached, storage=None, known: dict | None = None,
                     backups: Path | None = None) -> dict:

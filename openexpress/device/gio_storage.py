@@ -1832,6 +1832,15 @@ def close_found(found: FoundDevice) -> None:
     """Nothing: gvfs keeps the device, open to every program."""
 
 
+def poll() -> tuple[list[FoundDevice], dict[tuple[int, int], str]]:
+    """For the engine's polling: what find_all_devices finds, and the holders() of them."""
+    return find_all_devices(), holders()
+
+
+def look_again() -> None:
+    """Nothing is kept of a look at USB here."""
+
+
 def held_elsewhere_text() -> str:
     """The sentence added when the wait for a device in its normal mode ran out: KDE's kmtpd
     (kio-extras, in kiod6) may hold it over MTP, so gvfs cannot offer it. Once Dolphin started

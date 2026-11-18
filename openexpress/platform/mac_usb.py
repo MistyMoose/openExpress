@@ -103,11 +103,32 @@ class _Registered:
     holder: Holder | None = None
 
 
+# The name of the program of each process ID asked (_program_name), so that `ps` is not run
+# again for a holder seen at every look: by (pid, the IORegistry's short name).
+_names: dict[tuple[int, str], str] = {}
+_names_lock = threading.Lock()
+# What another process of the program is named as a holder (_program_name).
+OUR_NAME = "openExpress"
+
+
 def _program_name(pid: int, short: str) -> str:
     """The name of the program with this process ID (the IORegistry cuts it at 16
     characters: "Garmin Express S"); `short` when it cannot be told. Another openexpress
-    process (the app's engine, a command in a Terminal) is "openExpress", not the "Python"
-    that runs it."""
+    process (the app's engine, a command in a Terminal) is "openExpress" (OUR_NAME), not the
+    "Python" that runs it. Asked once a process (_names)."""
+    with _names_lock:
+        known = _names.get((pid, short))
+    if known is not None:
+        return known
+    name = _ask_program_name(pid, short)
+    with _names_lock:
+        if len(_names) > 64:
+            _names.clear()
+        _names[(pid, short)] = name
+    return name
+
+
+def _ask_program_name(pid: int, short: str) -> str:
     try:
         path = subprocess.run([PS, "-p", str(pid), "-o", "comm="], capture_output=True,
                               text=True, timeout=TOOL_TIMEOUT_S, check=False).stdout.strip()
@@ -117,7 +138,7 @@ def _program_name(pid: int, short: str) -> str:
         return short
     if any(os.path.basename(word) == "openexpress" or word == "openexpress"
            for word in args.split()[:3]):
-        return "openExpress"
+        return OUR_NAME
     name = os.path.basename(path)
     return name if name.startswith(short) else short
 
@@ -243,10 +264,58 @@ def _interfaces(lib, device) -> tuple[tuple[str, ...], bool]:
         lib.libusb_free_config_descriptor(config)
 
 
-def garmin_devices() -> list[UsbDevice]:
+# While nothing else changed, how often the IORegistry is read again for a device another
+# program holds (garmin_devices with `reuse`): to see that it let go.
+HELD_LOOK_S = 10.0
+
+
+@dataclass
+class _Look:
+    """What the IORegistry told at the last look (registered_devices), of the Garmin devices
+    then on USB: (bus, address, product) of each."""
+
+    devices: frozenset
+    registered: dict
+    at: float
+
+
+_last_look: _Look | None = None
+_look_lock = threading.Lock()
+_clock = time.monotonic
+
+
+def look_again() -> None:
+    """The next garmin_devices with `reuse` reads the IORegistry (a holder may have come)."""
+    global _last_look
+    with _look_lock:
+        _last_look = None
+
+
+def _registered(found: list[UsbDevice], reuse: bool) -> dict:
+    """registered_devices() for the devices libusb found; with `reuse`, what the last look
+    told while the same Garmin devices are on USB (bus, address and product), unless another
+    program than this one held one of them then and HELD_LOOK_S went by."""
+    global _last_look
+    devices = frozenset((d.bus, d.address, d.product) for d in found)
+    with _look_lock:
+        last = _last_look
+    if reuse and last is not None and last.devices == devices:
+        held = any(r.holder is not None and not r.holder.this_process
+                   for r in last.registered.values())
+        if not held or _clock() - last.at < HELD_LOOK_S:
+            return last.registered
+    registered = registered_devices()
+    with _look_lock:
+        _last_look = _Look(devices, registered, _clock())
+    return registered
+
+
+def garmin_devices(reuse: bool = False) -> list[UsbDevice]:
     """Every Garmin device on USB (vendor 091e), whatever mode it is in, in the order libusb
-    lists them. Nothing is opened or sent to a device. Empty when libusb is not there (said in
-    the log once)."""
+    lists them, with what the IORegistry tells of each (its name, serial and holder). Nothing
+    is opened or sent to a device. Empty when libusb is not there (said in the log once).
+    `reuse` (the engine's polling): the IORegistry is read again only when the Garmin devices
+    on USB changed, or a while after another program was seen holding one (_registered)."""
     try:
         lib = _libusb()
     except ptp.UsbUnavailable as e:
@@ -279,7 +348,7 @@ def garmin_devices() -> list[UsbDevice]:
         lib.libusb_exit(context)
     if not found:
         return []
-    registered = registered_devices()
+    registered = _registered(found, reuse)
     out = []
     for device in found:
         known = registered.get((device.bus, device.address), _Registered())

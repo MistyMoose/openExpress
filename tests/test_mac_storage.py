@@ -307,7 +307,7 @@ def usb(monkeypatch):
     (`usb.holder`), and each fake device the transport opens (`usb.opened`): a fresh _fake()
     each time unless `usb.device` is set."""
     state = types.SimpleNamespace(devices=[_usb()], holder=None, opened=[], device=None)
-    monkeypatch.setattr(mac_usb, "garmin_devices", lambda: list(state.devices))
+    monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: list(state.devices))
     monkeypatch.setattr(mac_usb, "holder_of", lambda bus, address: state.holder)
 
     def opened(bus, address):
@@ -458,6 +458,99 @@ def test_probe_of_a_device_in_use_has_no_details(usb):
     usb.holder = mac_usb.Holder("Garmin Express Service", 4242)
     (device,) = mac_storage.find_devices()
     assert mac_storage.probe(device).reason == found.UNREADABLE
+
+
+# --- the engine's polling -------------------------------------------------------------------
+
+def test_a_poll_tells_the_devices_and_the_other_programs_holding_them_from_one_look(
+        usb, monkeypatch):
+    asked = []
+    devices = [_usb(), _usb("4f42", 41, holder=mac_usb.Holder("Garmin Express Service", 4242)),
+               _usb("4f43", 42, holder=mac_usb.Holder("ptpcamerad", 77)),
+               _usb("4f44", 43, holder=mac_usb.Holder("openExpress", mac_usb.os.getpid())),
+               _usb("0003", 44, holder=mac_usb.Holder("Garmin Express Service", 4242))]
+    monkeypatch.setattr(mac_usb, "garmin_devices",
+                        lambda reuse=False: asked.append(reuse) or list(devices))
+    found_there, held = mac_storage.poll()
+    assert asked == [True]  # one look, the IORegistry's last one reused if it may be
+    assert [d.uri for d in found_there] == [
+        URI, "mtp://[usb:008,041]/", "mtp://[usb:008,042]/", "mtp://[usb:008,043]/"]
+    assert held == {(8, 41): "Garmin Express Service"}  # not ours, not the camera service's
+
+
+@pytest.fixture
+def ioreg(monkeypatch):
+    """The runs of `ioreg` (registered_devices) counted; what it tells is `ioreg.told`; the
+    clock of the looks is `ioreg.now`."""
+    state = types.SimpleNamespace(runs=0, told={}, now=100.0)
+
+    def registered(read=None):
+        state.runs += 1
+        return dict(state.told)
+
+    monkeypatch.setattr(mac_usb, "registered_devices", registered)
+    monkeypatch.setattr(mac_usb, "_clock", lambda: state.now)
+    return state
+
+
+def test_the_ioregistry_is_read_again_only_when_the_garmin_devices_on_usb_change(ioreg):
+    watch = [_usb()]
+    for _n in range(3):
+        mac_usb._registered(watch, reuse=True)
+    assert ioreg.runs == 1
+    ioreg.now += 3600
+    mac_usb._registered(watch, reuse=True)
+    assert ioreg.runs == 1  # nothing changed, nobody held it: no `ioreg` at all
+    mac_usb._registered([_usb(address=38)], reuse=True)  # plugged in again: a new address
+    assert ioreg.runs == 2
+    mac_usb._registered([_usb(address=38), _usb("4f42", 41)], reuse=True)
+    assert ioreg.runs == 3
+    mac_usb._registered([_usb(address=38), _usb("4f42", 41)], reuse=False)  # not the poll's
+    assert ioreg.runs == 4
+    mac_usb.look_again()
+    mac_usb._registered([_usb(address=38), _usb("4f42", 41)], reuse=True)
+    assert ioreg.runs == 5
+
+
+def test_a_device_another_program_holds_is_looked_at_again_now_and_then_to_see_it_let_go(
+        ioreg):
+    watch = [_usb()]
+    ioreg.told = {(8, 37): mac_usb._Registered(holder=mac_usb.Holder("Garmin Express", 42))}
+    mac_usb._registered(watch, reuse=True)
+    ioreg.now += mac_usb.HELD_LOOK_S - 1
+    mac_usb._registered(watch, reuse=True)
+    assert ioreg.runs == 1
+    ioreg.told = {}
+    ioreg.now += 2
+    assert mac_usb._registered(watch, reuse=True) == {}  # let go: seen
+    ioreg.now += mac_usb.HELD_LOOK_S + 1
+    mac_usb._registered(watch, reuse=True)
+    assert ioreg.runs == 2
+    # Held by this process itself: nothing to wait for.
+    ioreg.told = {(8, 37): mac_usb._Registered(holder=mac_usb.Holder("x", mac_usb.os.getpid()))}
+    mac_usb.look_again()
+    mac_usb._registered(watch, reuse=True)
+    ioreg.now += 3600
+    mac_usb._registered(watch, reuse=True)
+    assert ioreg.runs == 3
+
+
+def test_the_name_of_a_holder_is_asked_of_ps_once_a_process(monkeypatch):
+    import subprocess
+
+    runs = []
+
+    def ps(cmd, **_kw):
+        runs.append(cmd[-1])
+        out = "/Applications/Garmin Express.app/Contents/MacOS/Garmin Express Service"
+        return subprocess.CompletedProcess(cmd, 0, stdout=out + "\n", stderr="")
+
+    monkeypatch.setattr(mac_usb.subprocess, "run", ps)
+    for _n in range(3):
+        assert mac_usb.parse_holder("pid 4242, Garmin Express S").name == "Garmin Express Service"
+    assert runs == ["comm=", "args="]
+    mac_usb.parse_holder("pid 4243, Garmin Express S")
+    assert len(runs) == 4  # another process: asked
 
 
 # --- platform.mac_usb: the IORegistry, the claim, ptpcamerad ---------------------------------

@@ -289,11 +289,14 @@ def no_usb_on_macos(monkeypatch, tmp_path):
     never stopped, woken or looked at; its lock file is the test's own."""
     from openexpress.platform import mac_usb
 
-    monkeypatch.setattr(mac_usb, "garmin_devices", list)
+    monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: [])
     monkeypatch.setattr(mac_usb, "registered_devices", lambda read=None: {})
     monkeypatch.setattr(mac_usb, "_signal_daemon", lambda name: False)
     monkeypatch.setattr(mac_usb, "daemon_stopped", lambda: False)
     monkeypatch.setattr(mac_usb, "pause_lock_path", lambda: tmp_path / "ptpcamerad.lock")
+    # What a test before looked at or asked is not known.
+    monkeypatch.setattr(mac_usb, "_last_look", None)
+    monkeypatch.setattr(mac_usb, "_names", {})
 
 
 class QuietVolumeMonitor:

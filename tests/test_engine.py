@@ -45,6 +45,7 @@ class FakeDevices:
         self.roots = dict(roots)
         self.held: dict[str, str] = {}
         self.released: list[str] = []
+        self.looks_again = 0
 
     def scan(self):
         return [engine.Seen(key, FoundDevice(key, "Test watch", True), self.held.get(key))
@@ -58,6 +59,9 @@ class FakeDevices:
 
     def options(self, found):
         return {"path": str(self.roots[found.uri])}
+
+    def look_again(self):
+        self.looks_again += 1
 
     def release(self, found):
         self.released.append(found.uri)
@@ -281,6 +285,20 @@ def test_devices_list_reads_the_remembered_devices_and_the_settings_once_for_the
     listed = running.ask("devices.list")["result"]["devices"]
     assert [d["unit_id"] for d in listed] == [UNIT, "1002", "1001", "1000"]
     assert loads == {"known": 1, "settings": 1}
+
+
+def test_a_request_that_finds_the_device_held_has_the_next_look_ask_who_holds_it(running,
+                                                                                  devices):
+    from openexpress.device.found import DeviceInUse
+    from openexpress.platform.mac_usb import Holder
+
+    def taken(req, a):
+        raise DeviceInUse(Holder("Garmin Express Service", 4242))
+
+    running.engine.methods["device.info"] = ("device", taken)
+    error = running.ask("device.info", {"device": UNIT})["error"]
+    assert error["code"] == "device_busy"
+    assert devices.looks_again == 1
 
 
 def test_a_busy_device_is_named_by_the_unit_id_its_usb_serial_gives_when_it_is_remembered():

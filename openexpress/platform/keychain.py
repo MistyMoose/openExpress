@@ -1,32 +1,20 @@
 """macOS Keychain: generic-password items of one service, "openExpress", each keyed by its
 own account name (here called `item`) — e.g. "connect_auth" for the Garmin OAuth1 token,
 "consumer" for the application key (auth/store.py, which migrates the files of an earlier
-version into the Keychain the first time each is read). The same two functions and the same
-`item`/`service` shape can hold a Strava token later, under its own `item` name.
+version into the Keychain the first time each is read), and the Strava token (strava.py).
 
-Two backends, tried in this order:
-  - `_SecurityBackend`: the Security framework's modern item API (SecItemAdd,
-    SecItemCopyMatching, SecItemUpdate, SecItemDelete) called through ctypes, with
-    CoreFoundation strings and dictionaries built by hand (no PyObjC, which is not one of
-    this program's dependencies).
-  - `_SecurityCliBackend`: the `security` command line (`man security`), used only where the
-    framework cannot be loaded through ctypes (not expected on an ordinary macOS install; a
-    hardened or cut-down environment might refuse it). Slower, and the password must be text
-    without a NUL byte, which is all this program ever stores here (JSON).
-
-Tests never reach either: they inject a backend of their own (`use_backend`), so that nothing
-of a test ever touches the real Keychain.
+The Security framework's item API (SecItemAdd, SecItemCopyMatching, SecItemUpdate,
+SecItemDelete) is called through ctypes, with CoreFoundation strings and dictionaries built by
+hand (no PyObjC). Where the framework cannot be loaded, each call raises OSError and the
+callers keep their file instead, as on Linux. Tests inject a backend of their own
+(`use_backend`), so that nothing of a test ever touches the real Keychain.
 """
 
 from __future__ import annotations
 
 import ctypes
-import ctypes.util
-import logging
-import subprocess
 from abc import ABC, abstractmethod
 
-log = logging.getLogger(__name__)
 
 SERVICE = "openExpress"
 
@@ -38,9 +26,9 @@ _ERR_DUPLICATE_ITEM = -25299
 
 
 class KeychainError(OSError):
-    """A Keychain operation failed (an OSStatus that is not "not found", or the `security`
-    command line's exit code). A subclass of OSError, as paths.write_private and os.link
-    failures are: callers already fall back on OSError for "this cannot be done here"."""
+    """A Keychain operation failed (an OSStatus that is not "not found"). A subclass of OSError,
+    as paths.write_private and os.link failures are: callers already fall back on OSError for
+    "this cannot be done here"."""
 
 
 class Backend(ABC):
@@ -62,17 +50,12 @@ class Backend(ABC):
 class _SecurityBackend(Backend):
     """Security.framework through ctypes: SecItemAdd/SecItemCopyMatching/SecItemUpdate/
     SecItemDelete, each called with a CFDictionary query built from CFStrings and, for
-    `set`, a CFData of the secret. Raises OSError (not this module's KeychainError) at
-    construction when the framework or a symbol it needs cannot be loaded, so that
-    `default_backend` falls back to the `security` command line."""
+    `set`, a CFData of the secret. Raises OSError at construction when the framework or a
+    symbol it needs cannot be loaded."""
 
     def __init__(self) -> None:
-        try:
-            self._cf = ctypes.CDLL(
-                "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
-            self._sec = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
-        except OSError:
-            raise
+        self._cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        self._sec = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
         self._bind()
 
     def _bind(self) -> None:
@@ -191,36 +174,6 @@ class _SecurityBackend(Backend):
         return True
 
 
-class _SecurityCliBackend(Backend):
-    """The `security` command line, for the rare case the framework cannot be loaded through
-    ctypes. Limited to text without a NUL byte (`-w` takes the password as one argument);
-    this program only ever stores JSON here, which qualifies."""
-
-    program = "/usr/bin/security"
-
-    def _run(self, *args: str) -> subprocess.CompletedProcess:
-        return subprocess.run([self.program, *args], capture_output=True, text=True, check=False)
-
-    def get(self, account: str) -> bytes | None:
-        res = self._run("find-generic-password", "-s", SERVICE, "-a", account, "-w")
-        if res.returncode != 0:
-            return None  # not found, or no Keychain reachable (e.g. no login session)
-        return res.stdout.rstrip("\n").encode()
-
-    def set(self, account: str, data: bytes) -> None:
-        if b"\x00" in data:
-            raise KeychainError("the `security` command line cannot store a NUL byte")
-        # -U: update in place if the item exists already, instead of refusing it as a duplicate.
-        res = self._run("add-generic-password", "-s", SERVICE, "-a", account, "-w",
-                        data.decode(), "-U")
-        if res.returncode != 0:
-            raise KeychainError(f"security add-generic-password: {res.stderr.strip()}")
-
-    def delete(self, account: str) -> bool:
-        res = self._run("delete-generic-password", "-s", SERVICE, "-a", account)
-        return res.returncode == 0
-
-
 _backend: Backend | None = None  # resolved lazily (default_backend), or injected for tests
 
 
@@ -232,14 +185,8 @@ def use_backend(backend: Backend | None) -> None:
 
 
 def default_backend() -> Backend:
-    """The Security framework through ctypes, unless it could not be loaded (not expected on
-    an ordinary install), when the `security` command line is used instead."""
-    try:
-        return _SecurityBackend()
-    except OSError as e:
-        log.info("keychain: Security.framework not usable through ctypes (%s); the `security` "
-                "command line is used instead", e)
-        return _SecurityCliBackend()
+    """The Security framework through ctypes; OSError where it cannot be loaded."""
+    return _SecurityBackend()
 
 
 def _current() -> Backend:

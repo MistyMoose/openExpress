@@ -1,8 +1,8 @@
 """Garmin Connect token storage: on Linux a file with 0600 permissions; on macOS the
 Keychain (platform/keychain.py), where a file of an earlier version (or one a failed Keychain
 write left behind) is migrated in on first read and removed once that succeeds. read_secret,
-save_secret and delete_secret are generic (an `item` name and a fallback `path`): a Strava
-token can be kept the same way later, under an item of its own.
+save_secret and delete_secret keep any other secret the same way (an `item` name and a
+fallback `path`), as the application key and the Strava token are.
 """
 
 from __future__ import annotations

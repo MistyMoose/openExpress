@@ -1296,9 +1296,7 @@ def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
                     progress: Callable[[str], None] | None = None) -> DropFolderResult:
     """The files of plan_drop_folder copied into `dest` (made if it does not exist yet). A FIT
     file the device is still writing (incompleteness, as an upload checks it) is left for the
-    next sync. `dest` must allow hard links to itself (a temporary file next to each name); a
-    filesystem that does not (e.g. most FAT volumes) raises OSError, same as a backup falls
-    back to copying for that, a drop folder is meant to be a folder of this computer."""
+    next sync. A file already there is never overwritten (_write_new)."""
     progress = say_to(progress)
     dest.mkdir(parents=True, exist_ok=True)
     planned = plan_drop_folder(device, storage, dest, types)

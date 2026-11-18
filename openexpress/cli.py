@@ -1195,9 +1195,7 @@ def _strava_status_line(s) -> str:
 
 
 def cmd_strava(args) -> int:
-    """`strava connect|disconnect|status|upload FILE…`: the public API of strava.py used
-    here is exactly what openexpress/engine.py (the macOS app) calls too: status(),
-    connect_with_code(), authorize_url(), disconnect(), upload_files()."""
+    """`strava connect|disconnect|status|upload FILE…`."""
     from openexpress import strava
 
     cmd = args.strava_cmd or "status"

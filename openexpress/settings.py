@@ -75,14 +75,14 @@ class Settings:
     # A copy of the device's diagnostic files at each connection (diagnostics.py); off
     # unless chosen, and nothing of it is ever sent.
     diagnostics_copy: bool = False
-    # macOS fork: `setup --copy-fit-to DIR` (sync.run_drop_folder). Empty: off. A folder of
-    # this computer another program can watch for newly-synced FIT files.
+    # `setup --copy-fit-to DIR` (sync.run_drop_folder). Empty: off. A folder of this
+    # computer another program can watch for newly-synced FIT files.
     copy_fit_to: str = ""
-    # macOS fork: `setup --copy-fit-types`, data type names (as `sync --type` takes them)
+    # `setup --copy-fit-types`, data type names (as `sync --type` takes them)
     # comma-separated; empty: activities only (sync.drop_folder_types).
     copy_fit_types: str = ""
-    # macOS fork: `setup --strava-upload on|off`. Off unless chosen: a sync's newly-uploaded
-    # activity FIT files are also sent to Strava (strava.py), with the user's own Strava API
+    # `setup --strava-upload on|off`. Off unless chosen: a sync's newly-uploaded activity
+    # FIT files are also sent to Strava (strava.py), with the user's own Strava API
     # application (`strava connect`).
     strava_upload: bool = False
 

@@ -716,6 +716,11 @@ class Engine:
                         known = known if known is not None else known_devices.load()
                         a.unit_id = unit_id_by_serial(
                             getattr(getattr(s.found, "usb", None), "serial", None), known)
+                        remembered = known.get(a.unit_id) if a.unit_id else None
+                        if remembered is not None and not a.description:
+                            # Its name as when it was last read (a fēnix has no USB name).
+                            a.description = remembered.description
+                            a.part_number = remembered.part_number
                     self._attached[key] = a
                     self.event("device.busy", {
                         "device": str(a.unit_id) if a.unit_id else None,

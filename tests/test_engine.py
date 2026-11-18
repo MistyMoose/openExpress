@@ -393,6 +393,22 @@ def test_devices_list_reads_the_remembered_devices_and_the_settings_once_for_the
     assert loads == {"known": 1, "settings": 1}
 
 
+def test_a_busy_device_without_a_usb_name_is_named_as_it_was_remembered(running, devices,
+                                                                          monkeypatch):
+    """A fēnix 8 gives no USB product name: held by another program from the start, it is
+    told by the name it had when it was last read, found by its serial."""
+    from openexpress import known_devices
+    from openexpress.device.found import GarminUsb
+
+    known_devices.remember(1234567890, "fenix 8 - 47mm", "006-B4536-00", "24.16", "mtp")
+    usb = GarminUsb("51b8", bus=1, address=9, serial="499602D2")
+    monkeypatch.setattr(devices, "scan", lambda: [
+        engine.Seen(KEY, FoundDevice(KEY, "", True, usb=usb), "Garmin Express Service")])
+    running.ask("devices.list")
+    assert running.events("device.busy") == [
+        {"device": UNIT, "program": "Garmin Express Service", "name": "fenix 8 - 47mm"}]
+
+
 def test_a_busy_device_is_named_by_the_unit_id_its_usb_serial_gives_when_it_is_remembered():
     assert engine.unit_id_by_serial("499602D2", {1234567890: None}) == 1234567890
     assert engine.unit_id_by_serial("1234567890", {1234567890: None}) == 1234567890

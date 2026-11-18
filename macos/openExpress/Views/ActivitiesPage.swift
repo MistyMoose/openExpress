@@ -436,42 +436,13 @@ struct ActivityDetailView: View {
             }
             .monospacedDigit()
 
-            if let track, track.points.contains(where: { $0.elevation != nil }) {
-                Section("Elevation") {
-                    Chart(track.points.indices.filter { track.points[$0].elevation != nil }, id: \.self) { i in
-                        let p = track.points[i]
-                        let x = (p.time ?? Double(i)) / 60
-                        let y = Format.elevationValue(p.elevation ?? 0)
-                        AreaMark(x: .value("Time", x), y: .value("Elevation", y))
-                            .foregroundStyle(.green.gradient.opacity(0.35))
-                        LineMark(x: .value("Time", x), y: .value("Elevation", y))
-                            .foregroundStyle(.green)
-                    }
-                    .chartYScale(domain: .automatic(includesZero: false))
-                    .chartXAxisLabel(String(localized: "Time (min)"), alignment: .trailing)
-                    .chartYAxisLabel(Format.elevationUnit.symbol)
-                    .frame(height: 130)
-                    .padding(.vertical, 4)
-                    .accessibilityLabel("Elevation profile")
-                }
-            }
-
-            if let track, track.points.contains(where: { $0.heartRate != nil }) {
-                Section("Heart Rate") {
-                    Chart(track.points.indices.filter { track.points[$0].heartRate != nil }, id: \.self) { i in
-                        let p = track.points[i]
-                        LineMark(x: .value("Time", (p.time ?? Double(i)) / 60),
-                                 y: .value("Heart rate", p.heartRate ?? 0))
-                            .foregroundStyle(.red)
-                            .interpolationMethod(.catmullRom)
-                    }
-                    .chartYScale(domain: .automatic(includesZero: false))
-                    .chartXAxisLabel(String(localized: "Time (min)"), alignment: .trailing)
-                    .chartYAxisLabel("bpm")
-                    .frame(height: 130)
-                    .padding(.vertical, 4)
-                    .accessibilityLabel("Heart rate")
-                }
+            if let track {
+                TrackChart(title: "Elevation", valueLabel: "Elevation", accessibilityTitle: "Elevation profile",
+                           unit: Format.elevationUnit.symbol, color: .green, filled: true,
+                           points: track.points) { $0.elevation.map(Format.elevationValue) }
+                TrackChart(title: "Heart Rate", valueLabel: "Heart rate", accessibilityTitle: "Heart rate",
+                           unit: "bpm", color: .red, filled: false,
+                           points: track.points) { $0.heartRate }
             }
 
             if let path = activity.fitPath, let file = activity.fileName {
@@ -510,6 +481,44 @@ struct ActivityDetailView: View {
         .task {
             track = await model.track(for: activity)
             loaded = true
+        }
+    }
+}
+
+/// One value of a track over its time, in a section of its own; nothing when no point has
+/// it. Filled: the area under a straight line (elevation); else a smoothed line (heart rate).
+struct TrackChart: View {
+    let title: LocalizedStringKey
+    let valueLabel: LocalizedStringKey
+    let accessibilityTitle: LocalizedStringKey
+    let unit: String
+    let color: Color
+    let filled: Bool
+    let points: [ActivityTrack.Point]
+    let value: (ActivityTrack.Point) -> Double?
+
+    var body: some View {
+        let indices = points.indices.filter { value(points[$0]) != nil }
+        if !indices.isEmpty {
+            Section(title) {
+                Chart(indices, id: \.self) { i in
+                    let x = (points[i].time ?? Double(i)) / 60
+                    let y = value(points[i]) ?? 0
+                    if filled {
+                        AreaMark(x: .value("Time", x), y: .value(valueLabel, y))
+                            .foregroundStyle(color.gradient.opacity(0.35))
+                    }
+                    LineMark(x: .value("Time", x), y: .value(valueLabel, y))
+                        .foregroundStyle(color)
+                        .interpolationMethod(filled ? .linear : .catmullRom)
+                }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .chartXAxisLabel(String(localized: "Time (min)"), alignment: .trailing)
+                .chartYAxisLabel(unit)
+                .frame(height: 130)
+                .padding(.vertical, 4)
+                .accessibilityLabel(accessibilityTitle)
+            }
         }
     }
 }

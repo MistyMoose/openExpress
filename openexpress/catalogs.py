@@ -96,8 +96,28 @@ def write_template(out: Path = TEMPLATE) -> Path:
     _run([_tool("xgettext"), "--from-code=UTF-8", *KEYWORDS, *FLAGS, "--add-comments=TRANSLATORS",
           "--add-location=file", f"--package-name={i18n.DOMAIN}",
           f"--package-version={__version__}", f"--output={out}", *files])
+    _check_appstream_rules(out)
     add_flags(out)
     return out
+
+
+def _check_appstream_rules(pot: Path) -> None:
+    """CatalogError when xgettext took the metainfo without AppStream's rules (metainfo.its of
+    the appstream package): it then lists the texts of the elements marked translate="no" (the
+    name, the developer, the keywords) as texts to translate."""
+    not_to_translate = set(re.findall(r'<[^>]*\btranslate="no"[^>]*>([^<]+)<',
+                                      METAINFO_TEMPLATE.read_text(encoding="utf-8")))
+    metainfo_only = f"#: {METAINFO_TEMPLATE.relative_to(ROOT).as_posix()}"
+    for entry in pot.read_text(encoding="utf-8").split("\n\n"):
+        lines = entry.splitlines()
+        references = [line for line in lines if line.startswith("#: ")]
+        texts = {line[len('msgid "'):-1] for line in lines if line.startswith('msgid "')}
+        if references == [metainfo_only] and texts & not_to_translate:
+            raise CatalogError(
+                "xgettext did not find AppStream's rules for the metainfo (metainfo.its, from "
+                "the appstream package), so the template would hold texts not to translate. "
+                "Install appstream; with Homebrew also set XDG_DATA_DIRS to include "
+                "/opt/homebrew/share.")
 
 
 # --- the flags of Weblate ---------------------------------------------------------------------

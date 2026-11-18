@@ -11,6 +11,10 @@ What the tests need:
   a display, because the window modules are imported; the tests with a display also need
   WebKitGTK 6.0.
 - GNU gettext (`msgfmt`): the tests build the translations for themselves.
+- AppStream's rules for the metainfo (`metainfo.its`, from the `appstream` package): without
+  them xgettext puts texts not to translate in the template, and making it is refused. With
+  Homebrew, whose xgettext does not look in its own prefix, also set
+  `XDG_DATA_DIRS=/opt/homebrew/share`.
 - Optional: without libusb-1.0 the PTP test is skipped quietly, and without the Adwaita Sans font
   so are the window-width tests (the widths are measured in it).
 

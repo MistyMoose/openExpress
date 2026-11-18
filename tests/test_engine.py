@@ -45,6 +45,8 @@ class FakeDevices:
         self.roots = dict(roots)
         self.held: dict[str, str] = {}
         self.released: list[str] = []
+        self.holds: list[str] = []  # each device opened for a request (hold)
+        self.waiting = False  # another process of the program waits for a device
         self.looks_again = 0
 
     def scan(self):
@@ -60,8 +62,14 @@ class FakeDevices:
     def options(self, found):
         return {"path": str(self.roots[found.uri])}
 
+    def hold(self, found):
+        self.holds.append(found.uri)
+
     def look_again(self):
         self.looks_again += 1
+
+    def wanted(self):
+        return self.waiting
 
     def release(self, found):
         self.released.append(found.uri)
@@ -123,9 +131,10 @@ class Running:
     """An engine serving on a thread of its own: ask() sends a request and returns its
     response."""
 
-    def __init__(self, devices):
+    def __init__(self, devices, keep_open_s=engine.KEEP_OPEN_S):
         self.stdin, self.out = Lines(), Out()
-        self.engine = engine.Engine(self.out, devices=devices, poll_s=None)
+        self.engine = engine.Engine(self.out, devices=devices, poll_s=None,
+                                    keep_open_s=keep_open_s)
         self.code = None
         self._ids = iter(range(1, 10_000))
         self.thread = threading.Thread(target=self._serve, daemon=True)
@@ -236,12 +245,109 @@ def test_a_device_unplugged_is_told_detached_and_no_longer_listed(running, devic
     assert [d["unit_id"] for d in running.events("device.detached")] == [UNIT]
 
 
-def test_device_info_gives_the_device_with_its_storage_and_lets_it_go_after(running, devices):
+def test_device_info_gives_the_device_with_its_storage(running, devices):
     info = running.ask("device.info", {"device": UNIT})["result"]
     assert info["unit_id"] == UNIT and info["connected"] is True
     assert set(info["storage"]) == {"free", "capacity"} and info["storage"]["free"] > 0
     assert "FIT_TYPE_4" in info["datatypes"]
-    assert KEY in devices.released  # let go once nobody waits for it
+    assert devices.holds == [KEY]
+
+
+def _wait_until(test, timeout=10.0):
+    deadline = time.monotonic() + timeout
+    while not test():
+        assert time.monotonic() < deadline, "not seen"
+        time.sleep(0.01)
+
+
+def test_a_device_stays_open_between_requests_and_is_let_go_a_while_after_the_last(devices):
+    running = Running(devices, keep_open_s=0.3)
+    try:
+        running.ask("devices.list")  # attached: probed, then kept open as after a request
+        for _n in range(3):
+            assert "result" in running.ask("device.info", {"device": UNIT})
+        assert devices.released == []
+        assert devices.holds == [KEY] * 3  # each request opens it with what the poll found
+        _wait_until(lambda: devices.released)
+        time.sleep(0.4)
+        assert devices.released == [KEY]  # once, after the last
+        running.ask("device.info", {"device": UNIT})
+        _wait_until(lambda: len(devices.released) == 2)
+    finally:
+        running.stop()
+
+
+def test_without_a_while_to_stay_open_a_device_is_let_go_after_each_request(devices):
+    running = Running(devices, keep_open_s=0)
+    try:
+        running.ask("devices.list")
+        assert devices.released == [KEY]  # after the probe
+        running.ask("device.info", {"device": UNIT})
+        assert devices.released == [KEY, KEY]
+    finally:
+        running.stop()
+
+
+def test_a_device_unplugged_or_taken_by_another_program_is_let_go_at_once(running, devices):
+    running.ask("device.info", {"device": UNIT})
+    devices.held[KEY] = "Garmin Express Service"
+    running.ask("devices.list")
+    assert devices.released == [KEY]
+    devices.held.clear()
+    running.ask("devices.list")  # free again: probed, kept open
+    devices.roots.clear()
+    running.ask("devices.list")
+    assert devices.released == [KEY, KEY]
+
+
+def test_a_device_another_process_of_the_program_waits_for_is_let_go_at_once(running, devices):
+    running.ask("device.info", {"device": UNIT})
+    devices.waiting = True
+    running.ask("devices.list")
+    assert devices.released == [KEY]
+
+
+def test_the_device_is_let_go_when_the_engine_ends(devices):
+    running = Running(devices)
+    running.ask("device.info", {"device": UNIT})
+    assert devices.released == []
+    running.ask("shutdown")
+    running.thread.join(10)
+    assert devices.released == [KEY]
+
+
+def test_a_device_wanted_during_a_request_is_let_go_once_it_ends(running, devices):
+    started, go_on = threading.Event(), threading.Event()
+    real = running.engine.device_info
+
+    def slow_info(req, a):
+        started.set()
+        go_on.wait(10)
+        return real(req, a)
+
+    running.engine.methods["device.info"] = ("device", slow_info)
+    request_id = running.send("device.info", {"device": UNIT})
+    started.wait(10)
+    devices.waiting = True
+    running.ask("devices.list")
+    assert devices.released == []  # not under the request
+    go_on.set()
+    running.response(request_id)
+    _wait_until(lambda: devices.released == [KEY])
+
+
+def test_a_request_that_finds_the_device_held_has_the_next_look_ask_who_holds_it(running,
+                                                                                  devices):
+    from openexpress.device.found import DeviceInUse
+    from openexpress.platform.mac_usb import Holder
+
+    def taken(found):
+        raise DeviceInUse(Holder("Garmin Express Service", 4242))
+
+    devices.hold = taken
+    error = running.ask("device.info", {"device": UNIT})["error"]
+    assert error["code"] == "device_busy"
+    assert devices.looks_again == 1
 
 
 def test_a_unit_id_not_connected_is_a_no_device_error(running):
@@ -285,20 +391,6 @@ def test_devices_list_reads_the_remembered_devices_and_the_settings_once_for_the
     listed = running.ask("devices.list")["result"]["devices"]
     assert [d["unit_id"] for d in listed] == [UNIT, "1002", "1001", "1000"]
     assert loads == {"known": 1, "settings": 1}
-
-
-def test_a_request_that_finds_the_device_held_has_the_next_look_ask_who_holds_it(running,
-                                                                                  devices):
-    from openexpress.device.found import DeviceInUse
-    from openexpress.platform.mac_usb import Holder
-
-    def taken(req, a):
-        raise DeviceInUse(Holder("Garmin Express Service", 4242))
-
-    running.engine.methods["device.info"] = ("device", taken)
-    error = running.ask("device.info", {"device": UNIT})["error"]
-    assert error["code"] == "device_busy"
-    assert devices.looks_again == 1
 
 
 def test_a_busy_device_is_named_by_the_unit_id_its_usb_serial_gives_when_it_is_remembered():

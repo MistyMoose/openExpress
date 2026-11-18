@@ -1832,6 +1832,10 @@ def close_found(found: FoundDevice) -> None:
     """Nothing: gvfs keeps the device, open to every program."""
 
 
+def hold(found: FoundDevice) -> None:
+    """Nothing: a request opens the device as the command line does."""
+
+
 def poll() -> tuple[list[FoundDevice], dict[tuple[int, int], str]]:
     """For the engine's polling: what find_all_devices finds, and the holders() of them."""
     return find_all_devices(), holders()
@@ -1839,6 +1843,11 @@ def poll() -> tuple[list[FoundDevice], dict[tuple[int, int], str]]:
 
 def look_again() -> None:
     """Nothing is kept of a look at USB here."""
+
+
+def wanted_elsewhere() -> bool:
+    """gvfs shares a device: no other process waits for this one to let go."""
+    return False
 
 
 def held_elsewhere_text() -> str:

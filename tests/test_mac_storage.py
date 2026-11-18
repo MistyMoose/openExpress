@@ -460,7 +460,7 @@ def test_probe_of_a_device_in_use_has_no_details(usb):
     assert mac_storage.probe(device).reason == found.UNREADABLE
 
 
-# --- the engine's polling -------------------------------------------------------------------
+# --- the engine's polling and the device kept open between its requests -----------------------
 
 def test_a_poll_tells_the_devices_and_the_other_programs_holding_them_from_one_look(
         usb, monkeypatch):
@@ -551,6 +551,75 @@ def test_the_name_of_a_holder_is_asked_of_ps_once_a_process(monkeypatch):
     assert runs == ["comm=", "args="]
     mac_usb.parse_holder("pid 4243, Garmin Express S")
     assert len(runs) == 4  # another process: asked
+
+
+def test_a_device_held_for_the_engine_stays_open_and_is_listed_anew_at_each_request(
+        usb, monkeypatch):
+    (device,) = mac_storage.find_devices()
+    first = mac_storage.hold(device)
+    assert usb.opened == [(8, 37)]
+    first.read("GARMIN/GarminDevice.xml")
+    listed = first._folders.copy()
+    assert listed
+    looks = []
+    monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: looks.append(1) or [])
+    assert mac_storage.hold(device) is first
+    assert first._folders == {}  # the device may have written files since
+    assert usb.opened == [(8, 37)]
+    # What the request opens by its address is that one, without a look at USB.
+    assert mac_storage.open_device_storage(URI) is first and looks == []
+    mac_storage.close_found(device)
+    assert first.closed
+    monkeypatch.setattr(mac_usb, "garmin_devices", lambda reuse=False: list(usb.devices))
+    assert mac_storage.hold(device) is not first  # let go: opened anew
+    assert usb.opened == [(8, 37), (8, 37)]
+
+
+def test_a_device_that_stopped_responding_is_not_held(usb):
+    (device,) = mac_storage.find_devices()
+    mac_storage.note_stalled(device.usb)
+    assert mac_storage.hold(device) is None and usb.opened == []
+
+
+@pytest.fixture
+def handover(monkeypatch):
+    """The holders the IORegistry tells one after the other (the last one stays); each wait
+    recorded with whether the want lock was held then."""
+    state = types.SimpleNamespace(holders=[], waits=[], now=0.0)
+
+    def holder_of(bus, address):
+        return state.holders.pop(0) if len(state.holders) > 1 else state.holders[0]
+
+    def sleep(seconds):
+        state.waits.append(mac_usb.wanted_elsewhere())
+        state.now += seconds
+
+    monkeypatch.setattr(mac_usb, "holder_of", holder_of)
+    monkeypatch.setattr(mac_usb, "_sleep", sleep)
+    monkeypatch.setattr(mac_usb, "_clock", lambda: state.now)
+    return state
+
+
+def test_another_openexpress_holding_the_device_is_waited_for_until_it_lets_go(handover):
+    ours = mac_usb.Holder("openExpress", 4242)
+    handover.holders = [ours, ours, ours, None]
+    mac_usb.check_free(8, 37)
+    assert handover.waits == [True, True, True]  # it saw that one waits for the device
+    assert mac_usb.wanted_elsewhere() is False  # nobody waits any more
+
+
+def test_another_openexpress_that_keeps_the_device_is_said_after_the_wait(handover):
+    handover.holders = [mac_usb.Holder("openExpress", 4242)]
+    with pytest.raises(mac_usb.DeviceInUse, match="openExpress is using the device"):
+        mac_usb.check_free(8, 37)
+    assert len(handover.waits) == mac_usb.HANDOVER_WAIT_S / mac_usb.HANDOVER_EVERY_S
+
+
+def test_another_program_holding_the_device_is_not_waited_for(handover):
+    handover.holders = [mac_usb.Holder("Garmin Express Service", 4242)]
+    with pytest.raises(mac_usb.DeviceInUse):
+        mac_usb.check_free(8, 37)
+    assert handover.waits == []
 
 
 # --- platform.mac_usb: the IORegistry, the claim, ptpcamerad ---------------------------------

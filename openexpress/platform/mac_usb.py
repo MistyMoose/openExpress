@@ -367,10 +367,62 @@ def _say_once(key: str, *message) -> None:
 
 # --- the device to ourselves ----------------------------------------------------------------
 
+# How long a process waits for another process of the program (the app's engine, which keeps
+# a device open a few seconds after its last request) to let go of a device it wants.
+HANDOVER_WAIT_S = 15.0
+HANDOVER_EVERY_S = 0.5
+
+
+def want_lock_path() -> Path:
+    """The lock file of the processes that wait for a device another process of the program
+    holds (held shared while they wait); the one that holds it lets go when it sees it held
+    (wanted_elsewhere)."""
+    return Path(tempfile.gettempdir()) / f"openexpress-{os.getuid()}-want.lock"
+
+
+def wanted_elsewhere() -> bool:
+    """Whether another process of the program waits for a device (holds the want lock); no
+    program is run for it."""
+    try:
+        fd = os.open(want_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+    except OSError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+    return False
+
+
+def _handed_over(bus: int, address: int, holder: Holder) -> Holder | None:
+    """The holder of the device once another process of the program that held it let go, the
+    want lock held meanwhile (at most HANDOVER_WAIT_S): None when nothing holds it then."""
+    try:
+        fd = os.open(want_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+    except OSError:
+        return holder
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH)
+        log.info("USB: the device is held by another openExpress process; waiting for it")
+        deadline = _clock() + HANDOVER_WAIT_S
+        while holder is not None and holder.name == OUR_NAME and not holder.this_process \
+                and _clock() < deadline:
+            _sleep(HANDOVER_EVERY_S)
+            holder = holder_of(bus, address)
+        return holder
+    finally:
+        os.close(fd)
+
+
 def check_free(bus: int, address: int) -> None:
     """DeviceInUse when another program than this one and the camera service holds the device
-    at this place on USB; nothing is asked of the device."""
+    at this place on USB; nothing is asked of the device. Another process of the program is
+    waited for a while: it lets go when it sees that one waits (wanted_elsewhere)."""
     holder = holder_of(bus, address)
+    if holder is not None and holder.name == OUR_NAME and not holder.this_process:
+        holder = _handed_over(bus, address, holder)
     if holder is not None and not holder.this_process and not holder.camera_daemon:
         log.info("USB: the device is held by %s (pid %s); not taken from it", holder.name,
                  holder.pid if holder.pid is not None else "?")

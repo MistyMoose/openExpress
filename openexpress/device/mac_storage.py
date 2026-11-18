@@ -508,6 +508,12 @@ def look_again() -> None:
     mac_usb.look_again()
 
 
+def wanted_elsewhere() -> bool:
+    """Whether another process of the program waits for a device this one holds
+    (mac_usb.check_free): the engine lets its devices go then."""
+    return mac_usb.wanted_elsewhere()
+
+
 def find_ums_devices() -> list[FoundDevice]:
     """Garmin drives: not opened on macOS (yet); usb_state tells them."""
     return []
@@ -609,6 +615,9 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
 
 
 def _open_device_storage(uri: str | None) -> MacStorage:
+    kept = _kept_open(place_of(uri)) if uri is not None else None
+    if kept is not None:
+        return kept  # open in this process (the engine keeps it between requests)
     found = find_devices()
     if uri is None:
         return open_found(one_device(found))
@@ -624,13 +633,22 @@ def _open_device_storage(uri: str | None) -> MacStorage:
     return open_found(chosen)
 
 
+def _kept_open(place: tuple[int, int] | None) -> MacStorage | None:
+    """The storage open in this process of the device at this place on USB, if it can still be
+    used (not closed, not stalled)."""
+    with _open_lock:
+        open_storage = _open.get(place) if place is not None else None
+    if open_storage is not None and not open_storage.closed and not open_storage.stalled:
+        return open_storage
+    return None
+
+
 def open_found(found: FoundDevice) -> MacStorage:
     """The storage of a device find_devices found: the one open already in this process, or
     one opened now (its session open, the storage that has GARMIN/GarminDevice.xml)."""
     place = usb_place(found.usb)
-    with _open_lock:
-        open_storage = _open.get(place)
-    if open_storage is not None and not open_storage.closed and not open_storage.stalled:
+    open_storage = _kept_open(place)
+    if open_storage is not None:
         return open_storage
     try:
         transport = mac_usb.open_transport(*place)
@@ -650,6 +668,21 @@ def open_found(found: FoundDevice) -> MacStorage:
     with _open_lock:
         _open[place] = st
     return st
+
+
+def hold(found: FoundDevice) -> MacStorage | None:
+    """The device opened for a request of the engine, found by its poll: the storage kept open
+    since the request before, what was listed of it dropped (the device may have written
+    files meanwhile), or opened now (open_found). None for a device that stopped responding
+    at its place: the request opens it its own way and says so."""
+    place = usb_place(found.usb)
+    kept = _kept_open(place)
+    if kept is not None:
+        kept.refresh()
+        return kept
+    if place is None or place in _stalled_at:
+        return None
+    return open_found(found)
 
 
 def close_found(found: FoundDevice) -> None:

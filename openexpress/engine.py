@@ -14,8 +14,11 @@ maps, activities, auth, settings); the methods the contract answers "as the comm
 Requests run each on a thread of its own. Those for one device take their turn, in the order
 they came (_Turns): one at a time, while the reader stays free for `cancel`. A request is
 stopped at a safe point only: before it starts, between items, at a progress message that is
-not in the middle of a file written to the device (_safe_point). Between requests the device
-is let go (on macOS its USB session is closed), so that another program may take it.
+not in the middle of a file written to the device (_safe_point). A device stays open for
+KEEP_OPEN_S after the last request on it (on macOS its USB session), as the app's requests come
+in bursts; then it is let go, so that another program may take it. It is let go at once when it
+is unplugged, when another program is seen holding it or another process of the program waits
+for it, and when the engine ends.
 
 Devices are found by polling (platform.devices(): mac_storage on macOS, gio_storage on Linux):
 `device.attached` and `device.detached` when they come and go, `device.busy` when another
@@ -50,6 +53,9 @@ log = logging.getLogger(__name__)
 PROTOCOL = 1
 # How often USB is looked at for devices that came or went.
 POLL_S = 2.0
+# How long a device stays open after the last request on it (the app asks several things in a
+# row as a page opens).
+KEEP_OPEN_S = 8.0
 # How long `shutdown` waits for the requests it cancelled to stop.
 SHUTDOWN_WAIT_S = 30.0
 # Steps of a long task, at most this often as `progress` events.
@@ -159,19 +165,30 @@ class SystemDevices:
         return [Seen(f.uri, f, holders.get(usb_place(f.usb))) for f in found]
 
     def probe(self, found):
-        """What its GarminDevice.xml says (found.DeviceSummary); the device let go after."""
+        """What its GarminDevice.xml says (found.DeviceSummary); the device stays open, let go
+        as after a request (release)."""
         from openexpress import platform
 
-        try:
-            return platform.devices().probe(found)
-        finally:
-            self.release(found)
+        return platform.devices().probe(found)
+
+    def hold(self, found) -> None:
+        """The device opened for a request: on macOS the session kept open since the request
+        before, or opened now (what the request opens then is that one); nothing elsewhere."""
+        from openexpress import platform
+
+        platform.devices().hold(found)
 
     def look_again(self) -> None:
         """The next scan looks at who holds the devices again (a request found one held)."""
         from openexpress import platform
 
         platform.devices().look_again()
+
+    def wanted(self) -> bool:
+        """Whether another process of the program waits for a device this one holds."""
+        from openexpress import platform
+
+        return platform.devices().wanted_elsewhere()
 
     def options(self, found) -> dict:
         """How the command line names the device (its options --device-uri, --path)."""
@@ -180,7 +197,7 @@ class SystemDevices:
         return {"device_uri": found.uri}
 
     def release(self, found) -> None:
-        """The device let go between requests: on macOS its session closed."""
+        """The device let go: on macOS its session closed (the camera service goes on)."""
         from openexpress import platform
 
         platform.devices().close_found(found)
@@ -233,6 +250,14 @@ class _Turns:
                 self._cond.wait(0.1)
             self._waiting.popleft()
             self._busy = True
+
+    def try_enter(self) -> bool:
+        """The turn taken now if nobody has it or waits for it; whether it was."""
+        with self._cond:
+            if self._busy or self._waiting:
+                return False
+            self._busy = True
+            return True
 
     def leave(self) -> bool:
         """Its turn over; whether nobody waits for the next."""
@@ -399,11 +424,19 @@ def error_of(e: BaseException) -> EngineError:
 class Engine:
     """The request loop (serve), the requests' threads and the polling of the devices."""
 
-    def __init__(self, out, devices=None, poll_s: float | None = POLL_S):
+    def __init__(self, out, devices=None, poll_s: float | None = POLL_S,
+                 keep_open_s: float = KEEP_OPEN_S):
         self._out = out
         self._out_lock = threading.Lock()
         self.devices = devices or SystemDevices()
         self.poll_s = poll_s
+        # The devices that may be open (a request on them, or one ended less than keep_open_s
+        # ago): by key, the found device and the count of the uses of it, which tells the
+        # timer of an earlier use that a later one came (_let_go_later). 0: let go at once.
+        self.keep_open_s = keep_open_s
+        self._open: dict[str, tuple[object, int]] = {}
+        self._open_lock = threading.Lock()
+        self._let_go_at_end: set[str] = set()  # to let go once the request on it ends
         self._attached: dict[str, Attached] = {}
         self._scanned = False
         self._scan_lock = threading.Lock()
@@ -494,6 +527,7 @@ class Engine:
             return 0
         finally:
             self._stop.set()
+            self._let_go_all()
             sys.stdout, sys.stderr = streams
 
     def handle_line(self, line: str) -> str | None:
@@ -662,9 +696,16 @@ class Engine:
             known = None
             for key in [k for k in self._attached if k not in seen]:
                 gone = self._attached.pop(key)
+                self._let_go_now(key)
                 self.event("device.detached", self.device_json(gone))
+            if self._open and self.devices.wanted():
+                log.info("engine: another openexpress process waits for a device; let go")
+                for key in list(self._open):
+                    self._let_go_now(key)
             for key, s in seen.items():
                 before = self._attached.get(key)
+                if s.holder is not None:
+                    self._let_go_now(key)  # taken from us: our session is of no use
                 if before is not None and before.busy_by == s.holder:
                     continue
                 a = before or Attached(key, s.found,
@@ -687,8 +728,10 @@ class Engine:
             return list(self._attached.values())
 
     def _probe(self, a: Attached) -> None:
-        """What its GarminDevice.xml says, in the device's turn (no request is on it)."""
-        with self._turns_of(a.key).turn(threading.Event()):
+        """What its GarminDevice.xml says, in the device's turn (no request is on it); the
+        device stays open as after a request, for the requests the app sends as it comes."""
+        with self._turns_of(a.key).turn(threading.Event(), then=lambda: self._let_go_later(a)):
+            self._using(a)
             try:
                 summary = self.devices.probe(a.found)
             except Exception as e:  # noqa: BLE001 - attached all the same, without details
@@ -733,13 +776,103 @@ class Engine:
             raise EngineError("device_busy", _("{program} is using the device. Quit it, then "
                                                "try again.").format(program=a.busy_by),
                               {"program": a.busy_by, "device": str(a.unit_id or "")})
-        with self._turns_of(a.key).turn(req.cancel, then=lambda: self.devices.release(a.found)):
+        with self._turns_of(a.key).turn(req.cancel, then=lambda: self._let_go_later(a)):
             self.checkpoint(req)
             try:
+                self._using(a)
+                self._hold(a)
                 return function(req, a)
             except DeviceInUse:
                 self.devices.look_again()  # the next scan tells it busy
                 raise
+
+    def _hold(self, a: Attached) -> None:
+        """The device open for the request (SystemDevices.hold): kept since the request
+        before, or opened now with what the poll found. A failure is left to the request,
+        which opens the device as the command line does and says why it cannot."""
+        from openexpress.device.found import DeviceInUse
+        from openexpress.device.storage import DeviceNotResponding
+
+        try:
+            self.devices.hold(a.found)
+        except (DeviceInUse, DeviceNotResponding):
+            raise
+        except Exception as e:  # noqa: BLE001 - the request's own opening tells it
+            log.info("engine: device not opened before the request (%s)", type(e).__name__)
+
+    # --- the devices kept open between requests -------------------------------------------
+
+    def _using(self, a: Attached) -> None:
+        """A use of the device begins, in its turn: a timer of an earlier one lets it be."""
+        with self._open_lock:
+            _found, uses = self._open.get(a.key, (None, 0))
+            self._open[a.key] = (a.found, uses + 1)
+
+    def _let_go_later(self, a: Attached) -> None:
+        """Once the last request on the device ended (nobody waits for its turn): let go after
+        keep_open_s unless another use came; at once when that was asked meanwhile, when the
+        device is gone or the engine ends, or keep_open_s is 0."""
+        with self._open_lock:
+            now = (not self.keep_open_s or self._stop.is_set() or a.key in self._let_go_at_end
+                   or a.key not in self._open)
+            self._let_go_at_end.discard(a.key)
+            if now:
+                self._open.pop(a.key, None)
+            else:
+                found, uses = self._open[a.key]
+                self._open[a.key] = (found, uses + 1)
+        if now:
+            self._release(a.found)
+            return
+        timer = threading.Timer(self.keep_open_s, self._let_go_if_idle, (a.key, uses + 1))
+        timer.daemon = True
+        timer.start()
+
+    def _let_go_if_idle(self, key: str, uses: int) -> None:
+        """The timer of _let_go_later: the device let go if no use came since."""
+        turns = self._turns_of(key)
+        if not turns.try_enter():
+            return  # a request has it: its end lets it go later
+        try:
+            with self._open_lock:
+                found, now = self._open.get(key, (None, None))
+                if now != uses:
+                    return
+                del self._open[key]
+            self._release(found)
+        finally:
+            turns.leave()
+
+    def _let_go_now(self, key: str) -> None:
+        """The device let go now if it is open and no request is on it; else once the request
+        on it ends."""
+        with self._open_lock:
+            if key not in self._open:
+                return
+        turns = self._turns_of(key)
+        if not turns.try_enter():
+            with self._open_lock:
+                self._let_go_at_end.add(key)
+            return
+        try:
+            with self._open_lock:
+                found, _uses = self._open.pop(key, (None, 0))
+            if found is not None:
+                self._release(found)
+        finally:
+            turns.leave()
+
+    def _let_go_all(self) -> None:
+        """Every device open let go (the engine ends): those with a request still on it once
+        it ends."""
+        for key in list(self._open):
+            self._let_go_now(key)
+
+    def _release(self, found) -> None:
+        try:
+            self.devices.release(found)
+        except Exception as e:  # noqa: BLE001 - what asked for it goes on
+            log.info("engine: device not let go (%s)", type(e).__name__)
 
     def device_json(self, a: Attached, storage=None, known: dict | None = None,
                     backups: Path | None = None) -> dict:

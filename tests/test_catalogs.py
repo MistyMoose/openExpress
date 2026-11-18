@@ -130,6 +130,19 @@ def test_the_template_holds_every_text_of_the_code_and_the_metainfo(tmp_path):
     assert not any(t.startswith("Clearer icons.") for t in texts)
 
 
+def test_a_template_made_without_appstream_s_rules_is_refused(tmp_path):
+    """xgettext without metainfo.its lists the metainfo's texts marked translate="no"; the
+    same text is fine where the code has it too."""
+    metainfo = f"#: {catalogs.METAINFO_TEMPLATE.relative_to(ROOT).as_posix()}"
+    pot = tmp_path / "openexpress.pot"
+    pot.write_text(f'#: openexpress/window.py\n{metainfo}\nmsgid "openExpress"\nmsgstr ""\n',
+                   encoding="utf-8")
+    catalogs._check_appstream_rules(pot)
+    pot.write_text(f'{metainfo}\nmsgid "openExpress"\nmsgstr ""\n', encoding="utf-8")
+    with pytest.raises(catalogs.CatalogError, match="appstream"):
+        catalogs._check_appstream_rules(pot)
+
+
 @needs_gettext
 def test_every_text_of_the_code_has_its_placeholders_checked(tmp_path):
     """Every text of the code is marked python-brace-format, also one without a {name}: msgfmt

@@ -115,6 +115,16 @@ page) was checked only on a test USB drive laid out as a Garmin device, not on a
 Devices that connect over MTP (most watches and bike computers, such as the fēnix 8 and the
 Edge 1050) work in both the Flatpak and the version from source.
 
+Some MTP devices expose more than one storage: for example a Forerunner 645 Music, with a small
+"Primary" storage for `GARMIN/` and a separate, larger "Media" storage for its music. openExpress
+uses the storage that has `GARMIN/GarminDevice.xml` for everything (sync, maps, Connect IQ apps,
+and so on); that is supported as usual. Music kept on another storage is not supported yet, for
+lack of such a device to test with: the Music page and `openexpress music` list it as empty
+instead of showing what is on the other storage, and adding music or a playlist is refused
+rather than writing it to the wrong storage. If you have a device like this, a debug log
+(`openexpress -v`, see [Log file](troubleshooting.md#log-file)) from opening it names every
+storage the device has and would help add support for it.
+
 ### Mass storage (USB drive)
 
 Some Garmin devices connect as a USB drive: some watches, such as the Forerunner 55, older

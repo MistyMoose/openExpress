@@ -27,6 +27,11 @@
   minute with a small drive beside it): openExpress cannot use it. The window says so with
   the device's name and USB ID, and commands end with the same words (exit code 1). A report
   still works and says what is connected ([Reporting a problem](#reporting-a-problem)).
+- **Music is listed empty, or adding music or a playlist is refused.** Some MTP devices (for
+  example a Forerunner 645 Music) keep their music on a separate storage from the one
+  openExpress uses for everything else; that storage is not supported yet
+  ([Devices](devices.md#mtp)). A debug log (`openexpress -v`, see [Log file](#log-file)) from
+  opening the device helps add support for it.
 - **Garmin Connect shows a heat or altitude acclimation you did not expect.** With two
   devices on the account (for example a watch and an Edge), each keeps its own acclimation, and
   the daily values in Garmin Connect come from the device that reported last. Compare the

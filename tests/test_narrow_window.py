@@ -419,6 +419,13 @@ def _fill(win, page: str) -> str:
         # Not synced, with the longest of the reasons in place of the sync.
         win.session.drive_refusal = ("no-unit-info",
                                      "Device info: network error (made-up connection refused)")
+    if page == "device-primary-other":
+        # Another device of the account is its primary wearable: Set as Primary offered.
+        win.session.account_devices = [
+            {"unitid": UNIT, "primaryactivitytrackersettingcapable": True,
+             "primaryactivitytrackerindicator": False},
+            {"unitid": UNIT + 1, "productdisplayname": "Made-up Venu",
+             "primaryactivitytrackerindicator": True}]
     if page == "device-off-account":
         # Not on the account, no picture from unit-info: Get Picture From Account offered.
         from openexpress.connect import NotAccountDevice
@@ -569,8 +576,18 @@ def narrow_window(monkeypatch):
         windows.append(win)
         win.set_default_size(width, 800)
         win.present()
-        folded = width <= 400  # wider: the side panel stays beside the page
+        # The hidden screen counts the window's frame into the size asked for (360 gave 350):
+        # asked again with the difference, so that the window is as wide as asked, as the
+        # narrowest real window is (MIN_WINDOW), and every frame of it too.
         deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and win.get_width() <= 0:
+            _iterate(0.01)
+        if win.get_width() != width:
+            win.set_default_size(width + (width - win.get_width()), 800)
+            while time.monotonic() < deadline and win.get_width() != width:
+                _iterate(0.01)
+        assert win.get_width() == width, f"the window is {win.get_width()} px wide, not {width}"
+        folded = width <= 620  # the window's breakpoint (620sp); wider, the side panel stays
         while time.monotonic() < deadline and win.split.get_collapsed() is not folded:
             _iterate(0.01)
         assert win.split.get_collapsed() is folded, "the window did not take its width"
@@ -593,6 +610,7 @@ def _min_width(widget) -> int:
 
 
 DEVICE_PAGES = ["device", "device-maps-noted", "device-update-copied", "device-off-account",
+                "device-primary-other",
                 "device-drive", "device-refused-drive", "updates-beta",
                 "updates-beta-drive",
                 "updates-beta-copied", "updates-beta-copied-drive", "updates-navigator",
@@ -1734,3 +1752,14 @@ def test_after_a_navigator_copy_the_window_says_what_it_needs(narrow_window, lan
         window_picture(win, Path(NAVIGATOR_SHOTS) / f"after-copy-{shown}-{language}-360.png")
     if shown == "done":
         dialog.force_close()
+
+@pytest.mark.parametrize("width", [NARROWEST, 400, 1280])
+def test_the_window_is_as_wide_as_asked(narrow_window, width):
+    """The frames and the measures of this module are of a window as wide as asked: at 360 px
+    that of the narrowest real window (MIN_WINDOW), its frame not counted in."""
+    from openexpress.gui.gui_settings import MIN_WINDOW
+
+    win = narrow_window("en", width=width)
+    assert win.get_width() == width
+    assert MIN_WINDOW[0] == NARROWEST
+

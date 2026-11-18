@@ -24,7 +24,9 @@ import pytest
 # Without Xvfb (or if it does not start), the display of the session.
 
 ON_SCREEN, NO_DISPLAY = "OPENEXPRESS_TESTS_ON_SCREEN", "OPENEXPRESS_TESTS_NO_DISPLAY"
-XVFB_SCREEN = "1280x1024x24"
+# Wide and tall enough for a window of 1280 px with its frame: a test asks for the width of the
+# window inside it (tests/test_narrow_window.py, narrow_window).
+XVFB_SCREEN = "1920x1200x24"
 _xvfb: subprocess.Popen | None = None
 
 

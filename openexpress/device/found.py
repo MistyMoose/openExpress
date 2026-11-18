@@ -7,6 +7,7 @@ mac_storage); gio_storage gives the same names, for what imports them from there
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from openexpress.device.storage import DeviceError
@@ -63,6 +64,23 @@ def usb_place(usb: GarminUsb | None) -> tuple[int, int] | None:
     if usb is None or usb.bus is None or usb.address is None:
         return None
     return usb.bus, usb.address
+
+
+# The older form of gvfs's addresses, which carries the place on USB: mtp://[usb:BUS,DEVICE]/.
+_USB_ADDRESS_URI = re.compile(r"mtp://\[usb:(\d+),(\d+)\]/?", re.IGNORECASE)
+
+
+def device_uri(bus: int, address: int) -> str:
+    """The address of the device at this place on USB."""
+    return f"mtp://[usb:{bus:03d},{address:03d}]/"
+
+
+def place_of(uri: str, whole: bool = True) -> tuple[int, int] | None:
+    """(bus, device number) of an address of device_uri's form; None for any other. Not
+    `whole`: an address that only begins with one (a folder of the device)."""
+    found = (_USB_ADDRESS_URI.fullmatch(uri.strip()) if whole
+             else _USB_ADDRESS_URI.match(uri))
+    return (int(found.group(1)), int(found.group(2))) if found else None
 
 
 # --- the states of the Garmin devices on USB ------------------------------------------------

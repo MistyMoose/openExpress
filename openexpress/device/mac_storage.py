@@ -20,7 +20,6 @@ import atexit
 import logging
 import os
 import posixpath
-import re
 import threading
 import time
 from contextlib import contextmanager
@@ -51,8 +50,10 @@ from openexpress.device.found import (  # noqa: F401 - the names of platform.dev
     NotThereYet,
     SeveralDevices,
     UnsupportedDevice,
+    device_uri,
     distinct_devices,
     mass_storage_text,
+    place_of,
     usb_place,
 )
 from openexpress.device.storage import (
@@ -69,20 +70,6 @@ from openexpress.i18n import _, pgettext
 from openexpress.platform import mac_usb
 
 log = logging.getLogger(__name__)
-
-_URI_USB_ADDRESS = re.compile(r"mtp://\[usb:(\d+),(\d+)\]/?", re.IGNORECASE)
-
-
-def device_uri(bus: int, address: int) -> str:
-    """The address of the device at this place on USB."""
-    return f"mtp://[usb:{bus:03d},{address:03d}]/"
-
-
-def place_of(uri: str) -> tuple[int, int] | None:
-    """(bus, device number) of an address of device_uri's form; None for any other."""
-    found = _URI_USB_ADDRESS.fullmatch(uri.strip())
-    return (int(found.group(1)), int(found.group(2))) if found else None
-
 
 def _entry(info: ptp.ObjectInfo) -> Entry:
     return Entry(info.name, info.is_dir, 0 if info.is_dir else info.size, info.modified)

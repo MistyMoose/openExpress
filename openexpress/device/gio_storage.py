@@ -55,6 +55,7 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     UnsupportedDevice,
     distinct_devices,
     mass_storage_text,
+    place_of,
     usb_place,
 )
 from openexpress.device.storage import (  # noqa: E402
@@ -676,7 +677,6 @@ class GioStorage(Storage):
 
 
 _UNIX_DEVICE = re.compile(r"/dev/bus/usb/(\d+)/(\d+)")
-_URI_USB_ADDRESS = re.compile(r"mtp://\[usb:(\d+),(\d+)\]", re.IGNORECASE)
 _URI_GARMIN_IDS = re.compile(rf"mtp://{GARMIN_VID}_([0-9a-f]{{4}})_", re.IGNORECASE)
 _URI_GARMIN_NAME = "mtp://garmin_"
 
@@ -787,25 +787,25 @@ def _identify(uri: str | None, volume, monitor=None) -> GarminUsb | None:
         return None
     # gvfs names the address after the USB strings ("Garmin_Edge_1050_<serial>") or, when
     # the device has none, after the IDs ("091e_51b4_<serial>"); so ask the USB device.
-    address = _URI_USB_ADDRESS.match(uri)
-    if address is None:
+    place = place_of(uri, whole=False)
+    if place is None:
         if volume is None:
             volume = _volume_for(uri, monitor)
         device = volume.get_identifier("unix-device") if volume is not None else None
-        address = _UNIX_DEVICE.fullmatch(device or "")
+        node = _UNIX_DEVICE.fullmatch(device or "")
+        place = (int(node.group(1)), int(node.group(2))) if node else None
     # An address of the older form mtp://[usb:BBB,DDD]/ carries the numbers itself.
     # That branch is covered by tests only: it was not tried on a device.
-    ids = _sysfs_ids(int(address.group(1)), int(address.group(2))) if address else None
+    ids = _sysfs_ids(*place) if place else None
     if ids is not None:
         if ids[0] != GARMIN_VID:
             return None
-        return GarminUsb(ids[1], int(address.group(1)), int(address.group(2)))
+        return GarminUsb(ids[1], *place)
     # The USB properties are not available: fall back to the start of the host name. Where /sys
     # cannot be read at all, the place on USB the address or the volume tells is kept apart
     # (told_place: each plugging in is a connection of its own); where it can, a place it does
     # not know is an old one.
-    told = ((int(address.group(1)), int(address.group(2)))
-            if address and not SYSFS_USB.is_dir() else None)
+    told = place if place and not SYSFS_USB.is_dir() else None
     by_ids = _URI_GARMIN_IDS.match(uri)
     if by_ids:
         return GarminUsb(by_ids.group(1).lower(), told_place=told)

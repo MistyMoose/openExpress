@@ -2354,7 +2354,7 @@ def test_the_command_line_trial_writes_with_apply(trial_cli, capsys):
     assert main(["maps", "install", TRIAL_NAME, "--hidden-folder-trial", "--apply"]) == 0
     out = capsys.readouterr().out
     _keep_output("2-installed", out)
-    assert "Wrote 3 map files and 1 unlock files." in out
+    assert "Wrote 3 map files.\nUnlock files written: 1\n" in out
     for path, data in NEW_MAP.items():
         assert trial_cli.fake.data_at(path) == data
 

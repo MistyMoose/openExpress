@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 20:50+0100\n"
+"POT-Creation-Date: 2026-11-18 17:36+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2777,10 +2777,17 @@ msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Wrote {count} map file and {unlocks} unlock files."
-msgid_plural "Wrote {count} map files and {unlocks} unlock files."
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
 msgstr[0] ""
 msgstr[1] ""
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Unlock files written: {count}"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -10251,6 +10258,15 @@ msgstr ""
 msgid "when on, each sync updates it"
 msgstr ""
 
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, python-brace-format
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
+msgstr ""
+
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop
 #: openexpress/gui/words.py
@@ -10420,14 +10436,6 @@ msgstr[1] ""
 msgid ""
 "Not enough space for {name}: {needed} needed, {free} free with its old files "
 "counted. openExpress removes nothing else to make room."
-msgstr ""
-
-#. TRANSLATORS: the name of your language in your language ("Polski", "Deutsch",
-#. "Français"), as the list of languages in the Preferences shows it
-#: openexpress/i18n.py
-#, python-brace-format
-msgctxt "language name"
-msgid "English"
 msgstr ""
 
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a

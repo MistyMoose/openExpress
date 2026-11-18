@@ -797,6 +797,57 @@ def test_maps_row_says_what_the_check_found(counts, state, text, server):
     assert asked == [b"xml"] and win._map_check_session is None  # one request
 
 
+def test_maps_row_names_a_map_partly_on_the_device(server):
+    """The server sees a map only partly on the device: the row names it with the state the
+    Maps page gives it, never "All installed maps are up to date"."""
+    answer = map_answer(server, 0, 2, 0)
+    answer["maps"][1]["installationstate"] = 2
+    win, _asked, _later = _overview_window([answer])
+    win._check_maps_quietly()
+    assert (win.map_state, win.map_row.subtitle) == ("noted", "current 1\u00a0· incomplete on the device")
+
+
+def _row_maps(server, updates=0, **state):
+    """The maps of a check (`updates` with an update, then two up to date), the last given
+    `state` as mark_waiting sets it."""
+    found = maps.parse_maps(map_answer(server, updates, 2, 0))
+    for name, value in state.items():
+        setattr(found[-1], name, value)
+    return found
+
+
+@pytest.mark.parametrize("state,shown", [
+    ({"partly_written": True}, "incomplete on the device"),
+    ({"unseen": True}, "cannot be read: openExpress cannot see the folder of its files"),
+    ({"waiting": maps.WAIT_INSTALL}, "will be loaded after the device is unplugged"),
+    ({"waiting": maps.WAIT_REMOVE}, "will be removed after the device is unplugged"),
+])
+def test_maps_row_names_each_map_not_up_to_date_with_its_state(state, shown, server):
+    """A map written partly into a hidden folder, one whose folder was not read, one waiting
+    for the device to be unplugged: named, each on a line, with its state on the Maps page."""
+    win, _asked, _later = _overview_window([])
+    win._set_map_state((_row_maps(server, **state), 2))
+    assert (win.map_state, win.map_row.subtitle) == ("noted", f"current 1\u00a0· {shown}")
+
+
+def test_maps_row_counts_the_updates_and_names_a_map_not_up_to_date_below(server):
+    found = _row_maps(server, updates=1, partly_written=True)
+    win, _asked, _later = _overview_window([])
+    win._set_map_state((found, 3))
+    assert (win.map_state, win.map_row.subtitle) == (
+        "available", "1 update available\ncurrent 1\u00a0· incomplete on the device")
+
+
+def test_maps_row_names_a_map_in_the_language_of_the_window_and_as_text(server):
+    """The state in the language chosen; a name with "&" stays text, not markup."""
+    found = _row_maps(server, partly_written=True)
+    found[-1].name = "Topo & Trails"
+    win, _asked, _later = _overview_window([])
+    with in_language("pl"):
+        win._set_map_state((found, 2))
+    assert win.map_row.subtitle == "Topo &amp; Trails\u00a0· niekompletna na urządzeniu"
+
+
 @pytest.mark.parametrize("info", [{"mapupdatetype": "Gemini"}, {"mapupdatetype": "LegacyRmu"},
                                   {"mapupdatetype": "Unknown"}, {}])
 def test_maps_row_says_map_updates_are_not_supported_for_a_device_served_another_way(info):
@@ -1464,7 +1515,7 @@ def test_the_maps_command_says_when_the_map_is_loaded(server, device_root, xdg, 
         written=["GARMIN/J.img"], unlocks=["GARMIN/J.gma"]))
     assert cli.main(["--path", str(device_root), "maps", "install", "Japan", "--apply"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out[-2:] == ["Wrote 1 map file and 1 unlock files.",
+    assert out[-3:] == ["Wrote 1 map file.", "Unlock files written: 1",
                         "The map will be loaded after the device is unplugged."]
 
 
@@ -2025,3 +2076,31 @@ def test_up_to_date_in_polish_fits_the_software_and_a_map(server):
     finally:
         i18n.setup("en")
     assert words == ("aktualna wersja", "aktualna wersja")
+
+
+@pytest.mark.parametrize(("language", "written", "unlocks", "said"), [
+    ("en", 1, 2, ["Wrote 1 map file.", "Unlock files written: 2"]),
+    ("en", 5, 1, ["Wrote 5 map files.", "Unlock files written: 1"]),
+    ("pl", 1, 1, ["Zapisano 1 plik mapy.", "Zapisane pliki odblokowujące: 1"]),
+    ("pl", 3, 1, ["Zapisano 3 pliki map.", "Zapisane pliki odblokowujące: 1"]),
+    ("pl", 5, 2, ["Zapisano 5 plików map.", "Zapisane pliki odblokowujące: 2"]),
+])
+def test_the_files_written_each_count_in_its_own_words(server, device_root, xdg, monkeypatch,
+                                                       capsys, language, written, unlocks, said):
+    """The map files and the unlock files each with their own count: one plural form cannot
+    agree with two numbers ("1 unlock files")."""
+    from openexpress import cli, i18n
+
+    answer_with(monkeypatch, body=json.dumps(maps_response(server)).encode())
+    monkeypatch.setattr(cli, "_url_salt", lambda: "salt")
+    monkeypatch.setattr(maps, "install", lambda *a, **kw: maps.MapReport(
+        written=[f"GARMIN/J{n}.img" for n in range(written)],
+        unlocks=[f"GARMIN/J{n}.gma" for n in range(unlocks)]))
+    try:
+        code = cli.main(["--lang", language, "--path", str(device_root), "maps", "install",
+                         "Japan", "--apply"])
+    finally:
+        i18n.setup("en")
+    out = capsys.readouterr().out.splitlines()
+    assert code == 0
+    assert out[-3:-1] == said

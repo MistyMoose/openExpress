@@ -162,11 +162,14 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         self._update_record_at: float | None = None  # the time of the record shown
         self._update_check_session = None
         # None = unknown, "none" (no maps for the device), "empty" (none installed),
-        # "current", "available", "unsupported" (map updates not supported for it), "nomaps"
-        # (the device has no maps), "failed"
+        # "current", "available", "noted" (no update, a map not up to date), "unsupported" (map
+        # updates not supported for it), "nomaps" (the device has no maps), "failed"
         self.map_state: str | None = None
         self.map_update_count = 0
         self.map_count = 0  # maps on the device, for the "Maps" row when none can be updated
+        # The maps the "Maps" row names, each with its state: partly on the device, the folder
+        # of its files not read, or waiting for the device to be unplugged.
+        self.maps_noted: list = []
         self._map_check_session = None
         # The old files Garmin's cleanup rules would take, from the maps read for the device
         # open (maps_page.load_maps); only shown in the questions before a map changes.

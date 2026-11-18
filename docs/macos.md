@@ -21,6 +21,7 @@ files over MTP, so that mode is never needed.
 | Engine on macOS (no GTK, no PyGObject) | works; tested read-only on a fēnix 8 |
 | Device info, backup, update and map checks | work on a real device |
 | Installing and removing maps, sync | tested from the command line on a fēnix 8; from the Mac app, not yet |
+| Devices connected as a USB drive (mass storage) | found, backed up, synced and ejected like on Linux; tested with made-up drives and a disk image, not yet with a real Garmin drive |
 | Mac app | runs against the engine; under development |
 | Installer (.pkg, no Homebrew needed) | builds and passes its checks; ad-hoc signed until there is a Developer ID |
 
@@ -37,11 +38,20 @@ openexpress engine (Python, upstream's code)
    │  device layer: openexpress/platform, openexpress/device/mac_storage.py
    ▼
 MTP over libusb  ──►  the watch or bike computer
+(a USB drive: its folder under /Volumes, found with ioreg and diskutil)
 ```
 
 - **Device access** goes through openExpress's own MTP client (`device/ptp.py`) over libusb,
   not through GIO/gvfs as on Linux. A device another program holds (Garmin Express Service,
   Android File Transfer, …) is never taken from it: openExpress says which program to quit.
+- **Devices in mass storage mode** (older Edge firmware, handhelds, some watches, car
+  navigators) are mounted by macOS itself under `/Volumes`. openExpress finds a drive by the
+  disks below its USB device in the IORegistry (`ioreg`), asks `diskutil info` where macOS
+  mounted it, and reads and writes the files there. After it wrote to a drive (a sync that
+  received files, an update) it ejects it with `diskutil eject`, so that the device takes the
+  files; until it is unplugged an ejected drive is not opened again. A drive shows up once
+  macOS has mounted it; one the user unmounted is mounted again (`diskutil mount`) only when
+  it is chosen.
 - **ptpcamerad**, the macOS service that grabs cameras and phones for Image Capture and Photos,
   is paused only while openExpress holds a device and resumed afterwards, even after a crash.
 - **Secrets** (the Garmin sign-in, the app key, Strava tokens) live in the macOS Keychain.

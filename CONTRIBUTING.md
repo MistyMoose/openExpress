@@ -34,7 +34,7 @@ Where they run:
 
 For testing only, not for ordinary use. `OPENEXPRESS_TEST_DRIVE_USB=VVVV:PPPP` (the vendor
 and product ID that `lsusb` shows) makes openExpress take the mounted USB drive with these IDs
-for a Garmin device connected as a USB drive:
+for a Garmin device connected as a USB drive, on Linux and on macOS:
 
 - A pendrive with a copy of a device's `GARMIN/GarminDevice.xml` stands in for that device: the
   same Unit ID and account, so `--apply` uploads to Garmin Connect as from that device.
@@ -58,6 +58,15 @@ The ID is that of your own pendrive: run `lsusb` before and after plugging it in
 lsusb                  # with the pendrive plugged in: "Bus … Device …: ID VVVV:PPPP <maker> …"
 DRIVE=VVVV:PPPP        # the ID of your own pendrive
 OPENEXPRESS_TEST_DRIVE_USB=$DRIVE python3 -m openexpress sync    # dry run
+```
+
+On macOS, take the IDs from System Information (USB: "Vendor ID" and "Product ID", without
+the `0x`) or from `ioreg -p IOUSB -l -w0 | grep -E '"(USB Product Name|idVendor|idProduct)"'`
+(decimal there: `printf '%04x' <number>`). After a sync that wrote to it the pendrive is
+ejected (`diskutil eject`), as a Garmin drive is; plug it in again for the next try.
+
+```bash
+OPENEXPRESS_TEST_DRIVE_USB=$DRIVE ~/.venvs/openexpress-mac/bin/openexpress sync    # dry run
 ```
 
 To keep the device's own records apart, run the tries with XDG folders of their own, with a

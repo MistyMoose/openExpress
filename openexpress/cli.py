@@ -2824,14 +2824,14 @@ def _print_in_bin_preview(preview) -> None:
         raise _app_list_mismatch()
 
 
-def cmd_apps(args) -> int:
-    from openexpress import ciq
+def read_apps(args):
+    """What `apps` starts from: the device opened, the account asked for it, the apps on the
+    device (with those that wait named) and the account's apps. Also the engine's apps.list."""
+    from openexpress import ciq, service
 
     st, dev = open_device(args)
     settings = Settings.load()
     client = make_client(settings, need_auth=True)
-    from openexpress import service
-
     # Before a change (--apply), the account's list asked anew.
     service.require_account_device(client, dev.unit_id, fresh=bool(getattr(args, "apply", False)),
                                    part_number=dev.part_number)
@@ -2840,6 +2840,37 @@ def cmd_apps(args) -> int:
     state = ciq.read_installed(dev, st)
     account = api.account_apps(dev, locale)
     ciq.name_pending(state, account)
+    return st, dev, client, api, locale, state, account
+
+
+def apps_store_note() -> str:
+    """The last line of `apps`, the footer of the app's Apps page."""
+    return _("New apps are chosen in the Connect IQ Store (website or phone); "
+             "they then appear in the list above.")
+
+
+def apps_unreadable_text(count: int) -> str:
+    """`apps` with entries of the device's app list (OUT.BIN) it cannot read."""
+    return ngettext("Warning: {count} entry of the app list on the device cannot be read; "
+                    "apps cannot be installed, updated or removed.",
+                    "Warning: {count} entries of the app list on the device cannot be "
+                    "read; apps cannot be installed, updated or removed.",
+                    count).format(count=count)
+
+
+def app_waiting_text(app) -> str | None:
+    """What waits for an app on the device until it is unplugged; None: nothing."""
+    if app.pending:
+        return _("will be installed after the device is unplugged")
+    if app.pending_removal:
+        return _("will be removed after the device is unplugged")
+    return None
+
+
+def cmd_apps(args) -> int:
+    from openexpress import ciq
+
+    st, dev, client, api, locale, state, account = read_apps(args)
     installed_ids = {a.app_id for a in state.apps}
     cmd = args.apps_cmd or "list"
 
@@ -2855,11 +2886,7 @@ def cmd_apps(args) -> int:
                 device=dev.description, count=len(state.store_apps),
                 slots=state.available_slots, size=human_size(state.available_space)))
         if state.unreadable:
-            print(ngettext("Warning: {count} entry of the app list on the device cannot be read; "
-                           "apps cannot be installed, updated or removed.",
-                           "Warning: {count} entries of the app list on the device cannot be "
-                           "read; apps cannot be installed, updated or removed.",
-                           state.unreadable).format(count=state.unreadable))
+            print(apps_unreadable_text(state.unreadable))
         for a in state.store_apps:
             upd = updates.get(a.app_id)
             # TRANSLATORS: after an app in the list of `openexpress apps`: {version} is the app's
@@ -2869,10 +2896,8 @@ def cmd_apps(args) -> int:
                     # for other permissions
                     + (" " + _("(permissions changed)") if upd.permissions_changed else "")
                     if upd else "")
-            if a.pending:
-                note = "  " + _("will be installed after the device is unplugged")
-            elif a.pending_removal:
-                note = "  " + _("will be removed after the device is unplugged")
+            if a.pending or a.pending_removal:
+                note = "  " + app_waiting_text(a)
             print(f"  {a.name:36} {a.type_name:11} v{a.version or '?':<5} "
                   f"{_app_status(a.disabled):9}{note}")
         missing = [a for a in account if a.app_id not in installed_ids]
@@ -2885,8 +2910,7 @@ def cmd_apps(args) -> int:
             for a in state.apps:
                 if a.preloaded:
                     print(f"  {a.name:36} {a.type_name:11} {_app_status(a.disabled)}")
-        print("\n" + _("New apps are chosen in the Connect IQ Store (website or phone); "
-                       "they then appear in the list above."))
+        print("\n" + apps_store_note())
         return 0
 
     if cmd == "install" and state.no_app_list:

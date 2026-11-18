@@ -606,6 +606,56 @@ def test_maps_not_read_are_the_error_of_every_map_named(running, monkeypatch):
         ("Alps", False, "made up: no maps"), ("Pyrenees", False, "made up: no maps")]
 
 
+def test_apps_are_listed_as_data_from_what_the_command_line_reads(running, device_root,
+                                                                  monkeypatch, xdg):
+    import uuid
+
+    from test_ciq_music import (IQ_XML_TYPES, PRELOADED, STORE_ID, CountingClient, FakeStore,
+                                out_bin, store_app)
+
+    from openexpress import ciq, cli, service
+
+    face, widget = (uuid.UUID("c33a05fa-bb7b-46a4-87b4-482a3e726a11"),
+                    uuid.UUID("0d1e2f3a-0000-4000-8000-000000000002"))
+    xml = device_root / "GARMIN/GarminDevice.xml"
+    xml.write_text(xml.read_text().replace("</MassStorageMode>",
+                                           IQ_XML_TYPES + "</MassStorageMode>"))
+    (device_root / "GARMIN/APPS/OUT.BIN").write_bytes(out_bin([
+        (STORE_ID, 1, "Connect IQ Store", False, "DADE7E4"),
+        (face, 3, "Face It", False, "FACE1"),
+        (widget, 2, "Weather Glance", True, "GLANCE1"),
+        (PRELOADED, 8, "Softball", True, "")]))
+    newer = ciq.StoreApp(face, "Face It", "dev", "watchface", 4321, 69, "2.1", True)
+    monkeypatch.setattr(cli, "make_client", lambda settings, need_auth: CountingClient())
+    monkeypatch.setattr(service, "require_account_device", lambda c, unit_id, **_kw: [])
+    monkeypatch.setattr(ciq, "StoreApi", FakeStore)
+    monkeypatch.setattr(FakeStore, "account_apps", lambda self, device, locale: [
+        store_app(face, "Face It"), store_app(uuid.UUID(int=7), "Trail Field", "datafield")])
+    monkeypatch.setattr(FakeStore, "updates", lambda self, device, installed, locale: [newer])
+
+    result = running.ask("apps.list", {"builtin": True})["result"]
+    assert "lines" not in result and "exit_code" not in result
+    assert result["summary"] == {"store_apps": 3, "free_slots": 31, "free_bytes": 66_000_000}
+    store, shown_face, glance = result["apps"]
+    assert store == {"id": str(STORE_ID), "name": "Connect IQ Store", "kind": "app",
+                     "kind_name": "app", "version": 68, "enabled": True, "update": None,
+                     "waiting": None, "waiting_text": None, "removable": False}
+    assert (shown_face["kind"], shown_face["kind_name"], shown_face["removable"]) == (
+        "watch_face", "watch face", True)
+    assert shown_face["update"] == {"version": "2.1", "size": 4321, "permissions_changed": True}
+    assert (glance["kind"], glance["enabled"], glance["update"]) == ("widget", False, None)
+    assert result["account"] == [{
+        "id": str(uuid.UUID(int=7)), "name": "Trail Field", "kind": "data_field",
+        "kind_name": "data field", "version": "1.0", "size": 1000, "developer": "dev",
+        "permissions_changed": False}]
+    assert result["builtin"] == [{"id": str(PRELOADED), "name": "Softball", "kind": "activity",
+                                  "kind_name": "activity", "enabled": False}]
+    assert result["message"] is None and result["warning"] is None
+    assert result["note"].startswith("New apps are chosen in the Connect IQ Store")
+    # Without `builtin`, the built-in ones are left out.
+    assert "builtin" not in running.ask("apps.list")["result"]
+
+
 def _track_fit(count: int) -> bytes:
     from fakes import FitData, FitDefinition, fit_file
 

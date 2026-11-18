@@ -75,6 +75,16 @@ def app_type_name(app_type) -> str | None:
     name = APP_TYPES.get(app_type)
     return pgettext("app type", name) if name else None
 
+
+# The types of APP_TYPES as stable words, for programs (the engine's apps.list).
+APP_KINDS = {0: "unknown", 1: "app", 2: "widget", 3: "watch_face", 4: "data_field",
+             7: "music", 8: "activity"}
+
+
+def app_kind(app_type) -> str:
+    """The type of a Connect IQ app as a stable word (APP_KINDS); "unknown" when not known."""
+    return APP_KINDS.get(app_type, "unknown")
+
 DATATYPE_TO_APPTYPE = {"IQWatchApps": 1, "IQWidgets": 2, "IQWatchFaces": 3,
                        "IQDataFields": 4, "IQAudioContentApps": 7}
 APPTYPE_TO_DATATYPE = {v: k for k, v in DATATYPE_TO_APPTYPE.items()}

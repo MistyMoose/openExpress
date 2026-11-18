@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 12:10+0100\n"
+"POT-Creation-Date: 2026-11-18 14:16+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3200,11 +3200,9 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"Connect IQ on {device}: {count} store app, {slots} free slots, {size} free"
-msgid_plural ""
-"Connect IQ on {device}: {count} store apps, {slots} free slots, {size} free"
-msgstr[0] ""
-msgstr[1] ""
+"New apps are chosen in the Connect IQ Store (website or phone); they then "
+"appear in the list above."
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3214,6 +3212,25 @@ msgid ""
 msgid_plural ""
 "Warning: {count} entries of the app list on the device cannot be read; apps "
 "cannot be installed, updated or removed."
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "will be installed after the device is unplugged"
+msgstr ""
+
+#: openexpress/cli.py openexpress/maps.py
+#, python-brace-format
+msgid "will be removed after the device is unplugged"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Connect IQ on {device}: {count} store app, {slots} free slots, {size} free"
+msgid_plural ""
+"Connect IQ on {device}: {count} store apps, {slots} free slots, {size} free"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -3233,29 +3250,12 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "will be installed after the device is unplugged"
-msgstr ""
-
-#: openexpress/cli.py openexpress/maps.py
-#, python-brace-format
-msgid "will be removed after the device is unplugged"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
 msgid "In your Garmin account but not on the device:"
 msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Built-in activities and apps:"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"New apps are chosen in the Connect IQ Store (website or phone); they then "
-"appear in the list above."
 msgstr ""
 
 #: openexpress/cli.py

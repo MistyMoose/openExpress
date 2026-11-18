@@ -9,7 +9,7 @@ answers "as the command line"); anything else that prints goes to stderr, the en
 The engine adds no behaviour of its own: each method opens the device as the command line
 does (cli.open_device) and calls the same modules (backup, sync through service, updates,
 maps, activities, auth, settings); the methods the contract answers "as the command line"
-(updates.install, maps.install/update/remove, apps.*) run the command itself.
+(updates.install, maps.install/update/remove, apps.install/remove) run the command itself.
 
 Requests run each on a thread of its own. Those for one device take their turn, in the order
 they came (_Turns): one at a time, while the reader stays free for `cancel`. A request is
@@ -1442,10 +1442,47 @@ class Engine:
                                       *_apply_option(req)])
 
     def apps_list(self, req: Request, a: Attached) -> dict:
-        """As `apps [--builtin]`."""
+        """As `apps [--builtin]`: what it prints, read from where it reads it (cli.read_apps),
+        as data."""
+        from openexpress import ciq, cli
+
         builtin = _flag(req.params, "builtin")
-        return self.run_command(req, [*self.command_line(a), "apps",
-                                      *(["--builtin"] if builtin else [])])
+        _st, dev, _client, api, locale, state, account = cli.read_apps(
+            self.args_for(a, "apps", apps_cmd=None, builtin=builtin))
+        updates = {u.app_id: u for u in api.updates(dev, state.store_apps, locale)}
+
+        def kind(app_type) -> dict:
+            return {"kind": ciq.app_kind(app_type),
+                    "kind_name": ciq.app_type_name(app_type) or str(app_type)}
+
+        def update(app) -> dict | None:
+            u = updates.get(app.app_id)
+            return None if u is None else {"version": u.version_name, "size": u.size,
+                                           "permissions_changed": u.permissions_changed}
+
+        apps = [{"id": str(app.app_id), "name": app.name, **kind(app.app_type),
+                 "version": app.version, "enabled": not app.disabled, "update": update(app),
+                 "waiting": ("install" if app.pending else "removal" if app.pending_removal
+                             else None),
+                 "waiting_text": cli.app_waiting_text(app), "removable": app.removable}
+                for app in state.store_apps]
+        installed = {app.app_id for app in state.apps}
+        result = {
+            "summary": {"store_apps": len(state.store_apps), "free_slots": state.available_slots,
+                        "free_bytes": state.available_space},
+            "apps": apps,
+            "account": [{"id": str(s.app_id), "name": s.name, **kind(s.app_type),
+                         "version": s.version_name, "size": s.size, "developer": s.developer,
+                         "permissions_changed": s.permissions_changed}
+                        for s in account if s.app_id not in installed],
+            "message": ciq.no_apps_text() if state.no_app_list else None,
+            "warning": cli.apps_unreadable_text(state.unreadable) if state.unreadable else None,
+            "note": cli.apps_store_note()}
+        if builtin:
+            result["builtin"] = [{"id": str(app.app_id), "name": app.name, **kind(app.app_type),
+                                  "enabled": not app.disabled}
+                                 for app in state.apps if app.preloaded]
+        return result
 
     def _app_command(self, req: Request, a: Attached, command: str, flag: str) -> dict:
         """As `apps COMMAND NAME [--FLAG] [--apply]`, with the request's `flag` (a parameter

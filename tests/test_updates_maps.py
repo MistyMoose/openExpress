@@ -2008,5 +2008,20 @@ def test_the_row_of_a_map_with_an_update_says_what_it_downloads(server, device_r
         "pl": {"TopoActive East": ("TopoActive\u00a0· dostępna wersja 2026.11\u00a0· 9,0\u00a0kB "
                                    "do pobrania"),
                "TopoActive West": ("TopoActive\u00a0· 2026.11\u00a0· 9,0\u00a0kB\u00a0· "
-                                   "aktualna")}}
+                                   "aktualna wersja")}}
     assert rows == expected[language]
+
+
+def test_up_to_date_in_polish_fits_the_software_and_a_map(server):
+    """One text says it after "Device software:" in openexpress status and as the state of a
+    map: in Polish the same words fit both (a feminine adjective alone would not fit the
+    software, a neuter noun)."""
+    from openexpress import cli, i18n
+
+    west = _with_state(server, "West", 1, reinstall=True)["West"]  # installed, no newer
+    i18n.setup("pl")
+    try:
+        words = cli._update_words("current"), west.status
+    finally:
+        i18n.setup("en")
+    assert words == ("aktualna wersja", "aktualna wersja")

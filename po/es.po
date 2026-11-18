@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 20:50+0100\n"
+"POT-Creation-Date: 2026-11-18 17:36+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -96,13 +96,13 @@ msgid "Hiking"
 msgstr ""
 
 #: openexpress/activities.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgctxt "sport"
 msgid "Multisport"
 msgstr ""
 
 #: openexpress/activities.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "sport"
 msgid "Paddling"
 msgstr ""
@@ -132,13 +132,13 @@ msgid "Snowshoeing"
 msgstr ""
 
 #: openexpress/activities.py
-#, ignore-multiple-capital, python-brace-format
+#, python-brace-format
 msgctxt "sport"
 msgid "Stand-up paddleboarding"
 msgstr ""
 
 #: openexpress/activities.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "sport"
 msgid "Kayaking"
 msgstr ""
@@ -215,7 +215,7 @@ msgid "3. Paste the URL: "
 msgstr ""
 
 #: openexpress/auth/sso.py
-#, ignore-end-stop, python-brace-format
+#, python-brace-format
 msgid "The given URL has no ticket=ST-… parameter"
 msgstr ""
 
@@ -299,14 +299,14 @@ msgstr ""
 
 #. TRANSLATORS: a part of the cache in `openexpress cache`: downloaded device software
 #: openexpress/cache.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Software updates"
 msgstr ""
 
 #. TRANSLATORS: a part of the cache in `openexpress cache`: downloaded pictures of devices
 #. and icons of apps
 #: openexpress/cache.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Pictures and icons"
 msgstr ""
 
@@ -320,13 +320,13 @@ msgstr ""
 #. TRANSLATORS: a part of the cache in `openexpress cache`: OpenStreetMap tiles under the
 #. maps of activities
 #: openexpress/cache.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Activity map tiles"
 msgstr ""
 
 #. TRANSLATORS: a part of the cache in `openexpress cache`: files on their way to the device
 #: openexpress/cache.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Temporary files"
 msgstr ""
 
@@ -922,7 +922,7 @@ msgid "{position}: {new} (now: {old})"
 msgstr ""
 
 #: openexpress/ciq.py openexpress/cli.py openexpress/gui/music_page.py
-#, ignore-same, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "… and {count} more"
 msgid_plural "… and {count} more"
 msgstr[0] ""
@@ -1443,7 +1443,7 @@ msgid "last crash: {crash}"
 msgstr ""
 
 #: openexpress/cli.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "USB drive"
 msgstr ""
 
@@ -1656,7 +1656,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: openexpress/cli.py
-#, ignore-same, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Dry run: nothing was written. Add --apply to write it."
 msgid_plural "Dry run: nothing was written. Add --apply to write them."
 msgstr[0] ""
@@ -2219,7 +2219,7 @@ msgstr[1] ""
 
 #. TRANSLATORS: a date and an hour, e.g. 2026-10-14 23:41
 #: openexpress/cli.py openexpress/i18n.py openexpress/netstatus.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "date and hour"
 msgid "{date} {time}"
 msgstr ""
@@ -2457,7 +2457,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: openexpress/cli.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Ejecting the device…"
 msgstr ""
 
@@ -2776,10 +2776,17 @@ msgstr[1] ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Wrote {count} map file and {unlocks} unlock files."
-msgid_plural "Wrote {count} map files and {unlocks} unlock files."
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
 msgstr[0] ""
 msgstr[1] ""
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Unlock files written: {count}"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3356,7 +3363,7 @@ msgid "Saved locations on the device: {count}"
 msgstr ""
 
 #: openexpress/cli.py
-#, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Course: {names}"
 msgid_plural "Courses: {names}"
 msgstr[0] ""
@@ -4576,7 +4583,7 @@ msgstr ""
 #. TRANSLATORS: the name of a request to Garmin's server, shown before its error
 #. ("Primary training device: network error (…)")
 #: openexpress/connect.py openexpress/service.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "server request"
 msgid "Primary training device"
 msgstr ""
@@ -4584,7 +4591,7 @@ msgstr ""
 #. TRANSLATORS: the name of a request to Garmin's server, shown before its error
 #. ("Primary wearable: network error (…)")
 #: openexpress/connect.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "server request"
 msgid "Primary wearable"
 msgstr ""
@@ -5094,7 +5101,7 @@ msgid "The device is starting. Try again in a moment."
 msgstr ""
 
 #: openexpress/device/gio_storage.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "The device is starting…"
 msgstr ""
 
@@ -5496,13 +5503,13 @@ msgid "This device does not keep activities"
 msgstr ""
 
 #: openexpress/gui/activities_page.py openexpress/gui/app.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Reading Activities…"
 msgstr ""
 
 #. TRANSLATORS: button below the rows of the Activities page: read the next ones
 #: openexpress/gui/activities_page.py
-#, ignore-same, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Show {count} More"
 msgid_plural "Show {count} More"
 msgstr[0] ""
@@ -5841,7 +5848,7 @@ msgstr ""
 #. TRANSLATORS: a device connected as a USB drive, not over MTP
 #: openexpress/gui/app.py openexpress/gui/detection.py
 #: openexpress/gui/device_page.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "USB Drive"
 msgstr ""
 
@@ -6411,7 +6418,7 @@ msgstr ""
 
 #. TRANSLATORS: heading of the confirmation before a GPX file is copied to the device
 #: openexpress/gui/courses_page.py
-#, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Copy the Course to the Device?"
 msgid_plural "Copy the Courses to the Device?"
 msgstr[0] ""
@@ -6614,7 +6621,7 @@ msgid "This takes a moment after the cable is plugged in."
 msgstr ""
 
 #: openexpress/gui/detection.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Device Starting…"
 msgstr ""
 
@@ -6683,7 +6690,7 @@ msgstr ""
 #. TRANSLATORS: Garmin Connect's name of the setting (in Polish "Podstawowe urządzenie typu
 #. wearable")
 #: openexpress/gui/device_page.py openexpress/gui/start_window.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Primary Wearable"
 msgstr ""
 
@@ -6914,7 +6921,7 @@ msgstr ""
 #. TRANSLATORS: title of the row with the Garmin account's primary training
 #. device (the main source of performance and training data)
 #: openexpress/gui/device_page.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Primary Training Device"
 msgstr ""
 
@@ -7727,14 +7734,14 @@ msgstr ""
 
 #. TRANSLATORS: row of the cache in the preferences: downloaded device software
 #: openexpress/gui/preferences.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Software Updates"
 msgstr ""
 
 #. TRANSLATORS: row of the cache in the preferences: downloaded pictures of devices and icons
 #. of apps
 #: openexpress/gui/preferences.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Pictures and Icons"
 msgstr ""
 
@@ -7748,13 +7755,13 @@ msgstr ""
 #. TRANSLATORS: row of the cache in the preferences: OpenStreetMap tiles under the maps of
 #. activities
 #: openexpress/gui/preferences.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Activity Map Tiles"
 msgstr ""
 
 #. TRANSLATORS: row of the cache in the preferences: files on their way to the device
 #: openexpress/gui/preferences.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Temporary Files"
 msgstr ""
 
@@ -7879,7 +7886,7 @@ msgstr ""
 #. TRANSLATORS: a noun: group in the preferences with the Garmin Express installer the
 #. application key is read from
 #: openexpress/gui/preferences.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Setup"
 msgstr ""
 
@@ -8181,7 +8188,7 @@ msgstr ""
 
 #. TRANSLATORS: a chip on the tile of a device in mass storage mode
 #: openexpress/gui/start.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "chip"
 msgid "USB drive"
 msgstr ""
@@ -8614,7 +8621,7 @@ msgstr[1] ""
 #. TRANSLATORS: the title of the row of an update file in "Free Up Space": the update's
 #. name and version, e.g. "GPS software 6.20"; what became of it is the subtitle
 #: openexpress/gui/status_page.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{name} {version}"
 msgstr ""
 
@@ -9198,7 +9205,7 @@ msgstr ""
 #. TRANSLATORS: title of the Updates page: updates openExpress copied are on the
 #. device, which was unplugged since and has not installed them
 #: openexpress/gui/updates_page.py
-#, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Update Not Installed by the Device"
 msgid_plural "Updates Not Installed by the Device"
 msgstr[0] ""
@@ -9272,7 +9279,7 @@ msgid "Device Not Ejected"
 msgstr ""
 
 #: openexpress/gui/updates_page.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Ejecting the Device…"
 msgstr ""
 
@@ -9378,14 +9385,14 @@ msgid ""
 msgstr ""
 
 #: openexpress/gui/words.py
-#, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Update ready: eject the device to install it"
 msgid_plural "Updates ready: eject the device to install them"
 msgstr[0] ""
 msgstr[1] ""
 
 #: openexpress/gui/words.py
-#, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "Update ready: unplug the device to install it"
 msgid_plural "Updates ready: unplug the device to install them"
 msgstr[0] ""
@@ -9523,13 +9530,13 @@ msgstr ""
 
 #. TRANSLATORS: the time of an activity in hours and minutes ("1 h 02 min")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{hours} h {minutes} min"
 msgstr ""
 
 #. TRANSLATORS: a length of time in minutes
 #: openexpress/gui/words.py openexpress/i18n.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{minutes} min"
 msgstr ""
 
@@ -9609,7 +9616,7 @@ msgid "This activity has no summary"
 msgstr ""
 
 #: openexpress/gui/words.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Reading the Activity…"
 msgstr ""
 
@@ -9679,13 +9686,13 @@ msgstr ""
 #. TRANSLATORS: a heart rate in beats a minute ("148 bpm"), in Garmin Connect's unit
 #. (Polish keeps "bpm")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{rate} bpm"
 msgstr ""
 
 #. TRANSLATORS: the calories of an activity ("520 kcal")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{calories} kcal"
 msgstr ""
 
@@ -9826,7 +9833,7 @@ msgid "Steps"
 msgstr ""
 
 #: openexpress/gui/words.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "activity detail"
 msgid "Heart Rate"
 msgstr ""
@@ -9887,19 +9894,19 @@ msgstr ""
 
 #. TRANSLATORS: a respiration rate, breaths a minute ("24 brpm")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{rate} brpm"
 msgstr ""
 
 #. TRANSLATORS: the average respiration rate and its range ("24 brpm (15–38)")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{average} brpm ({low}–{high})"
 msgstr ""
 
 #. TRANSLATORS: the heart rates of a zone (made up: "118–140 bpm")
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{low}–{high} bpm"
 msgstr ""
 
@@ -10094,7 +10101,7 @@ msgstr ""
 
 #. TRANSLATORS: the switch above the chart of an activity
 #: openexpress/gui/words.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgctxt "activity chart"
 msgid "Heart rate"
 msgstr ""
@@ -10119,7 +10126,7 @@ msgstr ""
 
 #. TRANSLATORS: the unit on top of the axis of the chart of an activity
 #: openexpress/gui/words.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgctxt "chart unit"
 msgid "bpm"
 msgstr ""
@@ -10248,6 +10255,15 @@ msgstr ""
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "when on, each sync updates it"
+msgstr ""
+
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, python-brace-format
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
 msgstr ""
 
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
@@ -10421,14 +10437,6 @@ msgid ""
 "counted. openExpress removes nothing else to make room."
 msgstr ""
 
-#. TRANSLATORS: the name of your language in your language ("Polski", "Deutsch",
-#. "Français"), as the list of languages in the Preferences shows it
-#: openexpress/i18n.py
-#, python-brace-format
-msgctxt "language name"
-msgid "English"
-msgstr ""
-
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a
 #. word ("Last seen just now")
 #: openexpress/i18n.py
@@ -10438,7 +10446,7 @@ msgstr ""
 
 #. TRANSLATORS: how long ago, in minutes
 #: openexpress/i18n.py
-#, ignore-same, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "{n} min ago"
 msgid_plural "{n} min ago"
 msgstr[0] ""
@@ -10446,7 +10454,7 @@ msgstr[1] ""
 
 #. TRANSLATORS: how long ago, in hours
 #: openexpress/i18n.py
-#, ignore-same, ignore-same-plurals, python-brace-format
+#, python-brace-format
 msgid "{n} h ago"
 msgid_plural "{n} h ago"
 msgstr[0] ""
@@ -10497,7 +10505,7 @@ msgstr ""
 
 #. TRANSLATORS: a length of time in minutes and seconds
 #: openexpress/i18n.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "{minutes} min {seconds} s"
 msgstr ""
 
@@ -10959,7 +10967,7 @@ msgstr ""
 
 #. TRANSLATORS: the parts of Garmin's servers, in the popover of the server state button
 #: openexpress/netstatus.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "Garmin Connect"
 msgstr ""
 
@@ -10985,7 +10993,7 @@ msgstr ""
 
 #. TRANSLATORS: the time of an answer on another day: "answered at 2026-10-14 23:41"
 #: openexpress/netstatus.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "at {date} {time}"
 msgstr ""
 
@@ -11968,7 +11976,7 @@ msgstr ""
 #. Connect, beside its filling bar and "Stop Waiting": as short as it can be, it has to fit
 #. the narrowest window whole ("TrueUp: 4 min 59 s…"; the whole sentence is its tooltip)
 #: openexpress/trueup.py
-#, ignore-same, python-brace-format
+#, python-brace-format
 msgid "TrueUp: {time}…"
 msgstr ""
 
@@ -11978,7 +11986,7 @@ msgid "TrueUp: waiting for Garmin Connect…"
 msgstr ""
 
 #: openexpress/updates.py
-#, ignore-newline-count, python-brace-format
+#, python-brace-format
 msgid ""
 "\n"
 "To finish the installation:\n"
@@ -12090,7 +12098,7 @@ msgstr ""
 
 #. TRANSLATORS: kind of update
 #: openexpress/updates.py
-#, ignore-reused, python-brace-format
+#, python-brace-format
 msgid "Configuration"
 msgstr ""
 

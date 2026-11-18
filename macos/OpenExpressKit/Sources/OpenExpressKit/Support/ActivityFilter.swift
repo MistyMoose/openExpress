@@ -148,21 +148,26 @@ public struct ActivityFilter: Equatable, Sendable {
         text = ""
     }
 
-    public func matches(_ a: Activity, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        if !sports.isEmpty, !sports.contains(a.sport) { return false }
-        if !distance.contains(a.distance) { return false }
-        if !duration.contains(a.duration) { return false }
-        if let earliest = datePreset.earliest(now: now, calendar: calendar), a.start < earliest { return false }
-        let t = text.trimmingCharacters(in: .whitespaces)
-        if !t.isEmpty {
-            let haystack = [a.sportName, a.name ?? "", a.start.formatted(date: .abbreviated, time: .shortened)]
-            if !haystack.contains(where: { $0.localizedStandardContains(t) }) { return false }
-        }
-        return true
+    public func apply(_ activities: [Activity], now: Date = .now, calendar: Calendar = .current) -> [Activity] {
+        activities.filter(matcher(now: now, calendar: calendar))
     }
 
-    public func apply(_ activities: [Activity], now: Date = .now, calendar: Calendar = .current) -> [Activity] {
-        activities.filter { matches($0, now: now, calendar: calendar) }
+    /// The test of one activity; what is the same for every activity is worked out once.
+    private func matcher(now: Date, calendar: Calendar) -> (Activity) -> Bool {
+        let sports = sports, distance = distance, duration = duration
+        let earliest = datePreset.earliest(now: now, calendar: calendar)
+        let text = text.trimmingCharacters(in: .whitespaces)
+        return { a in
+            if !sports.isEmpty, !sports.contains(a.sport) { return false }
+            if !distance.contains(a.distance) { return false }
+            if !duration.contains(a.duration) { return false }
+            if let earliest, a.start < earliest { return false }
+            if !text.isEmpty {
+                let haystack = [a.sportName, a.name ?? "", a.start.formatted(date: .abbreviated, time: .shortened)]
+                if !haystack.contains(where: { $0.localizedStandardContains(text) }) { return false }
+            }
+            return true
+        }
     }
 
     // MARK: The sport scope bar
@@ -189,7 +194,8 @@ public struct ActivityFilter: Equatable, Sendable {
         var others = self
         others.sports = []
         var counts = Dictionary(activities.map { ($0.sport, 0) }, uniquingKeysWith: { a, _ in a })
-        for a in activities where others.matches(a, now: now, calendar: calendar) { counts[a.sport, default: 0] += 1 }
+        let matches = others.matcher(now: now, calendar: calendar)
+        for a in activities where matches(a) { counts[a.sport, default: 0] += 1 }
         return counts.map { (sport: $0.key, count: $0.value) }
             .sorted { $0.count != $1.count ? $0.count > $1.count : $0.sport.localizedStandardCompare($1.sport) == .orderedAscending }
     }

@@ -623,17 +623,18 @@ def usb_nodes(tmp_path, monkeypatch) -> Path:
     folder = tmp_path / "dev-bus-usb"
     try:
         from openexpress.device import gio_storage
-    except ImportError:  # without GObject nothing opens a USB device anyway
-        return folder
-    monkeypatch.setattr(gio_storage, "USB_NODES", folder)
-    # Nor what an earlier test saw on USB (the places of Garmin drives).
-    monkeypatch.setattr(gio_storage, "_drive_places", {})
-    monkeypatch.setattr(gio_storage, "_said_0003", {})
-    monkeypatch.setattr(gio_storage, "_said_unsupported", {})
-    monkeypatch.setattr(gio_storage, "_without_drive", frozenset())
-    monkeypatch.setattr(gio_storage, "_test_drive_said", set())
-    # Nor the devices that stopped responding (their places on USB).
-    monkeypatch.setattr(gio_storage, "_stalled_at", {})
+    except ImportError:  # without GObject (macOS) nothing opens a USB device through GIO
+        gio_storage = None
+    if gio_storage is not None:
+        monkeypatch.setattr(gio_storage, "USB_NODES", folder)
+        # Nor what an earlier test saw on USB (the places of Garmin drives).
+        monkeypatch.setattr(gio_storage, "_drive_places", {})
+        monkeypatch.setattr(gio_storage, "_said_0003", {})
+        monkeypatch.setattr(gio_storage, "_said_unsupported", {})
+        monkeypatch.setattr(gio_storage, "_without_drive", frozenset())
+        monkeypatch.setattr(gio_storage, "_test_drive_said", set())
+        # Nor the devices that stopped responding (their places on USB).
+        monkeypatch.setattr(gio_storage, "_stalled_at", {})
     # Nor the connections whose error logs an earlier test read (diagnostics.at_open).
     from openexpress import diagnostics
 

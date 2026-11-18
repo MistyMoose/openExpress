@@ -2,8 +2,8 @@
 
 ## What openExpress does
 
-What openExpress does and what it cannot do yet: [What it is](../README.md#what-it-is) and
-[Limitations](../README.md#limitations) in the README. It is in beta and developed on
+What openExpress does and what it cannot do yet: [What it is](https://github.com/TomaszBojanowski/openExpress#what-it-is) and
+[Limitations](https://github.com/TomaszBojanowski/openExpress#limitations) in the README. It is in beta and developed on
 Fedora/GNOME; the devices it was tried on: [Supported devices](devices.md).
 
 <p align="center">
@@ -357,7 +357,7 @@ What courses from GPX files cannot do:
   moment and is mounted again afterwards. The device finishes the change after it is
   unplugged; until then the app is shown as waiting. A sync never does this: it leaves such
   apps in the queue. In the Flatpak this needs its USB permission (see
-  [Flatpak permissions](../README.md#flatpak-permissions)).
+  [Flatpak permissions](https://github.com/TomaszBojanowski/openExpress#flatpak-permissions)).
 - The apps already on the device keep their order and their on/off state: the app list is
   written back exactly as the device reported it, with only the requested change.
 - Removing an app deletes its file and its settings file, on every device; the data the

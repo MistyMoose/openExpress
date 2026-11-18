@@ -11,7 +11,7 @@ Not affiliated with Garmin. Free software under the GNU GPL v3.0 or later, like 
 Garmin Express 7 for Mac was an Intel-only app, running under Rosetta 2, which macOS 27 is the
 last release to fully support. It also hung when it installed maps or software: it switched the
 device into a special USB mode, failed to reach it there, and only fell back after about two
-minutes ("Reconnect the device to continue"). Garmin Express 8 (November 2026, a fresh download:
+minutes ("Reconnect the device to continue"). Garmin Express 8 (a fresh download:
 7 does not update to it) is native on Apple silicon, and dropped ANT+.
 
 openExpress for Mac does not depend on either: it installs maps and software as plain files
@@ -28,7 +28,7 @@ Garmin Express while you use it: whichever version, it holds the device.
 | Installing and removing maps, sync | tested from the command line on a fēnix 8; from the Mac app, not yet |
 | Devices connected as a USB drive (mass storage) | found, backed up, synced and ejected like on Linux; tested with made-up drives and a disk image, not yet with a real Garmin drive |
 | Mac app | runs against the engine; under development |
-| Installer (.pkg, no Homebrew needed) | released: signed with a Developer ID and notarized (0.11.0-mac.1) |
+| Installer (.pkg, no Homebrew needed) | released: signed with a Developer ID and notarized |
 
 Devices tested on the Mac: fēnix 8 47 mm AMOLED. The upstream project lists the devices it was
 tested with in [devices.md](devices.md).

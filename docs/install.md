@@ -11,7 +11,7 @@ flatpak install --user openexpress-<version>.flatpak   # needs the Flathub remot
 
 An app installed from such a file is not updated by `flatpak update`. To switch it to the
 repository, keeping your setup, login and settings, add the repository as in
-[Install](../README.md#install) and run
+[Install](https://github.com/TomaszBojanowski/openExpress#install) and run
 `flatpak install --user --reinstall bojanowski io.github.tomaszbojanowski.OpenExpress`.
 
 ## From source

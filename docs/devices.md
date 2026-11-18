@@ -2,7 +2,7 @@
 
 | Device | Connection | Checked by | What works | Report: system, version |
 |---|---|---|---|---|
-| fēnix 8 (47 mm, Solar) | MTP | the developer, on its Garmin account; [#13](https://github.com/TomaszBojanowski/openExpress/issues/13) | sync, software update downloads, a component update, maps, Connect IQ apps, music, activities, courses, Device Status and satellite data (experimental): [what was checked](#fēnix-8-47-mm-solar). In #13 it works once gvfs-mtp is installed and Dolphin's MTP service no longer holds the watch (see [System requirements](../README.md#system-requirements)); map downloads and copying work | developer: Fedora 44, GNOME; courses: Fedora 45, GNOME, the version from source after 0.8.7; #13: CachyOS, KDE Plasma, Flatpak 0.6.15 |
+| fēnix 8 (47 mm, Solar) | MTP | the developer, on its Garmin account; [#13](https://github.com/TomaszBojanowski/openExpress/issues/13) | sync, software update downloads, a component update, maps, Connect IQ apps, music, activities, courses, Device Status and satellite data (experimental): [what was checked](#fēnix-8-47-mm-solar). In #13 it works once gvfs-mtp is installed and Dolphin's MTP service no longer holds the watch (see [System requirements](https://github.com/TomaszBojanowski/openExpress#system-requirements)); map downloads and copying work | developer: Fedora 44, GNOME; courses: Fedora 45, GNOME, the version from source after 0.8.7; #13: CachyOS, KDE Plasma, Flatpak 0.6.15 |
 | Edge 1050 | MTP | the developer, on the same account | sync, system software updates, the primary training device, Connect IQ apps, courses, Device Status and satellite data (experimental): [what was checked](#edge-1050) | developer: Fedora 44, GNOME; the second update and courses: Fedora 45, GNOME, Flatpak 0.8.7 and the version from source after it |
 | Varia RTL515 (part 006-B3592-03) | USB drive | the developer; [#9](https://github.com/TomaszBojanowski/openExpress/issues/9) | detected as a USB drive; sign-in and checking for software updates; shown on the start page as the remembered Varia before its drive is mounted; a component update copied to it and the drive ejected in the window | developer: Fedora 44, GNOME on Wayland; #9: Linux Mint 22.3, Cinnamon on X11, Flatpak 0.6.4 |
 | epix (Gen 2; part 006-B3943) | MTP | the developer | read-only commands and backup; it is not registered to the account used for testing, so sync and Connect IQ apps are refused with a message, and the window says why | developer: Fedora 44, GNOME |
@@ -151,7 +151,7 @@ and in the version from source:
   take it; without an answer of that server a drive is not synced either. When a drive is not
   synced, the device page and the command say why.
 - Apps, maps and music are not supported; the window and the commands say so
-  ([Limitations](../README.md#limitations)). A car or motorcycle navigator that connects as a USB
+  ([Limitations](https://github.com/TomaszBojanowski/openExpress#limitations)). A car or motorcycle navigator that connects as a USB
   drive (such as an older nüvi) should therefore get its software updates, but no map updates.
 - Once its drive is ejected, a watch in this mode switches to its Garmin USB mode, which
   openExpress does not use: unplug the cable and plug it in again to use it again.

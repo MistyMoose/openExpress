@@ -1914,10 +1914,20 @@ def _mtp_storage(uri: str, usb: GarminUsb | None) -> GioStorage:
     storages = [GioStorage(top._f(name).get_uri()) for name in candidates]
     for st in storages:
         st.usb = usb
-    for st in storages + [top]:
+    named = list(zip(candidates, storages))
+    for name, st in named:
         if st.exists("GARMIN/GarminDevice.xml"):
             st.device_uri = uri
+            # A device with more than one top-level storage (e.g. a Forerunner 645 Music's
+            # small Primary, beside its Media one): music.py refuses to create its folder on
+            # the wrong one.
+            st.other_storages = tuple(n for n, s in named if s is not st)
+            log.info("device: %d storage%s: %s; GARMIN on %s", len(named),
+                     "" if len(named) == 1 else "s", ", ".join(candidates), name)
             return st
+    if top.exists("GARMIN/GarminDevice.xml"):
+        top.device_uri = uri
+        return top
     raise NotThereYet(_("GARMIN/GarminDevice.xml not found on device {uri}").format(uri=uri))
 
 

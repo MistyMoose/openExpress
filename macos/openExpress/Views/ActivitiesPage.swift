@@ -22,12 +22,7 @@ struct ActivitiesPage: View {
 
     private var all: [Activity] { model.activities ?? [] }
 
-    private var rows: [Activity] {
-        model.activityFilter.apply(all).sorted(using: model.activitySort)
-    }
-
     private var selected: Activity? { model.activities?.first { $0.id == selection } }
-
 
     var body: some View {
         Group {
@@ -37,6 +32,7 @@ struct ActivitiesPage: View {
                 ContentUnavailableView("No Activities", systemImage: "figure.run",
                                        description: Text("Activities recorded on the device appear here."))
             } else {
+                let rows = model.activityFilter.apply(all).sorted(using: model.activitySort)
                 Group {
                     if rows.isEmpty {
                         ContentUnavailableView {
@@ -47,7 +43,7 @@ struct ActivitiesPage: View {
                             Button("Reset Filters", action: resetAll)
                         }
                     } else {
-                        table
+                        table(rows)
                             // Only the columns that fit: no clipped number, no sideways scroller.
                             // A new set of columns lays the table out afresh at their widths.
                             .id(TableLayout(hidden: hiddenColumns, compactDate: compactDate, widths: widths))
@@ -65,7 +61,7 @@ struct ActivitiesPage: View {
                         filterButton
                     }
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) { summaryBar }
+                .safeAreaInset(edge: .bottom, spacing: 0) { summaryBar(rows) }
             }
         }
         // Free text: sport, name and date. ⌘F focuses the field; Escape clears it. The sport
@@ -125,7 +121,7 @@ struct ActivitiesPage: View {
     }
 
     /// The totals of what is shown, in a plain bar under the table (not glass over content).
-    private var summaryBar: some View {
+    private func summaryBar(_ rows: [Activity]) -> some View {
         VStack(spacing: 0) {
             Divider()
             Text(ActivityTotals(rows).summary(of: all.count))
@@ -279,7 +275,7 @@ struct ActivitiesPage: View {
         model.activityFilter.resetAll()
     }
 
-    private var table: some View {
+    private func table(_ rows: [Activity]) -> some View {
         Table(rows, selection: $selection, sortOrder: $model.activitySort, columnCustomization: $columns) {
             // The sport first, then when: the engine's `name` repeats the date and the file,
             // so it stays in the inspector.
@@ -705,9 +701,10 @@ struct SportScopeBar<Trailing: View>: View {
         var trailing: Bool
     }
 
-    private var counts: [(sport: String, count: Int)] { filter.sportCounts(in: activities) }
-
     var body: some View {
+        let counts = filter.sportCounts(in: activities)
+        // The icon of each sport: that of its first activity.
+        let symbols = Dictionary(activities.map { ($0.sport, $0.systemImage) }, uniquingKeysWith: { first, _ in first })
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ScrollView(.horizontal) {
@@ -724,7 +721,7 @@ struct SportScopeBar<Trailing: View>: View {
                             ScopeButton(selected: selected) {
                                 filter.select(sport: item.sport, extending: NSEvent.modifierFlags.contains(.command))
                             } label: {
-                                ScopeLabel(systemImage: symbol(item.sport), title: item.sport, count: item.count)
+                                ScopeLabel(systemImage: symbols[item.sport] ?? Activity.systemImage(sportID: nil, sport: item.sport), title: item.sport, count: item.count)
                             }
                             .opacity(item.count == 0 && !selected ? 0.45 : 1)
                             .help("Click to show only \(item.sport); ⌘-click to add or remove it")
@@ -759,10 +756,6 @@ struct SportScopeBar<Trailing: View>: View {
         .background(.bar)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sports")
-    }
-
-    private func symbol(_ sport: String) -> String {
-        activities.first { $0.sport == sport }?.systemImage ?? Activity.systemImage(sportID: nil, sport: sport)
     }
 }
 

@@ -261,7 +261,9 @@ class MacStorage(Storage):
         what = _("Cannot read {path}").format(path=real_path)
         found = self._file(real_path, what)
         content = bytearray()
-        self._call(what, lambda s: s.read_into(found.handle, content.extend, size=found.size))
+        in_parts = not real_path.upper().endswith(".PRG")  # GetObject gives a PRG encrypted
+        self._call(what, lambda s: s.read_into(found.handle, content.extend, size=found.size,
+                                               in_parts=in_parts))
         return bytes(content)
 
     def _read_start(self, real_path: str, count: int) -> bytes:

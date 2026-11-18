@@ -389,18 +389,20 @@ HANDOVER_WAIT_S = 15.0
 HANDOVER_EVERY_S = 0.5
 
 
-def want_lock_path() -> Path:
-    """The lock file of the processes that wait for a device another process of the program
-    holds (held shared while they wait); the one that holds it lets go when it sees it held
-    (wanted_elsewhere)."""
-    return Path(tempfile.gettempdir()) / f"openexpress-{os.getuid()}-want.lock"
+def want_lock_path(bus: int, address: int) -> Path:
+    """The lock file of the processes that wait for the device at this place on USB while
+    another process of the program holds it (held shared while they wait); the one that holds
+    it lets that device go when it sees the lock held (wanted_elsewhere), and only that one."""
+    name = f"openexpress-{os.getuid()}-want-{bus:03d}-{address:03d}.lock"
+    return Path(tempfile.gettempdir()) / name
 
 
-def wanted_elsewhere() -> bool:
-    """Whether another process of the program waits for a device (holds the want lock); no
-    program is run for it."""
+def wanted_elsewhere(bus: int, address: int) -> bool:
+    """Whether another process of the program waits for the device at this place on USB
+    (holds its want lock); no program is run for it."""
     try:
-        fd = os.open(want_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        fd = os.open(want_lock_path(bus, address), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC,
+                     0o600)
     except OSError:
         return False
     try:
@@ -416,7 +418,8 @@ def _handed_over(bus: int, address: int, holder: Holder) -> Holder | None:
     """The holder of the device once another process of the program that held it let go, the
     want lock held meanwhile (at most HANDOVER_WAIT_S): None when nothing holds it then."""
     try:
-        fd = os.open(want_lock_path(), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        fd = os.open(want_lock_path(bus, address), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC,
+                     0o600)
     except OSError:
         return holder
     try:

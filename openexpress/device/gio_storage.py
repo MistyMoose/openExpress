@@ -1845,8 +1845,8 @@ def look_again() -> None:
     """Nothing is kept of a look at USB here."""
 
 
-def wanted_elsewhere() -> bool:
-    """gvfs shares a device: no other process waits for this one to let go."""
+def wanted_elsewhere(found: FoundDevice) -> bool:
+    """gvfs shares a device: no other process waits for this one to let go of it."""
     return False
 
 

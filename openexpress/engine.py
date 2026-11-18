@@ -191,11 +191,12 @@ class SystemDevices:
 
         platform.devices().look_again()
 
-    def wanted(self) -> bool:
-        """Whether another process of the program waits for a device this one holds."""
+    def wanted(self, found) -> bool:
+        """Whether another process of the program waits for this device, which this one
+        holds."""
         from openexpress import platform
 
-        return platform.devices().wanted_elsewhere()
+        return platform.devices().wanted_elsewhere(found)
 
     def options(self, found) -> dict:
         """How the command line names the device (its options --device-uri, --path)."""
@@ -716,9 +717,9 @@ class Engine:
                 self.event("device.detached", self.device_json(gone))
             for key in seen:
                 self._missing.pop(key, None)
-            if self._open and self.devices.wanted():
-                log.info("engine: another openexpress process waits for a device; let go")
-                for key in list(self._open):
+            for key, (found, _uses) in list(self._open.items()):
+                if self.devices.wanted(found):  # that one alone: the others stay open
+                    log.info("engine: another openexpress process waits for a device; let go")
                     self._let_go_now(key)
             to_probe: list[Attached] = []
             for key, s in seen.items():

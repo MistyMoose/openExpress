@@ -46,7 +46,7 @@ class FakeDevices:
         self.held: dict[str, str] = {}
         self.released: list[str] = []
         self.holds: list[str] = []  # each device opened for a request (hold)
-        self.waiting = False  # another process of the program waits for a device
+        self.waiting: set[str] = set()  # devices another process of the program waits for
         self.looks_again = 0
 
     def scan(self):
@@ -68,8 +68,8 @@ class FakeDevices:
     def look_again(self):
         self.looks_again += 1
 
-    def wanted(self):
-        return self.waiting
+    def wanted(self, found):
+        return found.uri in self.waiting
 
     def release(self, found):
         self.released.append(found.uri)
@@ -318,9 +318,27 @@ def test_a_device_unplugged_or_taken_by_another_program_is_let_go_at_once(runnin
 
 def test_a_device_another_process_of_the_program_waits_for_is_let_go_at_once(running, devices):
     running.ask("device.info", {"device": UNIT})
-    devices.waiting = True
+    devices.waiting = {KEY}
     running.ask("devices.list")
     assert devices.released == [KEY]
+
+
+def test_another_process_waiting_for_one_device_has_only_that_one_let_go(device_root, tmp_path):
+    """An `openexpress` command for the fēnix 8 let go of the Edge 1040 beside it too, while
+    the want lock said only that some device was wanted."""
+    import shutil
+
+    other_key = "mtp://[usb:001,010]/"
+    shutil.copytree(device_root, tmp_path / "other")
+    devices = FakeDevices(**{KEY: device_root, other_key: tmp_path / "other"})
+    running = Running(devices)
+    try:
+        running.ask("devices.list")  # both probed, both kept open
+        devices.waiting = {other_key}
+        running.ask("devices.list")
+        assert devices.released == [other_key]
+    finally:
+        running.stop()
 
 
 def test_the_device_is_let_go_when_the_engine_ends(devices):
@@ -344,7 +362,7 @@ def test_a_device_wanted_during_a_request_is_let_go_once_it_ends(running, device
     running.engine.methods["device.info"] = ("device", slow_info)
     request_id = running.send("device.info", {"device": UNIT})
     started.wait(10)
-    devices.waiting = True
+    devices.waiting = {KEY}
     running.ask("devices.list")
     assert devices.released == []  # not under the request
     go_on.set()

@@ -516,10 +516,11 @@ def look_again() -> None:
     mac_usb.look_again()
 
 
-def wanted_elsewhere() -> bool:
-    """Whether another process of the program waits for a device this one holds
-    (mac_usb.check_free): the engine lets its devices go then."""
-    return mac_usb.wanted_elsewhere()
+def wanted_elsewhere(found: FoundDevice) -> bool:
+    """Whether another process of the program waits for this device, which this one holds
+    (mac_usb.check_free): the engine lets it go then."""
+    place = usb_place(found.usb)
+    return place is not None and mac_usb.wanted_elsewhere(*place)
 
 
 def find_ums_devices() -> list[FoundDevice]:

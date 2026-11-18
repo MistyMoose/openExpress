@@ -605,7 +605,7 @@ def handover(monkeypatch):
         return state.holders.pop(0) if len(state.holders) > 1 else state.holders[0]
 
     def sleep(seconds):
-        state.waits.append(mac_usb.wanted_elsewhere())
+        state.waits.append(mac_usb.wanted_elsewhere(8, 37))
         state.now += seconds
 
     monkeypatch.setattr(mac_usb, "holder_of", holder_of)
@@ -619,7 +619,7 @@ def test_another_openexpress_holding_the_device_is_waited_for_until_it_lets_go(h
     handover.holders = [ours, ours, ours, None]
     mac_usb.check_free(8, 37)
     assert handover.waits == [True, True, True]  # it saw that one waits for the device
-    assert mac_usb.wanted_elsewhere() is False  # nobody waits any more
+    assert mac_usb.wanted_elsewhere(8, 37) is False  # nobody waits any more
 
 
 def test_another_openexpress_that_keeps_the_device_is_said_after_the_wait(handover):

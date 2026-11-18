@@ -6,6 +6,8 @@ new since then are copied. All devices and files are made up."""
 
 import os
 
+import pytest
+
 from openexpress import sync
 from openexpress.device.storage import LocalStorage
 from openexpress.device.xmldevice import parse
@@ -183,6 +185,86 @@ def test_after_sync_keeps_an_error_of_the_drop_folder_in_its_result(device_root,
     after = service.after_sync(_session(device_root, copy_fit_to=str(taken)), apply=True)
     assert after.dropped is None and isinstance(after.drop_error, OSError)
     assert after.problems()[0].startswith("FIT drop folder: ")
+
+
+# --- a name from the device that is no plain file name ---------------------------------------
+
+
+class _CraftedName(LocalStorage):
+    """The first activity file listed under `bad_name` instead of its real name: a device may
+    give any name over MTP, bit flips and all. Reading it is tracked, so a test can check it
+    is never read under that name either."""
+
+    def __init__(self, root, bad_name):
+        super().__init__(root)
+        self.bad_name = bad_name
+        self.reads: list[str] = []
+
+    def walk_files(self, path):
+        files = super().walk_files(path)
+        if not files:
+            return files
+        real, entry = files[0]
+        folder = real.rsplit("/", 1)[0]
+        return [(f"{folder}/{self.bad_name}", entry), *files[1:]]
+
+    def read(self, path):
+        self.reads.append(path)
+        if path.endswith(self.bad_name):
+            return b"must never be read nor written"
+        return super().read(path)
+
+
+@pytest.mark.parametrize("bad_name", ["esc\\ape.fit", "bad\x07char.fit", "bad\x00null.fit"])
+def test_a_crafted_activity_name_is_skipped_and_the_rest_is_still_copied(
+        device_root, tmp_path, bad_name):
+    """A name from the device that is no plain file name refuses only that one file (counted
+    in `unsafe`, never read); the other activity is still copied, and nothing is written
+    anywhere but under `dest`."""
+    st = _CraftedName(device_root, bad_name)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    st.reads.clear()
+    dest = tmp_path / "drop"
+    before = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()}
+    res = sync.run_drop_folder(dev, st, dest)
+    assert res.unsafe == 1
+    assert res.copied == ["2026-10-02-10-00-00.fit"]
+    assert not any(p.endswith(bad_name) for p in st.reads)
+    new = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()} - before
+    assert new and all(p.is_relative_to(dest.resolve()) for p in new)
+    assert sorted(p.name for p in dest.iterdir()) == ["2026-10-02-10-00-00.fit"]
+
+
+def test_a_crafted_name_is_also_refused_when_a_staging_copy_has_it(device_root, tmp_path):
+    """The same refusal when `copies` (the drop folder, for Strava's staging) is given: the
+    crafted name is never looked up in it either."""
+    bad_name = "bad\x00null.fit"
+    st = _CraftedName(device_root, bad_name)
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    copies = tmp_path / "drop"
+    staging = tmp_path / "staging"
+    res = sync.run_drop_folder(dev, st, staging, copies=copies)
+    assert res.unsafe == 1
+    assert res.copied == ["2026-10-02-10-00-00.fit"]
+
+
+def test_a_slash_within_a_device_path_still_ends_under_its_trailing_name_alone(
+        device_root, tmp_path):
+    """A device path with a folder separator inside what should be one file name (also a
+    corrupted name, or simply a device source nested a level deeper) never escapes `dest`
+    either: plan_drop_folder takes only the name after the last "/" (posixpath.basename), so
+    the file lands under that plain name, never under the folders before it."""
+    st = _CraftedName(device_root, "../../escape.fit")
+    dev = parse(st.read("GARMIN/GarminDevice.xml"))
+    dest = tmp_path / "drop"
+    before = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()}
+    res = sync.run_drop_folder(dev, st, dest)
+    # The crafted entry is not whole FIT data (made up bytes), so it is left for the next sync,
+    # like any other incomplete file - never written under a name with "/" or "..".
+    assert res.incomplete == 1
+    assert res.copied == ["2026-10-02-10-00-00.fit"]
+    new = {p.resolve() for p in tmp_path.rglob("*") if p.is_file()} - before
+    assert all(p.is_relative_to(dest.resolve()) for p in new)
 
 
 class _CountingStorage(LocalStorage):

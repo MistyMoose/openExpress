@@ -1265,14 +1265,17 @@ def plan_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
                      types: frozenset[str] | None = None) -> list[DropFolderFile]:
     """The FIT files of `types` (default: DROP_FOLDER_DEFAULT_TYPES) the device has that are
     not in `dest` yet, by name alone: nothing is read, as every plan_* function. A name already
-    in `dest` is left out, whether an earlier sync put it there or the user did."""
+    in `dest` is left out, whether an earlier sync put it there or the user did. A name that is
+    not a plain file name (paths.is_safe_component: a bit flip or another device bug) is
+    listed all the same, left for run_drop_folder to refuse and count, never checked against
+    `dest` (which it cannot safely be joined with)."""
     found = []
     for dt in sorted(types or DROP_FOLDER_DEFAULT_TYPES):
         for _src, path, _entry in files_of(storage, device.sources(dt)):
             if not path.casefold().endswith(".fit"):
                 continue
             name = posixpath.basename(path)
-            if not (dest / name).exists():
+            if not paths.is_safe_component(name) or not (dest / name).exists():
                 found.append(DropFolderFile(dt, path, name))
     return found
 
@@ -1284,6 +1287,10 @@ class DropFolderResult:
     # FIT files still being written by the device, as a sync's own uploads leave them for the
     # next sync (fit.incompleteness): not copied now, tried again by the next sync.
     incomplete: int = 0
+    # The device gave a name that is no plain file name (paths.is_safe_component: a bit flip or
+    # another device bug): not copied, never tried again under that name (the next sync lists
+    # the device's files afresh).
+    unsafe: int = 0
 
 
 def _write_new(dest: Path, name: str, data: bytes) -> bool:
@@ -1337,9 +1344,12 @@ def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
                     copies: Path | None = None) -> DropFolderResult:
     """The files of plan_drop_folder copied into `dest` (made if it does not exist yet). A FIT
     file the device is still writing (incompleteness, as an upload checks it) is left for the
-    next sync. A file already there is never overwritten (_write_new). `copies`: a folder that
-    may have whole copies of the device's files under their names (the drop folder, for the
-    staging of Strava): those are taken from there, not read from the device again."""
+    next sync; one under a name that is not a plain file name (paths.is_safe_component: a bit
+    flip or another device bug) is not copied at all (`unsafe`), as its name on this computer
+    could only be made up, never the device's own. A file already there is never overwritten
+    (_write_new). `copies`: a folder that may have whole copies of the device's files under
+    their names (the drop folder, for the staging of Strava): those are taken from there, not
+    read from the device again."""
     progress = say_to(progress)
     dest.mkdir(parents=True, exist_ok=True)
     planned = plan_drop_folder(device, storage, dest, types)
@@ -1348,6 +1358,11 @@ def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
     for n, f in enumerate(planned, 1):
         # TRANSLATORS: a step of the progress of a sync ("… · 2 of 5")
         progress(Step(_("Copying to the drop folder"), n, len(planned)))
+        if not paths.is_safe_component(f.name):
+            log.warning("drop folder: a %s file's name from the device cannot be used as a "
+                        "path on this computer; not copied", f.datatype)
+            result.unsafe += 1
+            continue
         done = _from_copy(copies / f.name, dest, f.name) if copies is not None else None
         if done is not None:
             taken += 1
@@ -1366,6 +1381,7 @@ def run_drop_folder(device: GarminDevice, storage: Storage, dest: Path,
             result.copied.append(f.name)
             result.bytes += len(data)
     log.info("drop folder: %d files copied (%s; %d of them from a copy on this computer), %d "
-             "still being written left for the next sync", len(result.copied),
-             applog.size(result.bytes), taken, result.incomplete)
+             "still being written left for the next sync, %d with a name that could not be "
+             "used", len(result.copied), applog.size(result.bytes), taken, result.incomplete,
+             result.unsafe)
     return result

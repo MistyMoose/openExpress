@@ -282,13 +282,7 @@ public actor MockEngine: EngineConnection {
             }
             return ["dry_run": false, "maps": .array(done)]
         case "apps.list":
-            return ["exit_code": 0, "lines": [
-                "Connect IQ apps on fēnix 8 – 47 mm, AMOLED:",
-                "  Strava Live Segments   data field   2.4.1   on",
-                "  Spotify                music        3.0.0   on",
-                "  Klimat                 widget       1.2     on",
-                "  Crystal Face           watch face   2.13    on   (update available)",
-            ]]
+            return try JSONValue(encoding: Self.sampleApps(unit: unit))
         case "activities.list":
             let all = Self.sampleActivities(unit: unit, count: scenario == .many ? 280 : 24)
             if let unit, !activitiesCached.contains(unit) {
@@ -399,6 +393,48 @@ public actor MockEngine: EngineConnection {
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd (HH.mm.ss)"
         return f.string(from: date)
+    }
+
+    /// The Connect IQ apps of a device, as `apps.list` sends them: on the fēnix a mix of every
+    /// kind, some disabled, one with an update, one waiting to be installed; on the Edge a few.
+    public static func sampleApps(unit: String? = fenixID) -> AppsList {
+        let note = "New apps are chosen in the Connect IQ Store (website or phone); they then appear in the list above."
+        func app(_ n: Int, _ name: String, _ kind: AppKind, _ kindName: String, _ version: Int,
+                 enabled: Bool = true, update: AppUpdate? = nil, waiting: String? = nil,
+                 removable: Bool = true) -> ConnectIQApp {
+            ConnectIQApp(appID: String(format: "c33a05fa-bb7b-46a4-87b4-%012d", n), name: name, kind: kind,
+                         kindName: kindName, version: version, enabled: enabled, update: update,
+                         waiting: waiting,
+                         waitingText: waiting == nil ? nil : "will be installed after the device is unplugged",
+                         removable: removable)
+        }
+        if unit == edgeID {
+            return AppsList(summary: AppsSummary(storeApps: 3, freeSlots: 14, freeBytes: 126_668_166), apps: [
+                app(1, "Komoot", .app, "app", 222),
+                app(2, "Connect IQ Store", .app, "app", 71, removable: false),
+                app(1, "Komoot", .widget, "widget", 222),
+            ], note: note)
+        }
+        return AppsList(
+            summary: AppsSummary(storeApps: 12, freeSlots: 21, freeBytes: 63_315_235),
+            apps: [
+                app(2, "Connect IQ Store", .app, "app", 71, removable: false),
+                app(3, "WhatsApp", .app, "app", 49),
+                app(1, "Komoot", .widget, "widget", 222, update: AppUpdate(version: "4.26.23", size: 412_000)),
+                app(4, "Klimat", .widget, "widget", 12, enabled: false),
+                app(5, "Crystal Face", .watchFace, "watch face", 213),
+                app(6, "Segment34 MkII", .watchFace, "watch face", 144, enabled: false),
+                app(7, "Fenix7 Pro Analog MB", .watchFace, "watch face", 23, enabled: false),
+                app(8, "Strava Live Segments", .dataField, "data field", 241),
+                app(9, "TideCastDF", .dataField, "data field", 4),
+                app(10, "Surf Tracker3", .dataField, "data field", 7, waiting: "install"),
+                app(11, "Spotify", .music, "music app", 73, enabled: false),
+                app(1, "Komoot", .activity, "activity", 222, update: AppUpdate(version: "4.26.23", size: 412_000)),
+            ],
+            account: [AccountApp(appID: "c33a05fa-bb7b-46a4-87b4-000000000012", name: "Garmin Golf",
+                                 kind: .app, kindName: "app", version: "1.3.0", size: 280_000,
+                                 developer: "Garmin")],
+            note: note)
     }
 
     public static func sampleActivities(unit: String? = fenixID, count: Int = 24) -> [Activity] {

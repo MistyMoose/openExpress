@@ -281,6 +281,25 @@ struct ModelTests {
         #expect(reads == 1)
     }
 
+    /// The Apps page: the device's apps as data, grouped by kind, with the summary and the
+    /// Store's note; each device its own.
+    @Test func appsPageReadsTheAppsByKind() async throws {
+        let (app, engine) = makeApp()
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        await model.load(.apps)
+        let apps = try #require(model.apps)
+        #expect(await engine.calls.last { $0.method == "apps.list" }?.params?["device"]?.stringValue == MockEngine.fenixID)
+        #expect(apps.summary.storeApps == apps.apps.count && apps.summary.freeSlots == 21)
+        #expect(apps.groups.map(\.kind) == [.app, .widget, .watchFace, .dataField, .music, .activity])
+        #expect(apps.groups.first { $0.kind == .watchFace }?.apps.count == 3)
+        #expect(apps.updatable.allSatisfy { $0.name == "Komoot" } && !apps.updatable.isEmpty)
+        #expect(apps.apps.contains { !$0.enabled } && apps.apps.contains { $0.waiting == "install" })
+        #expect(apps.account.map(\.name) == ["Garmin Golf"])
+        #expect(apps.note?.contains("Connect IQ Store") == true)
+        #expect(apps == MockEngine.sampleApps(unit: MockEngine.fenixID))
+    }
+
     /// The engine runs one request per device at a time: a page asked for during a long
     /// load waits, and says so.
     @Test func pageWaitsBehindAnotherLoad() async throws {

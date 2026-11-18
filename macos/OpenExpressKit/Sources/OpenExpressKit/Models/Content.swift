@@ -181,10 +181,242 @@ public struct MapsList: Codable, Sendable, Hashable {
     public var updatable: [DeviceMap] { maps.filter { $0.installed && $0.status == .update } }
 }
 
-/// `apps.list` runs `apps` as the command line: `{"exit_code", "lines"}`.
+/// The type of a Connect IQ app, as the engine's stable `kind` word.
+public enum AppKind: String, Codable, Sendable, Hashable, CaseIterable, Identifiable {
+    case app
+    case widget
+    case watchFace = "watch_face"
+    case dataField = "data_field"
+    case music
+    case activity
+    case unknown
+
+    public var id: String { rawValue }
+
+    /// A kind this app does not know (a newer engine) is `unknown`, never an error.
+    public init(from decoder: any Decoder) throws {
+        self = Self(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .unknown
+    }
+
+    /// The heading of the apps of this kind.
+    public var title: String {
+        switch self {
+        case .app: String(localized: "Apps")
+        case .widget: String(localized: "Widgets")
+        case .watchFace: String(localized: "Watch Faces")
+        case .dataField: String(localized: "Data Fields")
+        case .music: String(localized: "Music Apps")
+        case .activity: String(localized: "Activities")
+        case .unknown: String(localized: "Other")
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .app: "app"
+        case .widget: "rectangle.stack"
+        case .watchFace: "applewatch.watchface"
+        case .dataField: "gauge.with.dots.needle.33percent"
+        case .music: "music.note"
+        case .activity: "figure.run"
+        case .unknown: "questionmark.app.dashed"
+        }
+    }
+}
+
+/// A newer version of an app in the Connect IQ Store.
+public struct AppUpdate: Codable, Sendable, Hashable {
+    /// The Store's name of the version ("4.26.23").
+    public var version: String
+    public var size: Int64?
+    /// The new version asks for other permissions.
+    public var permissionsChanged: Bool
+
+    public init(version: String, size: Int64? = nil, permissionsChanged: Bool = false) {
+        self.version = version
+        self.size = size
+        self.permissionsChanged = permissionsChanged
+    }
+}
+
+/// A Connect IQ app on the device (`App` of `apps.list`).
+public struct ConnectIQApp: Codable, Sendable, Hashable, Identifiable {
+    /// The app's UUID. One app can be on the device as several kinds (a widget and an
+    /// activity of the same app), so `id` is made of both.
+    public var appID: String
+    public var name: String
+    public var kind: AppKind
+    /// The kind's name, translated by the engine ("watch face").
+    public var kindName: String?
+    /// The app's internal version number on the device (not the Store's "x.y").
+    public var version: Int?
+    public var enabled: Bool
+    public var update: AppUpdate?
+    /// "install" or "removal": written to the device, which applies it once unplugged.
+    public var waiting: String?
+    public var waitingText: String?
+    public var removable: Bool
+
+    public var id: String { appID + ":" + kind.rawValue }
+
+    enum CodingKeys: String, CodingKey {
+        case appID = "id"
+        case name, kind, kindName, version, enabled, update, waiting, waitingText, removable
+    }
+
+    public init(appID: String, name: String, kind: AppKind, kindName: String? = nil, version: Int? = nil,
+                enabled: Bool = true, update: AppUpdate? = nil, waiting: String? = nil,
+                waitingText: String? = nil, removable: Bool = true) {
+        self.appID = appID
+        self.name = name
+        self.kind = kind
+        self.kindName = kindName
+        self.version = version
+        self.enabled = enabled
+        self.update = update
+        self.waiting = waiting
+        self.waitingText = waitingText
+        self.removable = removable
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        appID = try c.decode(String.self, forKey: .appID)
+        name = try c.decode(String.self, forKey: .name)
+        kind = (try? c.decodeIfPresent(AppKind.self, forKey: .kind)) ?? .unknown
+        kindName = try? c.decodeIfPresent(String.self, forKey: .kindName)
+        version = try? c.decodeIfPresent(Int.self, forKey: .version)
+        enabled = (try? c.decodeIfPresent(Bool.self, forKey: .enabled)) ?? true
+        update = try? c.decodeIfPresent(AppUpdate.self, forKey: .update)
+        waiting = try? c.decodeIfPresent(String.self, forKey: .waiting)
+        waitingText = try? c.decodeIfPresent(String.self, forKey: .waitingText)
+        removable = (try? c.decodeIfPresent(Bool.self, forKey: .removable)) ?? false
+    }
+}
+
+/// An app of the Garmin account that is not on the device (`StoreApp` of `apps.list`).
+public struct AccountApp: Codable, Sendable, Hashable, Identifiable {
+    public var appID: String
+    public var name: String
+    public var kind: AppKind
+    public var kindName: String?
+    /// The Store's name of the version.
+    public var version: String?
+    public var size: Int64?
+    public var developer: String?
+    public var permissionsChanged: Bool?
+
+    public var id: String { appID }
+
+    enum CodingKeys: String, CodingKey {
+        case appID = "id"
+        case name, kind, kindName, version, size, developer, permissionsChanged
+    }
+
+    public init(appID: String, name: String, kind: AppKind, kindName: String? = nil, version: String? = nil,
+                size: Int64? = nil, developer: String? = nil, permissionsChanged: Bool? = nil) {
+        self.appID = appID
+        self.name = name
+        self.kind = kind
+        self.kindName = kindName
+        self.version = version
+        self.size = size
+        self.developer = developer
+        self.permissionsChanged = permissionsChanged
+    }
+}
+
+/// A built-in activity or app of the device (`apps.list` with `builtin`).
+public struct BuiltinApp: Codable, Sendable, Hashable, Identifiable {
+    public var appID: String
+    public var name: String
+    public var kind: AppKind
+    public var kindName: String?
+    public var enabled: Bool
+
+    public var id: String { appID + ":" + kind.rawValue }
+
+    enum CodingKeys: String, CodingKey {
+        case appID = "id"
+        case name, kind, kindName, enabled
+    }
+
+    public init(appID: String, name: String, kind: AppKind, kindName: String? = nil, enabled: Bool = true) {
+        self.appID = appID
+        self.name = name
+        self.kind = kind
+        self.kindName = kindName
+        self.enabled = enabled
+    }
+}
+
+/// What `apps.list` says of the device's Connect IQ room.
+public struct AppsSummary: Codable, Sendable, Hashable {
+    public var storeApps: Int
+    /// nil when the device does not say.
+    public var freeSlots: Int?
+    public var freeBytes: Int64?
+
+    public init(storeApps: Int, freeSlots: Int? = nil, freeBytes: Int64? = nil) {
+        self.storeApps = storeApps
+        self.freeSlots = freeSlots
+        self.freeBytes = freeBytes
+    }
+
+    /// The slots in all: those taken and those free; nil when the device names no free ones.
+    public var totalSlots: Int? { freeSlots.map { $0 + storeApps } }
+}
+
+/// `apps.list`: the Connect IQ apps on the device, as `apps` prints them.
 public struct AppsList: Codable, Sendable, Hashable {
-    public var lines: [String]
-    public var exitCode: Int?
+    public var summary: AppsSummary
+    public var apps: [ConnectIQApp]
+    /// The account's apps that are not on the device.
+    public var account: [AccountApp]
+    /// Only when asked for (`builtin`).
+    public var builtin: [BuiltinApp]?
+    /// No app was ever installed on the device (`apps` is then empty).
+    public var message: String?
+    /// Entries of the device's app list cannot be read.
+    public var warning: String?
+    /// Where new apps are chosen (the Connect IQ Store).
+    public var note: String?
+
+    public init(summary: AppsSummary, apps: [ConnectIQApp], account: [AccountApp] = [],
+                builtin: [BuiltinApp]? = nil, message: String? = nil, warning: String? = nil,
+                note: String? = nil) {
+        self.summary = summary
+        self.apps = apps
+        self.account = account
+        self.builtin = builtin
+        self.message = message
+        self.warning = warning
+        self.note = note
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        apps = try c.decodeIfPresent([ConnectIQApp].self, forKey: .apps) ?? []
+        summary = (try? c.decodeIfPresent(AppsSummary.self, forKey: .summary))
+            ?? AppsSummary(storeApps: apps.count)
+        account = (try? c.decodeIfPresent([AccountApp].self, forKey: .account)) ?? []
+        builtin = try? c.decodeIfPresent([BuiltinApp].self, forKey: .builtin)
+        message = try? c.decodeIfPresent(String.self, forKey: .message)
+        warning = try? c.decodeIfPresent(String.self, forKey: .warning)
+        note = try? c.decodeIfPresent(String.self, forKey: .note)
+    }
+
+    /// The apps by kind, in the order of `AppKind`, each kind in the device's order; kinds
+    /// without apps left out.
+    public var groups: [(kind: AppKind, apps: [ConnectIQApp])] {
+        AppKind.allCases.compactMap { kind in
+            let apps = apps.filter { $0.kind == kind }
+            return apps.isEmpty ? nil : (kind, apps)
+        }
+    }
+
+    public var updatable: [ConnectIQApp] { apps.filter { $0.update != nil } }
+    public var disabledCount: Int { apps.filter { !$0.enabled }.count }
 }
 
 /// An activity on the device or in its backups (`activities.list`).

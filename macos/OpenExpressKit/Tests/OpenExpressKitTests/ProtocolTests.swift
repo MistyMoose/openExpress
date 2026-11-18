@@ -134,8 +134,11 @@ struct ProtocolTests {
                                     "authorize_url": "https://www.strava.com/oauth/authorize?x=1"]).decode(StravaStatus.self)
         #expect(strava.configured && !strava.connected)
         #expect(strava.authorizeURL == "https://www.strava.com/oauth/authorize?x=1")
-        let apps = try JSONValue(["exit_code": 0, "lines": ["Klimat"]]).decode(AppsList.self)
-        #expect(apps.exitCode == 0 && apps.lines == ["Klimat"])
+        let apps = try JSONValue(["summary": ["store_apps": 1, "free_slots": nil, "free_bytes": nil],
+                                  "apps": [["id": "x", "name": "Klimat", "kind": "hologram", "enabled": true]],
+                                  "account": [], "message": nil, "warning": nil, "note": "n"]).decode(AppsList.self)
+        // A kind this app does not know yet is "other", not an error.
+        #expect(apps.apps.first?.kind == .unknown && apps.summary.totalSlots == nil)
         let a = try JSONValue(["name": "Morning Run", "source": "backup", "path": "/b/x.fit", "size": 10,
                                "start": "2026-11-17T09:41:00+01:00", "sport": "running", "sport_id": 1,
                                "distance": 5000, "duration": 1500, "ascent": nil, "average_heart_rate": 148,
@@ -201,6 +204,41 @@ struct SupportTests {
         let list = try EngineCoding.decoder().decode(BackupsList.self, from: Data(line.utf8))
         #expect(list.backups[0].files == 4210 && list.backups[0].bytes == 1_200_000_000)
         #expect(list.backups[0].url.lastPathComponent == "2026-11-15 (08.30.00)")
+    }
+
+    /// Exactly what engine.py's apps_list sends (a fēnix 8, read with `builtin`).
+    @Test func appsAsTheEngineSendsThem() throws {
+        let line = #"""
+        {"summary": {"store_apps": 6, "free_slots": 23, "free_bytes": 63315235},
+         "apps": [
+          {"id": "7cd38736-510a-4480-8801-0dfe2f5944af", "name": "Connect IQ Store", "kind": "app", "kind_name": "app", "version": 71, "enabled": true, "update": null, "waiting": null, "waiting_text": null, "removable": false},
+          {"id": "c33a05fa-bb7b-46a4-87b4-482a3e726a11", "name": "Komoot", "kind": "widget", "kind_name": "widget", "version": 222, "enabled": true, "update": {"version": "4.26.23", "size": 412000, "permissions_changed": true}, "waiting": null, "waiting_text": null, "removable": true},
+          {"id": "c33a05fa-bb7b-46a4-87b4-482a3e726a11", "name": "Komoot", "kind": "activity", "kind_name": "activity", "version": 222, "enabled": true, "update": null, "waiting": "install", "waiting_text": "will be installed after the device is unplugged", "removable": true},
+          {"id": "0d1e2f3a-0000-4000-8000-000000000002", "name": "Spotify", "kind": "music", "kind_name": "music app", "version": 73, "enabled": false, "update": null, "waiting": null, "waiting_text": null, "removable": true},
+          {"id": "0d1e2f3a-0000-4000-8000-000000000003", "name": "Segment34 MkII", "kind": "watch_face", "kind_name": "watch face", "version": 144, "enabled": false, "update": null, "waiting": null, "waiting_text": null, "removable": true},
+          {"id": "0d1e2f3a-0000-4000-8000-000000000004", "name": "TideCastDF", "kind": "data_field", "kind_name": "data field", "version": 4, "enabled": true, "update": null, "waiting": null, "waiting_text": null, "removable": true}],
+         "account": [{"id": "00000000-0000-0000-0000-000000000007", "name": "Trail Field", "kind": "data_field", "kind_name": "data field", "version": "1.0", "size": 1000, "developer": "dev", "permissions_changed": false}],
+         "message": null, "warning": null,
+         "note": "New apps are chosen in the Connect IQ Store (website or phone); they then appear in the list above.",
+         "builtin": [{"id": "c0ffee15-600d-540c-0000-000000000000", "name": "Softball", "kind": "activity", "kind_name": "activity", "enabled": false}]}
+        """#
+        let list = try EngineCoding.decoder().decode(AppsList.self, from: Data(line.utf8))
+        #expect(list.summary == AppsSummary(storeApps: 6, freeSlots: 23, freeBytes: 63_315_235))
+        #expect(list.summary.totalSlots == 29)
+        #expect(list.apps.map(\.kind) == [.app, .widget, .activity, .music, .watchFace, .dataField])
+        // One app as a widget and as an activity: two rows, told apart by their kind.
+        #expect(Set(list.apps.map(\.id)).count == list.apps.count)
+        let komoot = list.apps[1]
+        #expect(komoot.kindName == "widget" && komoot.version == 222 && komoot.removable)
+        #expect(komoot.update == AppUpdate(version: "4.26.23", size: 412_000, permissionsChanged: true))
+        #expect(list.apps[2].waiting == "install" && list.apps[2].waitingText?.hasPrefix("will be installed") == true)
+        #expect(!list.apps[0].removable && list.apps[0].update == nil)
+        #expect(list.apps[3].enabled == false && list.disabledCount == 2)
+        #expect(list.updatable.map(\.name) == ["Komoot"])
+        #expect(list.groups.map(\.kind) == [.app, .widget, .watchFace, .dataField, .music, .activity])
+        #expect(list.account.first?.kind == .dataField && list.account.first?.version == "1.0")
+        #expect(list.builtin?.first?.name == "Softball" && list.builtin?.first?.enabled == false)
+        #expect(list.message == nil && list.warning == nil && list.note?.hasPrefix("New apps") == true)
     }
 
     @Test func typedResultStraightFromTheLine() throws {

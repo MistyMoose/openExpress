@@ -124,26 +124,282 @@ struct MapRow<Trailing: View>: View {
 
 // MARK: - Apps
 
+/// The Connect IQ apps on the device, by kind; read-only: new apps are chosen in the Store.
 struct AppsPage: View {
     let model: DeviceModel
+    @State private var search = ""
+
+    private func matches(_ name: String) -> Bool { search.isEmpty || name.localizedStandardContains(search) }
 
     var body: some View {
-        if let list = model.apps {
-            if list.lines.isEmpty {
-                ContentUnavailableView("No Connect IQ Apps", systemImage: "square.grid.2x2",
-                                       description: Text("Apps, watch faces and data fields installed on the device appear here."))
+        Group {
+            if let list = model.apps {
+                if list.apps.isEmpty, list.account.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Connect IQ Apps", systemImage: "square.grid.2x2")
+                    } description: {
+                        Text(list.message ?? String(localized: "Apps, watch faces and data fields installed on the device appear here."))
+                        if let note = list.note { Text(note).font(.callout) }
+                    } actions: {
+                        Link("Open the Connect IQ Store", destination: AppsPage.storeURL)
+                    }
+                } else {
+                    content(list)
+                }
             } else {
-                // `apps.list` answers as the command line: its lines, as they are.
-                List(Array(list.lines.enumerated()), id: \.offset) { _, line in
-                    Text(line)
-                        .font(.body.monospaced())
-                        .textSelection(.enabled)
-                        .lineLimit(1)
+                PageLoadingView(model: model, page: .apps)
+            }
+        }
+        .searchable(text: $search, placement: .toolbar, prompt: "Search Apps")
+    }
+
+    static let storeURL = URL(string: "https://apps.garmin.com")!
+
+    private func content(_ list: AppsList) -> some View {
+        List {
+            if let message = list.message {
+                Section {
+                    Label(message, systemImage: "info.circle")
+                        .foregroundStyle(.secondary)
                 }
             }
-        } else {
-            PageLoadingView(model: model, page: .apps)
+            if let warning = list.warning {
+                Section {
+                    Label {
+                        Text(warning)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    }
+                }
+            }
+            if list.message == nil {
+                Section {
+                    // An app on the device as two kinds (widget and activity) is one update.
+                    AppsSummaryView(summary: list.summary, updates: Set(list.updatable.map(\.appID)).count,
+                                    disabled: list.disabledCount)
+                }
+            }
+            ForEach(list.groups, id: \.kind) { group in
+                let apps = group.apps.filter { matches($0.name) }
+                if !apps.isEmpty {
+                    Section {
+                        ForEach(apps) { AppRow(app: $0) }
+                    } header: {
+                        AppKindHeader(kind: group.kind, count: group.apps.count)
+                    }
+                }
+            }
+            let account = list.account.filter { matches($0.name) }
+            if !account.isEmpty {
+                Section {
+                    ForEach(account) { AccountAppRow(app: $0) }
+                } header: {
+                    Text("In Your Garmin Account")
+                } footer: {
+                    Text("Added to your Garmin account in the Connect IQ Store, but not on the device.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label {
+                        Text(list.note ?? String(localized: "New apps are chosen in the Connect IQ Store (website or phone); they then appear in the list above."))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "bag").foregroundStyle(.secondary)
+                    }
+                    Link("Open the Connect IQ Store", destination: AppsPage.storeURL)
+                        .font(.callout)
+                        .padding(.leading, 28)
+                }
+                .padding(.vertical, 2)
+            }
         }
+    }
+}
+
+/// The device's Connect IQ room: apps, free slots and free app memory, with a capacity bar
+/// of the slots.
+struct AppsSummaryView: View {
+    let summary: AppsSummary
+    let updates: Int
+    let disabled: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 0) {
+                stat(value: summary.storeApps.formatted(),
+                     caption: disabled > 0 ? String(localized: "Apps, \(disabled) disabled") : String(localized: "Apps"),
+                     systemImage: "square.grid.2x2")
+                Divider().frame(maxHeight: 44)
+                stat(value: summary.freeSlots.map { $0.formatted() } ?? "—",
+                     caption: String(localized: "Free slots"), systemImage: "square.dashed")
+                Divider().frame(maxHeight: 44)
+                stat(value: summary.freeBytes.map(Format.bytes) ?? "—",
+                     caption: String(localized: "Free app memory"), systemImage: "memorychip")
+                if updates > 0 {
+                    Divider().frame(maxHeight: 44)
+                    stat(value: updates.formatted(), caption: String(localized: "Updates in the Store"),
+                         systemImage: "arrow.down.circle", tint: .accentColor)
+                }
+            }
+            if let total = summary.totalSlots, total > 0 {
+                let used = Double(summary.storeApps) / Double(total)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Connect IQ slots")
+                        Spacer()
+                        Text("\(summary.storeApps) of \(total) used")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.callout)
+                    Gauge(value: used) { EmptyView() }
+                        .gaugeStyle(.linearCapacity)
+                        .labelsHidden()
+                        .tint(used > 0.9 ? .orange : .accentColor)
+                }
+                .padding(.horizontal, 10)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Connect IQ slots")
+                .accessibilityValue(Text("\(summary.freeSlots ?? 0) of \(total) slots free"))
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func stat(value: String, caption: String, systemImage: String, tint: Color? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.title2.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.primary))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Label(caption, systemImage: systemImage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(caption): \(value)"))
+    }
+}
+
+struct AppKindHeader: View {
+    let kind: AppKind
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Label(kind.title, systemImage: kind.systemImage)
+            Spacer()
+            Text(count.formatted())
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(kind.title), \(count)"))
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct AppRow: View {
+    let app: ConnectIQApp
+
+    private var detail: String {
+        var parts: [String] = []
+        if let version = app.version { parts.append(String(localized: "Version \(version)")) }
+        if !app.enabled { parts.append(String(localized: "Disabled")) }
+        if !app.removable { parts.append(String(localized: "Comes with the device")) }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: app.kind.systemImage)
+                .font(.title3)
+                .foregroundStyle(app.enabled ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                .symbolRenderingMode(.hierarchical)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.name)
+                    .foregroundStyle(app.enabled ? .primary : .secondary)
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            Spacer()
+            if let waiting = app.waitingText {
+                Label(waiting, systemImage: "cable.connector.slash")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+            } else if let update = app.update {
+                AppUpdateBadge(update: update)
+            }
+        }
+        .padding(.vertical, 2)
+        // The separator starts under the name, not under the badge on the right.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 36 }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// "Update 4.26.23": a newer version is in the Connect IQ Store.
+struct AppUpdateBadge: View {
+    let update: AppUpdate
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Label("Update \(update.version)", systemImage: update.permissionsChanged ? "exclamationmark.shield" : "arrow.down.circle.fill")
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(contrast == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint))
+            .background(Color.accentColor.opacity(contrast == .increased ? 0.35 : 0.15), in: Capsule())
+            .help(update.permissionsChanged
+                  ? String(localized: "Version \(update.version) is in the Connect IQ Store; it asks for other permissions.")
+                  : String(localized: "Version \(update.version) is in the Connect IQ Store."))
+            .accessibilityLabel(update.permissionsChanged
+                                ? Text("Update available: \(update.version), asks for other permissions")
+                                : Text("Update available: \(update.version)"))
+    }
+}
+
+struct AccountAppRow: View {
+    let app: AccountApp
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: app.kind.systemImage)
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.name)
+                Text([app.kindName, app.version, app.size.map(Format.bytes), app.developer]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            Spacer()
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

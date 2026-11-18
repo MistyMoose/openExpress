@@ -132,6 +132,12 @@ connected device; no login is needed.
 - The top of the page says what is waiting: the new system version (with the installed one
   beside it), the name of the only update, how many updates there are, an update copied already
   that waits for the device, or that the software is up to date.
+- Each row names the update, its version (or both versions) and its size, and its importance
+  when Garmin gives one (*Critical*, *Recommended*, *Optional*). Where its file goes on the device
+  is in the row's tooltip, in the confirmation dialog, in `openexpress updates -v` and in the log;
+  the row itself names the file only when another row has the same name. In **Reinstall
+  Components** the rows with **Reinstall** come first, then those without a button (an older
+  version, another file, or one that could not be compared).
 - System updates are recognised by their file (`GUPDATE.GSP`, `GUPDATE.GCD` in the device's top
   folder) and by the part number of the device as well as by what the server says: the server
   does not always mark them. The software of a part of the device (such as its GPS chip, which
@@ -178,6 +184,8 @@ connected device; no login is needed.
   copy goes on.
 - On a USB drive each file written is read back from the drive, not from the computer's cache,
   and compared with the server's checksum before the copy counts.
+- On a USB drive a file removed and a folder made reach the drive at once, as a file written
+  does: a drive unplugged right after keeps the change.
 - After an eject with an update waiting, the window says to unplug the cable and leave the device
   unplugged, so it can install the update.
 - An update copied to a device connected as a USB drive that the device has not installed,
@@ -543,6 +551,9 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   page shows **Satellite Data** as soon as it is opened. With the switch on, a sync writes the
   file when the Edge's is older than four hours, in a USB session of openExpress's own; the Edge
   unpacks it about two minutes after it is unplugged.
+  The row says when a sync last wrote the data; right after a write it adds that the device takes
+  it in once unplugged. When the device holds newer data than the last file written (from the
+  phone app), the row says the data on the device is current.
   The device itself decides which satellite data it uses and in which format; openExpress only
   refreshes the files the device already keeps, downloaded from Garmin's server as it sends them,
   without your account or any detail of the device, and never adds one it does not have.

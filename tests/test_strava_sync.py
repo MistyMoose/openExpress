@@ -1,5 +1,4 @@
-"""The sync integration (Settings.strava_upload, cli._strava_dry_run_line /
-_strava_sync_upload): after a sync's own upload to Garmin Connect, the device's activity FIT
+"""The sync integration (Settings.strava_upload, strava.after_sync): after a sync's own upload to Garmin Connect, the device's activity FIT
 files are staged (sync.run_drop_folder, into strava.pending_dir) and sent to Strava
 (strava.upload_files). Off by default; the dry run shows what would be staged; a Strava
 failure (not connected, rate limited) is reported but never fails the sync itself. Garmin

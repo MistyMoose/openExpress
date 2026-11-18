@@ -1615,40 +1615,31 @@ def _strava_dry_run_line(dev, st, settings: Settings) -> str | None:
     upload to Garmin Connect needs no login either."""
     if not settings.strava_upload:
         return None
-    from openexpress import strava, sync
+    from openexpress import strava
 
     try:
-        planned = sync.plan_drop_folder(dev, st, strava.pending_dir(dev.unit_id),
-                                        frozenset({sync.ACTIVITY_TYPE}))
+        planned = strava.after_sync(dev, st, apply=False).planned
     except Exception as e:  # noqa: BLE001 - the dry run of the rest of the sync still shows
         return _("To Strava: not checked ({error})").format(error=e)
     return ngettext("To Strava: {count} new activity file",
-                    "To Strava: {count} new activity files", len(planned)).format(
-        count=len(planned))
+                    "To Strava: {count} new activity files", planned).format(count=planned)
 
 
 def _strava_sync_upload(dev, st, progress) -> None:
-    """After the sync's own upload to Garmin Connect: the device's activity FIT files staged
-    for Strava (sync.run_drop_folder, into strava.pending_dir, which is never emptied: as the
-    FIT drop folder, a name already there is not read from the device again) and those sent
-    with strava.upload_files, which keeps its own record of what went already so that
-    nothing already sent is sent twice. Prints what it did; never raises, so that Strava
-    cannot fail the sync (Settings.strava_upload)."""
-    from openexpress import strava, sync
+    """After the sync's own upload to Garmin Connect: strava.after_sync, and what it did
+    printed. Never raises, so that Strava cannot fail the sync."""
+    from openexpress import strava
 
-    pending = strava.pending_dir(dev.unit_id)
     try:
-        dropped = sync.run_drop_folder(dev, st, pending, frozenset({sync.ACTIVITY_TYPE}),
-                                       progress=progress)
-        waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
-        report = strava.upload_files(waiting, apply=True, progress=progress)
+        done = strava.after_sync(dev, st, apply=True, progress=progress)
     except Exception as e:  # noqa: BLE001 - reported, the sync itself is already done
         print(_("Strava: {error}").format(error=e), file=sys.stderr)
         log.warning("strava: sync upload failed: %s: %s", type(e).__name__, e)
         return
-    if dropped.incomplete:
+    report = done.report
+    if done.incomplete:
         log.info("strava: %d activity file still being written by the device, staged by "
-                 "the next sync", dropped.incomplete)
+                 "the next sync", done.incomplete)
     if report.uploaded:
         print(ngettext("Uploaded to Strava: {count} activity",
                        "Uploaded to Strava: {count} activities", len(report.uploaded)).format(

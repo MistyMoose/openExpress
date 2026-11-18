@@ -977,22 +977,18 @@ class Engine:
                                                       progress=self.progress_for(req)))
 
     def _strava_after_sync(self, dev, st, settings, apply: bool, progress) -> dict | None:
-        """What a sync does for Strava (Settings.strava_upload, as cli._strava_sync_upload):
-        the device's new activity files staged and sent; in a dry run how many would be.
-        None when the setting is off; never an error of the sync (said in "error")."""
-        if not getattr(settings, "strava_upload", False):
+        """strava.after_sync for a sync (Settings.strava_upload): in a dry run how many files
+        would be staged, else what was sent. None when the setting is off; never an error of
+        the sync (said in "error")."""
+        if not settings.strava_upload:
             return None
-        from openexpress import strava, sync
+        from openexpress import strava
 
         try:
-            pending = strava.pending_dir(dev.unit_id)
-            types = frozenset({sync.ACTIVITY_TYPE})
+            done = strava.after_sync(dev, st, apply, progress)
             if not apply:
-                return {"files": len(sync.plan_drop_folder(dev, st, pending, types))}
-            sync.run_drop_folder(dev, st, pending, types, progress=progress)
-            waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
-            return dataclasses.asdict(strava.upload_files(waiting, apply=True,
-                                                          progress=progress))
+                return {"files": done.planned}
+            return dataclasses.asdict(done.report)
         except Exception as e:  # noqa: BLE001 - Strava never fails the sync
             log.warning("engine: strava after the sync: %s", type(e).__name__)
             return {"error": error_of(e).message}

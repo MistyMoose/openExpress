@@ -244,13 +244,36 @@ def external_id(name: str, data: bytes) -> str:
 
 
 def pending_dir(unit_id: int) -> Path:
-    """Where the sync integration (cli.py's `sync`, Settings.strava_upload) stages a device's
-    activity FIT files for upload to Strava, next to sync.py's own records of the device
-    (sync.records_dir): filled by sync.plan_drop_folder/run_drop_folder, emptied here as each
-    file is uploaded (or given up on: rejected, not a FIT file)."""
+    """Where a sync stages a device's activity FIT files for Strava (after_sync), next to
+    sync.py's own records of the device. Never emptied: as in the FIT drop folder, a name
+    already there is not read from the device again."""
     from openexpress import sync
 
     return sync.records_dir(unit_id) / "strava"
+
+
+@dataclass
+class AfterSync:
+    planned: int = 0  # a dry run: the files that would be staged
+    report: UploadReport | None = None  # what was sent (None in a dry run)
+    incomplete: int = 0  # files the device was still writing: staged by the next sync
+
+
+def after_sync(dev, storage, apply: bool, progress=None) -> AfterSync:
+    """What a sync does for Strava (Settings.strava_upload): the device's new activity FIT
+    files staged in pending_dir and those not sent yet uploaded; in a dry run, how many would
+    be staged (no network). The callers (cli's and the engine's sync) never let it fail the
+    sync."""
+    from openexpress import sync
+
+    activities = frozenset({sync.ACTIVITY_TYPE})  # what Strava takes
+    pending = pending_dir(dev.unit_id)
+    if not apply:
+        return AfterSync(planned=len(sync.plan_drop_folder(dev, storage, pending, activities)))
+    dropped = sync.run_drop_folder(dev, storage, pending, activities, progress=progress)
+    waiting = sorted(pending.glob("*.fit")) if pending.is_dir() else []
+    return AfterSync(report=upload_files(waiting, apply=True, progress=progress),
+                     incomplete=dropped.incomplete)
 
 
 # --- status / connecting ----------------------------------------------------------------

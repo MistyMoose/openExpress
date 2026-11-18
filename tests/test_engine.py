@@ -14,6 +14,7 @@ import time
 
 import pytest
 
+import openexpress
 from openexpress import __version__, backup, engine
 from openexpress import settings as settings_mod
 from openexpress.device.found import DeviceSummary, FoundDevice
@@ -779,6 +780,7 @@ def test_strava_connect_gives_the_consent_page_first_then_trades_the_code_for_th
         authorize_url=lambda redirect: "https://www.strava.com/oauth/authorize?r=" + redirect,
         connect_with_code=lambda code, redirect: traded.append(code) or Status(True, True))
     monkeypatch.setitem(sys.modules, "openexpress.strava", strava)
+    monkeypatch.setattr(openexpress, "strava", strava, raising=False)  # what an import finds
     first = running.ask("strava.connect", {"client_id": "123", "client_secret": "made-up",
                                            "redirect_uri": "http://localhost:5555/"})["result"]
     assert first == {"configured": True, "connected": False, "authorize_url":

@@ -440,6 +440,6 @@ def test_no_access_in_polish(monkeypatch, tmp_path):
         i18n.setup("en")
     assert node.exists() and text == (
         "Urządzenie Garmin jest podłączone, ale nie udostępnia plików. Ten użytkownik nie ma "
-        "dostępu do urządzenia na USB. Uruchom openExpress jako użytkownik zalogowany przy "
+        "dostępu do urządzenia podłączonego przez USB. Uruchom openExpress jako użytkownik zalogowany przy "
         "ekranie tego komputera, a\u00a0nie przez SSH, albo nadaj temu użytkownikowi dostęp do "
         "urządzenia (reguła udev).")

@@ -695,7 +695,7 @@ def test_an_update_to_install_on_the_device_page_fits_the_narrowest_window(narro
 
 @pytest.mark.parametrize("language", ["en", "pl"])
 def test_the_row_of_the_primary_wearable_fits_the_narrowest_window(narrow_window, language):
-    """Its title is long in Polish ("Podstawowe urządzenie typu wearable"); it wraps."""
+    """Its title is long in Polish ("Podstawowe urządzenie noszone na ciele"); it wraps."""
     from gi.repository import Adw
 
     win = narrow_window(language)
@@ -705,7 +705,7 @@ def test_the_row_of_the_primary_wearable_fits_the_narrowest_window(narrow_window
     win.navigation.push(win.device_view)
     win.select_section("watch")
     _iterate(0.3)
-    title = {"en": "Primary Wearable", "pl": "Podstawowe urządzenie typu wearable"}[language]
+    title = {"en": "Primary Wearable", "pl": "Podstawowe urządzenie noszone na ciele"}[language]
     assert title in [w.get_title() for w in descendants(win.device_view)
                      if isinstance(w, Adw.ActionRow)]
     assert _min_width(win.device_view) <= NARROWEST

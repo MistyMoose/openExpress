@@ -1,5 +1,5 @@
 """The account's primary wearable (in Garmin Connect "Primary Wearable" / "Podstawowe
-urządzenie typu wearable": the device that steps and sleep come from), read only: the tooltip of
+urządzenie noszone na ciele": the device that steps and sleep come from), read only: the tooltip of
 the chip "Primary" and the row "Primary Wearable" of the device page, from the account's list it
 has already. Set as Primary with the account: test_ownership. All devices and accounts are made
 up."""
@@ -184,14 +184,14 @@ def test_in_polish():
     i18n.setup("pl")
     try:
         _win, _section, texts = _page()
-        rows = [(t, s) for t, s in texts if t == "Podstawowe urządzenie typu wearable"]
+        rows = [(t, s) for t, s in texts if t == "Podstawowe urządzenie noszone na ciele"]
         ((_words, _style, tooltip),) = start.chips(_tile(primary=True))
         _win, _section, other = _page(account=_account(None))
-        unset = [s for t, s in other if t == "Podstawowe urządzenie typu wearable"]
+        unset = [s for t, s in other if t == "Podstawowe urządzenie noszone na ciele"]
     finally:
         i18n.setup("en")
-    assert rows == [("Podstawowe urządzenie typu wearable", "To urządzenie")]
+    assert rows == [("Podstawowe urządzenie noszone na ciele", "To urządzenie")]
     assert unset == ["Nie ustawiono"]
     # Hard spaces after the one-letter words (tools/po-hard-spaces.py).
-    assert tooltip == ("Podstawowe urządzenie typu wearable: kroki i\u00a0sen w\u00a0Garmin Connect "
+    assert tooltip == ("Podstawowe urządzenie noszone na ciele: kroki i\u00a0sen w\u00a0Garmin Connect "
                        "pochodzą z\u00a0tego urządzenia")

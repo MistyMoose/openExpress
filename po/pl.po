@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 20:33+0100\n"
+"POT-Creation-Date: 2026-11-19 00:25+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -3576,47 +3576,48 @@ msgstr ""
 #, python-brace-format
 msgid "No primary wearable is set for this Garmin account."
 msgstr ""
-"Na tym koncie Garmin nie ustawiono podstawowego urządzenia typu wearable."
+"Na tym koncie Garmin nie ustawiono podstawowego urządzenia noszonego na "
+"ciele."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable: {name} (this device)"
-msgstr "Podstawowe urządzenie typu wearable: {name} (to urządzenie)"
+msgstr "Podstawowe urządzenie noszone na ciele: {name} (to urządzenie)"
 
 #. TRANSLATORS: CLI: the account's primary wearable is another device ({name}: that
 #. device's name)
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable: {name}"
-msgstr "Podstawowe urządzenie typu wearable: {name}"
+msgstr "Podstawowe urządzenie noszone na ciele: {name}"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "The connected device ({device}) is not the primary wearable."
 msgstr ""
-"Podłączone urządzenie ({device}) nie jest podstawowym urządzeniem typu "
-"wearable."
+"Podłączone urządzenie ({device}) nie jest podstawowym urządzeniem noszonym "
+"na ciele."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "The connected device cannot be a primary wearable."
 msgstr ""
-"Podłączone urządzenie nie może być podstawowym urządzeniem typu wearable."
+"Podłączone urządzenie nie może być podstawowym urządzeniem noszonym na ciele."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "{device} is already the primary wearable."
-msgstr "{device} jest już podstawowym urządzeniem typu wearable."
+msgstr "{device} jest już podstawowym urządzeniem noszonym na ciele."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable set to {device}."
-msgstr "Ustawiono podstawowe urządzenie typu wearable: {device}."
+msgstr "Ustawiono podstawowe urządzenie noszone na ciele: {device}."
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Primary wearable changed from {old} to {new}."
-msgstr "Zmieniono podstawowe urządzenie typu wearable z {old} na {new}."
+msgstr "Zmieniono podstawowe urządzenie noszone na ciele z {old} na {new}."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4562,8 +4563,8 @@ msgid ""
 "the primary wearable (steps and sleep in Garmin Connect) instead of the "
 "primary training device"
 msgstr ""
-"podstawowe urządzenie typu wearable (kroki i sen w Garmin Connect) zamiast "
-"podstawowego urządzenia treningowego"
+"podstawowe urządzenie noszone na ciele (kroki i sen w Garmin Connect) "
+"zamiast podstawowego urządzenia treningowego"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5057,7 +5058,7 @@ msgstr "Podstawowe urządzenie treningowe"
 #, ignore-reused, python-brace-format
 msgctxt "server request"
 msgid "Primary wearable"
-msgstr "Podstawowe urządzenie typu wearable"
+msgstr "Podstawowe urządzenie noszone na ciele"
 
 #: openexpress/connect.py
 #, python-brace-format
@@ -5586,9 +5587,9 @@ msgid ""
 "logged in at this computer's screen, not over SSH, or give this user access "
 "to the device (a udev rule)."
 msgstr ""
-"Ten użytkownik nie ma dostępu do urządzenia na USB. Uruchom openExpress jako "
-"użytkownik zalogowany przy ekranie tego komputera, a nie przez SSH, albo "
-"nadaj temu użytkownikowi dostęp do urządzenia (reguła udev)."
+"Ten użytkownik nie ma dostępu do urządzenia podłączonego przez USB. Uruchom "
+"openExpress jako użytkownik zalogowany przy ekranie tego komputera, a nie "
+"przez SSH, albo nadaj temu użytkownikowi dostęp do urządzenia (reguła udev)."
 
 #. TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
 #. command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
@@ -5599,9 +5600,10 @@ msgid ""
 "the user logged in at this computer's screen, not over SSH, or give this "
 "user access to the device (a udev rule)."
 msgstr ""
-"Ten użytkownik nie ma dostępu do urządzenia na USB ({node}). Uruchom "
-"openExpress jako użytkownik zalogowany przy ekranie tego komputera, a nie "
-"przez SSH, albo nadaj temu użytkownikowi dostęp do urządzenia (reguła udev)."
+"Ten użytkownik nie ma dostępu do urządzenia podłączonego przez USB ({node}). "
+"Uruchom openExpress jako użytkownik zalogowany przy ekranie tego komputera, "
+"a nie przez SSH, albo nadaj temu użytkownikowi dostęp do urządzenia (reguła "
+"udev)."
 
 #. TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
 #. it; "kquitapp6 kiod6" is a command, not to be translated
@@ -7369,7 +7371,7 @@ msgstr "Nie wszystko trafiło do kopii zapasowej"
 #: openexpress/gui/device_page.py openexpress/gui/start_window.py
 #, ignore-reused, python-brace-format
 msgid "Primary Wearable"
-msgstr "Podstawowe urządzenie typu wearable"
+msgstr "Podstawowe urządzenie noszone na ciele"
 
 #. TRANSLATORS: button beside "Primary Wearable" or "Primary Training Device": makes this
 #. device the account's primary one
@@ -7381,7 +7383,7 @@ msgstr "Ustaw jako podstawowe"
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgid "Change the Primary Wearable?"
-msgstr "Zmienić podstawowe urządzenie typu wearable?"
+msgstr "Zmienić podstawowe urządzenie noszone na ciele?"
 
 #: openexpress/gui/device_page.py
 #, python-brace-format
@@ -7391,8 +7393,8 @@ msgid ""
 "Current: {old}\n"
 "New: {new}"
 msgstr ""
-"Kroki i sen w Garmin Connect pochodzą z podstawowego urządzenia typu "
-"wearable.\n"
+"Kroki i sen w Garmin Connect pochodzą z podstawowego urządzenia noszonego na "
+"ciele.\n"
 "\n"
 "Obecne: {old}\n"
 "Nowe: {new}"
@@ -7406,19 +7408,19 @@ msgstr "Zmień"
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgid "Primary wearable changed"
-msgstr "Zmieniono podstawowe urządzenie typu wearable"
+msgstr "Zmieniono podstawowe urządzenie noszone na ciele"
 
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgid "Changing the Primary Wearable…"
-msgstr "Zmienianie podstawowego urządzenia typu wearable…"
+msgstr "Zmienianie podstawowego urządzenia noszonego na ciele…"
 
 #. TRANSLATORS: heading of the error when the primary wearable could not be
 #. changed on the account
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgid "Primary Wearable Not Changed"
-msgstr "Nie zmieniono podstawowego urządzenia typu wearable"
+msgstr "Nie zmieniono podstawowego urządzenia noszonego na ciele"
 
 #: openexpress/gui/device_page.py
 #, python-brace-format
@@ -10345,15 +10347,15 @@ msgstr[0] "{count} aktywność do wysłania teraz"
 msgstr[1] "{count} aktywności do wysłania teraz"
 msgstr[2] "{count} aktywności do wysłania teraz"
 
-#. TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
-#. "Podstawowe urządzenie typu wearable")
+#. TRANSLATORS: "Primary wearable" is Garmin's name of the setting (in Polish its manuals
+#. say "Podstawowe urządzenie noszone na ciele")
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid ""
 "Primary wearable: steps and sleep in Garmin Connect come from this device"
 msgstr ""
-"Podstawowe urządzenie typu wearable: kroki i sen w Garmin Connect pochodzą "
-"z tego urządzenia"
+"Podstawowe urządzenie noszone na ciele: kroki i sen w Garmin Connect "
+"pochodzą z tego urządzenia"
 
 #. TRANSLATORS: the version of a device that only the Garmin account knows of
 #: openexpress/gui/words.py
@@ -12389,7 +12391,7 @@ msgstr ""
 #: openexpress/service.py
 #, python-brace-format
 msgid "{device} cannot be a primary wearable."
-msgstr "{device} nie może być podstawowym urządzeniem typu wearable."
+msgstr "{device} nie może być podstawowym urządzeniem noszonym na ciele."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -12397,16 +12399,16 @@ msgid ""
 "Could not tell whether {device} can be a primary wearable. Nothing was "
 "changed."
 msgstr ""
-"Nie udało się ustalić, czy {device} może być podstawowym urządzeniem typu "
-"wearable. Niczego nie zmieniono."
+"Nie udało się ustalić, czy {device} może być podstawowym urządzeniem "
+"noszonym na ciele. Niczego nie zmieniono."
 
 #: openexpress/service.py
 #, python-brace-format
 msgid ""
 "Garmin Connect accepted the request, but the primary wearable did not change."
 msgstr ""
-"Garmin Connect przyjął żądanie, ale podstawowe urządzenie typu wearable się "
-"nie zmieniło."
+"Garmin Connect przyjął żądanie, ale podstawowe urządzenie noszone na ciele "
+"się nie zmieniło."
 
 #. TRANSLATORS: a type of data on the device, lowercase, in lists ("Files from the device:
 #. activities ×2, sleep") and after "Uploading"
@@ -12681,13 +12683,13 @@ msgid_plural ""
 "Skipped {count} files: another device is your primary wearable in Garmin "
 "Connect"
 msgstr[0] ""
-"Pominięto {count} plik: Twoim podstawowym urządzeniem typu wearable w Garmin "
-"Connect jest inne urządzenie"
+"Pominięto {count} plik: Twoim podstawowym urządzeniem noszonym na ciele "
+"w Garmin Connect jest inne urządzenie"
 msgstr[1] ""
-"Pominięto {count} pliki: Twoim podstawowym urządzeniem typu wearable "
+"Pominięto {count} pliki: Twoim podstawowym urządzeniem noszonym na ciele "
 "w Garmin Connect jest inne urządzenie"
 msgstr[2] ""
-"Pominięto {count} plików: Twoim podstawowym urządzeniem typu wearable "
+"Pominięto {count} plików: Twoim podstawowym urządzeniem noszonym na ciele "
 "w Garmin Connect jest inne urządzenie"
 
 #: openexpress/service.py

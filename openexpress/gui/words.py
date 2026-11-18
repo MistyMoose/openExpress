@@ -247,8 +247,8 @@ def primary_wearable_text(wearable) -> str:
 
 def primary_wearable_tooltip() -> str:
     """The tooltip of the chip "Primary" of a tile: what it is, in Garmin Connect's name."""
-    # TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
-    # "Podstawowe urządzenie typu wearable")
+    # TRANSLATORS: "Primary wearable" is Garmin's name of the setting (in Polish its manuals
+    # say "Podstawowe urządzenie noszone na ciele")
     return _("Primary wearable: steps and sleep in Garmin Connect come from this device")
 
 

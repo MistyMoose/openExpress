@@ -554,7 +554,8 @@ def show_satellite(win) -> None:
         return
     if row.get_active() != state.on:
         row.set_active(state.on)  # the handler sees no change to make
-    row.set_subtitle(satellite_subtitle(state, datetime.now()))
+    row.set_subtitle(satellite_subtitle(
+        state, datetime.now(), waits=satellite.waits_to_be_taken(state, s.device, s.storage)))
 
 
 def primary_training_unknown(s) -> str:

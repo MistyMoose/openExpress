@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 02:08+0100\n"
+"POT-Creation-Date: 2026-11-18 02:24+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -10256,6 +10256,15 @@ msgstr ""
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "when on, each sync updates it"
+msgstr ""
+
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, python-brace-format
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
 msgstr ""
 
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash

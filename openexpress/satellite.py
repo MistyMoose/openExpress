@@ -602,6 +602,29 @@ def _taken_or_replaced(content: bytes, known: dict) -> str:
     return "taken (ours unpacked)" if _sha(content) == known["raw"] else "replaced by another file"
 
 
+def waits_to_be_taken(state: State | None, device, storage) -> bool:
+    """Whether a file this computer wrote in this very connection waits for the device to take
+    it in (to unpack it, as the device does once it is unplugged): the device page says so. One
+    written in an earlier connection is not known taken until the next sync looks."""
+    if state is None or not state.on or not state.files:
+        return False
+    pending = [known for known in state.files.values() if known.get("pending")]
+    if not pending:
+        return False
+    key = _connection(device, storage)
+    return key is not None and any(known.get("connection") == key for known in pending)
+
+
+def newer_than_written(state: State) -> bool:
+    """Whether the satellite data the device keeps, as the last sync read it, is newer than the
+    file this computer wrote last: the device got newer data elsewhere (the phone)."""
+    if state.written_at is None or not state.files:
+        return False
+    times = [known.get("time") for known in state.files.values()
+             if isinstance(known.get("time"), int)]
+    return bool(times) and max(times) > state.written_at
+
+
 def _connection(device, storage) -> str | None:
     from openexpress import history
 

@@ -9,7 +9,7 @@ import gzip
 import json
 import logging
 import types
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -1006,3 +1006,66 @@ def test_a_watch_whose_files_have_other_sizes_is_found_written_and_seen_taking_t
     clock.current += timedelta(hours=1)
     assert satellite.update(device, storage) == satellite.Result("current")
     assert satellite.load(UNIT).files["GPES.bin"]["pending"] is False
+
+
+def test_written_in_this_connection_the_row_says_it_is_taken_in_once_unplugged(
+        tmp_path, clock, monkeypatch):
+    """Ours written by the sync just made waits for the watch, which unpacks it once unplugged:
+    the row says so. Plugged in again, whether it was taken is the next sync's to look at."""
+    from openexpress.gui import words
+
+    storage, device, _server, _served = written_once(tmp_path, clock, monkeypatch)
+    state = satellite.load(UNIT)
+    assert satellite.waits_to_be_taken(state, device, storage)
+    when = words.relative_time(datetime.fromtimestamp(state.written_at), clock.current)
+    assert words.satellite_subtitle(state, clock.current, waits=True) == (
+        f"Experimental{NB}· updated {when}{NB}· the device takes it in once unplugged")
+    plugged_in_again(storage)
+    assert not satellite.waits_to_be_taken(satellite.load(UNIT), device, storage)
+
+
+def test_newer_data_from_the_phone_is_said_current_not_how_old_ours_is(tmp_path, clock,
+                                                                       monkeypatch):
+    """Ours written 13 hours ago; meanwhile the phone gave the watch a GPES.bin 2 hours old. The
+    sync finds it young enough and writes nothing: the row says the data is current, not
+    "updated 13 hours ago"."""
+    from openexpress.gui import words
+
+    storage, device, _server, _served = written_once(tmp_path, clock, monkeypatch)
+    unplugged(storage)  # the watch unpacked ours
+    clock.current += timedelta(hours=13)
+    phone = storage.fake.objects[storage.fake.handle(f"{REMOTE}/GPES.bin")]
+    phone.data = made_up_rx(GPES, hours_ago(clock, 2), 7)[1]
+    assert satellite.update(device, storage) == satellite.Result("current")
+    state = satellite.load(UNIT)
+    assert satellite.newer_than_written(state)
+    assert words.satellite_subtitle(state, clock.current) == (
+        f"Experimental{NB}· the data on the device is current")
+
+
+def test_ours_still_the_newest_keeps_its_age(tmp_path, clock, monkeypatch):
+    from openexpress.gui import words
+
+    storage, device, _server, _served = written_once(tmp_path, clock, monkeypatch)
+    unplugged(storage)
+    clock.current += timedelta(hours=1)
+    assert satellite.update(device, storage) == satellite.Result("current")
+    state = satellite.load(UNIT)
+    assert not satellite.newer_than_written(state)
+    assert words.satellite_subtitle(state, clock.current).startswith(
+        f"Experimental{NB}· updated ")
+
+
+def test_taken_in_once_unplugged_in_polish(tmp_path, clock, monkeypatch):
+    from openexpress import i18n
+    from openexpress.gui import words
+
+    _storage, _device, _server, _served = written_once(tmp_path, clock, monkeypatch)
+    state = satellite.load(UNIT)
+    i18n.setup("pl")
+    try:
+        said = words.satellite_subtitle(state, clock.current, waits=True)
+    finally:
+        i18n.setup("en")
+    assert said.startswith(f"Eksperymentalne{NB}· zaktualizowane ")
+    assert said.endswith(f"{NB}· urządzenie przyjmie je po odłączeniu")

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 02:08+0100\n"
+"POT-Creation-Date: 2026-11-18 02:24+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -11112,6 +11112,15 @@ msgstr "Eksperymentalne"
 #, python-brace-format
 msgid "when on, each sync updates it"
 msgstr "po włączeniu aktualizuje je każda synchronizacja"
+
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, python-brace-format
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
+msgstr "urządzenie przyjmie je po odłączeniu"
 
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop

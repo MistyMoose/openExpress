@@ -1045,9 +1045,13 @@ def satellite_stop_reason(why: str | None) -> str:
     return _("the device rejected the last file (CPE_BAD.bin)")
 
 
-def satellite_subtitle(state, now: datetime) -> str:
+def satellite_subtitle(state, now: datetime, waits: bool = False) -> str:
     """The subtitle of the row Satellite Data of the device page (satellite.State): off, on
-    and what the last sync did, or turned off by the device's rejection of the file."""
+    and what the last sync did, or turned off by the device's rejection of the file. When the
+    last sync found the device's data current and newer than the file written last (from the
+    phone), it says so rather than how old that file is; `waits`: the file written in this
+    connection waits for the device to take it in once unplugged
+    (satellite.waits_to_be_taken)."""
     from openexpress import satellite
 
     if state.stopped and not state.on:
@@ -1074,7 +1078,7 @@ def satellite_subtitle(state, now: datetime) -> str:
         # them; {reason} says why
         return caption(first, pgettext("satellite data", "not updated: {reason}").format(
             reason=satellite_reason(state.error)))
-    if state.written_at is None:
+    if state.written_at is None or (state.current and satellite.newer_than_written(state)):
         if state.current:
             # TRANSLATORS: in the subtitle of the row Satellite Data: on, nothing written yet,
             # as the watch's own satellite data (e.g. from the phone) is current
@@ -1084,7 +1088,14 @@ def satellite_subtitle(state, now: datetime) -> str:
     when = relative_time(datetime.fromtimestamp(state.written_at), now)
     # TRANSLATORS: in the subtitle of the row Satellite Data: when the last sync wrote them,
     # e.g. "updated yesterday, 20:39"
-    return caption(first, pgettext("satellite data", "updated {when}").format(when=when))
+    updated = pgettext("satellite data", "updated {when}").format(when=when)
+    if waits:
+        # TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+        # file written waits for the device, which takes it in (unpacks it) once it is
+        # unplugged (in Polish plural, as "dane satelitarne")
+        taken_in = pgettext("satellite data", "the device takes it in once unplugged")
+        return caption(first, updated, taken_in)
+    return caption(first, updated)
 
 
 def crash_logs_not_copied() -> str:

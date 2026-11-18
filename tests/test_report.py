@@ -572,3 +572,24 @@ def test_the_forms_have_a_field_of_their_own_for_the_log(name):
     assert not log.get("validations", {}).get("required", False)
     (field,) = [item for item in fields if item["id"] == "report"]
     assert "log" not in field["attributes"]["description"].lower()
+
+
+def test_on_macos_the_report_names_the_edition_and_macos_and_no_desktop(monkeypatch):
+    """A report from openExpress for Mac is never taken for one of openExpress on Linux."""
+    monkeypatch.setattr(report.sys, "platform", "darwin")
+    monkeypatch.setattr(report.platform, "mac_ver", lambda: ("27.2", ("", "", ""), "arm64"))
+    monkeypatch.setattr(report.platform, "machine", lambda: "arm64")
+    lines = report._system(logged_in=True)
+    assert "- Edition: openExpress for Mac (github.com/bruring/openExpress-mac)" in lines
+    assert "- OS: macOS 27.2 (arm64)" in lines
+    assert not any(line.startswith("- Desktop:") for line in lines)
+    assert lines[1].startswith("- openExpress: ")  # as upstream's: its tests read this line
+
+
+def test_on_linux_the_report_is_upstream_s(monkeypatch):
+    monkeypatch.setattr(report.sys, "platform", "linux")
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "GNOME")
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    lines = report._system(logged_in=None)
+    assert "- Desktop: GNOME (wayland)" in lines
+    assert not any(line.startswith("- Edition:") for line in lines)

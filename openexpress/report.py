@@ -89,6 +89,8 @@ def issue_url(text: str, model: str | None) -> str | None:
 
 
 def _os_name() -> str:
+    if sys.platform == "darwin":
+        return f"macOS {platform.mac_ver()[0] or '?'} ({platform.machine()})"
     for path in ("/run/host/os-release", "/etc/os-release"):
         try:
             text = Path(path).read_text()
@@ -111,6 +113,8 @@ def _install_type() -> str:
             words = f'Flatpak from the "{origin}" repository'
         return f"{words}, commit {commit}" if commit else words
     here = Path(__file__).resolve()
+    if any(part.endswith(".app") for part in here.parts):
+        return "app"  # the engine inside openExpress for Mac.app
     return "pip" if "site-packages" in here.parts or "dist-packages" in here.parts else "source"
 
 
@@ -120,16 +124,21 @@ def _size(n: int | None) -> str:
 
 
 def _system(logged_in: bool | None) -> list[str]:
-    """The section of the system, the same with a device or without."""
-    desktop = os.environ.get("XDG_CURRENT_DESKTOP") or "unknown"
-    session = os.environ.get("XDG_SESSION_TYPE") or "unknown"
+    """The section of the system, the same with a device or without. On macOS it names the
+    edition, so that a report from it is never taken for one of openExpress on Linux, and
+    has no desktop line (there is only the one)."""
+    mac = sys.platform == "darwin"
     lines = [
         "### System",
         f"- openExpress: {__version__} ({_install_type()})",
+        *(["- Edition: openExpress for Mac (github.com/bruring/openExpress-mac)"] if mac else []),
         f"- OS: {_os_name()}",
-        f"- Desktop: {desktop} ({session})",
-        f"- Python: {sys.version.split()[0]}",
     ]
+    if not mac:
+        desktop = os.environ.get("XDG_CURRENT_DESKTOP") or "unknown"
+        session = os.environ.get("XDG_SESSION_TYPE") or "unknown"
+        lines.append(f"- Desktop: {desktop} ({session})")
+    lines.append(f"- Python: {sys.version.split()[0]}")
     if logged_in is not None:
         lines.append(f"- Logged in to Garmin Connect: {'yes' if logged_in else 'no'}")
     return lines

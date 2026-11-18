@@ -26,11 +26,12 @@ Garmin Express while you use it: whichever version, it holds the device.
 | Engine on macOS (no GTK, no PyGObject) | works; tested read-only on a fēnix 8 |
 | Device info, backup, update and map checks | work on a real device |
 | Installing and removing maps, sync | tested from the command line on a fēnix 8; from the Mac app, not yet |
-| Devices connected as a USB drive (mass storage) | found, backed up, synced and ejected like on Linux; tested with made-up drives and a disk image, not yet with a real Garmin drive |
+| Devices connected as a USB drive (mass storage) | work on a real device (Edge 820): info, files, activities, backup, an update installed, a sync's dry run; maps, apps and music are refused, as on Linux |
 | Mac app | runs against the engine; under development |
 | Installer (.pkg, no Homebrew needed) | released: signed with a Developer ID and notarized |
 
-Devices tested on the Mac: fēnix 8 47 mm AMOLED. The upstream project lists the devices it was
+Devices tested on the Mac: fēnix 8 47 mm AMOLED and Edge 1040 (MTP), Edge 820 (USB drive), Venu 2S
+(MTP, read only). The upstream project lists the devices it was
 tested with in [devices.md](devices.md).
 
 ## How it fits together

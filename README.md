@@ -145,14 +145,15 @@ In full: [Privacy and security](docs/privacy.md).
 
 ## Supported devices
 
-Tested with openExpress for Mac: **fēnix 8** and **Edge 1040**, both over MTP. Other Garmin
-watches and bike computers that connect over USB as a media device (MTP) should work too;
-openExpress (Linux) lists the devices it was tested with in [Supported devices](docs/devices.md).
+Tested with openExpress for Mac: **fēnix 8**, **Edge 1040** and **Venu 2S** over MTP, and
+**Edge 820** as a USB drive. Other Garmin watches and bike computers that connect over USB as a
+media device (MTP) should work too; openExpress (Linux) lists the devices it was tested with in
+[Supported devices](docs/devices.md).
 
 Devices that connect as a USB drive (mass storage, e.g. older Edge software, handhelds or car
 navigators) work too: macOS mounts them, openExpress uses them as on Linux and ejects them after
-a sync, so the device takes the new files. This was tried with a USB stick standing in for a
-device; please report how your Garmin drive does.
+a sync, so the device takes the new files. Tested on an Edge 820: its files, activities,
+backup and a software update; please report how your Garmin drive does.
 
 Not supported yet: devices that keep their music on a separate storage (e.g. Forerunner 645
 Music); see [Supported devices](docs/devices.md).

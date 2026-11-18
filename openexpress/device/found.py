@@ -1,8 +1,11 @@
 """What is found of a Garmin device on USB, the same on every system: where it is on USB, what a
-list of the devices connected shows of each, the states a device on USB may be in and the
-errors of a device that cannot be opened. Without GIO (PyGObject) or any other system's
-library, so that the program finds and opens devices where there is none (macOS:
-mac_storage); gio_storage gives the same names, for what imports them from there.
+list of the devices connected shows of each, the states a device on USB may be in, what the
+classes of its interfaces say, the errors of a device that cannot be opened and their words,
+the wait for a device to open (wait_for_device) and the short look at one (probe). Without GIO
+(PyGObject) or any other system's library, so that the program finds and opens devices where
+there is none (macOS: mac_storage); gio_storage gives the same names, for what imports them
+from there. Each of them gives these what only it knows: how it opens a device once, its USB
+state and its words.
 """
 
 from __future__ import annotations

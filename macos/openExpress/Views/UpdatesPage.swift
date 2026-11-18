@@ -24,9 +24,6 @@ struct UpdatesPage: View {
                 list
             }
         }
-        .task {
-            if model.maps == nil { await model.load(.maps) }
-        }
     }
 
     private var list: some View {

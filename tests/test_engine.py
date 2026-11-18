@@ -71,6 +71,11 @@ class FakeDevices:
     def wanted(self, found):
         return found.uri in self.waiting
 
+    comes_back = True  # a device that stopped responding answers again (back)
+
+    def back(self, found):
+        return self.comes_back
+
     def release(self, found):
         self.released.append(found.uri)
 
@@ -339,6 +344,44 @@ def test_another_process_waiting_for_one_device_has_only_that_one_let_go(device_
         assert devices.released == [other_key]
     finally:
         running.stop()
+
+
+def _stops_responding_once(running, method):
+    """`method` of the engine, made to find the device not responding the first time."""
+    from openexpress.device.storage import DeviceNotResponding
+
+    kind, real = running.engine.methods[method]
+    calls = []
+
+    def once(req, a):
+        calls.append(1)
+        if len(calls) == 1:
+            raise DeviceNotResponding("Cannot read GARMIN/Activity/x.fit: made up")
+        return real(req, a)
+
+    running.engine.methods[method] = (kind, once)
+    return calls
+
+
+def test_a_request_that_only_reads_is_run_once_more_when_the_device_comes_back(running):
+    """A fēnix 8 on a USB hub broke off about one read in a hundred and answered again."""
+    calls = _stops_responding_once(running, "device.info")
+    info = running.ask("device.info", {"device": UNIT})
+    assert info["result"]["unit_id"] == UNIT and calls == [1, 1]
+
+
+def test_a_request_that_writes_is_not_run_again(running):
+    calls = _stops_responding_once(running, "device.sync")
+    error = running.ask("device.sync", {"device": UNIT})["error"]
+    assert error["code"] == "device_not_responding" and calls == [1]
+
+
+def test_a_device_that_does_not_come_back_is_said_not_responding(running, devices, monkeypatch):
+    monkeypatch.setattr(engine, "COME_BACK_WAIT_S", 0.1)
+    devices.comes_back = False
+    calls = _stops_responding_once(running, "device.info")
+    error = running.ask("device.info", {"device": UNIT})["error"]
+    assert error["code"] == "device_not_responding" and calls == [1]
 
 
 def test_the_device_is_let_go_when_the_engine_ends(devices):

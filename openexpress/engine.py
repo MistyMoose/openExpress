@@ -63,6 +63,13 @@ PROBE_WAIT_S = 2.0
 # device's USB reset (an Edge 1040 went missing for one look while a fēnix 8 beside it reset),
 # and the app's automatic mode would back up and sync it again when it came back.
 GONE_AFTER_LOOKS = 2
+# The requests that only read the device (nothing written to it, nor on this computer) and
+# are run once more when it stopped responding in the middle of them and came back: a fēnix 8
+# on a USB hub broke off about one read in a hundred, then answered again (ptp.Session.open).
+RETRIED_ONCE = frozenset({"device.info", "activities.list", "activities.track", "maps.list",
+                          "updates.list", "apps.list"})
+# How long a request waits for a device that stopped responding to come back.
+COME_BACK_WAIT_S = 25.0
 # How long `shutdown` waits for the requests it cancelled to stop.
 SHUTDOWN_WAIT_S = 30.0
 # Steps of a long task, at most this often as `progress` events.
@@ -184,6 +191,16 @@ class SystemDevices:
         from openexpress import platform
 
         platform.devices().hold(found)
+
+    def back(self, found) -> bool | None:
+        """Whether a device that stopped responding answers again (opened now, its
+        transaction cancelled: ptp.Session.open); None where none comes back so (gvfs, on
+        Linux, only once it is plugged in again)."""
+        from openexpress import platform
+
+        if not platform.is_mac():
+            return None
+        return platform.devices().hold(found) is not None
 
     def look_again(self) -> None:
         """The next scan looks at who holds the devices again (a request found one held)."""
@@ -822,6 +839,7 @@ class Engine:
 
     def _on_device(self, req: Request, function):
         from openexpress.device.found import DeviceInUse
+        from openexpress.device.storage import DeviceNotResponding
 
         a = self.resolve(req.params)
         if a.busy_by is not None:
@@ -833,10 +851,35 @@ class Engine:
             try:
                 self._using(a)
                 self._hold(a)
-                return function(req, a)
+                try:
+                    return function(req, a)
+                except DeviceNotResponding:
+                    if req.method not in RETRIED_ONCE or req.writes or not self._came_back(req, a):
+                        raise
+                    return function(req, a)
             except DeviceInUse:
                 self.devices.look_again()  # the next scan tells it busy
                 raise
+
+    def _came_back(self, req: Request, a: Attached) -> bool:
+        """Whether the device that stopped responding in the middle of `req` answers again
+        within COME_BACK_WAIT_S, asked each second (cancel stops the wait)."""
+        log.info("engine: the device stopped responding during %s; waiting for it", req.method)
+        deadline = time.monotonic() + COME_BACK_WAIT_S
+        while time.monotonic() < deadline:
+            self.checkpoint(req)
+            try:
+                back = self.devices.back(a.found)
+            except Exception as e:  # noqa: BLE001 - not back yet
+                log.info("engine: the device is not back yet (%s)", type(e).__name__)
+                back = False
+            if back is None:
+                return False  # nothing to wait for here
+            if back:
+                log.info("engine: the device answers again; %s once more", req.method)
+                return True
+            req.cancel.wait(1.0)
+        return False
 
     def _hold(self, a: Attached) -> None:
         """The device open for the request (SystemDevices.hold): kept since the request

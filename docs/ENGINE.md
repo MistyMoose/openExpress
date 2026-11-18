@@ -29,7 +29,7 @@ Engine → app, any number of **events** (no `id`), at any time:
 `message` texts are already translated (the engine's language follows `LANG`, which the app sets
 from the user's preferred language). `code` is stable and meant for the app's logic.
 
-Requests run one at a time per device; a request for a busy device waits. `cancel` stops a
+Requests run one at a time per device; a request for a busy device waits. A request that only reads the device (`device.info`, `activities.list`, `activities.track`, `maps.list`, `updates.list`, `apps.list`) and finds it no longer responding waits up to 25 s for it to answer again (on macOS it is opened anew, its transaction cancelled) and runs once more; `device_not_responding` only when it does not. `cancel` stops a
 running request at the next safe point (never in the middle of writing one file to a device).
 
 ## Methods

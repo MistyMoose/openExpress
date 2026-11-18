@@ -76,3 +76,16 @@ def test_a_window_of_a_test_stops_listening_when_the_test_ends(monkeypatch):
     finally:
         netstatus.STATUS.remove_listener(win._net_listener)
         win.destroy()
+
+
+def test_the_desktop_and_processes_of_this_computer_are_not_seen():
+    """No test takes this computer for a KDE desktop: its environment and its processes."""
+    import os
+
+    from openexpress.device import gio_storage
+
+    assert Path("/proc") != gio_storage.PROC and list(gio_storage.PROC.iterdir()) == []
+    assert not any(os.environ.get(name) for name in (
+        "XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION", "KDE_FULL_SESSION"))
+    assert gio_storage.kde_seen() is None
+

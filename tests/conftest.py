@@ -535,6 +535,34 @@ def backups(tmp_path, monkeypatch) -> Path:
     return folder
 
 
+@pytest.fixture(scope="session")
+def _empty_proc(tmp_path_factory):
+    return tmp_path_factory.mktemp("proc")
+
+
+@pytest.fixture(autouse=True)
+def no_desktop_of_this_computer(_empty_proc, monkeypatch):
+    """Neither the desktop nor the processes of this computer are seen: no desktop named in
+    the environment and an empty /proc, so no test finds KDE (whose MTP service may hold a
+    device) unless it says so (kde_desktop); nothing kept from an earlier test."""
+    for name in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION",
+                 "KDE_FULL_SESSION"):
+        monkeypatch.delenv(name, raising=False)
+    try:
+        from openexpress.device import gio_storage
+    except (ImportError, ValueError):  # no PyGObject: nothing looks for KDE
+        return
+    monkeypatch.setattr(gio_storage, "PROC", _empty_proc)
+    monkeypatch.setattr(gio_storage, "_kde_seen", None)
+    monkeypatch.setattr(gio_storage, "_held_said", None)
+
+
+@pytest.fixture
+def kde_desktop(monkeypatch):
+    """A KDE desktop, as its environment names it: KDE's MTP service may hold a device."""
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+
+
 @pytest.fixture(autouse=True)
 def usb_nodes(tmp_path, monkeypatch) -> Path:
     """No test looks at the real USB device nodes: /dev/bus/usb is an empty folder here."""

@@ -24,7 +24,7 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
     public var busyBy: String?
     public var storage: Storage?
     public var lastSync: Date?
-    /// Not in docs/ENGINE.md yet: shown when the engine sends it.
+    /// The newest backup in the backup folder.
     public var lastBackup: Date?
     /// Battery level 0…100. Null for Garmin devices (their MTP BatteryLevel is a fixed
     /// placeholder); the Overview shows no Battery row then.

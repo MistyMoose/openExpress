@@ -79,7 +79,7 @@ public struct DeviceMap: Codable, Sendable, Hashable, Identifiable {
     public var installed: Bool
     public var status: Status
     public var region: String?
-    /// The version on the device, for an update. Not in docs/ENGINE.md: asked of the engine.
+    /// The version on the device, for an update.
     public var installedVersion: String?
     /// Translated, finer than `status`.
     public var statusText: String?
@@ -126,8 +126,8 @@ public struct DeviceMap: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
-/// A map of the user's own on the device. docs/ENGINE.md leaves its shape open ("[...]"):
-/// a bare file name or an object with at least a name.
+/// A map of the user's own on the device: `{"file", "size", "title", "path"}`, the title
+/// null when the file's header could not be read.
 public struct OwnMap: Codable, Sendable, Hashable, Identifiable {
     public var name: String
     public var size: Int64?
@@ -140,22 +140,16 @@ public struct OwnMap: Codable, Sendable, Hashable, Identifiable {
     }
 
     public init(from decoder: any Decoder) throws {
-        if let s = try? decoder.singleValueContainer().decode(String.self) {
-            name = s
-            size = nil
-            return
-        }
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        name = (try? c.decode(String.self, forKey: .title)) ?? (try? c.decode(String.self, forKey: .name))
-            ?? (try? c.decode(String.self, forKey: .file)) ?? "?"
+        name = try c.decodeIfPresent(String.self, forKey: .title) ?? c.decode(String.self, forKey: .file)
         size = try? c.decodeIfPresent(Int64.self, forKey: .size)
     }
 
-    enum CodingKeys: String, CodingKey { case name, title, file, size }
+    enum CodingKeys: String, CodingKey { case title, file, size }
 
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(name, forKey: .name)
+        try c.encode(name, forKey: .file)
         try c.encodeIfPresent(size, forKey: .size)
     }
 }
@@ -239,8 +233,8 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
     public var isOnThisMac: Bool { source == "backup" }
 
     enum CodingKeys: String, CodingKey {
-        case start, sport, distance, duration, fitPath, fit, path, name, ascent, calories
-        case averageHeartRate, avgHeartRate, source, state, size
+        case start, sport, distance, duration, name, ascent, calories, averageHeartRate, source, state, size
+        case fitPath = "path"
         case sportID = "sportId"
     }
 
@@ -269,15 +263,11 @@ public struct Activity: Codable, Sendable, Hashable, Identifiable {
         sport = try c.decodeIfPresent(String.self, forKey: .sport) ?? "generic"
         distance = try? c.decodeIfPresent(Double.self, forKey: .distance)
         duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
-        // "FIT path": accept the likely spellings.
-        fitPath = (try? c.decodeIfPresent(String.self, forKey: .fitPath))
-            ?? (try? c.decodeIfPresent(String.self, forKey: .fit))
-            ?? (try? c.decodeIfPresent(String.self, forKey: .path))
+        fitPath = try? c.decodeIfPresent(String.self, forKey: .fitPath)
         name = try? c.decodeIfPresent(String.self, forKey: .name)
         ascent = try? c.decodeIfPresent(Double.self, forKey: .ascent)
         calories = try? c.decodeIfPresent(Double.self, forKey: .calories)
-        averageHeartRate = (try? c.decodeIfPresent(Double.self, forKey: .averageHeartRate))
-            ?? (try? c.decodeIfPresent(Double.self, forKey: .avgHeartRate))
+        averageHeartRate = try? c.decodeIfPresent(Double.self, forKey: .averageHeartRate)
         sportID = try? c.decodeIfPresent(Int.self, forKey: .sportID)
         source = try? c.decodeIfPresent(String.self, forKey: .source)
         state = try? c.decodeIfPresent(String.self, forKey: .state)
@@ -359,9 +349,8 @@ public struct ActivitiesList: Codable, Sendable, Hashable {
     }
 }
 
-/// The track of an activity, for its map and charts: `activities.track {"fit": path}` (once the
-/// engine lists that method in `hello`). The engine sends each point as docs/ENGINE.md says:
-/// `{"lat", "lon", "time" (ISO 8601), "hr"?, "alt"?, "speed"?}`.
+/// The track of an activity, for its map and charts: `activities.track {"fit": path}`. The
+/// engine sends each point as `{"lat", "lon", "time" (ISO 8601), "hr"?, "alt"?, "speed"?}`.
 public struct ActivityTrack: Codable, Sendable, Hashable {
     public struct Point: Codable, Sendable, Hashable {
         public var latitude: Double
@@ -382,11 +371,7 @@ public struct ActivityTrack: Codable, Sendable, Hashable {
             self.speed = speed
         }
 
-        // The engine's short names; the long ones are still read (older mocks, tests).
-        private enum CodingKeys: String, CodingKey {
-            case lat, lon, alt, hr, speed, time
-            case latitude, longitude, elevation, heartRate
-        }
+        private enum CodingKeys: String, CodingKey { case lat, lon, alt, hr, speed, time }
 
         /// The point's moment as the engine sends it (ISO 8601); `time` is made from it by
         /// ActivityTrack, relative to the first point.
@@ -394,17 +379,15 @@ public struct ActivityTrack: Codable, Sendable, Hashable {
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            func number(_ keys: CodingKeys...) -> Double? {
-                keys.lazy.compactMap { try? c.decodeIfPresent(Double.self, forKey: $0) }.first
-            }
-            guard let lat = number(.lat, .latitude), let lon = number(.lon, .longitude) else {
+            func number(_ key: CodingKeys) -> Double? { try? c.decodeIfPresent(Double.self, forKey: key) }
+            guard let lat = number(.lat), let lon = number(.lon) else {
                 throw DecodingError.dataCorruptedError(forKey: .lat, in: c,
                                                        debugDescription: "a point without a position")
             }
             latitude = lat
             longitude = lon
-            elevation = number(.alt, .elevation)
-            heartRate = number(.hr, .heartRate)
+            elevation = number(.alt)
+            heartRate = number(.hr)
             speed = number(.speed)
             if let seconds = try? c.decodeIfPresent(Double.self, forKey: .time) {
                 time = seconds

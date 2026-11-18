@@ -81,22 +81,24 @@ struct ProtocolTests {
         let m = try JSONValue(["maps": [["name": "TopoActive", "version": "2025.20", "size": 1, "installed": true, "status": "up to date"],
                                         ["name": "Ski", "size": 1, "installed": true, "status": "update"],
                                         ["name": "Golf", "size": 1, "installed": false, "status": "something new"]],
-                               "own_maps": ["contours.img", ["name": "trails.img", "size": 5]], "free": 100])
+                               "own_maps": [["file": "contours.img", "title": nil, "size": 5, "path": "Garmin/contours.img"]], "free": 100])
             .decode(MapsList.self)
         #expect(m.installed.count == 2)
         #expect(m.updatable.map(\.name) == ["Ski"])
         #expect(m.maps.last?.status == .unknown)
-        #expect(m.ownMaps.map(\.name) == ["contours.img", "trails.img"])
+        #expect(m.ownMaps.map(\.name) == ["contours.img"])   // no title: the file's name
     }
 
-    @Test func activityFITPathSpellings() throws {
-        for key in ["fit_path", "fit", "path"] {
-            var o: [String: JSONValue] = ["start": "2026-11-17T09:41:00+01:00", "sport": "trail_running"]
-            o[key] = "/a.fit"
-            let a = try JSONValue.object(o).decode(Activity.self)
-            #expect(a.fitPath == "/a.fit")
-            #expect(a.sportName == "trail_running")   // the engine's name, as it is
-        }
+
+    /// The mock sends activities and own maps under the engine's keys.
+    @Test func activityAndOwnMapRoundTrip() throws {
+        let a = Activity(start: .now, sport: "Running", fitPath: "/b/x.fit", averageHeartRate: 140, source: "backup", sportID: 1)
+        let json = try JSONValue(encoding: a)
+        #expect(json["path"]?.stringValue == "/b/x.fit" && json["sport_id"]?.intValue == 1)
+        let again = try json.decode(Activity.self)
+        #expect(again.id == a.id && again.averageHeartRate == 140)
+        let own = try JSONValue(encoding: OwnMap(name: "trails.img", size: 5)).decode(OwnMap.self)
+        #expect(own == OwnMap(name: "trails.img", size: 5))
     }
 
     @Test func syncResult() {

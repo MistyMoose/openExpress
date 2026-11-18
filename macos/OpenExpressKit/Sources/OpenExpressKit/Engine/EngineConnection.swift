@@ -154,7 +154,6 @@ extension EngineConnection {
         return try await call("activities.list", params: .object(p), as: ActivitiesList.self, progress: progress).activities
     }
 
-    /// Not in docs/ENGINE.md yet (see ActivityTrack).
     public func activityTrack(fitPath: String) async throws -> ActivityTrack {
         try await call("activities.track", params: ["fit": .string(fitPath)], as: ActivityTrack.self)
     }

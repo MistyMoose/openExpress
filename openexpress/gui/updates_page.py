@@ -286,17 +286,33 @@ def confirm_install_all(win, items) -> None:
             extra=_below_the_question(s, kept))
 
 
+def shown_severity(u) -> str:
+    """The importance of update `u` as the window shows it: nothing when the server gave none
+    ("Unspecified"), which tells the user nothing; the command line still prints it."""
+    return "" if u.severity.casefold() in ("", "unspecified") else u.severity_text
+
+
+def offers_button(u, waits_for=None) -> bool:
+    """Whether the row of update `u` has its Install or Reinstall button: not while the file it
+    goes to holds an update copied already (`waits_for`), not when its folder was not read, and
+    not when the reinstall is refused (an older version, another or an uncompared file)."""
+    from openexpress import updates as upd
+
+    return waits_for is None and not u.hidden_unread and not upd.reinstall_refused(u)
+
+
 def _copied_lines(copied, lead, installed: str):
     """The subtitle and the detail of the Updates page for updates copied to the device
     (`copied`: waiting for it, or not installed by it): the versions of `lead`, the one the
-    page names ("Beta" apart, a tuple), else the version `installed`; the title, severity and
-    file of the only one, else the names of all."""
+    page names ("Beta" apart, a tuple), else the version `installed`; the title and severity of
+    the only one, else the names of all. The file's name is in the question before an install,
+    in `openexpress updates -v` and in the log, not here."""
     if lead is None:
         subtitle = installed
     else:
         versions = versions_text(lead)
         subtitle = (versions, _("Beta"), "") if lead.is_beta else versions
-    detail = (caption(lead.title, lead.severity_text, lead.filename) if len(copied) == 1
+    detail = (caption(lead.title, shown_severity(lead)) if len(copied) == 1
               else caption(*(u.title for u in copied)))
     return subtitle, detail
 
@@ -398,22 +414,28 @@ class UpdatesPage:
                                           if u.device_path.casefold() not in waiting],
                              untaken=untaken)
         rest = [u for u in new if u is not system]
+        # A file the device already has is a reinstall, whatever the server calls it; but not
+        # an update copied that is waiting for the device to install it, nor one it did not
+        # install.
+        re = [u for u in items if (u.is_reinstall or u.on_device) and not u.is_metadata
+              and not any(u is w for w in staged) and not any(u is n for n in untaken)]
+        # Rows of the same title (the server named only the type of data) keep their file's
+        # name, which tells them apart; the others leave it to the question and the tooltip.
+        titles = [u.title.casefold() for u in (*rest, *re, *untaken)]
+        twins = {title for title in titles if titles.count(title) > 1}
         if rest:
             g = sec.group(_("Available Updates"))
             for u in rest:
-                self._update_row(g, u, waits_for=waiting.get(u.device_path.casefold()))
+                self._update_row(g, u, waits_for=waiting.get(u.device_path.casefold()),
+                                 with_file=u.title.casefold() in twins)
         if untaken and (staged or new):
             # The top tells what there is to do; these are listed with what became of them.
             # TRANSLATORS: heading of a group on the Updates page: updates openExpress copied
             # that the device has not installed although it was unplugged since
             g = sec.group(_("Not Installed by the Device"))
             for u in untaken:
-                self._update_row(g, u, not_installed=True)
-        # A file the device already has is a reinstall, whatever the server calls it; but not
-        # an update copied that is waiting for the device to install it, nor one it did not
-        # install.
-        re = [u for u in items if (u.is_reinstall or u.on_device) and not u.is_metadata
-              and not any(u is w for w in staged) and not any(u is n for n in untaken)]
+                self._update_row(g, u, not_installed=True,
+                                 with_file=u.title.casefold() in twins)
         extra = upd.add_ons(items)
         if re or extra:
             # TRANSLATORS: heading of a group on the Updates page that holds the reinstall of
@@ -433,9 +455,12 @@ class UpdatesPage:
                                   "{count} components already on the device; useful for "
                                   "troubleshooting", len(re)).format(count=len(re)))
             g.add(exp)
-            for u in sorted(re, key=lambda x: x.title):
+            # What can be done first, then the rows without a button; each part by its title.
+            for u in sorted(re, key=lambda x: (
+                    not offers_button(x, waiting.get(x.device_path.casefold())), x.title)):
                 self._update_row(exp, u, reinstall=True,
-                                 waits_for=waiting.get(u.device_path.casefold()))
+                                 waits_for=waiting.get(u.device_path.casefold()),
+                                 with_file=u.title.casefold() in twins)
 
     def _updates_status(self, sec, system, count: int, beta: bool = False, ready=(),
                         only=None, installable=(), untaken=()) -> None:
@@ -468,7 +493,7 @@ class UpdatesPage:
                 # theme.
                 # TRANSLATORS: marks a beta version of the device software
                 subtitle = (versions, _("Beta"), size)
-            detail = caption(system.title, system.severity_text, system.filename)
+            detail = caption(system.title, shown_severity(system))
             # Copied before and offered again: the device has not installed it.
             note = copied_update_text(system)
             if system.hidden_unread:
@@ -543,15 +568,17 @@ class UpdatesPage:
         sec.group().add(box)
 
     def _update_row(self, parent, u, reinstall: bool = False, waits_for=None,
-                    not_installed: bool = False) -> None:
+                    not_installed: bool = False, with_file: bool = False) -> None:
         """A row of update `u`; `waits_for`: the update copied already to its file, which the
         device has not installed yet: then no button, as a copy would replace it. One copied
         before that is offered again says so, with Reinstall. `not_installed`: copied, and not
         installed by the device although it was unplugged since: what became of it, and
         Reinstall only when the device changed its file (the same file again changes
-        nothing)."""
+        nothing). The file's name only `with_file` (another row has the same title); its path
+        is the row's tooltip."""
+        file = u.filename if with_file else ""
         if not_installed:
-            subtitle = caption(versions_text(u), human_size(u.size), u.filename)
+            subtitle = caption(versions_text(u), human_size(u.size), file)
             subtitle += "\n" + not_installed_text(u)
             reinstall, button = True, u.changed_on_device
         else:
@@ -559,7 +586,7 @@ class UpdatesPage:
 
             # An older version than the device's: both numbers, and whether it is the same file.
             details = caption(upd.older_offer_caption(u) or versions_text(u), human_size(u.size),
-                              u.severity_text, u.filename)
+                              shown_severity(u), file)
             # A system update says so in its title; the name the server gives it goes first.
             subtitle = caption(u.title, details) if u.is_system else details
             if waits_for is not None:
@@ -571,7 +598,7 @@ class UpdatesPage:
             if note is not None:
                 subtitle += "\n" + note
                 reinstall = True
-            button = waits_for is None and not u.hidden_unread and not upd.reinstall_refused(u)
+            button = offers_button(u, waits_for)
             if u.hidden_unread:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
         row = Adw.ActionRow(
@@ -580,6 +607,9 @@ class UpdatesPage:
             title=GLib.markup_escape_text(_("Device Software") if u.is_system else u.title),
             subtitle=GLib.markup_escape_text(subtitle),
         )
+        if u.device_path:
+            # Where its file goes on the device, for the curious: the row itself leaves it out.
+            row.set_tooltip_text(u.device_path)
         if button:
             # TRANSLATORS: button
             row.add_suffix(self._button(_("Reinstall") if reinstall else _("Install"),

@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from openexpress import applog, paths
+from openexpress import applog, hidden_folders, paths
 from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage
 from openexpress.device.xmldevice import GarminDevice
 from openexpress.i18n import _
@@ -121,14 +121,10 @@ def hidden_folder(device: GarminDevice, storage: Storage) -> str | None:
     car navigator's .System; or one not there yet, which openExpress never makes): no map is
     added there. None when it is seen, when the device has no map folder, or when its top
     level cannot be listed."""
-    from openexpress.updates import top_folders
-
     folder = map_dir(device)
     if folder is None:
         return None
-    top = folder.replace("\\", "/").strip("/").split("/")[0]
-    tops = top_folders(storage)
-    return top if tops is not None and top and top.casefold() not in tops else None
+    return hidden_folders.top_not_seen(folder, hidden_folders.top_folders(storage))
 
 
 def _refuse_hidden(device: GarminDevice, storage: Storage) -> None:

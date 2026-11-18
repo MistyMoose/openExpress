@@ -644,8 +644,6 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     not taken in yet: it does that when it is unplugged, and only then do GarminDevice.xml and
     so Garmin's server know. Read from the files on the device against the server's list,
     nothing remembered; none is marked when the files cannot be listed."""
-    from openexpress.updates import top_folders
-
     for m in maps:
         m.waiting = None
         m.unseen = False
@@ -657,11 +655,11 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     unread: set[str] = set()  # of those, the hidden ones not read: what they hold is not known
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
     try:
-        tops = top_folders(storage)
+        tops = hidden_folders.top_folders(storage)
         for m in maps:
             m.hidden_folder = _top_not_seen(m.all_paths, tops)
         for folder in {posixpath.dirname(p) for p in wanted}:
-            if _top_not_seen([folder + "/"], tops) is not None:
+            if hidden_folders.top_not_seen(folder, tops) is not None:
                 # Read through openExpress's own session, or not known.
                 read = (listing.entries(folder) if listing is not None
                         and listing.state_of(folder) == hidden_folders.READ else None)
@@ -857,10 +855,9 @@ def _top_not_seen(paths, tops: set[str] | None) -> str | None:
     """The first folder of the top level among those of `paths` that ordinary MTP does not show
     (`tops`: those it shows, in lower case); None when all are seen, or the top level could not
     be listed."""
-    from openexpress.updates import top_folder_not_seen
-
     return next((top for p in paths
-                 if (top := top_folder_not_seen(p.replace("\\", "/"), tops)) is not None), None)
+                 if (top := hidden_folders.top_not_seen(
+                     posixpath.dirname(p.replace("\\", "/")), tops)) is not None), None)
 
 
 def hidden_needed(maps: list[UniversalMap]) -> list[str]:

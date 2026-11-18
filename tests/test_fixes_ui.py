@@ -821,10 +821,12 @@ def test_updates_page_with_several_updates(monkeypatch):
     assert states == [3] and win.updates_cache == items
     assert available.title == "Available Updates"
     assert [(r.get_title(), r.get_subtitle()) for r in available.rows] == [
-        # The server only repeats the type: a readable name, the file name tells them apart.
+        # The server only repeats the type: a readable name. Another "Map support file" (the
+        # Etyp below, a reinstall) has the same title, so both keep their file's name; the
+        # other titles differ and leave it out.
         ("Map support file", "2.70\u00a0· 2.0\u00a0kB\u00a0· Recommended\u00a0· 006-D0001-00.sid"),
-        ("Voice &lt;pack&gt;", "2.40\u00a0· 2.0\u00a0kB\u00a0· Critical\u00a0· 006-D0002-00.sid"),
-        ("Thing", "2.60\u00a0· 2.0\u00a0kB\u00a0· Optional\u00a0· 006-D0003-00.sid")]  # unknown values stay raw
+        ("Voice &lt;pack&gt;", "2.40\u00a0· 2.0\u00a0kB\u00a0· Critical"),
+        ("Thing", "2.60\u00a0· 2.0\u00a0kB\u00a0· Optional")]  # unknown values stay raw
     assert advanced.title == "Advanced" and isinstance(advanced.rows[0], Adw.ExpanderRow)
     # The file that is already on the device is listed with the reinstalls, not as an update.
     assert advanced.rows[0].get_subtitle().startswith("2 components already on the device")

@@ -1561,3 +1561,24 @@ def test_the_command_line_says_nothing_was_removed_only_when_no_file_was(tmp_pat
     assert code == 0 and not wifi.exists()
     assert "Removed: the file of GPS software 6.20, 40 B freed." in out.splitlines()
     assert "Nothing removed: the files were no longer on the device." not in out.splitlines()
+
+
+def test_each_removal_reaches_the_disk_at_once(tmp_path, clock, small_limit, monkeypatch):
+    """On a drive every folder a dump was removed from is put on the disk at once: unplugged
+    right after, it keeps none of the files removed (its file system would else keep the change
+    in memory for about half a minute)."""
+    from openexpress.device import storage as storage_module
+
+    synced = []
+    real = storage_module._sync_folder
+
+    def record(folder):
+        synced.append(folder)
+        real(folder)
+
+    monkeypatch.setattr(storage_module, "_sync_folder", record)
+    st, _dev = make_device(tmp_path)
+    freed = freeing.remove_dumps(st, UNIT, asked(st))
+    removed_from = {(st.root / p).parent for p, _s in freed.removed}
+    assert removed_from == {st.root / "GARMIN" / "Debug" / "dump", st.root / "GARMIN" / "Debug"}
+    assert removed_from <= set(synced)

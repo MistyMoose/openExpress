@@ -88,11 +88,13 @@ def _nothing_outside(tmp_path, before, target):
     assert [p for p in new if not p.is_relative_to(target)] == []
 
 
-@pytest.mark.parametrize("name", ["../../escape", "ABSOLUTE", "", ".", "..", "a/b"])
+@pytest.mark.parametrize("name", ["../../escape", "ABSOLUTE", "", ".", "..", "a/b",
+                                  "cras\x07h"])
 def test_a_crafted_data_type_name_is_refused_and_writes_nothing(device_root, tmp_path, name):
     """A data type whose name is no folder name (with "..", absolute, empty, with a
-    separator) refuses the whole backup, as other errors of GarminDevice.xml do: nothing is
-    written outside the backup folder, and no partial backup is left."""
+    separator, or a control character - a bit flip or another device bug) refuses the whole
+    backup, as other errors of GarminDevice.xml do: nothing is written outside the backup
+    folder, and no partial backup is left."""
     if name == "ABSOLUTE":
         name = str(tmp_path / "outside")  # absolute, but inside the test's own folder
     st = LocalStorage(device_root)
@@ -105,19 +107,20 @@ def test_a_crafted_data_type_name_is_refused_and_writes_nothing(device_root, tmp
     assert list(unit.iterdir()) == []
 
 
-def test_a_crafted_file_name_from_the_device_is_refused(device_root, tmp_path):
-    """A file the device lists under a name with ".." (a device may list any name over
-    MTP): refused the same way."""
+@pytest.mark.parametrize("extra", ["/../../../escape.fit", "/bad\x00null.fit"])
+def test_a_crafted_file_name_from_the_device_is_refused(device_root, tmp_path, extra):
+    """A file the device lists under a name with ".." or a control character (a device may
+    list any name over MTP, bit flips and all): refused the same way."""
     class Crafted(LocalStorage):
         def walk_files(self, path):
             files = super().walk_files(path)
             if not files:
                 return files
             real, entry = files[0]
-            return [(real.rsplit("/", 1)[0] + "/../../../escape.fit", entry), *files[1:]]
+            return [(real.rsplit("/", 1)[0] + extra, entry), *files[1:]]
 
         def read(self, path):
-            return b"x" if path.endswith("escape.fit") else super().read(path)
+            return b"x" if path.endswith(extra.rsplit("/", 1)[-1]) else super().read(path)
 
     st = Crafted(device_root)
     dev = parse((device_root / "GARMIN/GarminDevice.xml").read_bytes())

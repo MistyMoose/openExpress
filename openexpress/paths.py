@@ -156,9 +156,11 @@ PRIVATE_DIR = 0o700
 
 def is_safe_component(name: str) -> bool:
     """Whether a name from a device or a server can be one component of a path on this
-    computer: not empty, not "." or "..", no separator (so not absolute either), no NUL."""
-    return (bool(name) and name not in (".", "..")
-            and not any(c in name for c in ("/", "\\", "\0")))
+    computer: not empty, not "." or "..", no separator (so not absolute either), and no
+    control character (NUL among them) - a device may give one after a bit flip."""
+    if not name or name in (".", ".."):
+        return False
+    return not any(c in "/\\" or ord(c) < 0x20 or ord(c) == 0x7F for c in name)
 
 
 def is_inside(path: Path, folder: Path) -> bool:

@@ -96,25 +96,28 @@ def write_template(out: Path = TEMPLATE) -> Path:
     _run([_tool("xgettext"), "--from-code=UTF-8", *KEYWORDS, *FLAGS, "--add-comments=TRANSLATORS",
           "--add-location=file", f"--package-name={i18n.DOMAIN}",
           f"--package-version={__version__}", f"--output={out}", *files])
-    _drop_not_to_translate(out)
+    _check_appstream_rules(out)
     add_flags(out)
     return out
 
 
-def _drop_not_to_translate(pot: Path) -> None:
-    """The texts of the metainfo's elements marked translate="no" (the name, the developer)
-    taken out of the template again: gettext 1.0 (Homebrew's, on macOS) lists them anyway,
-    where older versions follow AppStream's rules and leave them out."""
-    keep_out = set(re.findall(r'<[^>]*\btranslate="no"[^>]*>([^<]+)<',
-                              METAINFO_TEMPLATE.read_text(encoding="utf-8")))
-    reference = f"#: {METAINFO_TEMPLATE.relative_to(ROOT)}"
-    blocks = pot.read_text(encoding="utf-8").split("\n\n")
-    kept = [b for b in blocks
-            if not any(line == reference for line in b.splitlines())
-            or not any(f'msgid "{text}"' in b.splitlines() for text in keep_out)
-            or sum(line.startswith("#: ") for line in b.splitlines()) > 1]
-    if len(kept) != len(blocks):
-        pot.write_text("\n\n".join(kept), encoding="utf-8")
+def _check_appstream_rules(pot: Path) -> None:
+    """CatalogError when xgettext took the metainfo without AppStream's rules (metainfo.its of
+    the appstream package): it then lists the texts of the elements marked translate="no" (the
+    name, the developer, the keywords) as texts to translate."""
+    not_to_translate = set(re.findall(r'<[^>]*\btranslate="no"[^>]*>([^<]+)<',
+                                      METAINFO_TEMPLATE.read_text(encoding="utf-8")))
+    metainfo_only = f"#: {METAINFO_TEMPLATE.relative_to(ROOT).as_posix()}"
+    for entry in pot.read_text(encoding="utf-8").split("\n\n"):
+        lines = entry.splitlines()
+        references = [line for line in lines if line.startswith("#: ")]
+        texts = {line[len('msgid "'):-1] for line in lines if line.startswith('msgid "')}
+        if references == [metainfo_only] and texts & not_to_translate:
+            raise CatalogError(
+                "xgettext did not find AppStream's rules for the metainfo (metainfo.its, from "
+                "the appstream package), so the template would hold texts not to translate. "
+                "Install appstream; with Homebrew also set XDG_DATA_DIRS to include "
+                "/opt/homebrew/share.")
 
 
 # --- the flags of Weblate ---------------------------------------------------------------------

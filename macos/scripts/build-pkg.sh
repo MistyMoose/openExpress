@@ -21,6 +21,10 @@
 #   LIBUSB_DYLIB=path  the libusb-1.0 to bundle (default: Homebrew's)
 #   SKIP_VERIFY=1      do not run verify-pkg.sh at the end
 #   KEYCHAIN=path      the keychain codesign and productbuild take the identities from (CI)
+#   RELEASE=mac.1      the release of this edition on top of openExpress's version: in the
+#                      package's file name (openExpress-for-Mac-0.11.0-mac.1.pkg) and the
+#                      release's tag; the app's own version stays openExpress's (macOS takes
+#                      only numbers there), its build number tells one build from another
 #
 # Build-time tools: Xcode 26 or later, xcodegen, GNU gettext (msgfmt), libusb (Homebrew),
 # curl, and the network for the downloads below (cached in macos/build/cache).
@@ -100,7 +104,7 @@ grep -q "^version = \"$VERSION\"" "$ROOT/pyproject.toml" \
 BUILD_NUMBER=$(git -C "$ROOT" rev-list --count HEAD)
 GIT_COMMIT=$(git -C "$ROOT" rev-parse HEAD)
 GIT_DESCRIBE=$(git -C "$ROOT" describe --tags --always --dirty)
-PKG="$BUILD/openExpress-for-Mac-$VERSION.pkg"
+PKG="$BUILD/openExpress-for-Mac-$VERSION${RELEASE:+-$RELEASE}.pkg"
 
 say "$APP_NAME $VERSION (build $BUILD_NUMBER, $GIT_DESCRIBE), $([ $DISTRIBUTION = 1 ] && echo "Developer ID" || echo "ad-hoc") signing"
 [[ "$GIT_DESCRIBE" == *-dirty ]] && echo "warning: the working tree has uncommitted changes; they are built in"

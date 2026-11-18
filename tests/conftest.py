@@ -1,6 +1,7 @@
 import atexit
 import ctypes
 import functools
+import importlib.abc
 import importlib.util
 import os
 import select
@@ -21,41 +22,51 @@ import pytest
 # On macOS paths.py falls back to ~/Library whenever an XDG variable is not set, so a test that
 # clears one (or code that runs before the fixtures below) would write into the user's real
 # ~/Library. The whole session gets a home folder of its own instead, before anything is
-# imported. Without PyGObject (the macOS engine has none), a test that needs it is skipped,
-# not failed. Both are inert on Linux.
+# imported. Both are inert on Linux.
+#
+# Without PyGObject (the macOS engine has none), a test is skipped when it imports PyGObject,
+# itself or through the code of Linux alone that needs it (LINUX_ONLY: the GTK window, the
+# devices through GIO, the background service). Any other import of PyGObject fails as it would
+# in the macOS app: by a module of the program as it is imported, by a function of the program,
+# by a fixture of this file (which catches the ImportError where PyGObject is optional) or by
+# code outside tests/ (pytest's warning filters).
 
 HAS_GI = importlib.util.find_spec("gi") is not None
+
+LINUX_ONLY = ("openexpress.gui", "openexpress.device.gio_storage", "openexpress.watch",
+              "openexpress.background")
+CONFTEST = str(Path(__file__).resolve())
+TESTS = str(Path(__file__).resolve().parent)
+
+
+class _PyGObjectMissing(importlib.abc.MetaPathFinder):
+    """Imports of gi and cairo: a skip when a test asked for them, else (None) the
+    ModuleNotFoundError of an ordinary import (above)."""
+
+    def find_spec(self, name, path=None, target=None):
+        if name.split(".")[0] not in ("gi", "cairo"):
+            return None
+        frame = sys._getframe(1)
+        # Up through the modules being imported, to the code that asked for the first of them.
+        while frame.f_code.co_filename.startswith("<frozen") or (
+                frame.f_globals.get("__name__") == "importlib") or (
+                frame.f_code.co_name == "<module>"
+                and frame.f_globals.get("__name__", "").startswith(LINUX_ONLY)):
+            frame = frame.f_back
+        if frame.f_code.co_filename == CONFTEST or not frame.f_code.co_filename.startswith(TESTS):
+            return None
+        module = frame.f_globals.get("__name__", "")
+        raise pytest.skip.Exception(f"needs PyGObject ({module} imports {name})",
+                                    allow_module_level=True)
+
+
+if not HAS_GI:
+    sys.meta_path.insert(0, _PyGObjectMissing())
 
 if sys.platform == "darwin":
     _home = Path(tempfile.mkdtemp(prefix="openexpress-tests-home-"))
     os.environ["HOME"] = str(_home)
     atexit.register(shutil.rmtree, _home, ignore_errors=True)
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    outcome = yield
-    if HAS_GI or call.excinfo is None:
-        return
-    error = call.excinfo.value
-    if isinstance(error, ModuleNotFoundError) and error.name in ("gi", "cairo"):
-        report = outcome.get_result()
-        report.outcome, report.longrepr = "skipped", (str(item.path), item.location[1] or 0,
-                                                      f"needs PyGObject: {error}")
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_make_collect_report(collector):
-    """Without PyGObject, a test file that imports it (itself, or through a module of the
-    window) cannot even be collected: skipped as well."""
-    outcome = yield
-    report = outcome.get_result()
-    if HAS_GI or not report.failed:
-        return
-    text = str(report.longrepr)
-    if "No module named 'gi'" in text or "No module named 'cairo'" in text:
-        report.outcome, report.longrepr = "skipped", (str(collector.path), 0,
-                                                      "needs PyGObject")
 
 
 # --- the display of the tests: an X server of their own, never the desktop -------------------

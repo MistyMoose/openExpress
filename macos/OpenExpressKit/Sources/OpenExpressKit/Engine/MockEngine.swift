@@ -98,7 +98,7 @@ public actor MockEngine: EngineConnection {
             backups[id] = (0..<3).map { i in
                 let date = now.addingTimeInterval(-86400 * Double(i * 7 + 1))
                 return BackupSnapshot(path: "/Users/demo/Documents/Garmin/Backups/\(id)/\(Self.stamp(date))",
-                                      created: date, size: 1_200_000_000 - Int64(i) * 40_000_000, files: 4210 - i * 50)
+                                      date: date, files: 4210 - i * 50, bytes: 1_200_000_000 - Int64(i) * 40_000_000)
             }
         }
     }
@@ -201,7 +201,7 @@ public actor MockEngine: EngineConnection {
             let now = Date()
             let path = "/Users/demo/Documents/Garmin/Backups/\(unit ?? "")/\(Self.stamp(now))"
             if p["apply"]?.boolValue == true, let unit {
-                backups[unit, default: []].insert(BackupSnapshot(path: path, created: now, size: 1_210_000_000, files: 4260), at: 0)
+                backups[unit, default: []].insert(BackupSnapshot(path: path, date: now, files: 4260, bytes: 1_210_000_000), at: 0)
                 if let i = devices.firstIndex(where: { $0.unitID == unit }) { devices[i].lastBackup = now }
             }
             var r = try JSONValue(encoding: BackupResult(path: path, copied: 37, copiedBytes: 18_400_000,

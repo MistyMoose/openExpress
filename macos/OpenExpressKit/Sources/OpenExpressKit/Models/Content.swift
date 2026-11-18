@@ -520,17 +520,17 @@ public struct ActivityTrack: Codable, Sendable, Hashable {
 /// `<backups>/<unit id>/` (openexpress/backup.py).
 public struct BackupSnapshot: Codable, Sendable, Hashable, Identifiable {
     public var path: String
-    public var created: Date
-    public var size: Int64?
-    public var files: Int?
+    public var date: Date
+    public var files: Int
+    public var bytes: Int64
 
     public var id: String { path }
 
-    public init(path: String, created: Date, size: Int64? = nil, files: Int? = nil) {
+    public init(path: String, date: Date, files: Int, bytes: Int64) {
         self.path = path
-        self.created = created
-        self.size = size
+        self.date = date
         self.files = files
+        self.bytes = bytes
     }
 
     public var url: URL { URL(fileURLWithPath: path, isDirectory: true) }

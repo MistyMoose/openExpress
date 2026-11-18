@@ -244,17 +244,15 @@ struct BackupRow: View {
                 .frame(width: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(backup.created, format: .dateTime.weekday(.wide).day().month(.wide).year().hour().minute())
-                Text(Format.relative(backup.created))
+                Text(backup.date, format: .dateTime.weekday(.wide).day().month(.wide).year().hour().minute())
+                Text(Format.relative(backup.date))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                if let size = backup.size { Text(Format.bytes(size)).monospacedDigit() }
-                if let files = backup.files {
-                    Text("\(files) files").font(.caption).foregroundStyle(.secondary)
-                }
+                Text(Format.bytes(backup.bytes)).monospacedDigit()
+                Text("\(backup.files) files").font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 2)

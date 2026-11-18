@@ -159,12 +159,8 @@ extension EngineConnection {
         try await call("activities.track", params: ["fit": .string(fitPath)], as: ActivityTrack.self)
     }
 
-    /// Not in docs/ENGINE.md yet: `backups.list {"device", "dest"?}` → `{"backups": [...]}`.
-    /// `BackupFolder.snapshots` reads the folder itself while the engine lacks the method.
-    public func backups(_ unitID: String, destination: URL?) async throws -> [BackupSnapshot] {
-        var p: [String: JSONValue] = ["device": .string(unitID)]
-        if let destination { p["dest"] = .string(destination.path) }
-        return try await call("backups.list", params: .object(p), as: BackupsList.self).backups
+    public func backups(_ unitID: String) async throws -> [BackupSnapshot] {
+        try await call("backups.list", params: ["device": .string(unitID)], as: BackupsList.self).backups
     }
 
     // MARK: Settings, Strava

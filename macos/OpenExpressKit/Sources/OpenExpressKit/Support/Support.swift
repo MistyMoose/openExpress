@@ -26,27 +26,10 @@ public enum SignInTicket {
     }
 }
 
-/// The backups of a device on disk: `<root>/<unit id>/YYYY-MM-DD (HH.MM.SS)/`, as
-/// openexpress/backup.py makes them. Used while the engine has no `backups.list`.
+/// Where backups go when the engine's `backup_dir` is not set (paths.default_backup_dir).
 public enum BackupFolder {
     public static var defaultRoot: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: "Documents/Garmin/Backups")
-    }
-
-    public static func snapshots(root: URL, unitID: String, fileManager: FileManager = .default) -> [BackupSnapshot] {
-        let folder = root.appending(path: unitID, directoryHint: .isDirectory)
-        guard let names = try? fileManager.contentsOfDirectory(atPath: folder.path) else { return [] }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd (HH.mm.ss)"
-        return names.compactMap { name -> BackupSnapshot? in
-            guard let date = f.date(from: name) else { return nil }
-            let url = folder.appending(path: name, directoryHint: .isDirectory)
-            let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-            guard values?.isDirectory == true, values?.isSymbolicLink != true else { return nil }
-            return BackupSnapshot(path: url.path, created: date)
-        }
-        .sorted { $0.created > $1.created }
     }
 }
 

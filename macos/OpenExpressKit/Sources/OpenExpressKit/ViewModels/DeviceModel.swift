@@ -68,16 +68,12 @@ public final class DeviceModel: Identifiable {
     /// What the device model needs from the app.
     public struct Context {
         public var supports: @MainActor (String) -> Bool
-        /// Where backups are (the engine's `backup_dir`).
-        public var backupFolder: @MainActor () -> URL
         /// Errors about the account (`setup_needed`, `not_signed_in`); true when handled.
         public var accountProblem: @MainActor (EngineError) -> Bool
 
         public init(supports: @escaping @MainActor (String) -> Bool = { _ in true },
-                    backupFolder: @escaping @MainActor () -> URL = { BackupFolder.defaultRoot },
                     accountProblem: @escaping @MainActor (EngineError) -> Bool = { _ in false }) {
             self.supports = supports
-            self.backupFolder = backupFolder
             self.accountProblem = accountProblem
         }
     }
@@ -234,11 +230,7 @@ public final class DeviceModel: Identifiable {
             case .activities:
                 activities = try await engine.activities(unitID, progress: progress)
             case .backups:
-                if context.supports("backups.list") {
-                    backups = try await engine.backups(unitID, destination: nil)
-                } else {
-                    backups = BackupFolder.snapshots(root: context.backupFolder(), unitID: unitID)
-                }
+                backups = try await engine.backups(unitID)
             }
             loaded.insert(page)
             // A request that went through: nobody holds the device (device.info says itself).

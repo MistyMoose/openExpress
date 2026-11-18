@@ -192,16 +192,11 @@ struct SupportTests {
         #expect(SignInTicket.fromPageText("<html>Sign in</html>") == nil)
     }
 
-    @Test func backupFolder() throws {
-        let root = FileManager.default.temporaryDirectory.appending(path: "oe-backups-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: root) }
-        let unit = root.appending(path: "42")
-        for name in ["2026-11-01 (10.00.00)", "2026-11-15 (08.30.00)", ".partial-2026-11-16 (01.00.00)", "notes"] {
-            try FileManager.default.createDirectory(at: unit.appending(path: name), withIntermediateDirectories: true)
-        }
-        let snaps = BackupFolder.snapshots(root: root, unitID: "42")
-        #expect(snaps.map { $0.url.lastPathComponent } == ["2026-11-15 (08.30.00)", "2026-11-01 (10.00.00)"])
-        #expect(BackupFolder.snapshots(root: root, unitID: "7").isEmpty)
+    @Test func backupsAsTheEngineSendsThem() throws {
+        let line = #"{"backups": [{"path": "/b/42/2026-11-15 (08.30.00)", "date": "2026-11-15T08:30:00+01:00", "files": 4210, "bytes": 1200000000}]}"#
+        let list = try EngineCoding.decoder().decode(BackupsList.self, from: Data(line.utf8))
+        #expect(list.backups[0].files == 4210 && list.backups[0].bytes == 1_200_000_000)
+        #expect(list.backups[0].url.lastPathComponent == "2026-11-15 (08.30.00)")
     }
 
     @Test func formats() {

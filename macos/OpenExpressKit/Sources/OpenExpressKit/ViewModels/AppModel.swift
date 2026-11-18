@@ -120,7 +120,6 @@ public final class AppModel {
         } else {
             models[d.unitID] = DeviceModel(device: d, engine: engine, context: .init(
                 supports: { [weak self] in self?.supports($0) ?? false },
-                backupFolder: { [weak self] in self?.backupFolder ?? BackupFolder.defaultRoot },
                 accountProblem: { [weak self] in self?.handleAccountProblem($0) ?? false }))
         }
     }

@@ -13,10 +13,13 @@ from openexpress.device import found
 
 
 def test_the_devices_are_found_by_gio_on_linux_and_over_usb_on_macos(monkeypatch):
+    import openexpress.device
     from openexpress.device import mac_storage
 
     gio = types.ModuleType("openexpress.device.gio_storage")  # GIO itself is not needed
     monkeypatch.setitem(sys.modules, "openexpress.device.gio_storage", gio)
+    # Where the real one was imported (Linux), the package's attribute is what an import finds.
+    monkeypatch.setattr(openexpress.device, "gio_storage", gio, raising=False)
     monkeypatch.setattr(platform.sys, "platform", "linux")
     assert platform.devices() is gio and platform.needs_pygobject()
     monkeypatch.setattr(platform.sys, "platform", "darwin")

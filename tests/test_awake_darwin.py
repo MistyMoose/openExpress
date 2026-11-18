@@ -105,6 +105,7 @@ def test_release_darwin_terminates_and_waits_for_the_caffeinate_process():
     assert process.waited_timeout == pytest.approx(awake._ANSWER_MS / 1000)
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="IOKit is macOS's")  # before the fixture
 def test_iopm_assertion_create_and_release_round_trip_for_real():
     """A real call into IOKit (no mock): the two functions this module's darwin branch is
     built on actually work on this machine."""

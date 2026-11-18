@@ -21,6 +21,7 @@ def test_boot_dispatches_to_the_darwin_implementation(monkeypatch):
     assert history._boot() == "made-up-boot-time"
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="kern.boottime is macOS's")
 def test_boot_darwin_reads_the_real_boot_time():
     """A real call into sysctlbyname (no mock): kern.boottime answers with a plausible, stable
     number of seconds."""

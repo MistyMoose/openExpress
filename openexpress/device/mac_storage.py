@@ -461,6 +461,8 @@ def close_all() -> None:
     for storage in storages:
         try:
             storage.close()
+        except DeviceNotResponding:
+            log.info("device: not closed at exit, it stopped responding")  # the others still are
         except Exception as e:  # noqa: BLE001 - at exit: the device goes when the process does
             log.info("device: not closed at exit (%s)", type(e).__name__)
 

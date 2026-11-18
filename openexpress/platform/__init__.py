@@ -8,6 +8,7 @@ importing this package never needs PyGObject or libusb.
 
 from __future__ import annotations
 
+import os
 import sys
 
 # The commands of the desktop of Linux (a GTK window, the background service of systemd and
@@ -45,6 +46,16 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None)
     """The storage of the connected device that has GARMIN/GarminDevice.xml (`uri`: the one
     named with --device-uri), as the module of this system opens it (devices)."""
     return devices().open_device_storage(uri, wait=wait, notify=notify)
+
+
+def app_dir(var: str):
+    """The app's folder in place of the XDG folder `var` (e.g. XDG_DATA_HOME), a Path: on
+    macOS its folder under ~/Library, unless `var` is set; else None."""
+    if not is_mac() or os.environ.get(var):
+        return None
+    from openexpress.platform import macos
+
+    return macos.app_dir(var)
 
 
 def secrets():

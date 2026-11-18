@@ -525,6 +525,22 @@ def private_dirs(tmp_path, monkeypatch):
                         lambda: tmp_path / "flatpak-data" / "openexpress")
 
 
+@pytest.fixture
+def as_mac(monkeypatch):
+    """The program runs as on macOS (platform.is_mac()), whatever system the tests run on."""
+    from openexpress import platform
+
+    monkeypatch.setattr(platform, "is_mac", lambda: True)
+
+
+@pytest.fixture
+def as_linux(monkeypatch):
+    """The program runs as on Linux (platform.is_mac()), whatever system the tests run on."""
+    from openexpress import platform
+
+    monkeypatch.setattr(platform, "is_mac", lambda: False)
+
+
 @pytest.fixture(autouse=True)
 def no_real_keychain():
     """No test ever reaches the real macOS Keychain (openexpress.platform.keychain), on

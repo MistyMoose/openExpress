@@ -1,18 +1,13 @@
-"""The app's folders on macOS (paths._app_dir): the matching folder under ~/Library instead of
-an XDG one; an XDG_*_HOME variable, when one is set (as the test suite's own fixtures set them),
-still wins, so the isolation the rest of the tests rely on keeps working on this platform too."""
-
-import sys
+"""The app's folders on macOS (paths._app_dir, platform.app_dir): the matching folder under
+~/Library instead of an XDG one; an XDG_*_HOME variable, when one is set (as the test suite's
+own fixtures set them), still wins, so the isolation the rest of the tests rely on keeps working
+on this platform too."""
 
 import pytest
 
 from openexpress import paths
 
-
-@pytest.fixture(autouse=True)
-def darwin(monkeypatch):
-    """Every test in this file runs as if on macOS, whatever the real platform is."""
-    monkeypatch.setattr(sys, "platform", "darwin")
+pytestmark = pytest.mark.usefixtures("as_mac")
 
 
 def test_config_and_data_live_under_application_support(monkeypatch, tmp_path):

@@ -1,5 +1,4 @@
-"""Local application directories (XDG; on macOS the matching folders under ~/Library, which
-has no XDG and no Flatpak)."""
+"""Local application directories (XDG)."""
 
 from __future__ import annotations
 
@@ -8,12 +7,12 @@ import contextlib
 import fcntl
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
+from openexpress import platform
+
 APP_NAME = "openexpress"
-APP_NAME_MAC = "openExpress"  # the name of the folder this app gets under ~/Library
 APP_ID = "io.github.tomaszbojanowski.OpenExpress"
 FLATPAK_INFO = Path("/.flatpak-info")
 
@@ -25,18 +24,14 @@ def xdg(var: str, default: str) -> Path:
     return Path(value) if value else Path.home() / default
 
 
-def _app_dir(var: str, default: str, mac_library_folder: str) -> Path:
-    """XDG directory for the app; on macOS, unless `var` is set, the app's folder under
-    ~/Library/<mac_library_folder>."""
-    if sys.platform == "darwin" and not os.environ.get(var):
-        return Path.home() / "Library" / mac_library_folder / APP_NAME_MAC
-    return xdg(var, default) / APP_NAME
+def _app_dir(var: str, default: str) -> Path:
+    """XDG directory for the app (on macOS, without the variable, under ~/Library:
+    platform.app_dir)."""
+    return platform.app_dir(var) or xdg(var, default) / APP_NAME
 
 
 def config_dir() -> Path:
-    # macOS keeps config and data together under Application Support (no separate XDG-style
-    # config folder there).
-    return _app_dir("XDG_CONFIG_HOME", ".config", "Application Support")
+    return _app_dir("XDG_CONFIG_HOME", ".config")
 
 
 def settings_file() -> Path:
@@ -46,11 +41,11 @@ def settings_file() -> Path:
 
 
 def data_dir() -> Path:
-    return _app_dir("XDG_DATA_HOME", ".local/share", "Application Support")
+    return _app_dir("XDG_DATA_HOME", ".local/share")
 
 
 def cache_dir() -> Path:
-    return _app_dir("XDG_CACHE_HOME", ".cache", "Caches")
+    return _app_dir("XDG_CACHE_HOME", ".cache")
 
 
 def in_flatpak() -> bool:
@@ -121,9 +116,8 @@ def flatpak_source() -> tuple[str | None, str | None]:
 
 
 def state_dir() -> Path:
-    """Where the log file is kept (in the Flatpak: under ~/.var/app/…/.local/state; on
-    macOS: ~/Library/Logs/openExpress, where the Console app and the user both expect it)."""
-    return _app_dir("XDG_STATE_HOME", ".local/state", "Logs")
+    """Where the log file is kept (in the Flatpak: under ~/.var/app/…/.local/state)."""
+    return _app_dir("XDG_STATE_HOME", ".local/state")
 
 
 def device_dir(unit_id: int) -> Path:

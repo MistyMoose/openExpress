@@ -92,7 +92,7 @@ A line that is not JSON, or has no `id`, is answered with `"id": null`.
 
 ## Objects
 
-- `Device`: `{"unit_id": str, "name", "part_number", "software", "connected": bool, "busy_by": str|null, "storage": {"free", "capacity"}|null, "last_sync": iso|null, "battery": percent|null, "last_backup": iso|null}`. `battery`: as the device told it when it was last opened (MTP's BatteryLevel), else null — always null for Garmin devices, which answer it with a fixed placeholder (50) at any charge; `last_backup`: the newest backup in the backup folder.
+- `Device`: `{"unit_id": str, "name", "part_number", "software", "connected": bool, "busy_by": str|null, "storage": {"free", "capacity"}|null, "last_sync": iso|null, "last_backup": iso|null}`. `last_backup`: the newest backup in the backup folder.
 - `Update`: `{"part", "name", "version", "installed", "size", "beta": bool, "waiting_on_device": bool}`
 - `Update` also has `not_installed`, `system`, `critical`, `metadata`, `changes`, `eula`, `unreadable_folder`, `older` (a text, or null).
 - `Map`: `{"name", "version", "size", "installed": bool, "status": "up to date"|"update"|"available", "region"?}`, also `installed_version` (the version on the device: `version` when "up to date", null when "available"; for "update", Garmin's answer names only the new version, so it is read from the name in the header of the map's files on the device, and is null when that name ends in no version as the server writes one, e.g. CourseView), `status_text` (translated, finer), `type`, `waiting`, `incomplete`, `restricted`, `can_install`, `can_remove`.

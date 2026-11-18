@@ -26,22 +26,19 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
     public var lastSync: Date?
     /// The newest backup in the backup folder.
     public var lastBackup: Date?
-    /// Battery level 0…100. Null for Garmin devices (their MTP BatteryLevel is a fixed
-    /// placeholder); the Overview shows no Battery row then.
-    public var battery: Int?
 
     public var id: String { unitID }
 
     enum CodingKeys: String, CodingKey {
         // With .convertFromSnakeCase "unit_id" arrives as "unitId".
         case unitID = "unitId"
-        case name, partNumber, software, connected, busyBy, storage, lastSync, lastBackup, battery
+        case name, partNumber, software, connected, busyBy, storage, lastSync, lastBackup
     }
 
     public init(
         unitID: String, name: String, partNumber: String? = nil, software: String? = nil,
         connected: Bool, busyBy: String? = nil, storage: Storage? = nil, lastSync: Date? = nil,
-        lastBackup: Date? = nil, battery: Int? = nil
+        lastBackup: Date? = nil
     ) {
         self.unitID = unitID
         self.name = name
@@ -52,7 +49,6 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
         self.storage = storage
         self.lastSync = lastSync
         self.lastBackup = lastBackup
-        self.battery = battery
     }
 
     public init(from decoder: any Decoder) throws {
@@ -71,7 +67,6 @@ public struct Device: Codable, Sendable, Hashable, Identifiable {
         storage = try c.decodeIfPresent(Storage.self, forKey: .storage)
         lastSync = try c.decodeIfPresent(Date.self, forKey: .lastSync)
         lastBackup = try c.decodeIfPresent(Date.self, forKey: .lastBackup)
-        battery = try c.decodeIfPresent(Int.self, forKey: .battery)
     }
 
     /// The name without its variant: "fēnix 8 – 47 mm, AMOLED" → "fēnix 8", for titles.

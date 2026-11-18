@@ -37,13 +37,6 @@ CONTRACT = {
     "backups.list", "activities.track"}  # what the app asked for after it
 
 
-class Battery(LocalStorage):
-    """A device folder whose device tells its battery's charge, as MTP does."""
-
-    def battery(self):
-        return 76
-
-
 class FakeDevices:
     """The devices of the tests: a folder each, by its key (as a USB address); `held`: the
     program that holds one, by key."""
@@ -60,10 +53,8 @@ class FakeDevices:
     def probe(self, found):
         st = LocalStorage(self.roots[found.uri])
         dev = parse(st.read("GARMIN/GarminDevice.xml"))
-        summary = DeviceSummary(found, dev.description, dev.part_number,
-                                dev.software_version_str, dev.unit_id)
-        summary.battery = engine.battery_of(Battery(self.roots[found.uri]))
-        return summary
+        return DeviceSummary(found, dev.description, dev.part_number, dev.software_version_str,
+                             dev.unit_id)
 
     def options(self, found):
         return {"path": str(self.roots[found.uri])}
@@ -229,7 +220,7 @@ def test_devices_list_tells_the_connected_device_by_its_unit_id_as_a_string_and_
     assert devices == [{
         "unit_id": UNIT, "name": "Test watch", "part_number": "006-B0000-00",
         "software": "23.39", "connected": True, "busy_by": None, "storage": None,
-        "last_sync": None, "battery": 76, "last_backup": None}]
+        "last_sync": None, "last_backup": None}]
     attached = running.events("device.attached")
     assert [d["unit_id"] for d in attached] == [UNIT]
 
@@ -247,13 +238,6 @@ def test_device_info_gives_the_device_with_its_storage_and_lets_it_go_after(runn
     assert set(info["storage"]) == {"free", "capacity"} and info["storage"]["free"] > 0
     assert "FIT_TYPE_4" in info["datatypes"]
     assert KEY in devices.released  # let go once nobody waits for it
-
-
-def test_the_battery_is_told_when_the_device_tells_it_and_null_otherwise(running):
-    assert running.ask("devices.list")["result"]["devices"][0]["battery"] == 76
-    # A folder (as --path opens one) tells none: device.info reads it again from there.
-    assert running.ask("device.info")["result"]["battery"] is None
-    assert engine.battery_of(object()) is None
 
 
 def test_a_unit_id_not_connected_is_a_no_device_error(running):

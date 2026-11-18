@@ -60,9 +60,7 @@ public actor MockEngine: EngineConnection {
             software: "21.19", connected: true,
             busyBy: scenario == .busy ? "Garmin Express Service" : nil,
             storage: .init(free: 18_740_000_000, capacity: 31_200_000_000),
-            lastSync: now.addingTimeInterval(-3600 * 26), lastBackup: now.addingTimeInterval(-3600 * 26),
-            // Garmin devices answer MTP BatteryLevel with a placeholder: the engine sends null.
-            battery: nil)
+            lastSync: now.addingTimeInterval(-3600 * 26), lastBackup: now.addingTimeInterval(-3600 * 26))
         let edge = Device(
             unitID: Self.edgeID, name: "Edge 1050", partNumber: "006-B4440-00", software: "33.20",
             connected: false, storage: .init(free: 41_000_000_000, capacity: 59_600_000_000),

@@ -43,9 +43,6 @@ DELETE_OBJECT = 0x100B
 SEND_OBJECT_INFO = 0x100C
 SEND_OBJECT = 0x100D
 GET_PARTIAL_OBJECT = 0x101B
-GET_DEVICE_PROP_VALUE = 0x1015
-# The device property of the battery's charge, in percent (MTP: BatteryLevel, a UINT8).
-BATTERY_LEVEL = 0x5001
 GARMIN_GET_OBJECT_IDS = 0x9002
 
 OPERATIONS = {
@@ -787,12 +784,6 @@ class Session:
     def operations(self) -> list[int]:
         """The operations the device says it supports (GetDeviceInfo)."""
         return operations_supported(self._ok(GET_DEVICE_INFO)[0])
-
-    def battery_level(self) -> int | None:
-        """The battery's charge in percent (GetDevicePropValue of BatteryLevel), read only;
-        None when the device does not tell it. PtpRefused when it refuses the property."""
-        data, _answer = self._ok(GET_DEVICE_PROP_VALUE, BATTERY_LEVEL)
-        return data[0] if len(data) >= 1 and data[0] <= 100 else None
 
     def storages(self) -> list[int]:
         return u32_array(self._ok(GET_STORAGE_IDS)[0])

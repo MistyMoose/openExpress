@@ -27,8 +27,6 @@ struct ModelTests {
         #expect(app.rememberedDevices.map(\.unitID) == [MockEngine.edgeID])
         #expect(app.selection == .device(MockEngine.fenixID))
         #expect(app.isShowingSetup == false)
-        // Garmin devices report no real battery level: none is shown.
-        #expect(app.devices.allSatisfy { $0.battery == nil })
     }
 
     @Test func firstRunShowsSetup() async {

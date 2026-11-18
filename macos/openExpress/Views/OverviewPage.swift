@@ -32,12 +32,6 @@ struct OverviewPage: View {
                 if let part = device.partNumber {
                     LabeledContent("Part number", value: part)
                 }
-                if let battery = device.battery {
-                    LabeledContent("Battery") {
-                        Label("\(battery)%", systemImage: batterySymbol(battery))
-                            .labelStyle(.titleAndIcon)
-                    }
-                }
                 LabeledContent("Connection", value: device.connected
                                ? String(localized: "Connected over USB")
                                : String(localized: "Not connected"))
@@ -68,16 +62,6 @@ struct OverviewPage: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    private func batterySymbol(_ level: Int) -> String {
-        switch level {
-        case ..<13: "battery.0percent"
-        case ..<38: "battery.25percent"
-        case ..<63: "battery.50percent"
-        case ..<88: "battery.75percent"
-        default: "battery.100percent"
-        }
     }
 }
 

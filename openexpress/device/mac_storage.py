@@ -379,12 +379,6 @@ class MacStorage(Storage):
         space = self._space()
         return (space.capacity or None) if space is not None else None
 
-    def battery(self) -> int | None:
-        """The device's battery charge in percent: None, as Garmin's devices do not tell it
-        over MTP. A fēnix 8 answers BatteryLevel with its default, 50 (of 0, 10, … 100), at
-        any charge (seen at 100 % on its own screen), so a number from it would mislead."""
-        return None
-
     def refresh(self, progress=None) -> bool:
         """What was listed is dropped: the next look asks the device (its sizes now)."""
         self._responding()

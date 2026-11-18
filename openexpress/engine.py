@@ -143,7 +143,6 @@ class Attached:
     software: str = ""
     busy_by: str | None = None
     usb_name: str | None = None
-    battery: int | None = None  # percent, as it was when it was last opened; None: not told
 
 
 class SystemDevices:
@@ -164,12 +163,10 @@ class SystemDevices:
         """What its GarminDevice.xml says (found.DeviceSummary); the device let go after."""
         from openexpress import platform
 
-        summary = platform.devices().probe(found)
         try:
-            summary.battery = battery_of(summary.storage)
+            return platform.devices().probe(found)
         finally:
             self.release(found)
-        return summary
 
     def options(self, found) -> dict:
         """How the command line names the device (its options --device-uri, --path)."""
@@ -182,20 +179,6 @@ class SystemDevices:
         from openexpress import platform
 
         platform.devices().close_found(found)
-
-
-def battery_of(storage) -> int | None:
-    """The battery's charge of an open device in percent (MacStorage.battery: MTP's
-    BatteryLevel); None when its storage cannot tell it (gvfs, a drive, a folder) or it does
-    not. Never an error."""
-    read = getattr(storage, "battery", None)
-    if not callable(read):
-        return None
-    try:
-        return read()
-    except Exception as e:  # noqa: BLE001 - a battery not told is no failed request
-        log.info("engine: battery not read (%s)", type(e).__name__)
-        return None
 
 
 def unit_id_by_serial(serial: str | None, known) -> int | None:
@@ -706,7 +689,6 @@ class Engine:
             except Exception as e:  # noqa: BLE001 - attached all the same, without details
                 log.info("engine: device not probed (%s)", type(e).__name__)
                 return
-        a.battery = getattr(summary, "battery", None)
         if summary.unit_id:
             a.unit_id = summary.unit_id
             a.description, a.part_number = summary.description, summary.part_number
@@ -756,9 +738,8 @@ class Engine:
         out = self._device_fields(a.unit_id, entry, a.description or a.usb_name or "",
                                   a.part_number, a.software)
         if storage is not None:
-            a.battery = battery_of(storage)
             out["storage"] = {"free": storage.free_space(), "capacity": storage.capacity()}
-        out.update(connected=True, busy_by=a.busy_by, battery=a.battery)
+        out.update(connected=True, busy_by=a.busy_by)
         return out
 
     def _device_fields(self, unit_id, entry, description, part_number, software) -> dict:
@@ -774,7 +755,6 @@ class Engine:
             "software": software or (entry.software_version if entry else ""),
             "connected": False, "busy_by": None, "storage": None,
             "last_sync": _iso(last.get("time")) if last else None,
-            "battery": None,
             "last_backup": _iso(snapshots[0][0].timestamp()) if snapshots else None,
         }
 

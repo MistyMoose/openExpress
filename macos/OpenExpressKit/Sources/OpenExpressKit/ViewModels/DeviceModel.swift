@@ -149,7 +149,6 @@ public final class DeviceModel: Identifiable {
         if merged.storage == nil { merged.storage = device.storage }
         if merged.software == nil { merged.software = device.software }
         if merged.lastBackup == nil { merged.lastBackup = device.lastBackup }
-        if merged.battery == nil, merged.connected { merged.battery = device.battery }
         device = merged
     }
 

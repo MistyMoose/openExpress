@@ -241,8 +241,23 @@ def test_devices_list_tells_the_connected_device_by_its_unit_id_as_a_string_and_
 def test_a_device_unplugged_is_told_detached_and_no_longer_listed(running, devices):
     running.ask("devices.list")
     devices.roots.clear()
+    running.ask("devices.list")  # missing from one look: maybe another device's USB reset
+    assert running.events("device.detached") == []
     assert running.ask("devices.list")["result"]["devices"] == []
     assert [d["unit_id"] for d in running.events("device.detached")] == [UNIT]
+
+
+def test_a_device_missing_from_one_look_only_is_neither_detached_nor_attached_again(
+        running, devices):
+    """An Edge 1040 went missing for one look while a fēnix 8 beside it reset its USB
+    connection; told detached and attached, the app would back up and sync it again."""
+    running.ask("devices.list")
+    root = devices.roots.pop(KEY)
+    running.ask("devices.list")
+    devices.roots[KEY] = root
+    assert [d["unit_id"] for d in running.ask("devices.list")["result"]["devices"]] == [UNIT]
+    assert running.events("device.detached") == []
+    assert len(running.events("device.attached")) == 1
 
 
 def test_device_info_gives_the_device_with_its_storage(running, devices):
@@ -297,6 +312,7 @@ def test_a_device_unplugged_or_taken_by_another_program_is_let_go_at_once(runnin
     running.ask("devices.list")  # free again: probed, kept open
     devices.roots.clear()
     running.ask("devices.list")
+    running.ask("devices.list")  # missing from two looks: unplugged
     assert devices.released == [KEY, KEY]
 
 
@@ -351,8 +367,9 @@ def test_a_request_that_finds_the_device_held_has_the_next_look_ask_who_holds_it
 
 
 def test_a_device_that_does_not_answer_holds_up_no_other(device_root, tmp_path):
-    """Probed side by side: the one that answers is attached and told while the other is
-    still being waited for (a fēnix 8 stuck after its USB connection reset)."""
+    """Probed side by side, and the look waits PROBE_WAIT_S at most: the one that answers is
+    listed at once, the other told attached once its probe is over (a fēnix 8 still starting,
+    whose probe took 18 s)."""
     import shutil
 
     other = tmp_path / "other"
@@ -369,11 +386,15 @@ def test_a_device_that_does_not_answer_holds_up_no_other(device_root, tmp_path):
 
     devices.probe = slow_probe
     running = Running(devices)
+    running.engine.probe_wait_s = 0.2
     try:
-        request = running.send("devices.list")
-        _wait_until(lambda: len(running.events("device.attached")) == 1)
+        listed = running.ask("devices.list")["result"]["devices"]
+        assert [d["unit_id"] for d in listed if d["connected"]] == [UNIT]
+        running.ask("devices.list")  # the probe still going on is not started again
         answer.set()
-        assert len(running.response(request)["result"]["devices"]) == 2
+        _wait_until(lambda: len(running.events("device.attached")) == 2)
+        assert len([d for d in running.ask("devices.list")["result"]["devices"]
+                    if d["connected"]]) == 2
         assert len(running.events("device.attached")) == 2
     finally:
         answer.set()

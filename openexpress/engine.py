@@ -56,6 +56,13 @@ POLL_S = 2.0
 # How long a device stays open after the last request on it (the app asks several things in a
 # row as a page opens).
 KEEP_OPEN_S = 8.0
+# How long a look at the devices waits for the probes of those that came; a probe that takes
+# longer (a device still starting) goes on, and its device is told attached once it is over.
+PROBE_WAIT_S = 2.0
+# Looks in a row a device must be missing from to be told detached: one alone may be another
+# device's USB reset (an Edge 1040 went missing for one look while a fēnix 8 beside it reset),
+# and the app's automatic mode would back up and sync it again when it came back.
+GONE_AFTER_LOOKS = 2
 # How long `shutdown` waits for the requests it cancelled to stop.
 SHUTDOWN_WAIT_S = 30.0
 # Steps of a long task, at most this often as `progress` events.
@@ -438,6 +445,10 @@ class Engine:
         self._open_lock = threading.Lock()
         self._let_go_at_end: set[str] = set()  # to let go once the request on it ends
         self._attached: dict[str, Attached] = {}
+        self._missing: dict[str, int] = {}  # attached devices not seen: in how many looks
+        self._probing: set[str] = set()  # devices whose probe goes on after a look
+        self._seen: set[str] = set()  # what the last look saw
+        self.probe_wait_s = PROBE_WAIT_S
         self._scanned = False
         self._scan_lock = threading.Lock()
         self._turns: dict[str, _Turns] = {}
@@ -693,17 +704,26 @@ class Engine:
 
         with self._scan_lock:
             seen = {s.key: s for s in self.devices.scan()}
+            self._seen = set(seen)
             known = None
             for key in [k for k in self._attached if k not in seen]:
+                self._missing[key] = self._missing.get(key, 0) + 1
+                if self._missing[key] < GONE_AFTER_LOOKS:
+                    continue
+                del self._missing[key]
                 gone = self._attached.pop(key)
                 self._let_go_now(key)
                 self.event("device.detached", self.device_json(gone))
+            for key in seen:
+                self._missing.pop(key, None)
             if self._open and self.devices.wanted():
                 log.info("engine: another openexpress process waits for a device; let go")
                 for key in list(self._open):
                     self._let_go_now(key)
             to_probe: list[Attached] = []
             for key, s in seen.items():
+                if key in self._probing:
+                    continue  # told once its probe is over
                 before = self._attached.get(key)
                 if s.holder is not None:
                     self._let_go_now(key)  # taken from us: our session is of no use
@@ -728,30 +748,35 @@ class Engine:
                         "program": s.holder, "name": a.description or a.usb_name})
                     continue
                 to_probe.append(a)
-            self._probe_each(to_probe)
+                self._probing.add(key)
             self._scanned = True
+        self._probe_each(to_probe)  # without the lock: a probe over attaches with it
+        with self._scan_lock:
             return list(self._attached.values())
 
     def _probe_each(self, devices: list[Attached]) -> None:
         """The devices that came, probed side by side, each attached and told as soon as its
-        own probe is over: a device that does not answer (one stuck after its USB connection
-        reset, until its transaction is cancelled) never holds up the others."""
-        lock = threading.Lock()
+        own probe is over: a device that does not answer (one still starting, or stuck after
+        its USB connection reset until its transaction is cancelled) holds up no other, nor
+        the look for longer than probe_wait_s; its probe goes on and tells it then."""
 
         def probe(a: Attached) -> None:
-            self._probe(a)
-            with lock:
-                self._attached[a.key] = a
-                self.event("device.attached", self.device_json(a))
+            try:
+                self._probe(a)
+            finally:
+                with self._scan_lock:
+                    self._probing.discard(a.key)
+                    if a.key in self._seen:  # not gone while it was probed
+                        self._attached[a.key] = a
+                        self.event("device.attached", self.device_json(a))
 
         threads = [threading.Thread(target=probe, args=(a,), name=f"probe {a.key}", daemon=True)
-                   for a in devices[1:]]
+                   for a in devices]
         for thread in threads:
             thread.start()
-        if devices:
-            probe(devices[0])  # the first in this thread: one device needs no other
+        deadline = time.monotonic() + self.probe_wait_s
         for thread in threads:
-            thread.join()
+            thread.join(max(0.0, deadline - time.monotonic()))
 
     def _probe(self, a: Attached) -> None:
         """What its GarminDevice.xml says, in the device's turn (no request is on it); the

@@ -88,7 +88,7 @@ A line that is not JSON, or has no `id`, is answered with `"id": null`.
 
 | Event | Params |
 |---|---|
-| `device.attached` / `device.detached` | `Device` (from USB polling on macOS, every 2 s) |
+| `device.attached` / `device.detached` | `Device` (from USB polling on macOS, every 2 s). `attached` once the device's GarminDevice.xml is read: a device still starting may come after the `devices.list` that saw it (a look waits 2 s at most for it); `detached` once it is missing from two looks in a row (one alone may be another device's USB reset) |
 | `device.busy` | `{"device", "program", "name"}`: another program holds it (e.g. Garmin Express Service); `device` is null unless its USB serial names a remembered device; `device.attached` follows once it is let go (looked at every 10 s while it is held). A program that takes a device while nothing changes on USB is seen when a request finds the device held (`device_busy`), the next poll then sending `device.busy` |
 | `progress` | `{"request", "phase", "done", "total", "item"?}`; `phase`: `downloading`, `copying`, `writing`, `checking` (then `item` names the update, map or app), `waiting` (a wait on Garmin Connect, in percent), `reading_activities` (`activities.list`), else the method's own (`backup`, `sync`, `working`) with the step's words as `item` |
 | `log` | `{"level", "message", "request"}`: what the CLI would print as it goes (`info`: its output; `warning`: what it writes to stderr) |

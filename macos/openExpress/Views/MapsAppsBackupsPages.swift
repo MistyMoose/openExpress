@@ -189,10 +189,10 @@ struct BackupsPage: View {
                 } else {
                     List(backups, selection: $selection) { backup in
                         BackupRow(backup: backup)
-                            .contextMenu { revealButton(backup.url) }
+                            .contextMenu { Button("Show in Finder") { showInFinder(backup.url) } }
                     }
                     .contextMenu(forSelectionType: BackupSnapshot.ID.self) { _ in } primaryAction: { ids in
-                        if let id = ids.first { reveal(URL(fileURLWithPath: id)) }
+                        if let id = ids.first { showInFinder(URL(fileURLWithPath: id)) }
                     }
                     .safeAreaInset(edge: .bottom) { footer }
                 }
@@ -206,7 +206,7 @@ struct BackupsPage: View {
                     let folder = app.backupFolder.appending(path: model.device.unitID)
                     let target = selection.map { URL(fileURLWithPath: $0) }
                         ?? (FileManager.default.fileExists(atPath: folder.path) ? folder : app.backupFolder)
-                    reveal(target)
+                    showInFinder(target)
                 }
                 .help("Show the backup in Finder")
             }
@@ -222,14 +222,6 @@ struct BackupsPage: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
-    }
-
-    private func revealButton(_ url: URL) -> some View {
-        Button("Show in Finder") { reveal(url) }
-    }
-
-    private func reveal(_ url: URL) {
-        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 }
 

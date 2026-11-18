@@ -458,7 +458,7 @@ struct ActivityDetailView: View {
                                 .textSelection(.enabled)
                             if activity.isOnThisMac, FileManager.default.fileExists(atPath: path) {
                                 Button("Show in Finder", systemImage: "magnifyingglass.circle") {
-                                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                                    showInFinder(URL(fileURLWithPath: path))
                                 }
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)

@@ -4,7 +4,6 @@ written to it. All identifiers here are made up."""
 import logging
 import os
 import stat
-import sys
 
 import pytest
 
@@ -230,7 +229,8 @@ def test_every_line_of_the_file_is_redacted(log_file):
     assert "device <unit> at mtp://<device>/" in text
 
 
-def test_log_file_is_private_and_in_the_state_directory(log_file, tmp_path, monkeypatch):
+def test_log_file_is_private_and_in_the_state_directory(log_file, tmp_path, monkeypatch,
+                                                        as_linux):
     assert applog.setup("cli") == log_file == paths.state_dir() / "openexpress.log"
     logging.getLogger("openexpress.test").info("hello")
     assert stat.S_IMODE(log_file.stat().st_mode) == 0o600
@@ -239,7 +239,6 @@ def test_log_file_is_private_and_in_the_state_directory(log_file, tmp_path, monk
 
     # Without the variable: the usual folder below the home folder (Linux only; on macOS it
     # is ~/Library/Logs instead, see test_paths_darwin.py).
-    monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.delenv("XDG_STATE_HOME")
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     assert applog.log_path() == tmp_path / "home/.local/state/openexpress/openexpress.log"
@@ -479,11 +478,10 @@ def test_subcommand_is_logged(log_file, device_root, monkeypatch):
 
 
 @pytest.mark.parametrize("argv", [[], ["gui"]], ids=["no command", "gui"])
-def test_the_window_is_logged_as_the_window(log_file, device_root, monkeypatch, argv):
+def test_the_window_is_logged_as_the_window(log_file, device_root, monkeypatch, argv, as_linux):
     """On Linux (on macOS there is no window: test_platform)."""
     from openexpress import cli, platform
 
-    monkeypatch.setattr(platform, "is_mac", lambda: False)
     monkeypatch.setattr(platform, "needs_pygobject", lambda: False)  # as if it were there
     monkeypatch.setattr(cli, "cmd_gui", lambda args: 0)  # no window here
     assert cli.main(argv) == 0

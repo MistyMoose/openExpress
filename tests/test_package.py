@@ -33,13 +33,11 @@ def test_pygobject_is_a_dependency():
     assert "PyGObject" in names
 
 
-def test_the_command_line_without_pygobject_says_what_to_install(monkeypatch, capsys):
+def test_the_command_line_without_pygobject_says_what_to_install(monkeypatch, capsys, as_linux):
     """On Linux, where devices are opened through GIO (on macOS it is not needed:
     test_platform)."""
-    from openexpress import platform
     from openexpress.cli import main
 
-    monkeypatch.setattr(platform, "is_mac", lambda: False)
     monkeypatch.setitem(sys.modules, "gi", None)  # as if PyGObject were not installed
     assert main(["cache"]) == 1
     err = capsys.readouterr().err

@@ -35,15 +35,6 @@ class _Unreachable(keychain.Backend):
 
 
 @pytest.fixture
-def on_macos(monkeypatch):
-    """platform.is_mac() True, whatever system this suite runs on."""
-    from openexpress import platform
-
-    monkeypatch.setattr(platform, "is_mac", lambda: True)
-    return platform
-
-
-@pytest.fixture
 def fake_keychain():
     fake = FakeKeychain()
     keychain.use_backend(fake)
@@ -62,7 +53,7 @@ def consumer_file():
 
 
 def test_save_then_load_round_trips_through_the_keychain_and_writes_no_file(
-        on_macos, fake_keychain):
+        as_mac, fake_keychain):
     auth = ConnectAuth("tok-1", "sec-1", "production", {"username": "someone"})
     store.save(auth)
     assert not login_file().exists()
@@ -73,7 +64,7 @@ def test_save_then_load_round_trips_through_the_keychain_and_writes_no_file(
 
 
 def test_a_file_from_an_earlier_version_is_migrated_in_on_first_read_and_then_removed(
-        on_macos, fake_keychain):
+        as_mac, fake_keychain):
     auth = ConnectAuth("tok-2", "sec-2", "production", {"username": "migrated"})
     paths.write_private(login_file(), json.dumps(auth.__dict__))
     assert login_file().exists() and not fake_keychain.items
@@ -85,7 +76,7 @@ def test_a_file_from_an_earlier_version_is_migrated_in_on_first_read_and_then_re
     assert store.load().token == "tok-2"
 
 
-def test_migration_leaves_the_file_alone_when_the_keychain_cannot_be_reached(on_macos):
+def test_migration_leaves_the_file_alone_when_the_keychain_cannot_be_reached(as_mac):
     keychain.use_backend(_Unreachable())
     auth = ConnectAuth("tok-3", "sec-3", "production", {})
     paths.write_private(login_file(), json.dumps(auth.__dict__))
@@ -94,7 +85,7 @@ def test_migration_leaves_the_file_alone_when_the_keychain_cannot_be_reached(on_
     assert login_file().exists()  # not removed: it could not be saved to the Keychain
 
 
-def test_save_falls_back_to_the_file_when_the_keychain_cannot_be_reached(on_macos):
+def test_save_falls_back_to_the_file_when_the_keychain_cannot_be_reached(as_mac):
     keychain.use_backend(_Unreachable())
     auth = ConnectAuth("tok-4", "sec-4", "production", {})
     store.save(auth)
@@ -103,7 +94,7 @@ def test_save_falls_back_to_the_file_when_the_keychain_cannot_be_reached(on_maco
 
 
 def test_a_leftover_file_is_removed_once_a_later_save_reaches_the_keychain(
-        on_macos, fake_keychain):
+        as_mac, fake_keychain):
     keychain.use_backend(_Unreachable())
     store.save(ConnectAuth("tok-5", "sec-5", "production", {}))
     assert login_file().exists()  # saved as a file: the Keychain was unreachable that time
@@ -114,7 +105,7 @@ def test_a_leftover_file_is_removed_once_a_later_save_reaches_the_keychain(
 
 
 def test_delete_removes_the_keychain_item_and_any_file_left_from_a_migration(
-        on_macos, fake_keychain):
+        as_mac, fake_keychain):
     fake_keychain.items["connect_auth"] = b'{"token": "x", "token_secret": "y"}'
     paths.write_private(login_file(), "leftover")  # as a half-finished migration might leave
     assert store.delete() is True
@@ -123,7 +114,7 @@ def test_delete_removes_the_keychain_item_and_any_file_left_from_a_migration(
 
 
 def test_stamp_is_none_until_something_is_saved_and_changes_when_it_does(
-        on_macos, fake_keychain):
+        as_mac, fake_keychain):
     assert store.stamp() is None
     store.save(ConnectAuth("tok-7", "sec-7", "production", {}))
     first = store.stamp()
@@ -134,12 +125,9 @@ def test_stamp_is_none_until_something_is_saved_and_changes_when_it_does(
     assert store.stamp() is None
 
 
-def test_linux_keeps_the_file_alone_the_keychain_never_asked(monkeypatch, fake_keychain):
+def test_linux_keeps_the_file_alone_the_keychain_never_asked(as_linux, fake_keychain):
     """platform.is_mac() forced False, whatever system this suite runs on: save/load/delete
     use the file alone, as test_auth.py checks in more detail for the ordinary Linux path."""
-    from openexpress import platform
-
-    monkeypatch.setattr(platform, "is_mac", lambda: False)
     store.save(ConnectAuth("tok-8", "sec-8", "production", {}))
     assert login_file().exists()
     assert not fake_keychain.items  # the Keychain was never asked
@@ -149,7 +137,7 @@ def test_linux_keeps_the_file_alone_the_keychain_never_asked(monkeypatch, fake_k
 # --- settings.Consumer (the application key): the very same mechanism, a different item ----
 
 
-def test_the_consumer_key_is_saved_to_and_loaded_from_the_keychain(on_macos, fake_keychain):
+def test_the_consumer_key_is_saved_to_and_loaded_from_the_keychain(as_mac, fake_keychain):
     settings.save_consumer(Consumer("key-made-up", "secret-made-up", "salt-made-up"))
     assert not consumer_file().exists()
     assert fake_keychain.items.keys() == {"consumer"}
@@ -157,7 +145,7 @@ def test_the_consumer_key_is_saved_to_and_loaded_from_the_keychain(on_macos, fak
     assert (c.key, c.secret, c.url_salt) == ("key-made-up", "secret-made-up", "salt-made-up")
 
 
-def test_an_existing_consumer_file_is_migrated_into_the_keychain(on_macos, fake_keychain):
+def test_an_existing_consumer_file_is_migrated_into_the_keychain(as_mac, fake_keychain):
     paths.write_private(consumer_file(),
                         json.dumps({"key": "k", "secret": "s", "url_salt": None}))
     c = settings.load_consumer()
@@ -166,7 +154,7 @@ def test_an_existing_consumer_file_is_migrated_into_the_keychain(on_macos, fake_
     assert fake_keychain.items.keys() == {"consumer"}
 
 
-def test_connect_auth_and_consumer_are_independent_keychain_items(on_macos, fake_keychain):
+def test_connect_auth_and_consumer_are_independent_keychain_items(as_mac, fake_keychain):
     store.save(ConnectAuth("tok-9", "sec-9", "production", {}))
     settings.save_consumer(Consumer("key-9", "secret-9"))
     assert fake_keychain.items.keys() == {"connect_auth", "consumer"}

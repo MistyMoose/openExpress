@@ -1,10 +1,9 @@
-import sys
 
 import pytest
 from fakes import device_session, window_methods
 from fakes import window as stand_in
 
-from openexpress import report
+from openexpress import platform, report
 from openexpress.device.storage import LocalStorage
 from openexpress.device.xmldevice import parse
 
@@ -156,7 +155,7 @@ def test_cli_report_says_where_the_log_is_and_leaves_it_out(device_root, xdg, lo
     assert main(["--path", str(device_root), "report"]) == 0
     out = capsys.readouterr()
     assert "### Log" not in out.out and out.out.rstrip().endswith("Logged in to Garmin Connect: no")
-    log = ("~/Library/Logs/openExpress/openexpress.log" if sys.platform == "darwin"
+    log = ("~/Library/Logs/openExpress/openexpress.log" if platform.is_mac()
            else "~/.local/state/openexpress/openexpress.log")
     assert out.err.rstrip().endswith(
         f"Log file: {log} (add --log to print its last "

@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from openexpress import platform
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -20,7 +22,7 @@ def test_the_window_without_a_display_says_so_in_one_line(tmp_path):
                           env=env, capture_output=True, text=True, timeout=60)
     assert done.returncode == 1
     lines = [line for line in done.stderr.splitlines() if line.strip()]
-    if sys.platform == "darwin":  # no window on macOS at all, display or not
+    if platform.is_mac():  # no window on macOS at all, display or not
         assert lines == [("openexpress gui is only available on Linux. On macOS, use the other "
                           "commands (openexpress --help).")], done.stderr
         return

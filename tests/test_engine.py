@@ -365,6 +365,52 @@ def test_a_map_tells_the_version_the_device_has_from_its_header_when_garmin_offe
         "TopoActive Alps": ("available", "2026.20", None)}
 
 
+def test_several_maps_installed_ask_garmin_for_the_maps_once_and_each_has_its_own_entry(
+        devices, device_root, monkeypatch):
+    from openexpress import cli
+    from openexpress import maps as mp
+
+    offered = [_a_map("TopoActive Alps", "D4.img", installed=False),
+               _a_map("TopoActive Pyrenees", "D5.img", installed=False)]
+    for m in offered:
+        m.files = [mp.MapFile(m.files[0].device_path, "https://example.org/m", "0" * 32, 9)]
+    loads = []
+
+    def load_maps(args, client, own=False):
+        loads.append(args.name)
+        print("Read the maps of the device.")
+        st = LocalStorage(device_root)
+        return st, parse(st.read("GARMIN/GarminDevice.xml")), offered, len(offered)
+
+    monkeypatch.setattr(cli, "_load_maps", load_maps)
+    running = Running(devices)  # here: its lines routed from the stdout of the test
+    result = running.ask("maps.install", {"maps": ["Alps", "Nowhere", "Pyrenees"]})["result"]
+    running.stop()
+    assert len(loads) == 1
+    assert result["dry_run"] is True
+    alps, nowhere, pyrenees = result["maps"]
+    assert (alps["name"], alps["done"], alps["exit_code"]) == ("Alps", True, 0)
+    assert alps["lines"][0] == "Read the maps of the device."
+    assert any("Installing map TopoActive Alps" in line for line in alps["lines"])
+    assert not any("Pyrenees" in line for line in alps["lines"])
+    assert (nowhere["done"], nowhere["code"]) == (False, "failed")
+    assert pyrenees["done"] is True and pyrenees["lines"][0] == "Read the maps of the device."
+    assert any("Installing map TopoActive Pyrenees" in line for line in pyrenees["lines"])
+
+
+def test_maps_not_read_are_the_error_of_every_map_named(running, monkeypatch):
+    from openexpress import cli
+    from openexpress import maps as mp
+
+    def load_maps(args, client, own=False):
+        raise mp.MapError("made up: no maps")
+
+    monkeypatch.setattr(cli, "_load_maps", load_maps)
+    result = running.ask("maps.remove", {"maps": ["Alps", "Pyrenees"]})["result"]
+    assert [(m["name"], m["done"], m["reason"]) for m in result["maps"]] == [
+        ("Alps", False, "made up: no maps"), ("Pyrenees", False, "made up: no maps")]
+
+
 def _track_fit(count: int) -> bytes:
     from fakes import FitData, FitDefinition, fit_file
 

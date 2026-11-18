@@ -2467,8 +2467,18 @@ def cmd_maps(args) -> int:
     else:
         targets = [mp.find(all_maps, args.name)]
 
-    # The old files Garmin's cleanup rules would take: listed with the plan, in a dry run and
-    # with --apply, and never removed.
+    print_map_cleanup(st, dev, all_maps)
+    code = 0  # 1 when the dry run of the trial says a map would be refused
+    for m in targets:
+        code = max(code, change_map(args, client, st, dev, all_maps, m))
+    return code
+
+
+def print_map_cleanup(st, dev, all_maps) -> None:
+    """The old files Garmin's cleanup rules would take: listed with the plan of `maps install`,
+    `update` and `remove`, in a dry run and with --apply; never removed."""
+    from openexpress import maps as mp
+
     cleanup = mp.cleanup_lines(mp.cleanup_plan(st, dev, all_maps))
     if cleanup:
         print(cleanup[0])
@@ -2476,116 +2486,123 @@ def cmd_maps(args) -> int:
             print(f"  - {path}")
         print(cleanup[-1])
 
-    code = 0  # 1 when the dry run of the trial says the map would be refused
-    for m in targets:
-        if args.maps_cmd == "remove":
-            if (why := mp.removal_refused(m)) is not None:
-                raise mp.MapError(why)  # refused before anything is listed
-            if not m.can_uninstall:
-                # Refused before anything is listed: the files are not going to be removed.
-                raise mp.MapError(mp.cannot_remove_message(m))
-            files = mp.removal_list(all_maps, m, rewriting=False)
-            print(ngettext("Removing map {name}: {count} file",
-                           "Removing map {name}: {count} files", len(files)).format(
-                name=m.name, count=len(files)))
-            for p in files:
-                print(f"  - {p}  ({human_size(st.size(p))})")
-            if not args.apply:
-                print(_("Dry run: nothing was changed. Add --apply."))
-                continue
-            with _progress() as progress:
-                removed = mp.uninstall(m, all_maps, st, progress=progress)
-            print(ngettext("Removed {count} file.", "Removed {count} files.",
-                           len(removed)).format(count=len(removed)))
-            continue
 
-        if m.waiting == mp.WAIT_INSTALL:
-            # Refused before anything is listed: it is written already.
-            raise mp.MapError(mp.waiting_message(m))
-        trial = getattr(args, "hidden_folder_trial", False)
-        hidden = m.hidden_folder is not None
-        removing = mp.removal_list(all_maps, m, rewriting=True)
-        # The trial says each reason it would be refused for; anything else is refused before
-        # anything is promised, the same reason as with --apply.
-        refused = mp.trial_refusals(st, m, removing) if trial and hidden else []
-        if refused and args.apply:
-            raise mp.MapError(refused[0])
-        if not refused and not mp.can_install(m, hidden_trial=trial):
-            raise mp.MapError(mp.cannot_install_message(m))
-        need, free = (mp.hidden_space(st, m, removing) if hidden
-                      else (mp.space_needed(st, m, removing), st.free_space()))
-        if m.installed:
-            msg = ngettext("Updating map {name} {version}: {count} file, download {size}, "
-                           "space on the device {needed} ({free} free)",
-                           "Updating map {name} {version}: {count} files, download {size}, "
-                           "space on the device {needed} ({free} free)", len(m.files))
-        else:
-            msg = ngettext("Installing map {name} {version}: {count} file, download {size}, "
-                           "space on the device {needed} ({free} free)",
-                           "Installing map {name} {version}: {count} files, download {size}, "
-                           "space on the device {needed} ({free} free)", len(m.files))
-        print(msg.format(name=m.name, version=m.version, count=len(m.files),
-                         size=human_size(m.size), needed=human_size(need),
-                         free=human_size(free)))
-        for f in mp.write_order(m):
-            print(f"  + {f.device_path}  {human_size(f.size)}")
-        sizes = m.device_sizes or {}
-        for p in mp.on_the_device(m, removing) if hidden else removing:
-            # In a folder the device hides, with the size its own session read there.
-            there = sizes.get(p.casefold()) if hidden else None
-            print(f"  - {p}" + (f"  {human_size(there)}" if there is not None else ""))
-        if hidden:
-            need_here, free_here = mp.download_space(m)
-            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: the space the map's
-            # files not downloaded yet take on this computer; {needed}, {free}: sizes
-            print(_("Space on this computer for the download: {needed} needed, {free} free")
-                  .format(needed=human_size(need_here), free=human_size(free_here)))
-            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: an estimate, at the
-            # slowest speed measured so far on such a device; {minutes}: a number
-            print(_("Writing and reading back on the device: about {minutes} min at the slowest "
-                    "speed measured so far")
-                  .format(minutes=mp.trial_minutes(m)))
-            if removing:
-                print(mp.no_complete_map_text())
-        for e in m.eula_urls:
-            print(_("License (EULA): {url}").format(url=e))
-        for reason in refused:
-            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run: why it
-            # would be refused with --apply ({reason}: a sentence)
-            print(_("Would be refused: {reason}").format(reason=reason))
-            code = 1
-        if not args.apply and trial and hidden:
-            largest = max(m.files, key=lambda f: f.size or 0, default=None)
-            if largest is not None:
-                # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run:
-                # the largest file of the map and its size
-                print(_("Largest file: {path}, {size}").format(path=largest.device_path,
-                                                               size=human_size(largest.size)))
-            print(_("Dry run: nothing was downloaded and nothing on the device was changed. "
-                    "Add --apply."))
-            continue
+def change_map(args, client, st, dev, all_maps, m) -> int:
+    """`maps install`, `update` or `remove` (args.maps_cmd) of one map `m` of `all_maps`, the
+    device and its maps as _load_maps gave them: its plan, then with --apply the change. The
+    exit code (1: the dry run of the trial says it would be refused); MapError when it is
+    refused."""
+    from openexpress import maps as mp
+
+    code = 0
+    if args.maps_cmd == "remove":
+        if (why := mp.removal_refused(m)) is not None:
+            raise mp.MapError(why)  # refused before anything is listed
+        if not m.can_uninstall:
+            # Refused before anything is listed: the files are not going to be removed.
+            raise mp.MapError(mp.cannot_remove_message(m))
+        files = mp.removal_list(all_maps, m, rewriting=False)
+        print(ngettext("Removing map {name}: {count} file",
+                       "Removing map {name}: {count} files", len(files)).format(
+            name=m.name, count=len(files)))
+        for p in files:
+            print(f"  - {p}  ({human_size(st.size(p))})")
         if not args.apply:
-            print(_("Dry run: nothing was downloaded or written. Add --apply."))
-            continue
+            print(_("Dry run: nothing was changed. Add --apply."))
+            return code
         with _progress() as progress:
-            rep = mp.install(
-                m, all_maps, st,
-                activate=lambda ident: client.activate_maps(dev.raw, [ident]),
-                session=client.http,
-                url_salt=_url_salt(),
-                progress=progress,
-                hidden_trial=trial,
-            )
-        if rep.kept:
-            print(ngettext("{count} file was on the device already and read back the same: not "
-                           "written again.",
-                           "{count} files were on the device already and read back the same: not "
-                           "written again.", len(rep.kept)).format(count=len(rep.kept)))
-        print(ngettext("Wrote {count} map file and {unlocks} unlock files.",
-                       "Wrote {count} map files and {unlocks} unlock files.",
-                       len(rep.written)).format(count=len(rep.written),
-                                                unlocks=len(rep.unlocks)))
-        print(_("The map will be loaded after the device is unplugged."))
+            removed = mp.uninstall(m, all_maps, st, progress=progress)
+        print(ngettext("Removed {count} file.", "Removed {count} files.",
+                       len(removed)).format(count=len(removed)))
+        return code
+
+    if m.waiting == mp.WAIT_INSTALL:
+        # Refused before anything is listed: it is written already.
+        raise mp.MapError(mp.waiting_message(m))
+    trial = getattr(args, "hidden_folder_trial", False)
+    hidden = m.hidden_folder is not None
+    removing = mp.removal_list(all_maps, m, rewriting=True)
+    # The trial says each reason it would be refused for; anything else is refused before
+    # anything is promised, the same reason as with --apply.
+    refused = mp.trial_refusals(st, m, removing) if trial and hidden else []
+    if refused and args.apply:
+        raise mp.MapError(refused[0])
+    if not refused and not mp.can_install(m, hidden_trial=trial):
+        raise mp.MapError(mp.cannot_install_message(m))
+    need, free = (mp.hidden_space(st, m, removing) if hidden
+                  else (mp.space_needed(st, m, removing), st.free_space()))
+    if m.installed:
+        msg = ngettext("Updating map {name} {version}: {count} file, download {size}, "
+                       "space on the device {needed} ({free} free)",
+                       "Updating map {name} {version}: {count} files, download {size}, "
+                       "space on the device {needed} ({free} free)", len(m.files))
+    else:
+        msg = ngettext("Installing map {name} {version}: {count} file, download {size}, "
+                       "space on the device {needed} ({free} free)",
+                       "Installing map {name} {version}: {count} files, download {size}, "
+                       "space on the device {needed} ({free} free)", len(m.files))
+    print(msg.format(name=m.name, version=m.version, count=len(m.files),
+                     size=human_size(m.size), needed=human_size(need),
+                     free=human_size(free)))
+    for f in mp.write_order(m):
+        print(f"  + {f.device_path}  {human_size(f.size)}")
+    sizes = m.device_sizes or {}
+    for p in mp.on_the_device(m, removing) if hidden else removing:
+        # In a folder the device hides, with the size its own session read there.
+        there = sizes.get(p.casefold()) if hidden else None
+        print(f"  - {p}" + (f"  {human_size(there)}" if there is not None else ""))
+    if hidden:
+        need_here, free_here = mp.download_space(m)
+        # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: the space the map's
+        # files not downloaded yet take on this computer; {needed}, {free}: sizes
+        print(_("Space on this computer for the download: {needed} needed, {free} free")
+              .format(needed=human_size(need_here), free=human_size(free_here)))
+        # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`: an estimate, at the
+        # slowest speed measured so far on such a device; {minutes}: a number
+        print(_("Writing and reading back on the device: about {minutes} min at the slowest "
+                "speed measured so far")
+              .format(minutes=mp.trial_minutes(m)))
+        if removing:
+            print(mp.no_complete_map_text())
+    for e in m.eula_urls:
+        print(_("License (EULA): {url}").format(url=e))
+    for reason in refused:
+        # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run: why it
+        # would be refused with --apply ({reason}: a sentence)
+        print(_("Would be refused: {reason}").format(reason=reason))
+        code = 1
+    if not args.apply and trial and hidden:
+        largest = max(m.files, key=lambda f: f.size or 0, default=None)
+        if largest is not None:
+            # TRANSLATORS: `openexpress maps install … --hidden-folder-trial`, a dry run:
+            # the largest file of the map and its size
+            print(_("Largest file: {path}, {size}").format(path=largest.device_path,
+                                                           size=human_size(largest.size)))
+        print(_("Dry run: nothing was downloaded and nothing on the device was changed. "
+                "Add --apply."))
+        return code
+    if not args.apply:
+        print(_("Dry run: nothing was downloaded or written. Add --apply."))
+        return code
+    with _progress() as progress:
+        rep = mp.install(
+            m, all_maps, st,
+            activate=lambda ident: client.activate_maps(dev.raw, [ident]),
+            session=client.http,
+            url_salt=_url_salt(),
+            progress=progress,
+            hidden_trial=trial,
+        )
+    if rep.kept:
+        print(ngettext("{count} file was on the device already and read back the same: not "
+                       "written again.",
+                       "{count} files were on the device already and read back the same: not "
+                       "written again.", len(rep.kept)).format(count=len(rep.kept)))
+    print(ngettext("Wrote {count} map file and {unlocks} unlock files.",
+                   "Wrote {count} map files and {unlocks} unlock files.",
+                   len(rep.written)).format(count=len(rep.written),
+                                            unlocks=len(rep.unlocks)))
+    print(_("The map will be loaded after the device is unplugged."))
     return code
 
 

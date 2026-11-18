@@ -1190,22 +1190,48 @@ class Engine:
                 "more_available": len(all_maps) - len(on_device)}
 
     def _each_map(self, req: Request, a: Attached, command: str) -> dict:
-        """maps.install, maps.remove: the command for each map named, one after the other;
-        a map refused is said in its entry, and the next is done."""
+        """maps.install, maps.remove: as `maps COMMAND NAME` for each map named, one after the
+        other, with Garmin's maps for the device asked once (cli._load_maps) for all of them;
+        before each map but the first, what the ones before changed on the device is looked
+        at again (maps.mark_waiting), as a run of its own would. A map refused is said in its
+        entry, and the next is done; the lines of the shared start are in each entry's."""
+        from openexpress import cli
+        from openexpress import maps as mp
+        from openexpress.connect import GarminClient
+        from openexpress.settings import Settings
+
         apply = _apply_option(req)
+        names = _names(req.params, "maps")
+        args = cli.build_parser().parse_args([*self.command_line(a), "maps", command, *apply,
+                                              "--", names[0]])
+        start = len(req.lines)
+        try:
+            client = GarminClient(Settings.load())
+            st, dev, all_maps, listed = cli._load_maps(args, client)
+            if not listed:
+                raise mp.MapError(mp.no_maps_message())
+            cli.print_map_cleanup(st, dev, all_maps)
+        except Exception as e:  # noqa: BLE001 - the error of every map named
+            error = error_of(e)
+            return {"dry_run": not req.writes, "maps": [
+                {"name": name, "done": False, "code": error.code, "reason": error.message}
+                for name in names]}
+        shared = req.lines[start:]
         out = []
-        for name in _names(req.params, "maps"):
+        for n, name in enumerate(names):
             self.checkpoint(req)
+            before = len(req.lines)
             try:
-                done = self.run_command(req, [*self.command_line(a), "maps", command, *apply,
-                                              "--", name])
+                if n:
+                    mp.mark_waiting(st, all_maps)
+                code = cli.change_map(args, client, st, dev, all_maps, mp.find(all_maps, name))
             except Exception as e:  # noqa: BLE001 - the error of this map, then the next
                 error = error_of(e)
                 out.append({"name": name, "done": False, "code": error.code,
                             "reason": error.message})
                 continue
-            out.append({"name": name, "done": done["exit_code"] == 0,
-                        "exit_code": done["exit_code"], "lines": done["lines"]})
+            out.append({"name": name, "done": code == 0, "exit_code": code,
+                        "lines": shared + req.lines[before:]})
         return {"dry_run": not req.writes, "maps": out}
 
     def maps_install(self, req: Request, a: Attached) -> dict:

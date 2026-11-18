@@ -58,6 +58,7 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     TaskRunner,
     bottom_bar,
     collect_garbage,
+    fold_buttons,
     inform,
     log_unexpected,
     progress_reporter,
@@ -542,6 +543,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         else:
             split.set_show_content(False)
         status_on_folded(self)  # Show All of the page Device Status, in its place
+        fold_buttons(self)  # the labels of the buttons beside a row's text
 
     def _on_show_content(self, split, _pspec) -> None:
         """Folded, back from the page to the side panel (or a page chosen) is kept for the

@@ -32,6 +32,7 @@ from gi.repository import Adw, GLib, Gtk, Pango  # noqa: E402 - imports must fol
 from openexpress import applog  # noqa: E402
 from openexpress.errors import OrdinaryStop, UserFacingError  # noqa: E402
 from openexpress.gui import stalled  # noqa: E402
+from openexpress.gui.gui_settings import MIN_WINDOW  # noqa: E402
 from openexpress.gui.tasks import WindowClosed  # noqa: E402
 from openexpress.gui.words import space_text  # noqa: E402
 from openexpress.i18n import _, ngettext  # noqa: E402
@@ -204,15 +205,220 @@ def error_text(e: Exception) -> str:
     return text if isinstance(e, UserFacingError) else applog.redact(text)
 
 
+# Marks a button of wraps_when_folded, and a row or a group whose text such a button stands
+# beside, watched for changes of that text (style classes nothing draws).
+FOLDING = "folding-label"
+WATCHED = "folding-text"
+
+
+def _label_of(button: Gtk.Button) -> Gtk.Label | None:
+    """The button's label, or its unseen copy under the spinner of show_working; None for a
+    button with an icon or another child."""
+    child = button.get_child()
+    if isinstance(child, Gtk.Overlay):
+        child = child.get_child()
+    return child if isinstance(child, Gtk.Label) else None
+
+
+def _beside_text(button: Gtk.Button) -> bool:
+    """Whether the button is a suffix of a row, or of a group's header: what it would squeeze."""
+    return _holder(button) is not None
+
+
+def _holder(button: Gtk.Button):
+    """(the row or the group, the box with the text and the button side by side, the box of
+    the text) for a button beside the text of a row or of a group's header; None otherwise."""
+    row = button.get_ancestor(Adw.ActionRow)
+    if row is not None:
+        title = next((w for w in _descendants(row)
+                      if isinstance(w, Gtk.Label) and w.has_css_class("title")), None)
+        text = title.get_parent() if title is not None else None
+        side = text.get_parent() if text is not None else None
+        return (row, side, text) if side is not None else None
+    group = button.get_ancestor(Adw.PreferencesGroup)
+    suffix = group.get_header_suffix() if group is not None else None
+    if suffix is None or not (button == suffix or button.is_ancestor(suffix)):
+        return None
+    side = suffix.get_parent()
+    while side is not None and not isinstance(side, Gtk.Box):
+        side = side.get_parent()
+    text = side.get_first_child() if side is not None else None
+    return (group, side, text) if text is not None and text != suffix else None
+
+
+def _descendants(widget: Gtk.Widget):
+    todo = [widget]
+    while todo:
+        found = todo.pop()
+        yield found
+        child = found.get_first_child()
+        while child is not None:
+            todo.append(child)
+            child = child.get_next_sibling()
+
+
+def fold_label(button: Gtk.Button, broken: bool) -> None:
+    """The label of a button of wraps_when_folded broken into lines, centred and no wider than
+    its longest word asks (max-width-chars 1), or one line as GTK makes it. GtkBox measures a
+    row's height giving each child the width it asks for with no height given, and allocates
+    it the width it asks for at the row's height; a label that may break asks for less then, so
+    with its natural width at one line the row was measured as tall as with the label unbroken
+    and left that room empty around its text."""
+    label = _label_of(button)
+    if label is None:
+        return
+    if (label.get_wrap(), label.get_max_width_chars()) == (broken, 1 if broken else -1):
+        return
+    label.set_wrap(broken)
+    label.set_max_width_chars(1 if broken else -1)
+    label.set_justify(Gtk.Justification.CENTER if broken else Gtk.Justification.LEFT)
+
+
+def _folded(widget: Gtk.Widget) -> bool:
+    split = getattr(widget.get_root(), "split", None)
+    return bool(split is not None and split.get_collapsed())
+
+
+def _one_line_width(button: Gtk.Button) -> int:
+    """The button's width with its label on one line, as GTK makes it."""
+    label = _label_of(button)
+    plain = Gtk.Button(label=label.get_label() if label is not None else "",
+                       use_underline=button.get_use_underline())
+    for style in button.get_css_classes():
+        plain.add_css_class(style)
+    return plain.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+
+
+def _taken(box: Gtk.Widget, button: Gtk.Button, text: Gtk.Widget) -> int:
+    """What the children of `box` other than the text and the button take at least, with the
+    spacing between them (in the box that holds the button, its neighbours too: a trash)."""
+    taken = shown = 0
+    child = box.get_first_child()
+    while child is not None:
+        if child.get_visible():
+            shown += 1
+            if child in (button, text):
+                pass
+            elif button.is_ancestor(child):
+                taken += _taken(child, button, text)
+            else:
+                taken += child.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
+        child = child.get_next_sibling()
+    return taken + (box.get_spacing() * max(0, shown - 1) if isinstance(box, Gtk.Box) else 0)
+
+
+def _fits_beside(button: Gtk.Button, side: Gtk.Widget, text: Gtk.Widget) -> bool:
+    """Whether the text on one line (the wider of the title and the subtitle, or of a group's
+    title and description) and the button with its label on one line fit side by side in the
+    width the row would have in the narrowest window (MIN_WINDOW): its width now, less what the
+    window has beyond the narrowest. Neither width depends on the label being broken, nor on
+    the window's width, so the answer does not change as the window is made wider or
+    narrower, and nothing is measured again in a loop."""
+    root = button.get_root()
+    width = side.get_width()
+    if root is None or width <= 0:
+        return True  # not laid out: decided once it is
+    room = width - max(0, root.get_width() - MIN_WINDOW[0])
+    needed = (text.measure(Gtk.Orientation.HORIZONTAL, -1)[1] + _one_line_width(button)
+              + _taken(side, button, text))
+    return needed <= room
+
+
+def _decide(button: Gtk.Button) -> None:
+    """The label of a shown button of wraps_when_folded broken or not, from the layout of the
+    row it stands in (wraps_when_folded)."""
+    if not button.get_mapped():
+        return
+    holder = _holder(button)
+    broken = (holder is not None and _folded(button)
+              and not _fits_beside(button, holder[1], holder[2]))
+    fold_label(button, broken)
+
+
+def _after_layout(button: Gtk.Button) -> None:
+    """_decide once the next frame is drawn: the widths it reads are those of its layout."""
+    clock = button.get_frame_clock()
+    if clock is None:
+        return
+    handler = None
+
+    def drawn(frame_clock) -> None:
+        frame_clock.disconnect(handler)
+        _decide(button)
+
+    handler = clock.connect("after-paint", drawn)
+
+
+def _refold(button: Gtk.Button) -> None:
+    """Unfolded, or not beside a text: one line at once. Folded beside a text: decided once the
+    row is laid out."""
+    if _folded(button) and _beside_text(button):
+        _after_layout(button)
+    else:
+        fold_label(button, False)
+
+
+def _refold_all(owner) -> None:
+    """The text of a row or a group changed: its buttons of wraps_when_folded decided again."""
+    for widget in _descendants(owner):
+        if isinstance(widget, Gtk.Button) and widget.has_css_class(FOLDING):
+            _refold(widget)
+
+
+def _watch_text(button: Gtk.Button) -> None:
+    """The row or the group the button stands beside watched, once, for changes of its text
+    (a subtitle said once something is read, the account's row of the preferences)."""
+    holder = _holder(button)
+    if holder is None or holder[0].has_css_class(WATCHED):
+        return
+    owner = holder[0]
+    owner.add_css_class(WATCHED)
+    names = ("title", "subtitle") if isinstance(owner, Adw.ActionRow) else ("title", "description")
+    for name in names:
+        owner.connect(f"notify::{name}", lambda changed, _pspec: _refold_all(changed))
+
+
+def wraps_when_folded(button: Gtk.Button) -> Gtk.Button:
+    """The one place that lets the label of a button beside the text of a row or of a group's
+    header break into lines in the folded window (620sp and narrower), for every such button:
+    Adw.ActionRow gives its suffix only its smallest width, so a long label of one line squeezes
+    the row's title and subtitle into a narrow column. It breaks only when, in the narrowest
+    window, the text on one line and the label on one line would not fit side by side
+    (_fits_beside); a short label beside a short text stays one line. Unfolded it is one line,
+    as GTK makes it. Decided when the button is shown, when the window folds or unfolds
+    (fold_buttons), when its label changes and when the text it stands beside changes; switches
+    and buttons with only an icon are not passed here."""
+    button.add_css_class(FOLDING)
+    button.connect("map", _on_shown)
+    button.connect("notify::label", lambda changed, _pspec: _refold(changed))
+    return button
+
+
+def _on_shown(button: Gtk.Button) -> None:
+    _watch_text(button)
+    _refold(button)
+
+
+def fold_buttons(win) -> None:
+    """The window folded or unfolded: every button of wraps_when_folded in it, and in a dialog
+    open in it, decided again."""
+    _refold_all(win)
+
+
 def show_working(button: Gtk.Button):
     """The button spins instead of showing its label or icon and cannot be clicked; returns
     the function that puts it back (clickable or not). The label or icon stays under the
-    spinner, unseen, so the button keeps its size and nothing beside it moves."""
+    spinner, unseen, so the button keeps its size and nothing beside it moves: the label's copy
+    breaks into lines as the label did (wraps_when_folded), and the label put back does again."""
     label, icon = button.get_label(), button.get_icon_name()
     if label is None and icon is None:  # neither: it only goes grey
         button.set_sensitive(False)
         return button.set_sensitive
-    ghost = (Gtk.Label(label=label, use_underline=button.get_use_underline(), opacity=0)
+    shown = _label_of(button)
+    ghost = (Gtk.Label(label=label, use_underline=button.get_use_underline(), opacity=0,
+                       wrap=shown is not None and shown.get_wrap(),
+                       max_width_chars=shown.get_max_width_chars() if shown else -1,
+                       justify=shown.get_justify() if shown else Gtk.Justification.LEFT)
              if label is not None else Gtk.Image(icon_name=icon, opacity=0))
     spinner = Adw.Spinner() if hasattr(Adw, "Spinner") else Gtk.Spinner(spinning=True)
     spinner.set_halign(Gtk.Align.CENTER)
@@ -224,7 +430,10 @@ def show_working(button: Gtk.Button):
 
     def restore(sensitive: bool) -> None:
         if label is not None:
+            broken = ghost.get_wrap()  # as the label was, or as the window is now
             button.set_label(label)
+            if button.has_css_class(FOLDING):
+                fold_label(button, broken)
         else:
             button.set_icon_name(icon)
         button.set_sensitive(sensitive)
@@ -775,7 +984,7 @@ class TaskRunner:
             b.connect("clicked", lambda *_: cb())
         b.set_sensitive(not self.busy)
         self._action_buttons.append(b)
-        return b
+        return wraps_when_folded(b)
 
     def _trash(self, tooltip: str, cb) -> Gtk.Button:
         b = trash_button(tooltip, cb)

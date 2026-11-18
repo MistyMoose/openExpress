@@ -25,7 +25,7 @@ from openexpress.gui import activity_map  # noqa: E402
 from openexpress.gui.connected import open_address  # noqa: E402
 from openexpress.gui.gui_settings import update_gui_settings  # noqa: E402
 from openexpress.gui.navigation import Cause  # noqa: E402
-from openexpress.gui.window_tasks import Answer, confirm  # noqa: E402
+from openexpress.gui.window_tasks import Answer, confirm, wraps_when_folded  # noqa: E402
 from openexpress.i18n import N_, _, caption, human_size, ngettext, pgettext  # noqa: E402
 from openexpress.settings import (  # noqa: E402
     Settings,
@@ -494,7 +494,8 @@ class Preferences:
         # TRANSLATORS: the last row of the cache in the preferences, with "Clear All"
         everything = Adw.ActionRow(title=_("Entire Cache"), subtitle=_("Counting…"))
         # TRANSLATORS: button that clears every part of the cache
-        button = Gtk.Button(label=_("Clear All"), valign=Gtk.Align.CENTER, sensitive=False)
+        button = wraps_when_folded(Gtk.Button(label=_("Clear All"), valign=Gtk.Align.CENTER,
+                                              sensitive=False))
         button.connect("clicked", self._ask_clear_cache)
         everything.add_suffix(button)
         g.add(everything)

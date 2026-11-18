@@ -1,5 +1,5 @@
 """What an activity file says of itself (fit.summary): sport, start, timer time, distance,
-ascent and whether it has positions; of a file the device was still writing only when it was
+ascent, average heart rate, calories and whether it has positions; of a file the device was still writing only when it was
 created; of a damaged one what it reads. Made-up files only (fakes.fit_file)."""
 
 from datetime import UTC, datetime
@@ -10,7 +10,7 @@ from fakes import FitData, FitDefinition, fit_file
 from openexpress import fit
 
 FILE_ID, SESSION, RECORD = 0, 18, 20
-ENUM, UINT16, SINT32, UINT32 = 0x00, 0x84, 0x85, 0x86
+ENUM, UINT8, UINT16, SINT32, UINT32 = 0x00, 0x02, 0x84, 0x85, 0x86
 TIMESTAMP = 253
 RUNNING, CYCLING, SWIMMING, MULTISPORT = 1, 2, 5, 18
 CREATED = 1_100_000_000  # a made-up time, in seconds of the FIT protocol
@@ -20,9 +20,10 @@ WARSAW = (624_000_000, 250_000_000)  # a made-up position in semicircles
 FILE_ID_MESSAGES = (FitDefinition(0, FILE_ID, ((0, ENUM), (4, UINT32))), FitData(0, (4, CREATED)))
 RECORDS = FitDefinition(1, RECORD, ((TIMESTAMP, UINT32), (0, SINT32), (1, SINT32)))
 # start_time, start_position_lat, start_position_long, sport, total_timer_time (ms),
-# total_distance (cm), total_ascent (m)
+# total_distance (cm), total_ascent (m), total_calories (kcal), avg_heart_rate (bpm)
 SESSIONS = FitDefinition(2, SESSION, ((TIMESTAMP, UINT32), (2, UINT32), (3, SINT32), (4, SINT32),
-                                      (5, ENUM), (8, UINT32), (9, UINT32), (22, UINT16)))
+                                      (5, ENUM), (8, UINT32), (9, UINT32), (22, UINT16),
+                                      (11, UINT16), (16, UINT8)))
 
 
 def unix(fit_time: int) -> int:
@@ -34,9 +35,9 @@ def record(seconds: int, position=WARSAW) -> FitData:
 
 
 def session(start=10, position=WARSAW, sport=RUNNING, timer_ms=3_731_500, distance_cm=1_240_000,
-            ascent=135) -> FitData:
+            ascent=135, calories=812, heart_rate=148) -> FitData:
     return FitData(2, (CREATED + 4000, CREATED + start, *position, sport, timer_ms, distance_cm,
-                       ascent))
+                       ascent, calories, heart_rate))
 
 
 def a_run(**options) -> bytes:
@@ -48,10 +49,11 @@ def the_run(state: str = "WHOLE"):
     """What a_run says of itself, its file in this state (a name of fit.FileState)."""
     return fit.ActivitySummary(getattr(fit.FileState, state), created=unix(CREATED),
                                start=unix(CREATED + 10), sport=RUNNING, timer_time=3731.5,
-                               distance=12_400.0, ascent=135, has_positions=True)
+                               distance=12_400.0, ascent=135, has_positions=True,
+                               avg_heart_rate=148, calories=812)
 
 
-def test_a_run_says_its_sport_start_time_distance_ascent_and_that_it_has_positions():
+def test_a_run_says_its_sport_start_time_distance_ascent_heart_rate_calories_and_positions():
     assert fit.summary(a_run()) == the_run()
 
 
@@ -100,12 +102,14 @@ def test_a_file_without_a_session_says_only_when_it_was_created():
 def test_several_sessions_add_up_under_the_sport_they_share_or_as_multisport():
     data = fit_file(*FILE_ID_MESSAGES, SESSIONS,
                     session(start=10, sport=SWIMMING, position=(None, None), timer_ms=1_800_000,
-                            distance_cm=150_000, ascent=None),
+                            distance_cm=150_000, ascent=None, calories=300, heart_rate=120),
                     session(start=2000, sport=CYCLING, timer_ms=3_600_000, distance_cm=4_000_000,
-                            ascent=300))
+                            ascent=300, calories=900, heart_rate=150))
+    # The heart rate weighted by each session's time: (120 × 1800 + 150 × 3600) / 5400 = 140.
     assert fit.summary(data) == fit.ActivitySummary(
         fit.FileState.WHOLE, created=unix(CREATED), start=unix(CREATED + 10), sport=MULTISPORT,
-        timer_time=5400.0, distance=41_500.0, ascent=300, has_positions=True)
+        timer_time=5400.0, distance=41_500.0, ascent=300, has_positions=True,
+        avg_heart_rate=140, calories=1200)
     same = fit_file(*FILE_ID_MESSAGES, SESSIONS, session(), session(start=5000))
     assert fit.summary(same).sport == RUNNING
 

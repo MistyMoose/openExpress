@@ -138,8 +138,10 @@ struct ProtocolTests {
         #expect(apps.exitCode == 0 && apps.lines == ["Klimat"])
         let a = try JSONValue(["name": "Morning Run", "source": "backup", "path": "/b/x.fit", "size": 10,
                                "start": "2026-11-17T09:41:00+01:00", "sport": "running", "sport_id": 1,
-                               "distance": 5000, "duration": 1500, "ascent": nil, "state": "complete"]).decode(Activity.self)
+                               "distance": 5000, "duration": 1500, "ascent": nil, "average_heart_rate": 148,
+                               "calories": 812, "state": "complete"]).decode(Activity.self)
         #expect(a.fitPath == "/b/x.fit" && a.isOnThisMac && a.state == "complete")
+        #expect(a.averageHeartRate == 148 && a.calories == 812)
         let own = try JSONValue(["maps": [], "own_maps": [["file": "a.img", "size": 5, "title": "Alps", "path": "Garmin/a.img"]],
                                  "free": 1, "message": "No maps service."]).decode(MapsList.self)
         #expect(own.ownMaps.first?.name == "Alps" && own.message == "No maps service.")

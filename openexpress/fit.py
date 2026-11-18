@@ -362,6 +362,8 @@ class ActivitySummary:
     distance: float | None = None  # metres
     ascent: int | None = None  # metres
     has_positions: bool = False  # a GPX of it can be made
+    avg_heart_rate: int | None = None  # beats a minute; of several sessions weighted by time
+    calories: int | None = None  # kcal, of all its sessions
 
 
 def _unix_time(value: Value) -> int | None:
@@ -439,11 +441,14 @@ def summary(data: bytes) -> ActivitySummary:
     has_positions = (any(_has_position(s, _SESSION_START_LAT, _SESSION_START_LONG)
                          for s in sessions)
                      or _a_record_has_a_position(data))
+    heart_rate = _weighted(sessions, lambda s: _whole_number(s.get(_SESSION_AVG_HEART_RATE)))
     return ActivitySummary(
         state, created=created, start=_unix_time(sessions[0].get(_SESSION_START_TIME)),
         sport=_sport(sessions), timer_time=_total(sessions, _SESSION_TIMER_TIME, 1000),
         distance=_total(sessions, _SESSION_DISTANCE, 100),
-        ascent=_total(sessions, _SESSION_ASCENT), has_positions=has_positions)
+        ascent=_total(sessions, _SESSION_ASCENT), has_positions=has_positions,
+        avg_heart_rate=round(heart_rate) if heart_rate is not None else None,
+        calories=_total(sessions, _SESSION_CALORIES))
 
 
 # FIT profile: the names of the messages `fit inspect` names (others: by number).

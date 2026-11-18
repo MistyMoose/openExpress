@@ -1490,7 +1490,8 @@ class Engine:
                      "backup": act.backup.isoformat() if act.backup else None}
             if summary is None:
                 entry.update(start=_iso(act.mtime), sport=None, sport_id=None, distance=None,
-                             duration=None, ascent=None, state="unreadable")
+                             duration=None, ascent=None, average_heart_rate=None, calories=None,
+                             state="unreadable")
             else:
                 state = summary.state
                 entry.update(
@@ -1499,6 +1500,7 @@ class Engine:
                            if summary.sport is not None else None),
                     sport_id=summary.sport, distance=summary.distance,
                     duration=summary.timer_time, ascent=summary.ascent,
+                    average_heart_rate=summary.avg_heart_rate, calories=summary.calories,
                     state=("still_being_written" if state is fit.FileState.STILL_BEING_WRITTEN
                            else "damaged" if state is fit.FileState.DAMAGED else "complete"))
             out.append(entry)

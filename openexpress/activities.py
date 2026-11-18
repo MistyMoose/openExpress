@@ -167,7 +167,7 @@ def _summary(data: bytes | None) -> fit.ActivitySummary | None:
 # of the program, or of another format, it is not read (and is replaced). Never an error of a
 # command: a file that cannot be read is none, one that cannot be written is told in the log.
 
-SUMMARIES_FORMAT = 1
+SUMMARIES_FORMAT = 2  # 2: with the average heart rate and the calories
 # The most summaries kept for one device (the newest files): about 200 bytes each.
 SUMMARIES_MOST = 20_000
 
@@ -182,7 +182,8 @@ def _summary_json(key: tuple, summary: fit.ActivitySummary) -> dict:
             "state": summary.state.value, "created": summary.created, "start": summary.start,
             "sport": summary.sport, "timer_time": summary.timer_time,
             "distance": summary.distance, "ascent": summary.ascent,
-            "has_positions": summary.has_positions}
+            "has_positions": summary.has_positions, "avg_heart_rate": summary.avg_heart_rate,
+            "calories": summary.calories}
 
 
 def _summary_of(entry: dict) -> tuple[tuple, fit.ActivitySummary]:
@@ -191,7 +192,8 @@ def _summary_of(entry: dict) -> tuple[tuple, fit.ActivitySummary]:
     return key, fit.ActivitySummary(
         fit.FileState(entry["state"]), entry.get("created"), entry.get("start"),
         entry.get("sport"), entry.get("timer_time"), entry.get("distance"),
-        entry.get("ascent"), bool(entry.get("has_positions")))
+        entry.get("ascent"), bool(entry.get("has_positions")), entry.get("avg_heart_rate"),
+        entry.get("calories"))
 
 
 def load_summaries(unit_id: int) -> dict[tuple, fit.ActivitySummary | None]:

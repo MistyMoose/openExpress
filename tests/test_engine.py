@@ -16,7 +16,7 @@ import pytest
 from test_ownmaps import img_header
 
 import openexpress
-from openexpress import __version__, backup, engine
+from openexpress import __version__, activities, backup, engine
 from openexpress import settings as settings_mod
 from openexpress.device.found import DeviceSummary, FoundDevice
 from openexpress.device.storage import LocalStorage
@@ -655,6 +655,9 @@ def test_an_activity_file_that_cannot_be_read_still_has_a_start(running, device_
     broken = next(a for a in listed if a["name"] == "2026-10-04-10-00-00.fit")
     assert broken["state"] in ("unreadable", "damaged")
     assert all(a["start"] for a in listed)
+    # Every activity has its heart rate and calories, null where the file does not tell them.
+    assert all({"average_heart_rate", "calories"} <= set(a) for a in listed)
+    assert broken["average_heart_rate"] is None and broken["calories"] is None
 
 
 def test_activities_list_tells_each_file_it_reads_as_progress_then_that_all_are_read(
@@ -750,9 +753,11 @@ def test_a_file_changed_since_is_read_again_alone_and_one_gone_leaves_the_kept_f
 
 
 @pytest.mark.parametrize("kept", [
-    "{not json", json.dumps({"format": 1, "openexpress": "0.0.1", "files": []}),
+    "{not json",
+    json.dumps({"format": activities.SUMMARIES_FORMAT, "openexpress": "0.0.1", "files": []}),
     json.dumps({"format": 99, "openexpress": __version__, "files": []}),
-    json.dumps({"format": 1, "openexpress": __version__, "files": [{"path": 3}]}),
+    json.dumps({"format": activities.SUMMARIES_FORMAT, "openexpress": __version__,
+                "files": [{"path": 3}]}),
 ], ids=["damaged", "older version", "other format", "damaged entry"])
 def test_kept_summaries_that_are_damaged_or_of_another_version_are_read_again(
         running, three_activities, kept):

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 20:50+0100\n"
+"POT-Creation-Date: 2026-11-18 17:36+0100\n"
 "PO-Revision-Date: 2026-11-17 19:00+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -3070,12 +3070,22 @@ msgstr[2] ""
 "shodný. Nebyly proto znovu zapsány."
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "Wrote {count} map file and {unlocks} unlock files."
-msgid_plural "Wrote {count} map files and {unlocks} unlock files."
-msgstr[0] "Zapsán {count} mapový soubor a {unlocks} odemykacích souborů."
-msgstr[1] "Zapsány {count} mapové soubory a {unlocks} odemykacích souborů."
-msgstr[2] "Zapsáno {count} mapových souborů a {unlocks} odemykacích souborů."
+#, fuzzy, python-brace-format
+#| msgid "Copied {count} file."
+#| msgid_plural "Copied {count} files."
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
+msgstr[0] "Zkopírován {count} soubor."
+msgstr[1] "Zkopírovány {count} soubory."
+msgstr[2] "Zkopírováno {count} souborů."
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, fuzzy, python-brace-format
+#| msgid "Old files to remove: {count}"
+msgid "Unlock files written: {count}"
+msgstr "Staré soubory k odstranění: {count}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -11099,6 +11109,16 @@ msgstr ""
 "pokud je funkce zapnutá, satelitní data se aktualizují při každé "
 "synchronizaci"
 
+#. TRANSLATORS: in the subtitle of the row Satellite Data, after "updated just now": the
+#. file written waits for the device, which takes it in (unpacks it) once it is
+#. unplugged (in Polish plural, as "dane satelitarne")
+#: openexpress/gui/words.py
+#, fuzzy, python-brace-format
+#| msgid "the device was unplugged"
+msgctxt "satellite data"
+msgid "the device takes it in once unplugged"
+msgstr "zařízení bylo odpojeno"
+
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop
 #: openexpress/gui/words.py
@@ -11308,14 +11328,6 @@ msgstr ""
 "Nedostatek místa pro aktualizaci {name}: je potřeba {needed}, k dispozici je "
 "{free} (včetně místa, které se uvolní odstraněním původních souborů). "
 "openExpress nebude kvůli uvolnění místa odstraňovat žádné další soubory."
-
-#. TRANSLATORS: the name of your language in your language ("Polski", "Deutsch",
-#. "Français"), as the list of languages in the Preferences shows it
-#: openexpress/i18n.py
-#, python-brace-format
-msgctxt "language name"
-msgid "English"
-msgstr "Čeština"
 
 #. TRANSLATORS: how long ago, under a minute: alone ("just now · 3 new files") or after a
 #. word ("Last seen just now")

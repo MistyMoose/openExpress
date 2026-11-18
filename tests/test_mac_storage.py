@@ -19,7 +19,7 @@ from openexpress.platform import mac_usb
 
 # The functions conftest replaces in every test (no_usb_on_macos), as they are, for the tests of
 # their own.
-REGISTERED_DEVICES, SIGNAL_DAEMON = mac_usb.registered_devices, mac_usb._signal_daemon
+REGISTERED_DEVICES = mac_usb.registered_devices
 DAEMON_STOPPED = mac_usb.daemon_stopped
 
 XML = (b'<Device xmlns="http://www.garmin.com/xmlschemas/GarminDevice/v2">'
@@ -596,12 +596,6 @@ def test_ptpcamerad_goes_on_at_exit_whatever_still_has_it_paused(daemon):
     assert daemon == ["STOP", "CONT"]
 
 
-def test_only_macos_signals_ptpcamerad(monkeypatch):
-    monkeypatch.setattr(mac_usb.sys, "platform", "linux")
-    monkeypatch.setattr(mac_usb.subprocess, "run", lambda *a, **k: pytest.fail("run"))
-    assert SIGNAL_DAEMON("STOP") is False
-
-
 def test_ptpcamerad_goes_on_only_once_no_process_of_ours_has_it_paused(daemon, tmp_path):
     """Another process holds the lock file, shared, as one that paused it does: this one lets
     go of it without waking ptpcamerad; then, with nobody holding it, it is woken."""
@@ -623,7 +617,6 @@ def test_ptpcamerad_left_stopped_by_a_killed_run_is_woken_at_the_start(daemon, m
     import fcntl
     import os
 
-    monkeypatch.setattr(mac_usb.sys, "platform", "darwin")
     monkeypatch.setattr(mac_usb, "daemon_stopped", lambda: True)
     other = os.open(mac_usb.pause_lock_path(), os.O_RDWR | os.O_CREAT)
     fcntl.flock(other, fcntl.LOCK_SH)  # a run of ours that has it paused

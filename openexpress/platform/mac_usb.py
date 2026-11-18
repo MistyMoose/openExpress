@@ -25,7 +25,6 @@ import os
 import plistlib
 import signal
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -448,7 +447,7 @@ def wake_camera_daemon_left_stopped() -> bool:
     """At the start of the program on macOS: a ptpcamerad left stopped by a process of ours
     that ended without letting it go on (killed) goes on, unless a process of ours still has it
     paused. Whether it was woken."""
-    if sys.platform != "darwin" or not daemon_stopped():
+    if not daemon_stopped():
         return False
     with _nobody_pausing() as nobody:
         if not nobody:
@@ -461,8 +460,6 @@ def wake_camera_daemon_left_stopped() -> bool:
 
 def _signal_daemon(name: str) -> bool:
     """Send SIGSTOP or SIGCONT (`name`: "STOP", "CONT") to ptpcamerad; whether one got it."""
-    if sys.platform != "darwin":
-        return False
     try:
         done = subprocess.run([KILLALL, f"-{name}", CAMERA_DAEMON], capture_output=True,
                               timeout=TOOL_TIMEOUT_S, check=False)

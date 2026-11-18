@@ -53,6 +53,7 @@ from openexpress.device.found import (  # noqa: E402, F401 - found without GIO, 
     NotThereYet,
     SeveralDevices,
     UnsupportedDevice,
+    classify,
     distinct_devices,
     mass_storage_text,
     place_of,
@@ -1531,10 +1532,6 @@ def not_ejected_text(window: bool = True, files: bool = False) -> str:
 # a few more seconds to offer its files. Only /sys is read to tell these states apart: the
 # device is not opened and nothing is sent to it.
 
-MASS_STORAGE_CLASS = "08"  # the USB interface class
-HID_CLASS = "03"
-
-
 def _interface_class(interface: Path) -> str | None:
     """The class of an interface of a USB device (its folder in /sys); None when it cannot be
     read."""
@@ -1547,8 +1544,7 @@ def _interface_class(interface: Path) -> str | None:
 def _mass_storage_only(base: Path) -> bool:
     """Whether every interface of this USB device is a mass storage interface. False when
     none of their classes can be read. The interfaces are read as /sys lists them."""
-    classes = [c for c in map(_interface_class, base.glob(f"{base.name}:*")) if c is not None]
-    return bool(classes) and all(c == MASS_STORAGE_CLASS for c in classes)
+    return classify([_interface_class(i) for i in base.glob(f"{base.name}:*")]) == MASS_STORAGE
 
 
 def _interface_classes(base: Path) -> list[str | None]:
@@ -1558,12 +1554,8 @@ def _interface_classes(base: Path) -> list[str | None]:
 
 
 def _unsupported(base: Path) -> bool:
-    """Whether this Garmin device on USB is one openExpress cannot use: the class of every
-    interface can be read, one of them is HID, and each is HID or mass storage. A device with
-    an MTP or a vendor-specific interface, or with a class that cannot be read, never is."""
-    classes = _interface_classes(base)
-    return (HID_CLASS in classes and None not in classes
-            and all(c in (HID_CLASS, MASS_STORAGE_CLASS) for c in classes))
+    """Whether this Garmin device on USB is one openExpress cannot use (classify)."""
+    return classify(_interface_classes(base)) == UNSUPPORTED
 
 
 # What the log said of the devices openExpress cannot use, by their port: their product ID,

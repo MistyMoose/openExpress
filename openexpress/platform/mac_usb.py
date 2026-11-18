@@ -36,20 +36,18 @@ from openexpress import applog
 from openexpress.device import ptp
 from openexpress.device.found import (
     GARMIN_VID,
-    MASS_STORAGE,
+    MASS_STORAGE_CLASS,
     PRESENT,
     STARTING,
     STARTING_PRODUCT,
-    UNSUPPORTED,
     GarminUsb,
+    classify,
 )
 from openexpress.i18n import _
 
 log = logging.getLogger(__name__)
 
 GARMIN_VENDOR = int(GARMIN_VID, 16)
-# The classes of USB interfaces, as /sys writes them (report.INTERFACES names them).
-HID_CLASS, STILL_IMAGE_CLASS, MASS_STORAGE_CLASS = "03", "06", "08"
 
 _LIBUSB_ERROR_ACCESS = -3
 _LIBUSB_ERROR_BUSY = -6
@@ -211,12 +209,7 @@ class UsbDevice:
         PRESENT: anything else, as a device offering MTP is."""
         if self.product == STARTING_PRODUCT:
             return STARTING
-        if self.classes and all(c == MASS_STORAGE_CLASS for c in self.classes):
-            return MASS_STORAGE
-        if HID_CLASS in self.classes and all(c in (HID_CLASS, MASS_STORAGE_CLASS)
-                                             for c in self.classes):
-            return UNSUPPORTED
-        return PRESENT
+        return classify(list(self.classes)) or PRESENT
 
     def garmin_usb(self) -> GarminUsb:
         """The device as the rest of the program knows one, its serial hidden in the log at

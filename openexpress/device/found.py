@@ -109,6 +109,25 @@ WAIT_FOR_DEVICE_S = 45
 USB_GAP_S = 5
 
 
+# The classes of the interfaces of a USB device, as /sys writes them.
+HID_CLASS = "03"
+MASS_STORAGE_CLASS = "08"
+
+
+def classify(classes: list[str | None]) -> str | None:
+    """What the classes of a USB device's interfaces say of it (None: a class that could not be
+    read). MASS_STORAGE: every class read is mass storage, and one at least was read;
+    UNSUPPORTED: every class was read, one is HID, and each is HID or mass storage (a device
+    with an MTP or a vendor-specific interface never is); None: neither."""
+    known = [c for c in classes if c is not None]
+    if known and all(c == MASS_STORAGE_CLASS for c in known):
+        return MASS_STORAGE
+    if (HID_CLASS in known and len(known) == len(classes)
+            and all(c in (HID_CLASS, MASS_STORAGE_CLASS) for c in known)):
+        return UNSUPPORTED
+    return None
+
+
 class NotThereYet(DeviceError):
     """gvfs (or, on macOS, USB) does not offer a Garmin device, or its files cannot be seen
     yet."""

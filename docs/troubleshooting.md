@@ -27,6 +27,11 @@
   minute with a small drive beside it): openExpress cannot use it. The window says so with
   the device's name and USB ID, and commands end with the same words (exit code 1). A report
   still works and says what is connected ([Reporting a problem](#reporting-a-problem)).
+- **"This user has no access to the device on USB."** The device is connected, but the user
+  running openExpress may not open it, for example when openExpress runs over SSH or as another
+  user than the one at the computer's screen; then gvfs cannot offer it either. Run openExpress
+  as the user logged in at this computer's screen, or give this user access to the device with a
+  udev rule. The command line and the log name the device's USB node.
 - **Garmin Connect shows a heat or altitude acclimation you did not expect.** With two
   devices on the account (for example a watch and an Edge), each keeps its own acclimation, and
   the daily values in Garmin Connect come from the device that reported last. Compare the

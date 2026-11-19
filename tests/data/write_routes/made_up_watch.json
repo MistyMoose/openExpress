@@ -1,0 +1,47 @@
+{
+ "device": "Made-up Watch",
+ "software": "1.00",
+ "garmin_listing": "answered",
+ "hidden": [
+  {
+   "folder": ".System",
+   "xml": "does not name it"
+  },
+  {
+   "folder": "GARMIN/ASR",
+   "xml": "names folders inside"
+  },
+  {
+   "folder": "GARMIN/ASR/Updates",
+   "xml": "names the folder"
+  },
+  {
+   "folder": "GARMIN/Prompts",
+   "xml": "names the folder"
+  }
+ ],
+ "targets": {
+  ".System/Map": {
+   "made-up maps answer": 2
+  },
+  "GARMIN/PROMPTS": {
+   "made-up answer": 1
+  },
+  "Garmin/ASR/Updates": {
+   "made-up answer": 3
+  },
+  "Garmin/SID": {
+   "made-up answer": 4
+  },
+  "Garmin/NewFolder": {
+   "made-up answer": 1
+  }
+ },
+ "expected": {
+  ".System/Map": "own session (top level)",
+  "GARMIN/PROMPTS": "own session",
+  "Garmin/ASR/Updates": "own session",
+  "Garmin/SID": "ordinary",
+  "Garmin/NewFolder": "ordinary"
+ }
+}

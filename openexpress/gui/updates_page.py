@@ -230,19 +230,20 @@ def _install_task(win, s, chosen):
 
 def folders_hidden_text(updates) -> str:
     """The note of a group of rows some of which go to a folder the device hides inside a folder
-    that is seen (folder_hidden): once for the group, the rows say it in short. "" when none."""
-    hidden = [u for u in updates if u.folder_hidden is not None]
-    if not hidden:
+    that is seen (folder_hidden): once for the group, the rows say it in short; each row's path
+    is its tooltip, and the log names the folders. "" when none."""
+    count = sum(1 for u in updates if u.refused_inside)
+    if not count:
         return ""
-    folders = ", ".join(dict.fromkeys(u.folder_hidden for u in hidden))
-    # TRANSLATORS: the note of a group on the Updates page; {folders}: the folders the device
-    # hides, e.g. Garmin/Prompts, Garmin/ASR/Updates
+    # TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
+    # from the ordinary USB connection, which openExpress cannot write there (or the device
+    # refuses)
     return ngettext("{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "it in a folder it hides from the USB connection ({folders}). The others "
-                    "install as usual.",
+                    "it in a folder it hides from the USB connection. The others install as "
+                    "usual.",
                     "{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "them in folders it hides from the USB connection ({folders}). The others "
-                    "install as usual.", len(hidden)).format(count=len(hidden), folders=folders)
+                    "them in folders it hides from the USB connection. The others install as "
+                    "usual.", count).format(count=count)
 
 
 def tell_update_done(win, s, rep) -> None:
@@ -630,7 +631,7 @@ class UpdatesPage:
             button = offers_button(u, waits_for)
             if u.hidden_unread:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
-            if u.folder_hidden is not None:
+            if u.refused_inside:
                 # TRANSLATORS: a line of the row of an update that openExpress cannot install
                 # yet (its group says why), without a full stop
                 subtitle += "\n" + _("Cannot be installed with openExpress yet")
@@ -648,7 +649,7 @@ class UpdatesPage:
             b = self._button(_("Reinstall") if reinstall else _("Install"),
                              lambda u=u: self.confirm_update(u),
                              None if reinstall else "suggested-action")
-            if not not_installed and u.folder_hidden is not None:
+            if not not_installed and u.refused_inside:
                 # There, but off for good: the end of a task turns on only the others.
                 self._action_buttons.remove(b)
                 b.set_sensitive(False)

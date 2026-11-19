@@ -151,10 +151,11 @@ def _updates(copied: bool):
     return items
 
 
-def _hidden_inside_updates():
+def _hidden_inside_updates(writable=False):
     """A watch's software, a map support file and several updates whose folders the watch hides
-    inside a folder that is seen (not installed yet: the group says why once, each row in
-    short, its button off), some of them among the components to reinstall."""
+    inside a folder that is seen, some of them among the components to reinstall: not installed
+    (the group says why once, each row in short, its button off), or `writable` through
+    openExpress's own session (as any other)."""
     items = [_update("Made-up Watch Software Bundle", "24.20", "Garmin/GUPDATE.GSP", 61_800_000,
                      system=True),
              _update("Made-up Audio Prompt Bundle, extended voices", "2.18",
@@ -172,6 +173,8 @@ def _hidden_inside_updates():
                                       "Garmin/KBD/Updates"), strict=True):
         u.folder_hidden = folder
     items[5].folder_hidden = "Garmin/ExtData"
+    for u in items:
+        u.folder_writable = writable and u.folder_hidden is not None
     return items
 
 
@@ -513,6 +516,8 @@ def _fill(win, page: str) -> str:
         MainWindow.show_updates(win, _edge_reinstalls())
     elif page == "updates-hidden-inside":
         MainWindow.show_updates(win, _hidden_inside_updates())
+    elif page == "updates-hidden-writable":
+        MainWindow.show_updates(win, _hidden_inside_updates(writable=True))
     elif key == "updates":
         MainWindow.show_updates(win, _updates(copied="copied" in page), beta=True)
     elif page == "maps-none":
@@ -1688,17 +1693,13 @@ HIDDEN_INSIDE_LINE = {"en": "Cannot be installed with openExpress yet",
                       "pl": "openExpress nie może jeszcze tego zainstalować"}
 HIDDEN_INSIDE_GROUPS = {
     "en": [("3 of these cannot be installed with openExpress yet: the device keeps them in "
-            "folders it hides from the USB connection (Garmin/Prompts, Garmin/ASR/Updates, "
-            "Garmin/KBD/Updates). The others install as usual."),
+            "folders it hides from the USB connection. The others install as usual."),
            ("1 of these cannot be installed with openExpress yet: the device keeps it in a "
-            "folder it hides from the USB connection (Garmin/ExtData). The others install as "
-            "usual.")],
+            "folder it hides from the USB connection. The others install as usual.")],
     "pl": [("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-            "w\u00a0folderach ukrytych przed połączeniem USB (Garmin/Prompts, Garmin/ASR/Updates, "
-            "Garmin/KBD/Updates). Pozostałe instalują się normalnie."),
+            "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie."),
            ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
-            "w\u00a0folderze ukrytym przed połączeniem USB (Garmin/ExtData). Pozostałe instalują "
-            "się normalnie.")]}
+            "w\u00a0folderze ukrytym przed połączeniem USB. Pozostałe instalują się normalnie.")]}
 NOT_ALL = {"en": "1 update was not installed:", "pl": "Nie zainstalowano 1 aktualizacji:"}
 
 
@@ -1794,6 +1795,54 @@ def test_done_says_what_was_not_installed_and_why(narrow_window, language, width
     if HIDDEN_INSIDE_SHOTS:
         window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"gotowe-{language}-{width}.png")
     dialog.force_close()
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, 900], ids=["360", "900"])
+def test_updates_written_through_its_own_session_are_as_any_other_and_told(narrow_window,
+                                                                          language, width):
+    """Updates whose folders the device hides, written through openExpress's own session: no note
+    in their group, their rows as any other with Install on; the steps of such an install, told
+    in the window, fit the narrowest one. With OPENEXPRESS_HIDDEN_INSIDE_SHOTS, pictures of the
+    page and of each step."""
+    from pathlib import Path
+
+    from gi.repository import Adw, Gtk
+
+    from openexpress import hidden_folders
+    from openexpress.i18n import _
+    from openexpress.progress import Step, checking_text, copying_text
+
+    win = narrow_window(language, width=width)
+    key = _fill(win, "updates-hidden-writable")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section(key)
+    _iterate(0.3)
+    widgets = list(descendants(win.sections[key].stack))
+    assert not [w for w in widgets if isinstance(w, Adw.PreferencesGroup) and w.get_description()]
+    rows = {w.get_title(): w for w in widgets if isinstance(w, Adw.ActionRow)}
+    for title in ("Made-up Audio Prompt Bundle, extended voices", "Made-up Speech Model"):
+        assert [b.get_sensitive() for b in descendants(rows[title])
+                if isinstance(b, Gtk.Button)] == [True], title
+    if HIDDEN_INSIDE_SHOTS:
+        window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"sesja-{language}-{width}.png")
+    name, mb = "Made-up Audio Prompt Bundle, extended voices", 1_000_000
+    steps = [hidden_folders.probe_step_text("GARMIN/Prompts"),
+             Step(hidden_folders.keeping_step_text(name), 70 * mb, 147 * mb, in_bytes=True),
+             Step(copying_text(name), 90 * mb, 154 * mb, in_bytes=True),
+             Step(checking_text(name), 40 * mb, 154 * mb, in_bytes=True)]
+    win.set_busy(True, _("Install"), device=True)
+    for n, step in enumerate(steps, 1):
+        win._show_progress(step)
+        _iterate(0.2)
+        # One line, as every step of the bar: a long name ends in "…" in the narrowest window.
+        assert win.progress_label.get_text() == str(step)
+        if width == NARROWEST:
+            assert 0 < win.get_width() <= NARROWEST
+        if HIDDEN_INSIDE_SHOTS:
+            window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"krok{n}-{language}-{width}.png")
+    win.set_busy(False)
 
 
 # What the row of a component Garmin offers older than the device's says, and whether it has

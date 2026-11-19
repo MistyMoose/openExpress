@@ -195,8 +195,12 @@ connected device; no login is needed.
   all` prints the same and ends with exit code 1). It stops at once only when the device stops
   answering or is unplugged.
 - A component that goes to a folder the watch hides from the ordinary USB connection (on a
-  fēnix 8 `GARMIN/Prompts`, `ASR`, `KBD`, `ExtData`) is not installed yet: its group says so
-  once, its row says it in short and its **Install** button is off.
+  fēnix 8 `GARMIN/Prompts`, `ASR`, `KBD`, `ExtData`) is written there through openExpress's own
+  USB session: the device leaves the file manager for a moment, a small test file is written
+  and deleted first, the file it replaces is copied to this computer (and removed again once
+  the new one is read back whole, or put back if the new one is not written whole). Without
+  that session (the Flatpak without the USB permission) it is not installed: its group says
+  so once, its row says it in short and its **Install** button is off.
 - While software updates or a map's files are copied, openExpress keeps the computer from
   sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
   copy goes on.

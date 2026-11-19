@@ -193,7 +193,7 @@ def test_only_an_rtl_trap_of_the_last_30_days_is_a_crash():
 def test_the_logs_are_read_with_the_copy_off_and_nothing_is_copied(device, clock):
     st, dev = device
     found = diagnostics.at_open(dev, st)
-    crash = diagnostics.last_crash(found.entries, datetime.now())
+    crash = diagnostics.last_crash(found.entries, clock.current)  # never the computer's clock
     assert crash is not None and crash.at == datetime(2026, 10, 20, 22, 24, 6)
     assert found.copied is None
     assert not diagnostics.folder(UNIT).exists()

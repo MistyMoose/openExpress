@@ -252,7 +252,7 @@ def _window_of(storage, offered):
 
 ROW_LINE = "Cannot be installed with openExpress yet"
 GROUP_NOTE = ("1 of these cannot be installed with openExpress yet: the device keeps it in a folder "
-              "it hides from the USB connection (Garmin/Prompts). The others install as usual.")
+              "it hides from the USB connection. The others install as usual.")
 
 
 @pytest.mark.needs_display
@@ -285,6 +285,29 @@ def test_done_after_install_all_says_what_was_not_installed(watch, downloads, in
     ((name, heading, body),) = said
     assert (name, heading) == ("update-done", "Done")
     assert "1 update was not installed:\nMade-up Prompt Bundle 2.18: " + HIDDEN_WHY in body
+
+
+@pytest.mark.parametrize(("count", "said"), [
+    (1, ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
+        "w\u00a0folderze ukrytym przed połączeniem USB. Pozostałe instalują się normalnie.")),
+    (3, ("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
+        "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie.")),
+    (5, ("5 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
+        "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie.")),
+    (12, ("12 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
+         "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie.")),
+    (22, ("22 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
+         "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie.")),
+])
+def test_the_note_of_the_group_in_polish_by_count(count, said):
+    from fakes import in_language
+
+    from openexpress.gui.updates_page import folders_hidden_text
+
+    hidden = [types.SimpleNamespace(refused_inside=True) for _n in range(count)]
+    with in_language("pl"):
+        text = folders_hidden_text([*hidden, types.SimpleNamespace(refused_inside=False)])
+    assert text == said
 
 
 def test_in_polish(watch, downloads, capsys):

@@ -2375,3 +2375,13 @@ def test_install_all_copies_every_update_then_ejects_the_drive_once(monkeypatch,
         ["006-V0000-00", "006-D0000-00", "006-D0002-00"]]
     assert len(win.ejected) == 1
     assert all(u.on_device for u in items)
+
+
+@pytest.mark.parametrize("placeholder", ["NA", "N/A", " na ", "-", ""])
+def test_a_change_note_that_says_nothing_is_left_out(placeholder):
+    """Garmin fills the notes of some components with a placeholder ("NA"): no line of it in
+    the list nor in the question before the install."""
+    answer = server_answer()
+    answer["updates"][0]["releaseNotes"] = [{"changelog": [placeholder, "Made-up fix."]}]
+    (first, *_rest) = updates.parse_updates(lower_keys(answer))
+    assert first.changes == ["Made-up fix."]

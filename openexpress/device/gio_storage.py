@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import codecs
 import contextlib
+import dataclasses
 import logging
 import os
 import re
@@ -619,6 +620,13 @@ class GioStorage(Storage):
     def exclusive_ptp(self):
         self._responding()  # the device would have to be unmounted from gvfs first
         usb = self.usb
+        if usb_place(usb) is None and self.device_uri:
+            # Opened while it was starting, before its place on USB could be read.
+            found = place_from_sysfs(usb)
+            if found is not None:
+                log.info("PTP: the device's place on USB read now (it was not known when it "
+                         "was opened)")
+                self.usb = usb = found
         if usb_place(usb) is None or not self.device_uri:
             return None
         # A Flatpak reaches the device only through its node, which it has with the
@@ -914,6 +922,28 @@ def _still_stalled(usb: GarminUsb | None) -> bool:
 def _stalled_keys() -> set[tuple[int, int]]:
     with _stalled_lock:
         return set(_stalled_at)
+
+
+def place_from_sysfs(usb: GarminUsb | None) -> GarminUsb | None:
+    """A Garmin device opened before its place on USB could be read (it was still starting):
+    `usb` with that place from /sys, when exactly one Garmin USB device of its product (its
+    product not known: exactly one Garmin USB device) is there; None otherwise, and for one
+    whose place is known. Only the IDs and numbers are read, never its serial number."""
+    if usb is None or usb_place(usb) is not None:
+        return None
+    places = set()
+    for record in _usb_records():
+        try:
+            if record.vendor() != GARMIN_VID or (
+                    usb.product is not None and record.product() != usb.product.lower()):
+                continue
+            places.add((record.busnum(), record.devnum()))
+        except (OSError, ValueError):
+            continue
+    if len(places) != 1:
+        return None
+    ((bus, address),) = places
+    return dataclasses.replace(usb, bus=bus, address=address)
 
 
 def _sysfs_place(record: _UsbRecord) -> tuple[int, int] | None:

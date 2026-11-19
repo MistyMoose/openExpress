@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 20:33+0100\n"
+"POT-Creation-Date: 2026-11-19 00:25+0100\n"
 "PO-Revision-Date: 2026-11-17 19:00+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -10338,8 +10338,8 @@ msgstr[0] "K nahrání: {count} aktivita"
 msgstr[1] "K nahrání: {count} aktivity"
 msgstr[2] "K nahrání: {count} aktivit"
 
-#. TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
-#. "Podstawowe urządzenie typu wearable")
+#. TRANSLATORS: "Primary wearable" is Garmin's name of the setting (in Polish its manuals
+#. say "Podstawowe urządzenie noszone na ciele")
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid ""

@@ -3557,7 +3557,7 @@ def test_quiet_time_ends(exclusive, monkeypatch):
 
 
 @pytest.mark.parametrize("change", ["flatpak", "no-address", "no-libusb"])
-def test_no_ptp_session_where_it_cannot_work(exclusive, monkeypatch, change):
+def test_no_ptp_session_where_it_cannot_work(exclusive, monkeypatch, tmp_path, change):
     from openexpress.device import ptp
 
     st, _fake, _events = exclusive
@@ -3565,6 +3565,7 @@ def test_no_ptp_session_where_it_cannot_work(exclusive, monkeypatch, change):
         monkeypatch.setattr(gio_storage, "in_flatpak", lambda: True)
     elif change == "no-address":
         st.usb = gio_storage.GarminUsb("51b4")
+        monkeypatch.setattr(gio_storage, "SYSFS_USB", tmp_path)  # nor does /sys tell it
 
     def missing():
         raise ptp.UsbUnavailable("no libusb")

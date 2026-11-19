@@ -1561,9 +1561,11 @@ def test_the_command_line_writes_into_the_folder_read_without_a_flag(offered_to,
     out = capsys.readouterr().out.splitlines()
     assert "Copied 2 files." in out and POWER in out
     assert fake.steps == TZ_STEPS + SYSTEM_STEPS
-    with pytest.raises(SystemExit) as gone:  # no such option
-        main(["updates", "--install", "006-D9001-00", "--hidden-folder-trial"])
-    assert gone.value.code == 2
+    # The trial is for a folder a watch hides inside GARMIN, not a navigator's: nothing tried.
+    assert main(["updates", "--install", "006-D9001-00", "--hidden-folder-trial"]) == 1
+    assert capsys.readouterr().out.splitlines()[-1] == (
+        "Not tried: Time zone map 9.00 does not go to a folder the device hides inside GARMIN.")
+    assert fake.steps == TZ_STEPS + SYSTEM_STEPS
 
 
 @pytest.mark.needs_display

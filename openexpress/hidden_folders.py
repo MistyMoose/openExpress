@@ -135,6 +135,39 @@ def forget(storage: Storage) -> None:
     _kept.pop(connection(storage), None)
 
 
+# A device opened while it was still starting may have no place on USB yet: a session of its own
+# is asked again after each of these waits (seconds) before it is taken for impossible.
+STARTING_WAITS = (2, 3, 5, 5, 5, 10)
+_sleep = time.sleep
+
+
+def waiting_text() -> str:
+    # TRANSLATORS: a step: the device was connected a moment ago and is not ready yet for the
+    # USB session openExpress opens of its own
+    return _("Waiting for the device to get ready…")
+
+
+def session_for(storage: Storage, progress: Callable[[str], None] | None = None):
+    """storage.exclusive_ptp(); while the device's place on USB is not known yet (opened while it
+    was starting), asked again after each of STARTING_WAITS, each wait told to `progress`. None
+    when it stays impossible, at once where the Flatpak has no USB (usb_blocked) or the place is
+    known (another reason: libusb missing, a USB drive)."""
+    from openexpress.device.gio_storage import usb_place
+
+    opener = storage.exclusive_ptp()
+    for wait in STARTING_WAITS:
+        if (opener is not None or storage.usb_blocked()
+                or not getattr(storage, "device_uri", None)
+                or usb_place(getattr(storage, "usb", None)) is not None):
+            break
+        log.info("hidden folders: the device's place on USB not known yet, asked again in %d s",
+                 wait)
+        say_to(progress)(waiting_text())
+        _sleep(wait)
+        opener = storage.exclusive_ptp()
+    return opener
+
+
 def reading_text(folders: Iterable[str]) -> str:
     # TRANSLATORS: a step: openExpress reads a folder the device hides from the ordinary USB
     # connection; {folder}: e.g. .System
@@ -192,7 +225,7 @@ def read(storage: Storage, folders: Iterable[str], why: str,
     which then keeps the folders of its top level found hidden (known_devices.hidden_tops)."""
     wanted = sorted({f.strip("/") for f in folders if f.strip("/")}, key=str.casefold)
     listing = Listing()
-    opener = storage.exclusive_ptp() if wanted else None
+    opener = session_for(storage, progress) if wanted else None
     if opener is None:
         listing.state = NO_USB if wanted and storage.usb_blocked() else NO_SESSION
         if wanted:
@@ -333,9 +366,88 @@ def no_folder_text(folder: str) -> str:
 
 
 @dataclass
+class KeptCopy:
+    """The file that was on the device before, copied to this computer before it was
+    replaced."""
+    path: Path
+    size: int
+    sha256: str
+    md5: str
+
+
+@dataclass
 class Written:
     real: str  # where the file is on the device, in its letter case
     size: int
+    kept: KeptCopy | None = None  # the file there before, when a copy was asked for
+
+
+def copy_not_read_text(name: str) -> str:
+    # TRANSLATORS: {name} is an update; openExpress copies the file on the device to this
+    # computer before it writes the new one, and that copy failed
+    return _("{name} was not written: the file there now could not be copied whole to this "
+             "computer first. Nothing on the device was changed.").format(name=name)
+
+
+def probe_step_text(folder: str) -> str:
+    # TRANSLATORS: a step of the trial on the command line: a small file written into a folder
+    # the device hides, read back and deleted, before anything there is replaced
+    return _("Trying a small test file in {folder}…").format(folder=folder)
+
+
+def keeping_step_text(name: str) -> str:
+    # TRANSLATORS: a step of the trial on the command line; {name}: an update, whose file now on
+    # the device is copied to this computer before it is replaced
+    return _("Copying the old {name} to this computer").format(name=name)
+
+
+def removing_step_text(name: str) -> str:
+    # TRANSLATORS: a step of the trial on the command line; {name}: an update
+    return _("Removing the old {name} from the device").format(name=name)
+
+
+def putting_back_step_text(name: str) -> str:
+    # TRANSLATORS: a step of the trial on the command line; {name}: an update whose new file was
+    # not written whole, so its old one is written back from the copy on this computer
+    return _("Putting the old {name} back on the device").format(name=name)
+
+
+def probe_refused_text(name: str) -> str:
+    # TRANSLATORS: {name} is an update; before it replaces anything, openExpress writes a small
+    # test file into the folder the device hides, reads it back and deletes it
+    return _("{name} was not written: the device did not take a small test file into that "
+             "folder, so the file there now was left as it is.").format(name=name)
+
+
+PROBE = "openexpress-probe.tmp"
+PROBE_DATA = b"openExpress: a test that this folder takes a new file; deleted at once\n"
+
+
+def put_back_dropped_text() -> str:
+    # TRANSLATORS: after an update was not written into a folder the device hides, the file that
+    # was there before was written back from its copy on this computer
+    return _("The file that was there before was put back and read back the same.")
+
+
+def session_possible(storage: Storage) -> bool:
+    """Whether a session of openExpress's own may be asked of this device: one over MTP whose
+    USB the program can reach (not the Flatpak without the permission). A device still starting
+    counts (session_for waits for it); whether the device then takes a file is known only as it
+    is written."""
+    return bool(getattr(storage, "device_uri", None)) and not storage.usb_blocked()
+
+
+def put_back_text(kept: KeptCopy, put_back: bool) -> str:
+    """What became of the file that was there before, after the new one was not written."""
+    if put_back:
+        # TRANSLATORS: after an update was not written into a folder the device hides; {path}:
+        # the copy on this computer of the file that was there before; {sha256}: its checksum
+        return _("The file that was there before was put back and read back the same as its "
+                 "copy ({path}, SHA-256 {sha256}).").format(path=kept.path, sha256=kept.sha256)
+    # TRANSLATORS: after an update was not written into a folder the device hides; {path}: the
+    # copy on this computer of the file that was there before; {sha256}: its checksum
+    return _("The file that was there before could not be put back; its copy is at {path} "
+             "(SHA-256 {sha256}).").format(path=kept.path, sha256=kept.sha256)
 
 
 # How a file written is read back: whole (FULL), or by samples (SAMPLED: the first and the
@@ -358,7 +470,8 @@ def _pace(size: int, seconds: float) -> str:
 
 def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, margin: int,
           progress: Callable[[str], None] | None = None, copying: str | None = None,
-          checking: str | None = None, check: str = FULL) -> Written:
+          checking: str | None = None, check: str = FULL,
+          keep_copy: Path | None = None, drop_copy: bool = False) -> Written:
     """Write the file `local` (on the computer) as the file at `path` in a folder of the top
     level ordinary MTP does not show, as Garmin Express writes there, in a session of its own:
     the folder listed afresh (the ordinary listing and Garmin's together), the space checked
@@ -371,11 +484,17 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
     what is on the device); one the device does not give back stays (ContentsNotRead). No folder
     is ever made; nothing else is touched. The time of the copy and of the check are logged
     apart. `name`: of the update, for the words; `copying` and `checking`: the heads of the
-    steps told to `progress` (in bytes) while it is sent and read back."""
+    steps told to `progress` (in bytes) while it is sent and read back. `keep_copy`: a trial
+    that changes nothing the device refuses first: a small file (PROBE) written into the
+    folder, read back and deleted (else WriteRefused), then the file there now copied whole
+    to `keep_copy` on this computer before it is deleted (else WriteRefused); when the new one
+    is then not written, the copy is put back once and read back, and the text says what
+    became of it (Written.kept: the copy). `drop_copy`: the copy deleted once the new file is
+    read back whole, or the old one put back; kept only when it could not be put back."""
     parts = [p for p in path.replace("\\", "/").split("/") if p]
     folder, filename = "/".join(parts[:-1]), parts[-1]
     size = local.stat().st_size
-    opener = storage.exclusive_ptp()
+    opener = session_for(storage, progress)
     if opener is None:
         state = NO_USB if storage.usb_blocked() else NO_SESSION
         raise WriteRefused(no_session_text(parts[0], state))
@@ -393,6 +512,14 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
                      filename, applog.size(room if free is not None else None),
                      applog.size(size + margin))
             raise WriteRefused(no_space_text(name, size + margin, room))
+        kept = None
+        if keep_copy is not None:
+            say_to(progress)(probe_step_text(real))
+            _probe(session, store, parent.handle, name)
+        if keep_copy is not None and old is not None:
+            kept = _copy_of(session, old, keep_copy, name,
+                            byte_steps(progress, keeping_step_text(name)))
+            say_to(progress)(removing_step_text(name))
         if old is not None:
             try:
                 session.delete(old.handle, size=old.size)
@@ -406,11 +533,109 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
                        byte_steps(progress, copying) if copying else None,
                        byte_steps(progress, checking) if checking else None, name)
         except ptp.PtpError as e:
-            raise NotWritten(not_written_text(name, old_removed=old is not None)) from e
+            said = not_written_text(name, old_removed=old is not None)
+            if kept is not None:
+                say_to(progress)(putting_back_step_text(name))
+                back = _put_back(session, store, parent.handle, old.name, kept, name)
+                if back and drop_copy:
+                    kept.path.unlink(missing_ok=True)
+                    said += " " + put_back_dropped_text()
+                else:
+                    said += " " + put_back_text(kept, back)
+            forget(storage)
+            raise NotWritten(said) from e
     log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
              applog.size(size), how)
     forget(storage)  # what was read of the folder is not what is there now
-    return Written(f"{real}/{filename}", size)
+    if kept is not None and drop_copy:
+        kept.path.unlink(missing_ok=True)
+        kept = None
+    return Written(f"{real}/{filename}", size, kept)
+
+
+def _probe(session, store: int, parent: int, name: str) -> None:
+    """A small file written into the folder `parent`, read back and deleted: WriteRefused when
+    the device does not take it (what it left of it deleted, when it can be)."""
+    try:
+        _put(session, store, parent, PROBE, PROBE_DATA, len(PROBE_DATA), None, FULL, None, None,
+             name)
+    except (ptp.PtpError, ContentsNotRead) as e:
+        log.warning("hidden folders: the test file not taken (%s: %s)", type(e).__name__, e)
+        _delete_named(session, store, parent, PROBE)
+        raise WriteRefused(probe_refused_text(name)) from e
+    if not _delete_named(session, store, parent, PROBE):
+        raise WriteRefused(probe_refused_text(name))
+    log.info("hidden folders: the test file written, read back and deleted")
+
+
+def _delete_named(session, store: int, parent: int, filename: str) -> bool:
+    """The file `filename` in the folder `parent` deleted, when it is there; whether it is
+    gone."""
+    if session.broken:
+        return False
+    try:
+        for item in _children(session, store, parent):
+            if not item.is_dir and item.name == filename:
+                session.delete(item.handle, size=item.size)
+    except ptp.PtpError as e:
+        log.warning("hidden folders: %s not deleted (%s: %s)", filename, type(e).__name__, e)
+        return False
+    return True
+
+
+def _copy_of(session, item, dest: Path, name: str,
+             told: Callable[[int, int | None], None] | None = None) -> KeptCopy:
+    """The file `item` read whole into `dest` on this computer, with its checksums, its bytes
+    told to `told` as they come; WriteRefused (nothing on the device changed) when it is not
+    read whole."""
+    import hashlib
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    sha, md5 = hashlib.sha256(), hashlib.md5()  # MD5: the checksum Garmin gives, not security
+
+    done = 0
+
+    def piece(data: bytes) -> None:
+        nonlocal done
+        sha.update(data)
+        md5.update(data)
+        out.write(data)
+        done += len(data)
+        if told is not None:
+            told(done, item.size)
+
+    try:
+        with open(dest, "wb") as out:
+            read = session.read_into(item.handle, piece, size=item.size)
+    except ptp.PtpError as e:
+        log.warning("hidden folders: the copy of %s not read (%s: %s)", item.name,
+                    type(e).__name__, e)
+        raise WriteRefused(copy_not_read_text(name)) from e
+    if read != item.size:
+        log.warning("hidden folders: the copy of %s read %s of %s", item.name,
+                    applog.size(read), applog.size(item.size))
+        raise WriteRefused(copy_not_read_text(name))
+    kept = KeptCopy(dest, read, sha.hexdigest(), md5.hexdigest())
+    log.info("hidden folders: %s (%s) copied to this computer first, SHA-256 %s", item.name,
+             applog.size(read), kept.sha256)
+    return kept
+
+
+def _put_back(session, store: int, parent: int, filename: str, kept: KeptCopy,
+              name: str) -> bool:
+    """The copy `kept` written back once as `filename`, read back against it; whether it is
+    there whole. Not tried when the session is out of step."""
+    if session.broken:
+        log.warning("hidden folders: %s not put back: the session is out of step", filename)
+        return False
+    try:
+        how = _put(session, store, parent, filename, kept.path, kept.size, kept.md5,
+                   FULL if kept.size <= FULL_CHECK_UP_TO else SAMPLED, None, None, name)
+    except (ptp.PtpError, ContentsNotRead) as e:
+        log.warning("hidden folders: %s not put back (%s: %s)", filename, type(e).__name__, e)
+        return False
+    log.info("hidden folders: %s put back, read back %s", filename, how)
+    return True
 
 
 # --- a map: its files written in one session (maps, the trial on the command line) -------------
@@ -497,7 +722,7 @@ def write_map(storage: Storage, name: str, removing: list[str], files: list[File
     paths = [*removing, *(f.path for f in files), *(path for path, _data in unlocks)]
     split = {p: (posixpath.dirname(_clean(p)), posixpath.basename(_clean(p))) for p in paths}
     folders = sorted({folder for folder, _name in split.values()}, key=str.casefold)
-    opener = storage.exclusive_ptp()
+    opener = session_for(storage, progress)
     if opener is None:
         state = NO_USB if storage.usb_blocked() else NO_SESSION
         raise WriteRefused(no_session_text(folders[0].split("/")[0], state))

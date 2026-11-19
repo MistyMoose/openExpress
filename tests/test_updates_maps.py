@@ -1026,7 +1026,7 @@ def _refresh_window(page, device_root, maps_answers=(), updates_answers=()):
         connected=Connected(),  # the devices connected, for the start page
         show_overview=show_overview, show_maps=show_maps, show_updates=show_updates,
         load_apps=None, load_music=None, load_activities=None,  # other pages: not loaded here
-        run_task=RunNow(),
+        run_task=RunNow(), progress=lambda text: None,
         in_background=lambda work, done, failed=None: run(work, done, failed))
     for name in ("show_device", "show_no_device", "_clear_device_pages", "load_section",
                  "_load", "load_maps", "load_updates",

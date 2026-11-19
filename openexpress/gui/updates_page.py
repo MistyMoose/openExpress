@@ -211,6 +211,12 @@ def _install_task(win, s, chosen):
         if not mass_storage:
             tell_update_done(win, s, rep)
             return
+        if rep.failed:
+            from openexpress import updates as upd
+
+            # TRANSLATORS: heading of the message after some of the updates were copied and
+            # others were not (the list says which and why)
+            win.error(_("Not All Updates Installed"), upd.failed_text(rep))
         win.eject_device(s, bike_accessory)
 
     def failed(e) -> bool:
@@ -222,10 +228,33 @@ def _install_task(win, s, chosen):
     return install, installed, failed
 
 
+def folders_hidden_text(updates) -> str:
+    """The note of a group of rows some of which go to a folder the device hides inside a folder
+    that is seen (folder_hidden): once for the group, the rows say it in short; each row's path
+    is its tooltip, and the log names the folders. "" when none."""
+    count = sum(1 for u in updates if u.refused_inside)
+    if not count:
+        return ""
+    # TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
+    # from the ordinary USB connection, which openExpress cannot write there (or the device
+    # refuses)
+    return ngettext("{count} of these cannot be installed with openExpress yet: the device keeps "
+                    "it in a folder it hides from the USB connection. The others install as "
+                    "usual.",
+                    "{count} of these cannot be installed with openExpress yet: the device keeps "
+                    "them in folders it hides from the USB connection. The others install as "
+                    "usual.", count).format(count=count)
+
+
 def tell_update_done(win, s, rep) -> None:
     """The message after updates were copied to the device of session `s` over MTP: what to
-    do next, and how many updates are still available. A message, not an error."""
+    do next, those not installed and why, and how many updates are still available. A message,
+    not an error."""
+    from openexpress import updates as upd
+
     text = UpdatesPage._update_done_text(rep)
+    if rep.failed:
+        text += "\n\n" + upd.failed_text(rep)
     still = still_available_text(win, s)
     # TRANSLATORS: heading of the message after an update was copied to the device or its
     # drive was ejected (not a button)
@@ -295,7 +324,8 @@ def shown_severity(u) -> str:
 def offers_button(u, waits_for=None) -> bool:
     """Whether the row of update `u` has its Install or Reinstall button: not while the file it
     goes to holds an update copied already (`waits_for`), not when its folder was not read, and
-    not when the reinstall is refused (an older version, another or an uncompared file)."""
+    not when the reinstall is refused (an older version, another or an uncompared file). One
+    whose folder the device hides inside a folder that is seen has it, off (folder_hidden)."""
     from openexpress import updates as upd
 
     return waits_for is None and not u.hidden_unread and not upd.reinstall_refused(u)
@@ -371,7 +401,7 @@ class UpdatesPage:
         def work():
             # Asks Garmin's server, then compares the offered files with those on the device.
             answer = s.client.software_updates(s.device.raw, include_reinstalls=True)
-            items = upd.offered(s.storage, answer, s.device)
+            items = upd.offered(s.storage, answer, s.device, progress=self.progress)
             # The kind of device, for the question before an update (it asks no server):
             # usually known already from opening the device.
             try:
@@ -424,7 +454,7 @@ class UpdatesPage:
         titles = [u.title.casefold() for u in (*rest, *re, *untaken)]
         twins = {title for title in titles if titles.count(title) > 1}
         if rest:
-            g = sec.group(_("Available Updates"))
+            g = sec.group(_("Available Updates"), description=folders_hidden_text(rest))
             for u in rest:
                 self._update_row(g, u, waits_for=waiting.get(u.device_path.casefold()),
                                  with_file=u.title.casefold() in twins)
@@ -440,7 +470,7 @@ class UpdatesPage:
         if re or extra:
             # TRANSLATORS: heading of a group on the Updates page that holds the reinstall of
             # components already on the device
-            g = sec.group(_("Advanced"))
+            g = sec.group(_("Advanced"), description=folders_hidden_text(re))
         if extra:
             # TRANSLATORS: title of a row on the Updates page: items Garmin offers to add to the
             # device (voices, vehicles of a car navigator) that it does not have
@@ -601,6 +631,10 @@ class UpdatesPage:
             button = offers_button(u, waits_for)
             if u.hidden_unread:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
+            if u.refused_inside:
+                # TRANSLATORS: a line of the row of an update that openExpress cannot install
+                # yet (its group says why), without a full stop
+                subtitle += "\n" + _("Cannot be installed with openExpress yet")
         row = Adw.ActionRow(
             # TRANSLATORS: title of the row of an update of the device's own software (firmware), on
             # the Updates page
@@ -612,9 +646,14 @@ class UpdatesPage:
             row.set_tooltip_text(u.device_path)
         if button:
             # TRANSLATORS: button
-            row.add_suffix(self._button(_("Reinstall") if reinstall else _("Install"),
-                                        lambda u=u: self.confirm_update(u),
-                                        None if reinstall else "suggested-action"))
+            b = self._button(_("Reinstall") if reinstall else _("Install"),
+                             lambda u=u: self.confirm_update(u),
+                             None if reinstall else "suggested-action")
+            if not not_installed and u.refused_inside:
+                # There, but off for good: the end of a task turns on only the others.
+                self._action_buttons.remove(b)
+                b.set_sensitive(False)
+            row.add_suffix(b)
         parent.add_row(row) if isinstance(parent, Adw.ExpanderRow) else parent.add(row)
 
     @staticmethod

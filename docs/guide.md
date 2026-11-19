@@ -190,6 +190,17 @@ connected device; no login is needed.
   otherwise the row says *an older version* and has no button, and `openexpress updates
   --install` refuses it, so an older version is written only when the file on the device is
   the same one; in a folder the device hides, only its size is compared.
+- **Install All** goes on when the device refuses one file: the others are copied, and the
+  message at the end lists each update not installed and why (`openexpress updates --install
+  all` prints the same and ends with exit code 1). It stops at once only when the device stops
+  answering or is unplugged.
+- A component that goes to a folder the watch hides from the ordinary USB connection (on a
+  fēnix 8 `GARMIN/Prompts`, `ASR`, `KBD`, `ExtData`) is written there through openExpress's own
+  USB session: the device leaves the file manager for a moment, a small test file is written
+  and deleted first, the file it replaces is copied to this computer (and removed again once
+  the new one is read back whole, or put back if the new one is not written whole). Without
+  that session (the Flatpak without the USB permission) it is not installed: its group says
+  so once, its row says it in short and its **Install** button is off.
 - While software updates or a map's files are copied, openExpress keeps the computer from
   sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
   copy goes on.

@@ -217,10 +217,16 @@ class Storage(ABC):
         except DeviceError:
             return None
 
-    def read_at(self, real_path: str) -> bytes:
+    def read_at(self, real_path: str, told=None) -> bytes:
         """The file at this real path (in its letter case, as listed before), not looked
-        for again."""
-        return self._read(real_path)
+        for again; `told(done, size)` as it comes, where the storage reads it in pieces."""
+        return self._read_told(real_path, told)
+
+    def _read_told(self, real_path: str, told) -> bytes:
+        data = self._read(real_path)
+        if told is not None:
+            told(len(data), len(data))
+        return data
 
     def listdir(self, path: str) -> list[Entry]:
         real = self.resolve(path)

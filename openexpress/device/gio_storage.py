@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import codecs
 import contextlib
+import dataclasses
 import logging
 import os
 import re
@@ -439,9 +440,13 @@ class GioStorage(Storage):
     def _read_start(self, real_path: str, count: int) -> bytes:
         return self._read_stream(real_path, count)
 
-    def _read_stream(self, real_path: str, count: int | None = None) -> bytes:
+    def _read_told(self, real_path: str, told) -> bytes:
+        return self._read_stream(real_path, told=told)
+
+    def _read_stream(self, real_path: str, count: int | None = None, told=None) -> bytes:
         """The file, or its first `count` bytes (fewer when it is shorter), read as a stream
-        in chunks of at most READ_CHUNK: gvfs fetches only what is asked for."""
+        in chunks of at most READ_CHUNK: gvfs fetches only what is asked for; the bytes read
+        so far told to `told(done, None)` after each chunk."""
         what = _("Cannot read {path}").format(path=real_path)
         context = _steps_context()  # one for all the steps of the read
         target = self._f(real_path)
@@ -461,6 +466,8 @@ class GioStorage(Storage):
                     break  # the end of the file
                 chunks.append(chunk)
                 got += len(chunk)
+                if told is not None:
+                    told(got, None)
         except DeviceNotResponding:
             raise  # not closed: that would wait on the same device
         except DeviceError:
@@ -619,6 +626,13 @@ class GioStorage(Storage):
     def exclusive_ptp(self):
         self._responding()  # the device would have to be unmounted from gvfs first
         usb = self.usb
+        if usb_place(usb) is None and self.device_uri:
+            # Opened while it was starting, before its place on USB could be read.
+            found = place_from_sysfs(usb)
+            if found is not None:
+                log.info("PTP: the device's place on USB read now (it was not known when it "
+                         "was opened)")
+                self.usb = usb = found
         if usb_place(usb) is None or not self.device_uri:
             return None
         # A Flatpak reaches the device only through its node, which it has with the
@@ -914,6 +928,28 @@ def _still_stalled(usb: GarminUsb | None) -> bool:
 def _stalled_keys() -> set[tuple[int, int]]:
     with _stalled_lock:
         return set(_stalled_at)
+
+
+def place_from_sysfs(usb: GarminUsb | None) -> GarminUsb | None:
+    """A Garmin device opened before its place on USB could be read (it was still starting):
+    `usb` with that place from /sys, when exactly one Garmin USB device of its product (its
+    product not known: exactly one Garmin USB device) is there; None otherwise, and for one
+    whose place is known. Only the IDs and numbers are read, never its serial number."""
+    if usb is None or usb_place(usb) is not None:
+        return None
+    places = set()
+    for record in _usb_records():
+        try:
+            if record.vendor() != GARMIN_VID or (
+                    usb.product is not None and record.product() != usb.product.lower()):
+                continue
+            places.add((record.busnum(), record.devnum()))
+        except (OSError, ValueError):
+            continue
+    if len(places) != 1:
+        return None
+    ((bus, address),) = places
+    return dataclasses.replace(usb, bus=bus, address=address)
 
 
 def _sysfs_place(record: _UsbRecord) -> tuple[int, int] | None:

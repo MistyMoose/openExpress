@@ -196,6 +196,16 @@ changes anything only shows its plan until you add `--apply`. Every command:
   (`openexpress maps install NAME --hidden-folder-trial`), tried once on a Drive 53 EX with a
   map update of 8.3 GB.
   Voices and vehicles Garmin offers to add are not installed.
+- A watch that keeps a component in a folder it hides from the ordinary USB connection inside
+  `GARMIN` (on a fēnix 8: voice prompts in `Prompts`, speech and keyboard models in `ASR` and
+  `KBD`, fonts in `ExtData`) gets it through openExpress's own USB session, as a car navigator
+  does: a small test file first, the file it replaces copied to this computer and put back if
+  the new one is not written whole, the new one read back whole. Confirmed with the voice
+  prompts on one fēnix 8. Such a folder is known by the device naming it in `GarminDevice.xml`
+  while the ordinary listing does not show it. Where that session cannot be had (the Flatpak
+  without the USB permission), the Updates page says so once for the group and leaves its
+  **Install** button off, **Install All** installs the others, and `openexpress updates` says
+  the same.
 - GPS satellite data is written only to devices that already keep it in a format openExpress
   knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8, `GPES.bin` of
   the Edge 1050), and only when **Satellite Data** is turned on for them (experimental); other

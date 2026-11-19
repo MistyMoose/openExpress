@@ -2005,6 +2005,8 @@ def cmd_updates(args) -> int:
                 print("      " + older)
             if u.hidden_unread:
                 print("      " + upd.not_installed_here_text(u))
+            if u.refused_inside:
+                print("      " + upd.not_installed_inside_text(u))
             note = _copied_note(u)
             if note:
                 print("      " + note)
@@ -2033,6 +2035,31 @@ def cmd_updates(args) -> int:
     refused = [u for u in chosen if u.hidden_unread]
     chosen = [u for u in chosen if not any(u is r for r in refused)]
     _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
+    # Nor to a folder the device hides inside a folder that is seen: the others go on. Tried
+    # with --hidden-folder-trial: only those, each named.
+    trial = getattr(args, "hidden_folder_trial", False)
+    inside = [u for u in chosen if (u.folder_hidden is not None if trial else u.refused_inside)]
+    if trial:
+        if args.install == ["all"]:
+            # TRANSLATORS: `openexpress updates --install all --hidden-folder-trial`
+            print(_("--hidden-folder-trial takes the part numbers of the updates to try, not "
+                    "“all”."), file=sys.stderr)
+            return 2
+        for u in [u for u in chosen if u.folder_hidden is None and not u.is_metadata]:
+            # TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`
+            print(_("Not tried: {name} {version} does not go to a folder the device hides "
+                    "inside GARMIN.").format(name=u.title, version=u.version))
+            refused.append(u)
+        tried = {u.part_number.upper() for u in inside}
+        chosen = [u for u in chosen if u.folder_hidden is not None or (
+            u.is_metadata and u.part_number.upper().removesuffix("-META") in tried)]
+        if not inside:
+            return 1
+    else:
+        for u in inside:
+            print(upd.not_installed_inside_text(u))
+        chosen = [u for u in chosen if not u.refused_inside]
+        refused += inside
     # Never an older version over the device's own, unless it is the same file.
     older = [u for u in chosen if upd.reinstall_refused(u)]
     for u in older:
@@ -2076,6 +2103,15 @@ def cmd_updates(args) -> int:
     for u in upd.sort_for_install(chosen):
         print(f"  {u.part_number} {u.version}  {u.title}{_beta_mark(u)}  ({human_size(u.size)}) "
               f"-> {u.device_path}")
+        if trial and u.folder_hidden is not None:
+            # TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`, under
+            # the update; {folder}: the folder the device hides; {copies}: a folder on this
+            # computer
+            print("      " + _("a trial: written into {folder}, which the device hides, through "
+                               "openExpress's own USB session; the file there now is copied "
+                               "to {copies} first and put back if the new one is not written "
+                               "whole; the first refusal stops the trial").format(
+                folder=u.folder_hidden, copies=_hidden_trial_folder()))
     print(_("Space: {needed} needed, {free} free").format(needed=human_size(need),
                                                          free=human_size(free)))
     eulas = sorted({u.eula_url for u in chosen if u.eula_url})
@@ -2091,10 +2127,19 @@ def cmd_updates(args) -> int:
                        "(this means you accept the licenses above)."))
         return 0
     with _progress() as progress:
+        tried = {"hidden_trial": _hidden_trial_folder()} if trial else {}
         rep = upd.install(chosen, st, session=client.http, progress=progress,
-                          unit_id=dev.unit_id, offered=items)
+                          unit_id=dev.unit_id, offered=items, **tried)
     n = len(rep.written)
     print("\n" + ngettext("Copied {count} file.", "Copied {count} files.", n).format(count=n))
+    for u, kept in rep.kept:
+        # TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial --apply`, after
+        # the copy; {path}: the copy on this computer of the file the update replaced
+        print(_("The file {name} replaced is kept at {path} (SHA-256 {sha256}).").format(
+            name=u.title, path=kept.path, sha256=kept.sha256))
+    if rep.failed:
+        print(upd.failed_text(rep))
+        refused += [u for u, _why in rep.failed]
     if n and getattr(st, "mass_storage", False) and not _eject_drive(st):
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:
@@ -2114,6 +2159,12 @@ def _drive_synced(client, dev) -> bool:
     except ApiError:
         info = None
     return service.drive_sync_refusal(dev, info) is None
+
+
+def _hidden_trial_folder() -> Path:
+    """Where `updates --hidden-folder-trial` keeps the files it replaced on the device, out of
+    the cache (which openExpress clears): until removed by hand."""
+    return paths.data_dir() / "hidden-folder-trial"
 
 
 def _loses_data_on_update(client, dev) -> bool:
@@ -3771,6 +3822,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--apply", action="store_true",
                    help=_("download the updates chosen with --install and copy them to the "
                           "device, accepting their licenses"))
+    s.add_argument("--hidden-folder-trial", action="store_true",
+                   help=_("a trial: install the updates named with --install into a folder a "
+                          "watch hides inside GARMIN (e.g. Prompts), through openExpress's own "
+                          "USB session, the file there copied to this computer first"))
     s.set_defaults(func=cmd_updates)
 
     s = sub.add_parser("maps", help=_("maps on the device (TopoActive, base maps, CourseView…)"))

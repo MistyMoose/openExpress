@@ -631,7 +631,7 @@ class Section:
         self.groups = []
 
     def group(self, title="", description=""):
-        group = types.SimpleNamespace(title=title, rows=[], header=None)
+        group = types.SimpleNamespace(title=title, description=description, rows=[], header=None)
         group.add = group.rows.append
         group.set_header_suffix = lambda widget: setattr(group, "header", widget)
         self.groups.append(group)

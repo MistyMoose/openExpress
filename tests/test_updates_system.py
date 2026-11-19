@@ -738,7 +738,8 @@ def test_cli_says_a_copied_component_waits_for_the_device(device_root, monkeypat
     assert "Test Font" in out.split("Update copied, waiting")[1]
 
 def test_what_was_copied_before_a_failure_is_kept(device_root, tmp_path, monkeypatch):
-    """A copy that fails after some updates were written: those are kept as copied."""
+    """A copy that fails after some updates were written: those are kept as copied, the one
+    refused is said with why."""
     from openexpress import known_devices
 
     _remember_the_device()
@@ -760,8 +761,9 @@ def test_what_was_copied_before_a_failure_is_kept(device_root, tmp_path, monkeyp
         return write(path, local, progress, **kw)
 
     monkeypatch.setattr(storage, "write_file_checked", bundle_fails)
-    with pytest.raises(updates.UpdateError):
-        updates.install(items, storage, unit_id=UNIT)
+    report = updates.install(items, storage, unit_id=UNIT)
+    assert [(u.part_number, why) for u, why in report.failed] == [
+        ("006-V0000-00", "the cable came out")]
     assert list(dict(known_devices.load()[UNIT].copied_updates)) == ["006-D0000-00.23.40"]
 
 
@@ -1183,7 +1185,8 @@ def test_the_page_learns_from_the_answer_whether_beta_versions_are_offered(devic
             unit_info_answer={},  # asked when the device was opened
             client=types.SimpleNamespace(
                 software_updates=lambda raw, include_reinstalls=False: lower_keys(beta_answer()))),
-        show_updates=lambda items, beta=False: shown.append(([u.part_number for u in items], beta)))
+        show_updates=lambda items, beta=False: shown.append(([u.part_number for u in items], beta)),
+        progress=lambda text: None)
     win._load = lambda key, title, work, show, on_error=None: show(work())
     MainWindow.load_updates(win)
     assert shown == [(["006-D0000-00", "006-V0000-00"], True)]
@@ -2373,3 +2376,13 @@ def test_install_all_copies_every_update_then_ejects_the_drive_once(monkeypatch,
         ["006-V0000-00", "006-D0000-00", "006-D0002-00"]]
     assert len(win.ejected) == 1
     assert all(u.on_device for u in items)
+
+
+@pytest.mark.parametrize("placeholder", ["NA", "N/A", " na ", "-", ""])
+def test_a_change_note_that_says_nothing_is_left_out(placeholder):
+    """Garmin fills the notes of some components with a placeholder ("NA"): no line of it in
+    the list nor in the question before the install."""
+    answer = server_answer()
+    answer["updates"][0]["releaseNotes"] = [{"changelog": [placeholder, "Made-up fix."]}]
+    (first, *_rest) = updates.parse_updates(lower_keys(answer))
+    assert first.changes == ["Made-up fix."]

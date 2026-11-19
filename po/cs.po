@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 08:05+0100\n"
+"POT-Creation-Date: 2026-11-19 08:11+0100\n"
 "PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -3681,9 +3681,12 @@ msgstr[2] "Získaná doba aktivity: méně než minuta za posledních {days} dn�
 #, python-brace-format
 msgid "Activity time gained: today {today} · last {days} day {total}"
 msgid_plural "Activity time gained: today {today} · last {days} days {total}"
-msgstr[0] "Získaná doba aktivity: dnes {today} · za poslední {days} den {total}"
-msgstr[1] "Získaná doba aktivity: dnes {today} · za poslední {days} dny {total}"
-msgstr[2] "Získaná doba aktivity: dnes {today} · za posledních {days} dní {total}"
+msgstr[0] ""
+"Získaná doba aktivity: dnes {today} · za poslední {days} den {total}"
+msgstr[1] ""
+"Získaná doba aktivity: dnes {today} · za poslední {days} dny {total}"
+msgstr[2] ""
+"Získaná doba aktivity: dnes {today} · za posledních {days} dní {total}"
 
 #. TRANSLATORS: `openexpress courses`: the points of a track of a GPX file (not its
 #. waypoints)
@@ -13805,9 +13808,20 @@ msgstr ""
 "Dostupná aktualizace"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
-msgid "Software updates, with a beta system update offered for the device"
+#, fuzzy
+#| msgid "Software updates, with a beta system update offered for the device"
+msgid ""
+"Software updates: a system update and two more updates offered for the device"
 msgstr ""
 "Aktualizace softwaru včetně beta aktualizace systému nabízené pro zařízení"
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+#, fuzzy
+#| msgid "the sensors on the Garmin account and their batteries"
+msgid ""
+"The device page: the sensors on the Garmin Connect account with their "
+"batteries, and solar charging"
+msgstr "senzory na účtu Garmin a stav jejich baterií"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Maps on the device and free maps to install"

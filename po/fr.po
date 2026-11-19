@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 08:05+0100\n"
+"POT-Creation-Date: 2026-11-19 08:11+0100\n"
 "PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
@@ -13846,10 +13846,21 @@ msgstr ""
 "avec des étiquettes telles que Mise à jour disponibles"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
-msgid "Software updates, with a beta system update offered for the device"
+#, fuzzy
+#| msgid "Software updates, with a beta system update offered for the device"
+msgid ""
+"Software updates: a system update and two more updates offered for the device"
 msgstr ""
 "Mises à jour logicielles, avec une mise à jour bêta du système proposée pour "
 "l’appareil"
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+#, fuzzy
+#| msgid "{model} is on the Garmin account {account} already."
+msgid ""
+"The device page: the sensors on the Garmin Connect account with their "
+"batteries, and solar charging"
+msgstr "{model} est déjà sur le compte Garmin {account}."
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Maps on the device and free maps to install"

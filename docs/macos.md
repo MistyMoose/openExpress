@@ -68,7 +68,10 @@ MTP over libusb  ──►  the watch or bike computer
 
 - The Mac app: devices in a sidebar, pages for Overview, Activities (route map and charts),
   Updates, Maps, Apps and Backups, a menu bar item, notifications, and an automatic backup and
-  sync when a device is connected. Updates are never installed without asking.
+  sync when a device is connected. Updates are never installed without asking. The Overview
+  also has the readings of the Garmin Connect account the Linux window shows on a device's
+  page: the sensors' batteries and, for a watch that charges from the sun, its solar charging
+  (`account.readings`), for a remembered device too.
 - [The engine protocol](ENGINE.md) (`openexpress engine`), which the app uses.
 - Incremental backups: a file that has not changed since the previous backup is hard-linked to
   it instead of being read from the device again.
@@ -234,8 +237,15 @@ SDK; the workflow stops with an error otherwise).
 ## Tests
 
 ```bash
-OPENEXPRESS_TESTS_NO_DISPLAY=1 ~/.venvs/openexpress-mac/bin/python -m pytest -q
+XDG_DATA_DIRS=/opt/homebrew/share:/usr/share \
+  OPENEXPRESS_TESTS_NO_DISPLAY=1 ~/.venvs/openexpress-mac/bin/python -m pytest -q
 ```
+
+`XDG_DATA_DIRS` lets xgettext find AppStream's rules for the metainfo (`brew install appstream`):
+without them the tests of the translation template fail, and `tools/update-template.sh` refuses
+to make one. After a merge of upstream, make the template again with `tools/update-template.sh`
+(it keeps the Mac's texts), but take `po/pl.po` as git merges it: Polish covers upstream's texts
+only, and `tools/update-translations.sh` would fill it with guesses for the Mac's.
 
 On macOS the tests get a home folder of their own (they never touch `~/Library`), never reach a
 real USB device or the Keychain, and skip the ones that need PyGObject (the Linux window).

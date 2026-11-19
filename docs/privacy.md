@@ -248,7 +248,8 @@ nothing is asked until the time it gives.
 Two readings ask your Garmin Connect account, and only read; nothing on the account or a device
 changes. They are asked when you run `openexpress sensors` or `openexpress solar`, and when the
 window shows the page of a device on your account, for its rows Account Sensors and Solar
-Charging (signed out, or for a device not on your account, nothing is asked).
+Charging, or the Mac app shows a device's Overview, connected or not (signed out, or for a
+device not on your account, nothing is asked).
 
 | Request | What it sends | What is kept |
 |---|---|---|

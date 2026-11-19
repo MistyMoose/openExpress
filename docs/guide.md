@@ -238,17 +238,17 @@ connected device; no login is needed.
   without access to USB devices), the page says why the folder could not be read. Voices and
   vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
 
-Installing a system update was tested on an Edge 1050 (betas 33.12, 33.20 and 33.21) and
-reported working on a fēnix 7 ([#6](https://github.com/TomaszBojanowski/openExpress/issues/6)); component updates were tested on a Venu 2 and a fēnix 8 (a map support file).
+Installing a system update was tested on an Edge 1050 (betas 33.12, 33.20 and 33.21) and a
+fēnix 8 (24.20), and reported working on a fēnix 7 ([#6](https://github.com/TomaszBojanowski/openExpress/issues/6)); component updates were tested on a Venu 2 and a fēnix 8 (a map support file, and voice prompts and a font in folders the watch hides).
 
 <p align="center">
   <img src="screenshots/update-confirm.png" width="700"
-       alt="The confirmation dialog before a system update of an Edge 1050: both versions, the size, where the file goes on the device, that it is a beta, the license link and a warning">
+       alt="The confirmation dialog before the System Software Bundle 23.39 → 24.20 of a fēnix 8: both versions, the size, where the file goes on the device, the license link and a warning">
 </p>
 
 <p align="center">
   <img src="screenshots/update-ready.png" width="700"
-       alt="The Updates page after the copy: Update ready: unplug the device to install it, 33.20 → 33.21, a beta, with Check Again">
+       alt="The Updates page of a fēnix 8 after the copy: Updates ready: unplug the device to install them, 1 more available, 23.39 → 24.20, with Check Again">
 </p>
 
 ## Maps

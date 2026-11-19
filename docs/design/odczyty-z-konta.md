@@ -1,10 +1,10 @@
 # Design: readings from the Garmin Connect account
 
-Status: decided; the sensors and solar charging are implemented (the command line and the rows of
-the device page, steps 1–4 of section 8), the reports (section 5) not yet. D1–D10 are chosen
-(marked so in section 7), D8 with `--apply`, as every command that writes. What the read-only
-check on the account (section 6) showed is in section 2; the time zone of a sensor's last
-connection is read as UTC until the check tells it.
+Status: decided; the sensors and solar charging are implemented (the command line, the rows of
+the device page and their documents: steps 1–4 and 7 of section 8), the reports (section 5, steps
+5 and 6) later. D1–D10 are chosen (marked so in section 7), D8 with `--apply`, as every command
+that writes. What the read-only check on the account (section 6) showed is in section 2; a
+sensor's last connection is in UTC.
 
 ## 1. Scope
 
@@ -39,8 +39,8 @@ Values seen of `batteryStatus`: `GOOD`, `NEW`, `OK`, `UNKNOWN`; of `sensorType`:
 `BIKE_POWER`, `BIKE_SPEED`, `HEART_RATE`. `batteryLevel` is none or a whole number from 0 to 100;
 `lastConnected` is text of the form `YYYY-MM-DDThh:mm:ss.f`, with no time zone;
 `lastLowBatteryNotification` is none or the same form with milliseconds; `rechargeableSensorCapable`
-is none or a truth value. Still not known: whether `lastConnected` is in UTC or local time, and the
-whole list of report categories. The program uses only fields seen in an answer for its own
+is none or a truth value; `lastConnected` is in UTC (read so, the sensors of a ride were last
+connected at its known end). Still not known: the whole list of report categories. The program uses only fields seen in an answer for its own
 sign-in, and reads values whose kind is not known as not there.
 
 The sensors of an activity are also in the activity's FIT file: each `device_info` message (public
@@ -69,7 +69,8 @@ Account Sensors                             5 sensors · 1 with a low battery   
   `batteryStatus` in words), then when it was last connected (`relative_time`), joined by
   `caption()`. A low or critical battery takes the theme's warning colour, as an update does, and
   such sensors come first; the rest by the last connection, the newest first.
-- Only on the page of a device on the signed-in account; no sensor: the row is not shown.
+- Only on the page of a device on the signed-in account (signed out: the row below); no sensor:
+  the row is not shown.
 - **Signed out:** a plain row, with no arrow, with "Sign in to see" (the words of the other rows of
   the account). **No answer and nothing kept:** "Could not check", in the plain row too. **No network, an answer kept:** the
   kept answer, as for the other readings of the account.
@@ -122,7 +123,8 @@ battery (D5). "Today" is the day whose date is today's on this computer; a day w
 | Its subtitle, a week under a minute | Activity time gained: under a minute in the last 7 days | Zyskany czas aktywności: poniżej minuty w ostatnich 7 dniach |
 
 Times by `duration_text`, which learns hours ("4 h 10 min"). Signed out, no answer, no network: as
-the sensors. **Command line:** `openexpress solar [--days N]` (7 by default): a line for each day.
+the sensors. **Command line:** `openexpress solar [--days N]` (7 by default): a line for each day,
+dated in the format of the language; days under a minute in all in one line, as the row does.
 **Kept answers:** a kind `SOLAR`, 60 minutes; on disk only the date and the time gained of each
 day; refresh, a sync of the device and another sign-in forget it.
 
@@ -179,10 +181,8 @@ number, text with digits as 9, or none), never a name, a number, a date or an id
 the sensors, the account's devices, the solar gain of the device that charges from the sun, and the
 status of a report that does not exist. What it showed is in section 2.
 
-It has yet to show whether any sensor's last connection, read as UTC, is later than now (then it
-is local time); a run within an hour after a sensor was connected can tell it. Until then
-`lastConnected` is read as UTC: the account names its local times so (`…Local`), and a wrong guess
-moves "today" or "yesterday" only near midnight. The phone's day view is not needed (D6).
+`lastConnected` is in UTC: read so, the sensors of a ride were last connected at its known end
+(the account names its local times `…Local`). The phone's day view is not needed (D6).
 
 ## 7. Decisions
 
@@ -238,8 +238,7 @@ value or the file's name.
 Each step: tests that fail on the code before it, the texts with their Polish in the same commit,
 the usual checks; each waits for acceptance.
 
-1. The time zone of a sensor's last connection (section 6): a run of the check within an hour
-   after a sensor was connected; until then UTC, so no step waits for it.
+1. The time zone of a sensor's last connection (section 6): UTC.
 2. Sensors and solar, the core: the requests, the kinds of kept answers, the reading of the fields,
    hours in `duration_text`; tests on made-up answers.
 3. The command line: `openexpress sensors`, `openexpress solar`; `docs/cli.md`.

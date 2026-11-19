@@ -42,10 +42,20 @@ def account_entry(s) -> dict | None:
 
 def add_rows(win, s, group) -> None:
     """The readings of the account, under the rows of the account in `group`: Account Sensors,
-    then Solar Charging (in the same place when the account has no sensor)."""
+    then Solar Charging (in the same place when the account has no sensor). Neither on the page
+    of a device off the account: they are the account's, of its devices."""
+    win.sensors_row = win.sensors_list = win.solar_row = None  # those of the page before
+    if off_the_account(s):
+        return
     for row in (*sensors_rows(win, s), solar_row(win, s)):
         if row is not None:
             group.add(row)
+
+
+def off_the_account(s) -> bool:
+    """Signed in, the account's list known, and the open device not on it."""
+    return (s.logged_in and isinstance(getattr(s, "account_devices", None), list)
+            and account_entry(s) is None)
 
 
 # --- Account Sensors --------------------------------------------------------------------------
@@ -120,11 +130,11 @@ def solar_row(win, s) -> Adw.ActionRow | None:
     "Checking…" while asked, then today's and the week's activity time gained, or "Could not
     check"."""
     entry = account_entry(s)
+    if off_the_account(s):
+        return None
     if s.logged_in and entry is not None:
         if not readings.charges_from_sun(entry):
             return None
-    elif s.logged_in and isinstance(getattr(s, "account_devices", None), list):
-        return None  # a device off the account: nothing of it to ask
     elif "solar" not in (s.device.description or "").casefold():
         return None
     # TRANSLATORS: row in the group of the Garmin account on the device page: the activity time

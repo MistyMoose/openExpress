@@ -110,7 +110,7 @@ def sensors_of(win):
 
     from openexpress.gui.window_tasks import row_label
 
-    shown = [r for r in (win.sensors_row, win.sensors_list) if r.get_visible()]
+    shown = [r for r in (win.sensors_row, win.sensors_list) if r is not None and r.get_visible()]
     if not shown:
         return False, None, False, False, []
     (row,) = shown
@@ -178,6 +178,15 @@ def test_no_sensor_no_row_and_solar_charging_in_its_place(clock):
     assert sensors_of(win)[0] is False
     titles = account_titles(section)
     assert "Account Sensors" not in titles and titles[-1] == "Solar Charging"
+
+
+@pytest.mark.needs_display
+def test_no_sensors_on_the_page_of_a_device_off_the_account(clock):
+    asked = []
+    win, _section, _asked = _page(devices=account(on_it=False))
+    win.in_background = lambda *a, **kw: asked.append(a)
+    win.show_overview()
+    assert sensors_of(win)[0] is False and asked == []
 
 
 @pytest.mark.needs_display

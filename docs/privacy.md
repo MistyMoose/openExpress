@@ -207,20 +207,22 @@ nothing is asked until the time it gives.
 
 ## Readings of the account: sensors and solar charging
 
-Two readings ask your Garmin Connect account, only when you run `openexpress sensors` or
-`openexpress solar`, and only read; nothing on the account or a device changes.
+Two readings ask your Garmin Connect account, and only read; nothing on the account or a device
+changes. They are asked when you run `openexpress sensors` or `openexpress solar`, and when the
+window shows the page of a device on your account, for its rows Account Sensors and Solar
+Charging (signed out, or for a device not on your account, nothing is asked).
 
 | Request | What it sends | What is kept |
 |---|---|---|
-| The sensors on the account (`openexpress sensors`) | nothing but the signed request | each sensor's name, type, battery and last connection, for 30 minutes |
-| The activity time the sun gained a device (`openexpress solar`), for each device of the account that charges from the sun | the device's Garmin Connect ID and the days asked | the date and the time gained of each day, for an hour |
+| The sensors on the account (`openexpress sensors`, the row Account Sensors) | nothing but the signed request | each sensor's name, type, battery and last connection, for 30 minutes |
+| The activity time the sun gained a device (`openexpress solar`, for each device of the account that charges from the sun; the row Solar Charging, for the device of the page) | the device's Garmin Connect ID and the days asked | the date and the time gained of each day, for an hour |
 
 - Never kept, shown or logged: a sensor's serial number, part number, product, software version
   and picture.
 - The log has one line for each request, as for every request: the sensors' address without its
   query, and for the solar request only the host, since its address names the device. Never a
   sensor's name or a value.
-- A sync makes both be asked anew.
+- A sync, Refresh in the window and another sign-in make both be asked anew.
 
 ## How long Garmin's answers are kept
 

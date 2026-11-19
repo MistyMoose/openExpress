@@ -3,6 +3,7 @@ program. Driven in-process with made-up devices (a folder each, as `--path` open
 Garmin server of the tests' own; the protocol's own stdout is kept apart from what the code
 prints. All devices, accounts and tickets are made up."""
 
+import datetime
 import http.server
 import json
 import os
@@ -20,6 +21,7 @@ from openexpress import __version__, activities, backup, engine
 from openexpress import settings as settings_mod
 from openexpress.device.found import DeviceSummary, FoundDevice
 from openexpress.device.storage import LocalStorage
+from openexpress.i18n import caption
 from openexpress.device.xmldevice import parse
 from openexpress.progress import Step, copying_text, downloading_text
 
@@ -34,7 +36,8 @@ CONTRACT = {
     "settings.get", "settings.set", "strava.status", "strava.connect", "strava.disconnect",
     "cancel", "shutdown",
     "strava.upload",  # besides the contract: as `strava upload`
-    "backups.list", "activities.track"}  # what the app asked for after it
+    "backups.list", "activities.track",  # what the app asked for after it
+    "account.readings"}
 
 
 class FakeDevices:
@@ -1183,6 +1186,143 @@ def test_what_the_code_prints_during_a_request_becomes_its_log_events_never_stdo
     running.out.messages()  # every line written is JSON
     running.stop()
     assert capsys.readouterr().out == ""
+
+
+# --- the readings of the account ---------------------------------------------------------
+
+class ReadingsClient:
+    """The client of Garmin Connect, of the readings' tests: what the account answers, made
+    up; `failing` names the requests that fail."""
+
+    def __init__(self, signed_in=True, devices=None, sensors=(), solar=None, failing=()):
+        self.auth = object() if signed_in else None
+        self.devices, self.sensors, self.solar = devices, list(sensors), solar or {}
+        self.failing, self.asked = set(failing), []
+
+    def _ask(self, what):
+        self.asked.append(what)
+        if what in self.failing:
+            from openexpress.connect import ApiError
+            raise ApiError(f"{what}: HTTP 503")
+
+    def account_devices(self, fresh=False):
+        self._ask("devices")
+        return self.devices if self.devices is not None else []
+
+    def account_sensors(self):
+        self._ask("sensors")
+        return self.sensors
+
+    def solar_gain(self, device_id, start, end):
+        self._ask("solar")
+        return [{"localconnectdate": (start + datetime.timedelta(days=n)).isoformat(),
+                 "totalactivitytimegainedms": self.solar.get(n, 0)} for n in range(7)]
+
+
+def _readings_client(monkeypatch, client):
+    from openexpress import service
+    monkeypatch.setattr(service, "make_client", lambda settings, need_auth=None: client)
+    return client
+
+
+def _on_account(solar=True, unit=UNIT):
+    return [{"unitid": int(unit), "deviceid": 91234567, "productdisplayname": "Made-up 8 Solar",
+             "solarpanelutilizationcapable": solar}]
+
+
+SENSORS = [
+    {"devicename": "Made-up Strap", "batterylevel": 80, "batterystatus": "OK",
+     "lastconnected": "2026-10-21T09:00:00.0"},
+    {"devicename": "Made-up Light", "batterystatus": "LOW",
+     "lastconnected": "2026-10-19T09:00:00.0"},
+]
+
+
+def test_account_readings_give_the_sensors_low_first_and_the_sun_of_a_solar_device(
+        running, monkeypatch, clock):
+    # Today is the last of the seven days: 35 min today, 4 h 10 min in all.
+    _readings_client(monkeypatch, ReadingsClient(
+        devices=_on_account(), sensors=SENSORS, solar={6: 35 * 60_000, 2: 215 * 60_000}))
+    result = running.ask("account.readings", {"device": UNIT})["result"]
+    assert (result["signed_in"], result["on_account"]) == (True, True)
+    sensors = result["sensors"]
+    assert (sensors["state"], sensors["low"]) == ("read", 1)
+    assert sensors["summary"] == caption("2 sensors", "1 with a low battery")
+    assert [(s["name"], s["low"]) for s in sensors["sensors"]] == [
+        ("Made-up Light", True), ("Made-up Strap", False)]
+    assert sensors["sensors"][0]["detail"].startswith(caption("Battery low", "last connected "))
+    assert sensors["sensors"][1]["detail"].startswith(caption("Battery 80%", "last connected "))
+    solar = result["solar"]
+    assert (solar["state"], solar["today_ms"], solar["week_ms"]) == (
+        "read", 35 * 60_000, 250 * 60_000)
+    assert solar["summary"] == caption("Activity time gained: today 35\u00a0min",
+                                       "last 7\u00a0days 4\u00a0h\u00a010\u00a0min")
+
+
+def test_a_week_of_little_sun_is_said_in_a_sentence_and_a_device_without_sun_has_no_row(
+        running, monkeypatch, clock):
+    client = _readings_client(monkeypatch, ReadingsClient(devices=_on_account(),
+                                                          solar={6: 20_000}))
+    solar = running.ask("account.readings", {"device": UNIT})["result"]["solar"]
+    assert solar["summary"] == "Activity time gained: under a minute in the last 7\u00a0days"
+    client.devices = _on_account(solar=False)
+    result = running.ask("account.readings", {"device": UNIT, "fresh": True})["result"]
+    assert result["solar"] is None and result["sensors"] is None  # no sensor: no row either
+
+
+def test_a_device_off_the_signed_in_account_has_no_readings(running, monkeypatch):
+    client = _readings_client(monkeypatch, ReadingsClient(
+        devices=_on_account(unit="99"), sensors=SENSORS))
+    assert running.ask("account.readings", {"device": UNIT})["result"] == {
+        "signed_in": True, "on_account": False, "sensors": None, "solar": None}
+    assert client.asked == ["devices"]
+
+
+def test_signed_out_a_solar_model_by_its_name_asks_to_sign_in_and_nothing_is_asked(
+        running, monkeypatch):
+    from openexpress import known_devices
+
+    known_devices.remember(4000000001, "Made-up Instinct Solar", "006-B0000-00", "1.00", "mtp")
+    client = _readings_client(monkeypatch, ReadingsClient(signed_in=False))
+    assert running.ask("account.readings", {"device": "4000000001"})["result"] == {
+        "signed_in": False, "on_account": None, "sensors": {"state": "signed_out"},
+        "solar": {"state": "signed_out"}}
+    plain = running.ask("account.readings", {"device": UNIT})["result"]
+    assert plain["solar"] is None and client.asked == []
+
+
+def test_a_reading_that_fails_says_so_and_the_other_is_still_given(running, monkeypatch,
+                                                                    clock):
+    _readings_client(monkeypatch, ReadingsClient(
+        devices=_on_account(), sensors=SENSORS, failing={"sensors"}))
+    result = running.ask("account.readings", {"device": UNIT})["result"]
+    assert result["sensors"] == {"state": "failed", "message": "sensors: HTTP 503"}
+    assert result["solar"]["state"] == "read"
+
+
+def test_the_account_s_list_not_known_the_device_is_taken_as_on_it(running, monkeypatch):
+    from openexpress import known_devices
+
+    known_devices.remember(4000000001, "Made-up Instinct Solar", "006-B0000-00", "1.00", "mtp")
+    _readings_client(monkeypatch, ReadingsClient(sensors=SENSORS, failing={"devices"}))
+    result = running.ask("account.readings", {"device": "4000000001"})["result"]
+    assert result["on_account"] is None and result["sensors"]["state"] == "read"
+    # Without its entry the device's ID on the account is not known.
+    assert result["solar"] == {"state": "failed", "message": None}
+
+
+def test_fresh_readings_forget_what_was_kept_of_them(running, monkeypatch):
+    from openexpress import answers
+
+    forgotten = []
+    monkeypatch.setattr(answers.ANSWERS, "forget", lambda kinds=None, about=None:
+                        forgotten.append(tuple(kinds)))
+    _readings_client(monkeypatch, ReadingsClient(devices=_on_account(solar=False)))
+    running.ask("account.readings", {"device": UNIT})
+    assert forgotten == []
+    running.ask("account.readings", {"device": UNIT, "fresh": True})
+    assert forgotten == [(answers.SENSORS, answers.SOLAR)]
+    assert running.ask("account.readings", {"device": "x"})["error"]["code"] == "invalid_params"
 
 
 def test_the_engine_as_a_program_writes_only_json_lines_on_its_stdout(tmp_path):

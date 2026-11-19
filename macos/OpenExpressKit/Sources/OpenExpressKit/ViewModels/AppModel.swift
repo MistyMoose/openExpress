@@ -233,6 +233,8 @@ public final class AppModel {
             isShowingSignIn = false
             await refreshAccount()
             for d in connectedDevices { Task { await model(for: d.unitID)?.refresh() } }
+            // A remembered device's page has the account's readings too.
+            for d in rememberedDevices { Task { await model(for: d.unitID)?.loadReadings() } }
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -245,6 +247,8 @@ public final class AppModel {
             alertMessage = error.localizedDescription
         }
         await refreshAccount()
+        // The engine forgot the account's readings with the login: each page says so now.
+        for m in models.values { Task { await m.loadReadings() } }
     }
 
     public func setUp(installer: URL) async throws {

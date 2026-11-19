@@ -85,6 +85,32 @@ struct ModelTests {
         #expect(methods.filter { $0 == "maps.list" }.count == 2)
     }
 
+    @Test func overviewReadsTheAccountsReadingsAndRefreshAsksThemAnew() async throws {
+        let (app, engine) = makeApp()
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        await model.loadIfNeeded(.overview)
+        #expect(model.readings?.sensors?.sensors?.first?.low == true)
+        #expect(model.readings?.solar?.state == .read)
+        await model.load(.overview)  // Refresh
+        let asked = await engine.calls.filter { $0.method == "account.readings" }.map { $0.params?["fresh"] }
+        #expect(asked == [.bool(false), .bool(true)])
+
+        // A remembered device has them too: they are the account's.
+        let edge = try #require(app.model(for: MockEngine.edgeID))
+        await edge.loadIfNeeded(.overview)
+        #expect(edge.readings?.sensors?.state == .read && edge.readings?.solar == nil)
+    }
+
+    @Test func signedOutTheReadingsAskToSignIn() async throws {
+        let (app, _) = makeApp(.signedOut)
+        await app.start()
+        let model = try #require(app.model(for: MockEngine.fenixID))
+        await model.loadIfNeeded(.overview)
+        #expect(model.readings?.sensors?.state == .signedOut)
+        #expect(model.readings?.solar?.state == .signedOut)
+    }
+
     @Test func activityTracksAreReadOnce() async throws {
         let (app, engine) = makeApp()
         await app.start()

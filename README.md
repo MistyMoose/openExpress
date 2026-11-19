@@ -54,6 +54,9 @@ Mac, your activities with their maps and charts, and a command line beside the a
 - **Connect IQ apps.** The apps, watch faces and data fields on the device by kind, its free
   slots and memory, available updates, and the apps on your Garmin account that are not on the
   device.
+- **Garmin Connect readings.** On a device's Overview, the batteries of the sensors on your
+  account (low ones first) and, for a watch that charges from the sun, the activity time the
+  sun gained it today and in the last 7 days.
 - **In the background.** A menu bar item, notifications, and (optional) an automatic backup
   and sync whenever a device is connected. Software and map updates are only checked
   automatically, never installed.

@@ -506,6 +506,7 @@ class Engine:
             "activities.list": ("device", self.activities_list),
             "activities.track": ("free", self.activities_track),
             "backups.list": ("free", self.backups_list),
+            "account.readings": ("account", self.account_readings),
             "settings.get": ("account", self.settings_get),
             "settings.set": ("account", self.settings_set),
             "strava.status": ("account", self.strava_status),
@@ -1661,6 +1662,135 @@ class Engine:
         return {"backups": [{"path": str(folder), "date": _iso(when.timestamp()),
                              "files": files, "bytes": size}
                             for (when, folder), (files, size) in zip(found, sizes)]}
+
+    # --- methods: the readings of the account ----------------------------------------
+
+    def account_readings(self, req: Request) -> dict:
+        """The readings of the Garmin Connect account beside a device (`device`: its unit ID,
+        connected or not; else the only one connected), as the Linux window's device page has
+        them (gui/account_readings.py, docs/design/odczyty-z-konta.md): the sensors on the
+        account with their batteries, and the activity time the sun gained the device when it
+        charges from the sun. Neither for a device off the signed-in account. Each answer is
+        kept a while (answers.SENSORS, answers.SOLAR); `fresh` forgets them first (Refresh)."""
+        from openexpress import answers, service
+        from openexpress.settings import Settings
+
+        unit_id, description = self._device_of(req.params)
+        if _flag(req.params, "fresh"):
+            answers.ANSWERS.forget((answers.SENSORS, answers.SOLAR))
+        client = service.make_client(Settings.load())
+        signed_in = client.auth is not None
+        entry, listed = None, False
+        if signed_in:
+            try:
+                entry = next((d for d in client.account_devices() if isinstance(d, dict)
+                              and d.get("unitid") == unit_id), None)
+                listed = True
+            except Exception as e:  # noqa: BLE001 - not known: the readings are still asked
+                log.info("engine: the account's devices not read (%s)", type(e).__name__)
+        if listed and entry is None:
+            return {"signed_in": True, "on_account": False, "sensors": None, "solar": None}
+        return {"signed_in": signed_in, "on_account": True if entry is not None else None,
+                "sensors": _sensors_reading(client) if signed_in else {"state": "signed_out"},
+                "solar": _solar_reading(client, entry, description, signed_in)}
+
+    def _device_of(self, params: dict) -> tuple[int, str]:
+        """The unit ID `device` names (connected or remembered; else the only one connected)
+        and the device's model as it describes itself ("" when not known)."""
+        from openexpress import known_devices
+
+        wanted = params.get("device")
+        if wanted is None:
+            a = self.resolve(params)
+            return a.unit_id, a.description or ""
+        if not (isinstance(wanted, (str, int)) and str(wanted).isdigit()):
+            raise _invalid("device")
+        unit_id = int(wanted)
+        a = next((a for a in self.attached() if a.unit_id == unit_id), None)
+        if a is not None and a.description:
+            return unit_id, a.description
+        entry = known_devices.load().get(unit_id)
+        return unit_id, (entry.description if entry is not None else "") or ""
+
+
+# The days of Solar Charging: today and the six before it (gui/account_readings.SOLAR_DAYS).
+SOLAR_DAYS = 7
+
+
+def _sensors_reading(client) -> dict | None:
+    """Account Sensors: {"state": "read", "summary", "low", "sensors": [{"name", "detail",
+    "low"}]}, low batteries first, or {"state": "failed", "message"}; None when the account
+    has no sensor (the row is not shown)."""
+    from openexpress import readings
+    from openexpress.i18n import caption, npgettext
+
+    try:
+        sensors = readings.in_order(client.account_sensors())
+    except Exception as e:  # noqa: BLE001 - said in the row, as in the window
+        return {"state": "failed", "message": error_of(e).message}
+    if not sensors:
+        return None
+    low = sum(1 for sensor in sensors if readings.is_low(sensor))
+    # TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
+    parts = [npgettext("account sensors", "{count} sensor", "{count} sensors",
+                       len(sensors)).format(count=len(sensors))]
+    if low:
+        # TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
+        parts.append(npgettext("account sensors", "{count} with a low battery",
+                               "{count} with a low battery", low).format(count=low))
+    at = readings.now()
+    return {"state": "read", "summary": caption(*parts), "low": low, "sensors": [
+        {"name": readings.sensor_name(sensor),
+         "detail": caption(readings.battery_text(sensor),
+                           readings.last_connected_text(sensor, at)),
+         "low": readings.is_low(sensor)} for sensor in sensors]}
+
+
+def _solar_reading(client, entry: dict | None, description: str,
+                   signed_in: bool) -> dict | None:
+    """Solar Charging, for a device that charges from the sun (its entry on the account; the
+    account's list not known, or not signed in, by its model's name): {"state": "read",
+    "summary", "today_ms", "week_ms"}, {"state": "signed_out"} or {"state": "failed",
+    "message"}; None for any other device."""
+    from openexpress import readings
+
+    if entry is not None:
+        if not readings.charges_from_sun(entry):
+            return None
+    elif "solar" not in description.casefold():
+        return None
+    if not signed_in:
+        return {"state": "signed_out"}
+    device_id = entry.get("deviceid") if entry is not None else None
+    if not isinstance(device_id, int) or isinstance(device_id, bool):
+        return {"state": "failed", "message": None}
+    start, end = readings.period(SOLAR_DAYS, readings.now().date())
+    try:
+        days = readings.solar_days(client.solar_gain(device_id, start, end), start, end)
+    except Exception as e:  # noqa: BLE001 - said in the row, as in the window
+        return {"state": "failed", "message": error_of(e).message}
+    week = sum(ms for _day, ms in days)
+    return {"state": "read", "summary": _solar_text(days), "today_ms": days[0][1] if days else 0,
+            "week_ms": week}
+
+
+def _solar_text(days: list) -> str:
+    """The words of Solar Charging, as gui/account_readings.solar_text: today's activity time
+    gained, then the week's; a week under a minute (a winter one) in a sentence."""
+    from openexpress import readings
+    from openexpress.i18n import caption
+
+    week = sum(ms for _day, ms in days)
+    if not readings.minutes(week):
+        # TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
+        # than a minute of activity time in the last 7 days, today among them
+        return _("Activity time gained: under a minute in the last 7\u00a0days")
+    today = days[0][1] if days else 0
+    return caption(
+        # TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
+        _("Activity time gained: today {today}").format(today=readings.gained_text(today)),
+        # TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
+        _("last 7\u00a0days {week}").format(week=readings.gained_text(week)))
 
 
 # The version at the end of a map's name in its file's header ("TopoActive Europe, West

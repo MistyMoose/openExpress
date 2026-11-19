@@ -148,7 +148,8 @@ public actor MockEngine: EngineConnection {
             unit = connected[0].unitID
         }
         // One request per device at a time, as the engine: the others wait their turn.
-        let queued = unit.flatMap { u in devices.contains { $0.unitID == u } ? u : nil }
+        // The readings of the account are not the device's: they wait for no device.
+        let queued = method == "account.readings" ? nil : unit.flatMap { u in devices.contains { $0.unitID == u } ? u : nil }
         if let queued {
             while deviceInUse.contains(queued) { try await Task.sleep(for: .milliseconds(5)) }
             deviceInUse.insert(queued)
@@ -316,6 +317,8 @@ public actor MockEngine: EngineConnection {
             return try JSONValue(encoding: Self.sampleTrack(loop: p["fit"]?.stringValue?.contains("-ride") != true))
         case "backups.list":
             return ["backups": .array(try (backups[unit ?? ""] ?? []).map { try JSONValue(encoding: $0) })]
+        case "account.readings":
+            return try JSONValue(encoding: readings(of: unit))
         case "settings.get":
             guard let key = p["key"]?.stringValue else { return ["settings": .object(settings)] }
             guard let value = settings[key] else {
@@ -367,9 +370,28 @@ public actor MockEngine: EngineConnection {
         "hello", "account.status", "account.setup", "account.sign_in_url", "account.sign_in",
         "account.sign_out", "devices.list", "device.info", "device.backup", "device.sync",
         "updates.list", "updates.install", "maps.list", "maps.install", "maps.update", "maps.remove",
-        "apps.list", "activities.list", "activities.track", "backups.list", "settings.get",
+        "apps.list", "activities.list", "activities.track", "backups.list", "account.readings", "settings.get",
         "settings.set", "strava.status", "strava.connect", "strava.disconnect", "strava.upload", "cancel", "shutdown",
     ]
+
+    /// Made-up sensors on the account; the fēnix stands for a watch that charges from the sun.
+    private func readings(of unit: String?) -> AccountReadings {
+        guard account.signedIn else {
+            return AccountReadings(signedIn: false, sensors: .init(state: .signedOut),
+                                   solar: unit == Self.fenixID ? .init(state: .signedOut) : nil)
+        }
+        let sensors = AccountReadings.Sensors(
+            state: .read, summary: "3 sensors · 1 with a low battery", low: 1, sensors: [
+                .init(name: "Varia RTL515", detail: "Battery low · last connected 2 days ago", low: true),
+                .init(name: "HRM-Pro Plus", detail: "Battery 80% · last connected today, 07:12"),
+                .init(name: "Speed Sensor 2", detail: "Battery good · last connected 5 days ago"),
+            ])
+        let solar = unit == Self.fenixID
+            ? AccountReadings.Solar(state: .read, summary: "Activity time gained: today 35 min · last 7 days 4 h 10 min",
+                                    todayMs: 35 * 60_000, weekMs: 250 * 60_000)
+            : nil
+        return AccountReadings(signedIn: true, onAccount: true, sensors: sensors, solar: solar)
+    }
 
     private static let noDevice = EngineError.remote(code: "no_device", message: "No such device.", data: nil)
 

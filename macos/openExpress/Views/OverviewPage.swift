@@ -60,8 +60,77 @@ struct OverviewPage: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if let readings = model.readings, !readings.isEmpty {
+                AccountReadingsSection(readings: readings)
+            }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// What the Garmin Connect account says beside the device (`account.readings`): the sensors
+/// on the account and their batteries, low ones first, and the activity time the sun gained a
+/// device that charges from it. The engine words the readings; a battery that is low or
+/// critical is also said in words, not only in colour.
+struct AccountReadingsSection: View {
+    @Environment(AppModel.self) private var app
+    let readings: AccountReadings
+
+    var body: some View {
+        Section {
+            if let sensors = readings.sensors {
+                sensorsRow(sensors)
+            }
+            if let solar = readings.solar {
+                LabeledContent("Solar Charging") {
+                    value(solar.state, summary: solar.summary, message: solar.message)
+                }
+            }
+        } header: {
+            Text("Garmin Connect")
+        } footer: {
+            if readings.sensors?.state == .read {
+                Text("The sensors are your account's: Garmin Connect does not say which device each one is paired with.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sensorsRow(_ sensors: AccountReadings.Sensors) -> some View {
+        if sensors.state == .read, let list = sensors.sensors, !list.isEmpty {
+            // Closed, also with a low battery: the summary says so.
+            DisclosureGroup {
+                ForEach(Array(list.enumerated()), id: \.offset) { _, sensor in
+                    LabeledContent(sensor.name) {
+                        Text(sensor.detail)
+                            .foregroundStyle(sensor.low ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                    }
+                }
+            } label: {
+                LabeledContent("Account Sensors", value: sensors.summary ?? "")
+            }
+        } else {
+            LabeledContent("Account Sensors") {
+                value(sensors.state, summary: sensors.summary, message: sensors.message)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func value(_ state: AccountReadings.State, summary: String?, message: String?) -> some View {
+        switch state {
+        case .read:
+            Text(summary ?? "")
+                .multilineTextAlignment(.trailing)
+        case .signedOut:
+            Button("Sign In to See") { app.isShowingSignIn = true }
+                .buttonStyle(.link)
+        case .failed:
+            Text("Could not check")
+                .foregroundStyle(.secondary)
+                .help(message ?? "")
+        }
     }
 }
 

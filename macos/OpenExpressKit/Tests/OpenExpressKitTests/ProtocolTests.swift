@@ -26,6 +26,21 @@ struct ProtocolTests {
         #expect(EngineIncoming.parse("Traceback (most recent call last):") == nil)
     }
 
+    /// `account.readings` as the engine answers it: snake case, a reading left out as null.
+    @Test func accountReadingsAsTheEngineSendsThem() throws {
+        let json = #"{"signed_in": true, "on_account": null, "sensors": {"state": "read", "summary": "2 sensors · 1 with a low battery", "low": 1, "sensors": [{"name": "Made-up Light", "detail": "Battery low · last connected 2 days ago", "low": true}, {"name": "Made-up Strap", "detail": "Battery 80% · last connected today, 09:00", "low": false}]}, "solar": {"state": "failed", "message": null}}"#
+        let r = try EngineCoding.decoder().decode(AccountReadings.self, from: Data(json.utf8))
+        #expect(r.signedIn && r.onAccount == nil && !r.isEmpty)
+        #expect(r.sensors?.state == .read && r.sensors?.low == 1)
+        #expect(r.sensors?.sensors?.map(\.low) == [true, false])
+        #expect(r.solar == .init(state: .failed))
+
+        let off = #"{"signed_in": true, "on_account": false, "sensors": null, "solar": null}"#
+        #expect(try EngineCoding.decoder().decode(AccountReadings.self, from: Data(off.utf8)).isEmpty)
+        let out = #"{"signed_in": false, "on_account": null, "sensors": {"state": "signed_out"}, "solar": null}"#
+        #expect(try EngineCoding.decoder().decode(AccountReadings.self, from: Data(out.utf8)).sensors?.state == .signedOut)
+    }
+
     /// Points in the engine's format (activities.track): short names, ISO time. Made-up place.
     @Test func trackPointsAsTheEngineSendsThem() throws {
         let json = #"{"points": [{"lat": 51.5007, "lon": -0.1246, "time": "2030-01-01T12:00:00+01:00", "hr": 72, "alt": -7.0, "speed": 0.898}, {"lat": 51.5008, "lon": -0.1247, "time": "2030-01-01T12:00:05.500000+01:00"}]}"#

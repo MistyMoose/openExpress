@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 09:21+0100\n"
+"POT-Creation-Date: 2026-11-19 09:31+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5923,6 +5923,43 @@ msgstr ""
 msgid "The file cannot be read: {error}"
 msgstr ""
 
+#. TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
+#: openexpress/engine.py openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} sensor"
+msgid_plural "{count} sensors"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
+#: openexpress/engine.py openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} with a low battery"
+msgid_plural "{count} with a low battery"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
+#. than a minute of activity time in the last 7 days, today among them
+#: openexpress/engine.py openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last 7 days"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
+#: openexpress/engine.py openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: today {today}"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
+#: openexpress/engine.py openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "last 7 days {week}"
+msgstr ""
+
 #: openexpress/fit.py
 #, python-brace-format
 msgid "Damaged FIT file ({error})"
@@ -6018,48 +6055,11 @@ msgstr ""
 msgid "Could not check"
 msgstr ""
 
-#. TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
-#: openexpress/gui/account_readings.py
-#, python-brace-format
-msgctxt "account sensors"
-msgid "{count} sensor"
-msgid_plural "{count} sensors"
-msgstr[0] ""
-msgstr[1] ""
-
-#. TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
-#: openexpress/gui/account_readings.py
-#, python-brace-format
-msgctxt "account sensors"
-msgid "{count} with a low battery"
-msgid_plural "{count} with a low battery"
-msgstr[0] ""
-msgstr[1] ""
-
 #. TRANSLATORS: row in the group of the Garmin account on the device page: the activity time
 #. the sun gained a device that charges from the sun
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Solar Charging"
-msgstr ""
-
-#. TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
-#. than a minute of activity time in the last 7 days, today among them
-#: openexpress/gui/account_readings.py
-#, python-brace-format
-msgid "Activity time gained: under a minute in the last 7 days"
-msgstr ""
-
-#. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
-#: openexpress/gui/account_readings.py
-#, python-brace-format
-msgid "Activity time gained: today {today}"
-msgstr ""
-
-#. TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
-#: openexpress/gui/account_readings.py
-#, python-brace-format
-msgid "last 7 days {week}"
 msgstr ""
 
 #: openexpress/gui/activities_page.py

@@ -94,6 +94,10 @@ public final class DeviceModel: Identifiable {
     public private(set) var apps: AppsList?
     public private(set) var activities: [Activity]?
     public private(set) var backups: [BackupSnapshot]?
+    /// What the Garmin Connect account says beside this device (`account.readings`): its
+    /// sensors' batteries and, for a device that charges from the sun, its solar charging.
+    /// Read with the Overview, connected or not; nil until read.
+    public private(set) var readings: AccountReadings?
     public private(set) var operation: Operation?
     /// The outcome of the last operation, for the page's status line.
     public private(set) var lastOutcome: String?
@@ -227,6 +231,11 @@ public final class DeviceModel: Identifiable {
         do {
             switch page {
             case .overview:
+                // The account's, not the device's: asked beside it, never waiting for it (an
+                // error of the device leaves it running). A load after the first is Refresh
+                // (or a sync): asked anew.
+                let fresh = loaded.contains(.overview)
+                let readingsLoad = Task { await self.loadReadings(fresh: fresh) }
                 if device.connected {
                     update(device: try await engine.deviceInfo(unitID))
                     if device.busyBy == nil {
@@ -238,6 +247,7 @@ public final class DeviceModel: Identifiable {
                         if maps != nil { loaded.insert(.maps) }
                     }
                 }
+                await readingsLoad.value
             case .updates:
                 try await loadUpdates(progress)
                 try await loadMaps(progress)
@@ -257,6 +267,17 @@ public final class DeviceModel: Identifiable {
             // A page load is never an error the user caused or needs to see.
         } catch {
             handle(error)
+        }
+    }
+
+    /// Reads the account's readings; never an error the user sees (a reading that could not
+    /// be had says so in its row), and what was shown stays when the engine cannot answer.
+    public func loadReadings(fresh: Bool = false) async {
+        guard context.supports("account.readings") else { return }
+        do {
+            readings = try await engine.accountReadings(unitID, fresh: fresh)
+        } catch {
+            // Kept as it was: cancelled, or an engine without an answer.
         }
     }
 

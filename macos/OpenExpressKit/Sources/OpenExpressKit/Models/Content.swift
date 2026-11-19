@@ -762,3 +762,85 @@ public struct OperationResult: Sendable, Hashable {
 extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
+
+/// `account.readings`: what the Garmin Connect account says beside a device: the batteries of
+/// the sensors on the account, and the activity time the sun gained a device that charges from
+/// the sun (docs/design/odczyty-z-konta.md). The engine words `summary` and `detail` in its
+/// language; a reading the account does not have for this device is nil.
+public struct AccountReadings: Codable, Sendable, Hashable {
+    public enum State: String, Codable, Sendable {
+        case read, failed
+        case signedOut = "signed_out"
+    }
+
+    /// A sensor on the account (a heart rate strap, a Varia, a power meter…).
+    public struct Sensor: Codable, Sendable, Hashable {
+        public var name: String
+        /// "Battery 80% · last connected 2 days ago".
+        public var detail: String
+        /// Its battery is low or critical.
+        public var low: Bool
+
+        public init(name: String, detail: String, low: Bool = false) {
+            self.name = name
+            self.detail = detail
+            self.low = low
+        }
+    }
+
+    /// Account Sensors, low batteries first. The account does not say which device a sensor
+    /// is paired with.
+    public struct Sensors: Codable, Sendable, Hashable {
+        public var state: State
+        /// "3 sensors · 1 with a low battery".
+        public var summary: String?
+        public var low: Int?
+        public var sensors: [Sensor]?
+        /// Why it could not be read, when known.
+        public var message: String?
+
+        public init(state: State, summary: String? = nil, low: Int? = nil, sensors: [Sensor]? = nil,
+                    message: String? = nil) {
+            self.state = state
+            self.summary = summary
+            self.low = low
+            self.sensors = sensors
+            self.message = message
+        }
+    }
+
+    /// Solar Charging: today and the last 7 days.
+    public struct Solar: Codable, Sendable, Hashable {
+        public var state: State
+        /// "Activity time gained: today 35 min · last 7 days 4 h 10 min".
+        public var summary: String?
+        public var todayMs: Int64?
+        public var weekMs: Int64?
+        public var message: String?
+
+        public init(state: State, summary: String? = nil, todayMs: Int64? = nil, weekMs: Int64? = nil,
+                    message: String? = nil) {
+            self.state = state
+            self.summary = summary
+            self.todayMs = todayMs
+            self.weekMs = weekMs
+            self.message = message
+        }
+    }
+
+    public var signedIn: Bool
+    /// False: the device is not on the signed-in account (no readings then); nil: not known.
+    public var onAccount: Bool?
+    public var sensors: Sensors?
+    public var solar: Solar?
+
+    /// Nothing to show for this device.
+    public var isEmpty: Bool { sensors == nil && solar == nil }
+
+    public init(signedIn: Bool, onAccount: Bool? = nil, sensors: Sensors? = nil, solar: Solar? = nil) {
+        self.signedIn = signedIn
+        self.onAccount = onAccount
+        self.sensors = sensors
+        self.solar = solar
+    }
+}

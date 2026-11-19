@@ -172,6 +172,15 @@ extension EngineConnection {
         try await call("backups.list", params: ["device": .string(unitID)], as: BackupsList.self).backups
     }
 
+    // MARK: Readings of the account
+
+    /// The sensors on the Garmin Connect account and the device's solar charging. `fresh`:
+    /// asked of Garmin Connect anew, not what the engine kept (Refresh).
+    public func accountReadings(_ unitID: String, fresh: Bool = false) async throws -> AccountReadings {
+        try await call("account.readings", params: ["device": .string(unitID), "fresh": .bool(fresh)],
+                       as: AccountReadings.self)
+    }
+
     // MARK: Settings, Strava
 
     public func setting(_ key: String) async throws -> JSONValue {

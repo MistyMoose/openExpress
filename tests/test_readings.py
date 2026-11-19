@@ -359,7 +359,15 @@ def test_openexpress_sensors_and_solar_need_the_sign_in(xdg, capsys):
 
 def test_a_sync_forgets_the_readings(device_root, xdg, clock):
     from fakes import SyncAccount
-    from test_sync_plan import session
+
+    from openexpress.device.storage import LocalStorage
+    from openexpress.device.xmldevice import parse
+    from openexpress.settings import Settings
+
+    def session(root, account):
+        st = LocalStorage(root)
+        return service.DeviceSession(st, parse(st.read("GARMIN/GarminDevice.xml")), Settings(),
+                                     account)
 
     ANSWERS.ask(answers.SENSORS, ("scope",), lambda: [{"devicename": "Made-up Strap"}])
     ANSWERS.ask(answers.SOLAR, ("scope", DEVICE_ID), list)

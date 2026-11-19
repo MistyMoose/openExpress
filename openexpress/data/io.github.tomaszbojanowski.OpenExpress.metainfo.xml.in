@@ -54,8 +54,12 @@
       <image>https://raw.githubusercontent.com/TomaszBojanowski/openExpress/main/docs/screenshots/start.png</image>
     </screenshot>
     <screenshot>
-      <caption>Software updates, with a beta system update offered for the device</caption>
+      <caption>Software updates: a system update and two more updates offered for the device</caption>
       <image>https://raw.githubusercontent.com/TomaszBojanowski/openExpress/main/docs/screenshots/updates.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The device page: the sensors on the Garmin Connect account with their batteries, and solar charging</caption>
+      <image>https://raw.githubusercontent.com/TomaszBojanowski/openExpress/main/docs/screenshots/account.png</image>
     </screenshot>
     <screenshot>
       <caption>Maps on the device and free maps to install</caption>
@@ -99,6 +103,33 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.12.0" date="2026-11-19">
+      <description translate="no">
+        <p>Your sensors' batteries and solar charging from your Garmin Connect account, and a few
+        improvements to the window and its messages.</p>
+        <ul>
+          <li>Device page: Account Sensors lists the sensors on your Garmin Connect account (a heart
+          rate strap, a Varia, a speed sensor…) with their batteries and when each was last
+          connected, low batteries first; expand the row to see them. For a device that charges from
+          the sun, Solar Charging says how much activity time the sun added today and in the last 7
+          days. Both are only read from the account, kept for up to an hour and asked again after
+          Refresh or a sync. Checked on a real account with a fēnix 8 Solar and five sensors.</li>
+          <li>The same on the command line: openexpress sensors and openexpress solar [--days N].</li>
+          <li>In a narrow window, the label of a button beside a row's text wraps only where it would
+          otherwise take the text's room.</li>
+          <li>When a connected device offers no files because this user has no access to it (for
+          example over SSH), the message says so and what to do; the sentence about KDE's MTP service
+          now shows only on KDE.</li>
+          <li>The Venu 2S is on the list of devices checked by users (read-only).</li>
+          <li>Polish: the primary wearable is named as in Garmin's Polish manuals, and a device
+          "connected over USB" reads naturally.</li>
+          <li>Translations as they stand today: Czech 1961, French 1954 and German 1887 of the 1994
+          texts; texts not translated yet show in English.</li>
+        </ul>
+        <p>Thanks to bruring for testing the Venu 2S (#60) and for two fixes to building from source,
+        and to prajzner for the Czech translation on Hosted Weblate.</p>
+      </description>
+    </release>
     <release version="0.11.1" date="2026-11-18">
       <description translate="no">
         <p>A maintenance release with fixes to the Updates page, USB drives, the device page and the

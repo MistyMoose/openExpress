@@ -1,7 +1,8 @@
 # Design: renaming a sensor on the Garmin Connect account
 
 Status: proposed, waiting for review; nothing is implemented. The request that renames a sensor is
-not known yet (section 2): no step of section 8 starts before it is.
+not known yet (section 2): no step of section 8 starts before it is. D1 is chosen: a separate
+analysis session on Garmin Connect for Android.
 
 ## 1. Scope
 
@@ -23,7 +24,8 @@ lists the sensors; each item has `deviceName` (the name shown), `sensorType`, `b
 sensor in it, what it answers, the limits of a name (length, characters), and whether the new name
 reaches the devices the sensor is paired with.
 
-**How to learn it** (D1), facts only, written into a private note with where each was learnt:
+**How to learn it** (D1, chosen: (a)), facts only, written into a private note with where each was
+learnt:
 - (a) a separate analysis session on Garmin Connect for Android: the method, the address, the fields
   of the body and of the answer, the limits the app checks before sending;
 - (b) the user renames one sensor on Garmin Connect's web page, if it offers that, with the browser's
@@ -110,7 +112,7 @@ and give it its old name back.
 
 | | Question | Recommendation | What the other way costs |
 |---|---|---|---|
-| D1 | How do we learn the request? | (a) an analysis session on Garmin Connect for Android | (b) the web page: quicker, but it may not offer renaming, and shows only what the page sends, not the limits the app checks |
+| D1 | How do we learn the request? | *Chosen:* (a) an analysis session on Garmin Connect for Android | (b) the web page: quicker, but it may not offer renaming, and shows only what the page sends, not the limits the app checks |
 | D2 | What does one click to rename? | the sensor's row opens the dialog (edit icon at its end) | a Rename button on each row: five labelled buttons in a list, cramped at 360 px |
 | D3 | How does the command line name the sensor? | by its whole name, as `openexpress sensors` prints it | by its place in that list: the order changes as sensors connect, so a place may name another sensor |
 | D4 | Read the list back after a change? | yes, one request more | without it the window shows the name sent, not the one the account keeps |

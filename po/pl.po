@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 08:05+0100\n"
+"POT-Creation-Date: 2026-11-19 08:11+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -13804,10 +13804,19 @@ msgstr ""
 "takimi jak „Dostępna aktualizacja”"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
-msgid "Software updates, with a beta system update offered for the device"
+msgid ""
+"Software updates: a system update and two more updates offered for the device"
 msgstr ""
-"Aktualizacje oprogramowania, w tym testowa aktualizacja systemu dla "
-"urządzenia"
+"Aktualizacje oprogramowania: aktualizacja systemu i dwie inne aktualizacje "
+"dostępne dla urządzenia"
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+msgid ""
+"The device page: the sensors on the Garmin Connect account with their "
+"batteries, and solar charging"
+msgstr ""
+"Strona urządzenia: czujniki z konta Garmin Connect z ich bateriami "
+"i ładowanie słoneczne"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Maps on the device and free maps to install"

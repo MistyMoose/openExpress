@@ -8,7 +8,7 @@ Fedora/GNOME; the devices it was tried on: [Supported devices](devices.md).
 
 <p align="center">
   <img src="screenshots/updates.png" width="800"
-       alt="The Updates page of an Edge 1050: beta version 33.21 available (33.20 → 33.21, 97.7 MB), with Install, Check Again and Reinstall Components">
+       alt="The Updates page of a fēnix 8: 3 updates available, the system software 23.39 → 24.20 (61.8 MB) with Install, Install All and Check Again, an audio prompt bundle and a map support file with Install, and Reinstall Components">
 </p>
 
 ## Setup
@@ -71,9 +71,9 @@ The device page of a connected device:
   dialog;
 - shows, under the rows of the account, **Account Sensors**: the sensors on your account with
   their batteries, low ones first, in a row that opens on them; under it, for a device that
-  charges from the sun, **Solar Charging**: the activity time the sun gained it today and in the
-  last 7 days (*under a minute* in a dark week). Both are read from the account, kept a while and
-  not shown for a device that is not on it
+  charges from the sun, **Solar Charging**: the activity time the sun added today and in the
+  last 7 days (*under a minute* in a dark week). Both are read from the account, kept for up to
+  an hour and not shown for a device that is not on it
   ([Privacy](privacy.md#readings-of-the-account-sensors-and-solar-charging));
 - has **Apps** and **Music** rows that lead to their pages, as **Maps** does, and say how many
   there are once those pages have read them;
@@ -82,6 +82,11 @@ The device page of a connected device:
   device was still writing is read once more, as during a sync ([Sync details](#sync-details));
   a file still cut short is left out, and the backup then says to unplug the device, plug it in
   again and make the backup again.
+
+<p align="center">
+  <img src="screenshots/account.png" width="700"
+       alt="The device page of a fēnix 8 Solar: the Garmin Connect account with Account Sensors expanded on five sensors, their batteries and last connections, and Solar Charging under it">
+</p>
 
 A device seen before and not connected opens read-only: what was known of it when it was last
 seen, its last sync with its details, what the last check of its updates found and when (*Not
@@ -127,7 +132,7 @@ ejected, in [Mass storage (USB drive)](devices.md#mass-storage-usb-drive).
 
 <p align="center">
   <img src="screenshots/device.png" width="700"
-       alt="The device page of a fēnix 8: its software version, storage, the last sync and the updates">
+       alt="The device page of a fēnix 8: its software version with Update available, storage, the last sync and the updates, Satellite Data turned on">
 </p>
 
 ## Software updates

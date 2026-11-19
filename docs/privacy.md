@@ -215,7 +215,7 @@ Charging (signed out, or for a device not on your account, nothing is asked).
 | Request | What it sends | What is kept |
 |---|---|---|
 | The sensors on the account (`openexpress sensors`, the row Account Sensors) | nothing but the signed request | each sensor's name, type, battery and last connection, for 30 minutes |
-| The activity time the sun gained a device (`openexpress solar`, for each device of the account that charges from the sun; the row Solar Charging, for the device of the page) | the device's Garmin Connect ID and the days asked | the date and the time gained of each day, for an hour |
+| The activity time the sun added to a device (`openexpress solar`, for each device of the account that charges from the sun; the row Solar Charging, for the device of the page) | the device's Garmin Connect ID and the days asked | the date and the time gained of each day, for an hour |
 
 - Never kept, shown or logged: a sensor's serial number, part number, product, software version
   and picture.

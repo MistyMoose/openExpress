@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-19 00:25+0100\n"
-"PO-Revision-Date: 2026-11-17 19:00+0000\n"
+"PO-Revision-Date: 2026-11-19 06:43+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/cs/>\n"
@@ -370,16 +370,13 @@ msgstr "Nepodařilo se odstranit {path}: {error}"
 #. TRANSLATORS: without the tool no translation is built, so openExpress shows its texts as
 #. they are written in the code
 #: openexpress/catalogs.py
-#, fuzzy, python-brace-format
-#| msgid ""
-#| "GNU gettext's {tool} is needed to build the translations (the gettext "
-#| "package); without it openExpress stays in English."
+#, python-brace-format
 msgid ""
 "GNU gettext's {tool} is needed to build the translations (the gettext "
 "package); without it openExpress is not translated."
 msgstr ""
-"K sestavení překladů je potřeba nástroj {tool} z balíčku GNU gettext. Bez "
-"něj zůstane openExpress v angličtině."
+"Pro sestavení překladů je potřeba nástroj {tool} z balíčku GNU gettext. Bez "
+"něj nebude openExpress přeložen."
 
 #. TRANSLATORS: a type of Connect IQ app openExpress does not know, lower case, after an
 #. app's name in lists
@@ -1322,7 +1319,7 @@ msgstr "starší výpisy paměti: {dumps}; nejnovější zůstane zachován"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "to copy before the removal: {dumps}"
-msgstr "Před odstraněním zkopírovat: {dumps}"
+msgstr "před odstraněním zkopírovat: {dumps}"
 
 #. TRANSLATORS: under "older memory dumps: …" in a dry run: what --apply would
 #. remove without a copy; {limit} is the most the copies may take, "100 MB"
@@ -3075,22 +3072,19 @@ msgstr[2] ""
 "shodný. Nebyly proto znovu zapsány."
 
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "Copied {count} file."
-#| msgid_plural "Copied {count} files."
+#, python-brace-format
 msgid "Wrote {count} map file."
 msgid_plural "Wrote {count} map files."
-msgstr[0] "Zkopírován {count} soubor."
-msgstr[1] "Zkopírovány {count} soubory."
-msgstr[2] "Zkopírováno {count} souborů."
+msgstr[0] "Zapsán {count} soubor s mapou."
+msgstr[1] "Zapsány {count} soubory s mapou."
+msgstr[2] "Zapsáno {count} souborů s mapou."
 
 #. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
 #. (.gma) were written; a label and a number, so that no plural form is needed
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "Old files to remove: {count}"
+#, python-brace-format
 msgid "Unlock files written: {count}"
-msgstr "Staré soubory k odstranění: {count}"
+msgstr "Vytvořené odemykací soubory: {count}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4865,7 +4859,7 @@ msgstr "URI zařízení MTP, např. {example}"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "do not wait for a device that was just plugged in and is still starting"
-msgstr "nečekat na právě připojené zařízení, které se ještě spouští"
+msgstr "nečekat na zařízení, které bylo právě připojeno a stále se spouští"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5583,6 +5577,10 @@ msgid ""
 "logged in at this computer's screen, not over SSH, or give this user access "
 "to the device (a udev rule)."
 msgstr ""
+"Tento uživatel nemá přístup k zařízení připojenému přes USB. Spusťte "
+"openExpress pod uživatelským účtem přihlášeným přímo k tomuto počítači, "
+"nikoli přes SSH, nebo uživateli udělte přístup k zařízení pomocí pravidla "
+"udev."
 
 #. TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
 #. command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
@@ -5593,6 +5591,10 @@ msgid ""
 "the user logged in at this computer's screen, not over SSH, or give this "
 "user access to the device (a udev rule)."
 msgstr ""
+"Tento uživatel nemá přístup k zařízení připojenému přes USB ({node}). "
+"Spusťte openExpress pod uživatelským účtem přihlášeným přímo k tomuto "
+"počítači, nikoli přes SSH, nebo uživateli udělte přístup k zařízení pomocí "
+"pravidla udev."
 
 #. TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
 #. it; "kquitapp6 kiod6" is a command, not to be translated
@@ -5610,10 +5612,9 @@ msgstr ""
 #. TRANSLATORS: the device on USB but not offered, when what keeps it from openExpress is
 #. known and said in the next sentence
 #: openexpress/device/gio_storage.py
-#, fuzzy, python-brace-format
-#| msgid "The device was mounted again but its files are not visible."
+#, python-brace-format
 msgid "The Garmin device is connected, but it does not offer its files."
-msgstr "Zařízení bylo znovu připojeno, ale jeho soubory nejsou viditelné."
+msgstr "Zařízení Garmin je připojeno, ale nezpřístupňuje své soubory."
 
 #. TRANSLATORS: title while a Garmin device is on USB and gvfs has no MTP support
 #: openexpress/device/gio_storage.py
@@ -5640,8 +5641,8 @@ msgid ""
 "The device is still starting. Wait until it shows its usual screen, or "
 "unplug it and plug it in again."
 msgstr ""
-"Zařízení se stále spouští. Počkejte, až zobrazí běžnou obrazovku, nebo "
-"odpojte a znovu připojte kabel."
+"Zařízení se stále spouští. Počkejte, až se zobrazí jeho obvyklá obrazovka, "
+"nebo jej odpojte a znovu připojte."
 
 #: openexpress/device/gio_storage.py
 #, python-brace-format
@@ -7306,7 +7307,7 @@ msgstr "Zařízení bylo bezpečně odpojeno"
 #: openexpress/gui/detection.py
 #, python-brace-format
 msgid "This takes a moment after the cable is plugged in"
-msgstr "Po připojení kabelu to chvíli trvá"
+msgstr "Rozpoznání zařízení po připojení může chvíli trvat"
 
 #: openexpress/gui/detection.py
 #, python-brace-format
@@ -11146,11 +11147,10 @@ msgstr ""
 #. file written waits for the device, which takes it in (unpacks it) once it is
 #. unplugged (in Polish plural, as "dane satelitarne")
 #: openexpress/gui/words.py
-#, fuzzy, python-brace-format
-#| msgid "the device was unplugged"
+#, python-brace-format
 msgctxt "satellite data"
 msgid "the device takes it in once unplugged"
-msgstr "zařízení bylo odpojeno"
+msgstr "zařízení data zpracuje po odpojení"
 
 #. TRANSLATORS: under the summary of the page Device Status of a watch that hides its crash
 #. logs; "below" is the row "Crash Logs" with its button "Copy"; one sentence, no full stop
@@ -11398,9 +11398,9 @@ msgstr "včera, {time}"
 #, python-brace-format
 msgid "{n} day ago"
 msgid_plural "{n} days ago"
-msgstr[0] "Před {n} dnem"
-msgstr[1] "Před {n} dny"
-msgstr[2] "Před {n} dny"
+msgstr[0] "před {n} dnem"
+msgstr[1] "před {n} dny"
+msgstr[2] "před {n} dny"
 
 #. TRANSLATORS: tooltip of "Last Sync": when the sync was, today; {time}: the hour, e.g.
 #. 23:41

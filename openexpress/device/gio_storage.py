@@ -440,9 +440,13 @@ class GioStorage(Storage):
     def _read_start(self, real_path: str, count: int) -> bytes:
         return self._read_stream(real_path, count)
 
-    def _read_stream(self, real_path: str, count: int | None = None) -> bytes:
+    def _read_told(self, real_path: str, told) -> bytes:
+        return self._read_stream(real_path, told=told)
+
+    def _read_stream(self, real_path: str, count: int | None = None, told=None) -> bytes:
         """The file, or its first `count` bytes (fewer when it is shorter), read as a stream
-        in chunks of at most READ_CHUNK: gvfs fetches only what is asked for."""
+        in chunks of at most READ_CHUNK: gvfs fetches only what is asked for; the bytes read
+        so far told to `told(done, None)` after each chunk."""
         what = _("Cannot read {path}").format(path=real_path)
         context = _steps_context()  # one for all the steps of the read
         target = self._f(real_path)
@@ -462,6 +466,8 @@ class GioStorage(Storage):
                     break  # the end of the file
                 chunks.append(chunk)
                 got += len(chunk)
+                if told is not None:
+                    told(got, None)
         except DeviceNotResponding:
             raise  # not closed: that would wait on the same device
         except DeviceError:

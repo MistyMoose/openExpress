@@ -248,6 +248,15 @@ files only you can read), each answer for its own time:
 - Uploads, the consents, the queue of Garmin Connect and every change to the account are always
   asked anew.
 - Signing out deletes what is kept of the account, on disk too.
+
+Of the device's update files, the cache keeps `md5-on-device.json` (at most 300 entries): for a
+file the program wrote or read whole on the device, a hash of the device's address (never the
+address, which carries its serial number), the file's path, size, time on the device and MD5,
+so that the same file is not read again. When an update replaces a file in a folder the device
+hides, that file is copied to `~/.local/share/openexpress/replaced/` first (in the Flatpak under
+`~/.var/app/io.github.tomaszbojanowski.OpenExpress/data/openexpress/`) and deleted again once the
+new one is checked or the old one is put back; it stays only when it could not be put back, and
+the message names it.
 - Answers out of date leave the disk when the program starts.
 - `openexpress cache --clear --only answers --apply`, or the row **Garmin Server Responses** in
   Preferences → **Storage**, deletes what is kept. Nothing of it is ever sent anywhere.

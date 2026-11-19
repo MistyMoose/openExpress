@@ -11,6 +11,7 @@ Flow as in Garmin Express:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import posixpath
 from collections.abc import Callable
@@ -352,24 +353,99 @@ class Presence(NamedTuple):
 # of an update is read whole only once while it stays the same (the page Device Status and the
 # Updates page ask again and again; over MTP a big file takes seconds).
 _md5_read: dict[tuple, str] = {}
+# The same, kept for the next window or command (paths.cache_dir()): a file read once, or
+# written by openExpress itself (remember_written), is not read again while its size and its
+# time on the device stay; the device by a hash of its address (which carries its serial).
+MD5_KEPT = "md5-on-device.json"
+MD5_KEPT_AT_MOST = 300
 
 
-def _md5_of(storage: Storage, real: str, size: int, mtime: float) -> str:
+def _md5_key(storage: Storage, real: str, size: int, mtime: float) -> str:
+    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
+    return "|".join((hashlib.sha256(where.encode()).hexdigest()[:32], real, str(size),
+                     repr(float(mtime))))
+
+
+def _kept_md5() -> dict[str, str]:
+    from openexpress import paths
+
+    try:
+        kept = json.loads((paths.cache_dir() / MD5_KEPT).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return kept if isinstance(kept, dict) else {}
+
+
+def _keep_md5(key: str, digest: str) -> None:
+    from openexpress import paths
+
+    kept = _kept_md5()
+    kept.pop(key, None)
+    kept[key] = digest
+    path = paths.cache_dir() / MD5_KEPT
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(dict(list(kept.items())[-MD5_KEPT_AT_MOST:])),
+                       encoding="utf-8")
+        tmp.replace(path)
+    except OSError as e:
+        log.info("updates: the checksum of a file on the device not kept (%s)",
+                 type(e).__name__)
+
+
+def remember_written(storage: Storage, real: str, md5: str | None) -> None:
+    """The file openExpress has just written at `real` is the one with this MD5 (the server's,
+    checked when it was downloaded): kept by its size and its time on the device now, so that
+    the next check does not read it back (_md5_of)."""
+    if not md5:
+        return
+    try:
+        entry = storage.info(real)
+    except DeviceNotResponding:
+        raise
+    except DeviceError:
+        return
+    if entry is None or entry.is_dir or not entry.mtime:
+        return
+    digest = md5.casefold()
+    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
+    _md5_read[(where, real, entry.size, entry.mtime)] = digest
+    _keep_md5(_md5_key(storage, real, entry.size, entry.mtime), digest)
+
+
+def checking_file_text() -> str:
+    # TRANSLATORS: a step of the Updates page: a file on the device of the size Garmin offers is
+    # read whole to compare it with the server's ("… · 12.3 MB of 61.8 MB"); short, so that the
+    # numbers fit the bar of the narrowest window
+    return _("Checking the update file")
+
+
+def _md5_of(storage: Storage, real: str, size: int, mtime: float, told=None) -> str:
     where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
     key = (where, real, size, mtime)
     if key in _md5_read:  # never one of a file without a time (below)
         return _md5_read[key]
-    digest = hashlib.md5(storage.read(real)).hexdigest()
+    if mtime:
+        kept = _kept_md5().get(_md5_key(storage, real, size, mtime))
+        if kept:
+            log.info("updates: %s known from before (its size and time the same), not read",
+                     posixpath.basename(real))
+            _md5_read[key] = kept
+            return kept
+    digest = hashlib.md5(storage.read_at(real, told=told)).hexdigest()
     if mtime:
         _md5_read[key] = digest
+        _keep_md5(_md5_key(storage, real, size, mtime), digest)
     return digest
 
 
-def presence(storage: Storage, u: SoftwareUpdate) -> Presence:
+def presence(storage: Storage, u: SoftwareUpdate, progress=None) -> Presence:
     """Whether the file of this update is on the device already (MATCHES: same size and same
     MD5), and if not, why not. The file is looked for in any letter case. Only reads; a file
-    read before and still the same (size and time) is not read again. Without a size and an
-    MD5 from the server nothing can be said."""
+    read before, or written by openExpress, and still the same (size and time) is not read
+    again; one that is read tells how far to `progress`. Without a size and an MD5 from the
+    server nothing can be said."""
     md5 = download.normalize_md5(u.md5) if u.md5 else None
     if not u.device_path or not u.size or md5 is None:
         return Presence("not compared (no size or MD5 from the server)")
@@ -382,7 +458,8 @@ def presence(storage: Storage, u: SoftwareUpdate) -> Presence:
             return Presence(NOT_ON_THE_DEVICE)
         if size != u.size:
             return _size_differs(size, u, real)
-        same = _md5_of(storage, real, size, entry.mtime) == md5
+        same = _md5_of(storage, real, size, entry.mtime,
+                       byte_steps(progress, checking_file_text(), total=size)) == md5
         return Presence(MATCHES if same else MD5_DIFFERS, real)
     except DeviceNotResponding:
         raise
@@ -541,13 +618,14 @@ def older_offer_caption(u) -> str | None:
 def mark_present(storage: Storage, updates: list[SoftwareUpdate],
                  components: int | None = None,
                  inside: dict[str, str] | None = None,
-                 writable: bool = False) -> list[SoftwareUpdate]:
+                 writable: bool = False, progress=None) -> list[SoftwareUpdate]:
     """Find the offered updates whose file the device already has (e.g. map support files
     it briefly does not list right after it is plugged in). They are not updates.
 
     `components`: how many components the device's GarminDevice.xml lists, for the log;
     `inside`: the folders the device hides inside a folder that is seen (hidden_inside), written
-    through openExpress's own session when it is `writable` (session_possible)."""
+    through openExpress's own session when it is `writable` (session_possible); `progress`:
+    how far a file read whole to be compared is."""
     offered = [u for u in updates if u.is_offer]
     tops = hidden_folders.top_folders(storage)
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
@@ -565,7 +643,7 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
     found = []
     for u in offered:
         if u.hidden_folder is None:
-            found.append(presence(storage, u))
+            found.append(presence(storage, u, progress))
         else:
             found.append(presence_by_size(listing, u) if u.hidden_read
                          else Presence(TOP_FOLDER_NOT_SEEN))
@@ -798,7 +876,7 @@ def state(new: list, staged: list, not_installed: list) -> str:
 
 
 def offered(storage: Storage, response: dict, device,
-            forget_installed: bool = True) -> list[SoftwareUpdate]:
+            forget_installed: bool = True, progress=None) -> list[SoftwareUpdate]:
     """What the update server's `response` offers `device` (its GarminDevice.xml), each
     compared with the device's storage (mark_present) and with what openExpress copied to it
     before (mark_copied; `forget_installed`: False for a check that keeps nothing). A test
@@ -806,7 +884,7 @@ def offered(storage: Storage, response: dict, device,
     unit = None if _test_drive(storage) else getattr(device, "unit_id", None)
     items = mark_present(storage, parse_updates(response, device), component_count(device),
                          inside=hidden_inside(storage, device),
-                         writable=hidden_folders.session_possible(storage))
+                         writable=hidden_folders.session_possible(storage), progress=progress)
 
     started = (_connection_started(device, storage)
                if unit and any(u.hidden_folder for u in items) else None)
@@ -1256,6 +1334,7 @@ def _write_one(storage: Storage, u: SoftwareUpdate, local: Path, progress,
         md5=download.normalize_md5(u.md5),
         checking=byte_steps(progress, checking_step(u)))
     report.written.append(u)
+    remember_written(storage, real, download.normalize_md5(u.md5))  # not read again to be known
     # The whole path from the device's folder, as mark_present names it.
     log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
              applog.size(size), real)

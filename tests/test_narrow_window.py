@@ -1845,6 +1845,38 @@ def test_updates_written_through_its_own_session_are_as_any_other_and_told(narro
     win.set_busy(False)
 
 
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, 900], ids=["360", "900"])
+def test_the_check_of_a_file_on_the_device_says_how_far_it_is(narrow_window, language, width):
+    """While the Updates page reads a file on the device whole to compare it with the server's,
+    the bar says so and how far it is, in the narrowest window too. With
+    OPENEXPRESS_HIDDEN_INSIDE_SHOTS, a picture."""
+    from pathlib import Path
+
+    from openexpress import updates
+    from openexpress.i18n import _
+    from openexpress.progress import Step
+
+    win = narrow_window(language, width=width)
+    key = _fill(win, "updates")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section(key)
+    win.sections[key].show("loading")
+    win.set_busy(True, _("Checking for Updates…"), device=True, in_page=True)
+    for done, total in ((154_300_000, 154_300_000), (12_300_000, 61_800_000)):
+        step = Step(updates.checking_file_text(), done, total, in_bytes=True)
+        win._show_progress(step)
+        _iterate(0.3)
+        label = win.progress_label  # the numbers whole, the largest file too
+        assert label.get_text() == str(step) and not label.get_layout().is_ellipsized(), str(step)
+    if width == NARROWEST:
+        assert 0 < win.get_width() <= NARROWEST
+    if HIDDEN_INSIDE_SHOTS:
+        window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"sprawdzanie-{language}-{width}.png")
+    win.set_busy(False)
+
+
 # What the row of a component Garmin offers older than the device's says, and whether it has
 # Reinstall: (title, the words, a button). With OPENEXPRESS_REINSTALL_SHOTS=FOLDER, a picture of
 # each page, the rows unfolded.

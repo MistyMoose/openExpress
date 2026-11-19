@@ -913,10 +913,11 @@ def test_nothing_can_be_said_without_a_size_or_an_md5(offered, monkeypatch):
         raise DeviceError("the device went away")
 
     # Read before and the same size and time: its MD5 is known without reading it again.
-    st.read = broken
+    st.read = st.read_at = lambda path, told=None: broken(path)
     assert upd.mark_present(st, [u])[0].on_device
     # Never read: not known to be there, offered.
     monkeypatch.setattr(upd, "_md5_read", {})
+    monkeypatch.setattr(upd, "_kept_md5", dict)  # nor kept for the next window
     assert not upd.mark_present(st, [u])[0].on_device
     # Its size and time not known either.
     st.info = broken

@@ -1185,7 +1185,8 @@ def test_the_page_learns_from_the_answer_whether_beta_versions_are_offered(devic
             unit_info_answer={},  # asked when the device was opened
             client=types.SimpleNamespace(
                 software_updates=lambda raw, include_reinstalls=False: lower_keys(beta_answer()))),
-        show_updates=lambda items, beta=False: shown.append(([u.part_number for u in items], beta)))
+        show_updates=lambda items, beta=False: shown.append(([u.part_number for u in items], beta)),
+        progress=lambda text: None)
     win._load = lambda key, title, work, show, on_error=None: show(work())
     MainWindow.load_updates(win)
     assert shown == [(["006-D0000-00", "006-V0000-00"], True)]

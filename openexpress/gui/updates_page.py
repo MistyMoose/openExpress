@@ -401,7 +401,7 @@ class UpdatesPage:
         def work():
             # Asks Garmin's server, then compares the offered files with those on the device.
             answer = s.client.software_updates(s.device.raw, include_reinstalls=True)
-            items = upd.offered(s.storage, answer, s.device)
+            items = upd.offered(s.storage, answer, s.device, progress=self.progress)
             # The kind of device, for the question before an update (it asks no server):
             # usually known already from opening the device.
             try:

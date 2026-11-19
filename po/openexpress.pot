@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 22:00+0100\n"
+"POT-Creation-Date: 2026-11-19 22:51+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -12518,6 +12518,14 @@ msgstr ""
 #: openexpress/updates.py
 #, python-brace-format
 msgid "Unspecified"
+msgstr ""
+
+#. TRANSLATORS: a step of the Updates page: a file on the device of the size Garmin offers is
+#. read whole to compare it with the server's ("… · 12.3 MB of 61.8 MB"); short, so that the
+#. numbers fit the bar of the narrowest window
+#: openexpress/updates.py
+#, python-brace-format
+msgid "Checking the update file"
 msgstr ""
 
 #. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on

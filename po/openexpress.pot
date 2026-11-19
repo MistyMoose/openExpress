@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 00:52+0100\n"
+"POT-Creation-Date: 2026-11-19 07:49+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3307,6 +3307,15 @@ msgstr ""
 #, python-brace-format
 msgid "No device on this Garmin account charges from the sun."
 msgstr ""
+
+#. TRANSLATORS: the activity time the sun gained a device in the last {days} days,
+#. today among them, when it is less than a minute in all (a winter week)
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last {days} day"
+msgid_plural "Activity time gained: under a minute in the last {days} days"
+msgstr[0] ""
+msgstr[1] ""
 
 #. TRANSLATORS: the activity time the sun gained a device: today, and in the last
 #. {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")

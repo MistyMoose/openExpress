@@ -328,12 +328,31 @@ def test_openexpress_solar(lang, lines, signed_in, clock, capsys):
 
 
 def test_openexpress_solar_asks_the_days_given(signed_in, clock, capsys):
-    signed_in.routes[SOLAR_PATH] = response(body={"solarGainDailyDetailDTOList": []})
+    signed_in.routes[SOLAR_PATH] = response(body=solar_answer(date(2026, 10, 20), {1: 60_000}))
     assert main(["solar", "--days", "2"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out == ["Made-up 8 Solar", "  Activity time gained: today 0 min · last 2 days 0 min",
-                   "  2026-10-21  0 min", "  2026-10-20  0 min"]
+    assert out == ["Made-up 8 Solar", "  Activity time gained: today 1 min · last 2 days 1 min",
+                   "  2026-10-21  1 min", "  2026-10-20  0 min"]
     assert signed_in.paths()[-1] == f"{SOLAR_PATH}{DEVICE_ID}/2026-10-20/2026-10-21"
+
+
+@pytest.mark.parametrize("lang, days, gained, line", [
+    ("en", "7", {}, "  Activity time gained: under a minute in the last 7 days"),
+    ("en", "7", {2: 12, 6: 20_000}, "  Activity time gained: under a minute in the last 7 days"),
+    ("en", "1", {}, "  Activity time gained: under a minute in the last 1 day"),
+    ("pl", "7", {2: 12}, "  Zyskany czas aktywności: poniżej minuty w ostatnich 7 dniach"),
+    ("pl", "1", {}, "  Zyskany czas aktywności: poniżej minuty w ostatnim 1 dniu"),
+    ("pl", "2", {}, "  Zyskany czas aktywności: poniżej minuty w ostatnich 2 dniach")],
+    ids=["nothing", "12 ms and 20 s", "one day", "pl 7", "pl 1", "pl 2"])
+def test_openexpress_solar_a_period_under_a_minute_in_one_line(lang, days, gained, line,
+                                                                signed_in, clock, capsys):
+    first = date(2026, 10, 22) - timedelta(days=int(days))
+    signed_in.routes[SOLAR_PATH] = response(body=solar_answer(first, gained))
+    try:
+        assert main(["--lang", lang, "solar", "--days", days]) == 0
+    finally:
+        i18n.setup("en")
+    assert capsys.readouterr().out.splitlines() == ["Made-up 8 Solar", line]
 
 
 @pytest.mark.parametrize("days", ["0", "32", "week"])

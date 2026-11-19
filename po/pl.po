@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 00:52+0100\n"
+"POT-Creation-Date: 2026-11-19 07:49+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -3667,13 +3667,24 @@ msgstr "{sensor}: {state}"
 msgid "No device on this Garmin account charges from the sun."
 msgstr "Żadne urządzenie na tym koncie Garmin nie ma ładowania słonecznego."
 
+#. TRANSLATORS: the activity time the sun gained a device in the last {days} days,
+#. today among them, when it is less than a minute in all (a winter week)
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last {days} day"
+msgid_plural "Activity time gained: under a minute in the last {days} days"
+msgstr[0] "Zyskany czas aktywności: poniżej minuty w ostatnim {days} dniu"
+msgstr[1] "Zyskany czas aktywności: poniżej minuty w ostatnich {days} dniach"
+msgstr[2] "Zyskany czas aktywności: poniżej minuty w ostatnich {days} dniach"
+
 #. TRANSLATORS: the activity time the sun gained a device: today, and in the last
 #. {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Activity time gained: today {today} · last {days} day {total}"
 msgid_plural "Activity time gained: today {today} · last {days} days {total}"
-msgstr[0] "Zyskany czas aktywności: dziś {today} · ostatni {days} dzień {total}"
+msgstr[0] ""
+"Zyskany czas aktywności: dziś {today} · ostatni {days} dzień {total}"
 msgstr[1] "Zyskany czas aktywności: dziś {today} · ostatnie {days} dni {total}"
 msgstr[2] "Zyskany czas aktywności: dziś {today} · ostatnie {days} dni {total}"
 
@@ -4635,7 +4646,9 @@ msgstr "czujniki na koncie Garmin i ich baterie"
 msgid ""
 "the activity time the sun gained the devices of the Garmin account that "
 "charge from the sun"
-msgstr "czas aktywności zyskany dzięki słońcu przez urządzenia konta Garmin z ładowaniem słonecznym"
+msgstr ""
+"czas aktywności zyskany dzięki słońcu przez urządzenia konta Garmin "
+"z ładowaniem słonecznym"
 
 #: openexpress/cli.py
 #, python-brace-format

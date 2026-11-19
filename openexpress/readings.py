@@ -141,10 +141,14 @@ def solar_days(entries: list[dict], start: date, end: date) -> list[tuple[date, 
     return out
 
 
+def minutes(ms: int) -> int:
+    """Activity time gained in whole minutes, as it is shown."""
+    return round(ms / 60000)
+
+
 def gained_text(ms: int) -> str:
     """Activity time gained, to the minute: "0 min", "35 min", "4 h 10 min"."""
-    minutes = round(ms / 60000)
-    if not minutes:
+    if not minutes(ms):
         # TRANSLATORS: a length of time in minutes
-        return _("{minutes} min").format(minutes=0)
-    return duration_text(minutes * 60)
+        return _("{minutes}\u00a0min").format(minutes=0)
+    return duration_text(minutes(ms) * 60)

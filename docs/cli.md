@@ -250,7 +250,14 @@ fēnix 8 Solar
 ```
 
 Then a line for each day, the newest first: its date in the format of the language
-(`YYYY-MM-DD` in English) and the time gained.
+(`YYYY-MM-DD` in English) and the time gained. When the days asked gained under a minute in all
+(a winter week), one line says so instead:
+
+```
+$ openexpress solar
+fēnix 8 Solar
+  Activity time gained: under a minute in the last 7 days
+```
 
 ## Exit codes
 

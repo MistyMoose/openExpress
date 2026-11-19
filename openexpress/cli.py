@@ -3008,8 +3008,9 @@ def cmd_sensors(args) -> int:
 
 def cmd_solar(args) -> int:
     """The activity time the sun gained each device of the Garmin account that charges from
-    the sun (readings.charges_from_sun): today, in the days asked and day by day. The
-    account's devices and one request a device, each kept a while; no device needed."""
+    the sun (readings.charges_from_sun): today, in the days asked and day by day; days that
+    gained under a minute in all (a winter week) in one line, not as zeros. The account's
+    devices and one request a device, each kept a while; no device needed."""
     client = make_client(Settings.load(), need_auth=True)
     devices = [d for d in client.account_devices()
                if readings.charges_from_sun(d) and isinstance(d.get("deviceid"), int)]
@@ -3022,14 +3023,21 @@ def cmd_solar(args) -> int:
         if n:
             print()
         print(device.get("productdisplayname") or "?")
+        total = sum(ms for _day, ms in days)
+        if not readings.minutes(total):
+            # TRANSLATORS: the activity time the sun gained a device in the last {days} days,
+            # today among them, when it is less than a minute in all (a winter week)
+            print("  " + ngettext("Activity time gained: under a minute in the last {days} day",
+                                  "Activity time gained: under a minute in the last {days} days",
+                                  args.days).format(days=args.days))
+            continue
         # TRANSLATORS: the activity time the sun gained a device: today, and in the last
         # {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")
         print("  " + ngettext("Activity time gained: today {today} · last {days} day {total}",
                               "Activity time gained: today {today} · last {days} days {total}",
                               args.days).format(today=readings.gained_text(days[0][1]),
                                                 days=args.days,
-                                                total=readings.gained_text(
-                                                    sum(ms for _day, ms in days))))
+                                                total=readings.gained_text(total)))
         for day, ms in days:
             print(f"  {day.strftime(_('%Y-%m-%d'))}  {readings.gained_text(ms)}")
     return 0

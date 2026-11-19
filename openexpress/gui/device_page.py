@@ -39,7 +39,7 @@ from openexpress import (  # noqa: E402
 from openexpress.connect import ApiError, NotAccountDevice, OwnershipError  # noqa: E402
 from openexpress.device.gio_storage import DeviceSummary, FoundDevice  # noqa: E402
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
-from openexpress.gui import activity_page, pictures, start  # noqa: E402
+from openexpress.gui import account_readings, activity_page, pictures, start  # noqa: E402
 from openexpress.gui.add_to_account import (  # noqa: E402
     add_to_account_row,
     confirm_add_to_account,
@@ -321,8 +321,8 @@ def primary_wearable_row(win, wearable):
     """The row "Primary Wearable" of the group of the account (devicelist.PrimaryWearable,
     from the account's list the ownership check read), with Set as Primary when this device
     is not the one (the list gives one only for a device that can be it)."""
-    # TRANSLATORS: Garmin Connect's name of the setting (in Polish "Podstawowe urządzenie typu
-    # wearable")
+    # TRANSLATORS: Garmin's name of the setting (in Polish its manuals say "Podstawowe urządzenie
+    # noszone na ciele")
     row = Adw.ActionRow(title=_("Primary Wearable"),
                         subtitle=GLib.markup_escape_text(primary_wearable_text(wearable)))
     if not wearable.is_this_device:
@@ -1155,6 +1155,9 @@ class DevicePage:
                 wearable = devicelist.primary_wearable(s.account_devices, d.unit_id)
                 if wearable is not None:
                     g.add(primary_wearable_row(self, wearable))
+            # The sensors on the account and the device's solar charging: the account's, under
+            # its rows.
+            account_readings.add_rows(self, s, g)
         if offers_account_picture(s):
             g.add(account_picture_row(self, s))
 

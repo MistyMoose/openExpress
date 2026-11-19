@@ -79,7 +79,9 @@ if sys.platform == "darwin":
 # Without Xvfb (or if it does not start), the display of the session.
 
 ON_SCREEN, NO_DISPLAY = "OPENEXPRESS_TESTS_ON_SCREEN", "OPENEXPRESS_TESTS_NO_DISPLAY"
-XVFB_SCREEN = "1280x1024x24"
+# Wide and tall enough for a window of 1280 px with its frame: a test asks for the width of the
+# window inside it (tests/test_narrow_window.py, narrow_window).
+XVFB_SCREEN = "1920x1200x24"
 _xvfb: subprocess.Popen | None = None
 
 
@@ -663,6 +665,34 @@ def backups(tmp_path, monkeypatch) -> Path:
     return folder
 
 
+@pytest.fixture(scope="session")
+def _empty_proc(tmp_path_factory):
+    return tmp_path_factory.mktemp("proc")
+
+
+@pytest.fixture(autouse=True)
+def no_desktop_of_this_computer(_empty_proc, monkeypatch):
+    """Neither the desktop nor the processes of this computer are seen: no desktop named in
+    the environment and an empty /proc, so no test finds KDE (whose MTP service may hold a
+    device) unless it says so (kde_desktop); nothing kept from an earlier test."""
+    for name in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION",
+                 "KDE_FULL_SESSION"):
+        monkeypatch.delenv(name, raising=False)
+    try:
+        from openexpress.device import gio_storage
+    except (ImportError, ValueError):  # no PyGObject: nothing looks for KDE
+        return
+    monkeypatch.setattr(gio_storage, "PROC", _empty_proc)
+    monkeypatch.setattr(gio_storage, "_kde_seen", None)
+    monkeypatch.setattr(gio_storage, "_held_said", None)
+
+
+@pytest.fixture
+def kde_desktop(monkeypatch):
+    """A KDE desktop, as its environment names it: KDE's MTP service may hold a device."""
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+
+
 @pytest.fixture(autouse=True)
 def usb_nodes(tmp_path, monkeypatch) -> Path:
     """No test looks at the real USB device nodes: /dev/bus/usb is an empty folder here."""
@@ -729,7 +759,7 @@ def clock(monkeypatch):
     for name in ("openexpress.i18n", "openexpress.gui.words", "openexpress.gui.start_window",
                  "openexpress.gui.device_page", "openexpress.diagnostics",
                  "openexpress.history", "openexpress.gui.status_page", "openexpress.freeing",
-                 "openexpress.status"):
+                 "openexpress.status", "openexpress.readings"):
         try:
             module = importlib.import_module(name)
         except (ImportError, ValueError):  # no PyGObject: no window to tell the time

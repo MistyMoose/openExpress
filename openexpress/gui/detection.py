@@ -43,10 +43,10 @@ from openexpress.device.gio_storage import (
     garmin_products_on_usb,
     garmin_ums,
     garmin_usb,
-    held_elsewhere_text,
     mtp_missing,
     no_mtp_text,
     no_mtp_title,
+    not_offered_text,
     not_ready_text,
     note_drive_place,
     own_remount,
@@ -571,7 +571,7 @@ class DeviceDetection:
             # (after REPLUG_HINT_S in its normal mode), then other programs.
             replug = f" {_(REPLUG_HINT_AFTER_PIN)}" if normal_s >= REPLUG_HINT_S else ""
             return (_("Device Not Ready"),
-                    f"{not_ready_text(state)}{replug} {held_elsewhere_text()}", False)
+                    not_offered_text(f"{not_ready_text(state)}{replug}", window=True), False)
         if state == PRESENT and normal_s >= REPLUG_HINT_S:
             # One sentence becomes two: each with its full stop.
             text = _("This takes a moment after the cable is plugged in.")

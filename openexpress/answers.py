@@ -43,8 +43,10 @@ UNIT_INFO = "unit-info"
 ACCOUNT_COUNTRY = "account-country"
 STORE_APPS = "store-apps"
 STORE_UPDATES = "store-updates"
+SENSORS = "sensors"
+SOLAR = "solar"
 # The answers about the account: forgotten when the login changes (auth.store.save, delete).
-ACCOUNT_KINDS = (ACCOUNT_DEVICES, PRIMARY_TRAINING, ACCOUNT_COUNTRY)
+ACCOUNT_KINDS = (ACCOUNT_DEVICES, PRIMARY_TRAINING, ACCOUNT_COUNTRY, SENSORS, SOLAR)
 
 # How long an answer is fresh, in seconds. Garmin Express: the account's devices and the
 # primary device only when signing in; software 1 day and maps 1 hour on disk, by the
@@ -60,6 +62,10 @@ LIFETIMES = {
     # an install, a removal from the account and a sync forget it.
     STORE_APPS: 2 * 60,
     STORE_UPDATES: 2 * 60,
+    # The readings of the account: its sensors' batteries and a device's solar charging; a
+    # sync forgets them (it may have brought new batteries and a new day of sun).
+    SENSORS: 30 * 60,
+    SOLAR: 60 * 60,
 }
 
 # What unit-info's answer keeps, in memory and on disk: the fields the program reads (the map
@@ -67,6 +73,14 @@ LIFETIMES = {
 # serial number never stay.
 UNIT_INFO_FIELDS = frozenset({"devicemodel", "graphicurl", "segmenttype", "connectsupport",
                               "mapupdatetype"})
+# What the account's sensors keep, in memory and on disk: the name, type, battery and last
+# connection; never a sensor's serial number, part number, product, software or picture.
+SENSOR_FIELDS = frozenset({"devicename", "sensortype", "batterylevel", "batterystatus",
+                           "lastconnected", "rechargeablesensorcapable"})
+# What a device's solar charging keeps: the date and the activity time gained of each day.
+SOLAR_FIELDS = frozenset({"localconnectdate", "totalactivitytimegainedms"})
+# The kinds of which only these fields are kept, in memory too.
+KEPT_FIELDS = {UNIT_INFO: UNIT_INFO_FIELDS, SENSORS: SENSOR_FIELDS, SOLAR: SOLAR_FIELDS}
 
 
 # Fields kept whole wherever they are: what the program sends back to the server as it came
@@ -85,13 +99,15 @@ def _fields(value: Any, keep: frozenset[str]) -> Any:
     return value
 
 
-# What goes to disk of the account's list: what the start page, the ownership check and the
-# primary devices read; never a name the user gave a device ("displayname").
+# What goes to disk of the account's list: what the start page, the ownership check, the
+# primary devices and solar charging (readings.charges_from_sun) read; never a name the user
+# gave a device ("displayname").
 ACCOUNT_FIELDS = frozenset({
     "unitid", "deviceid", "productdisplayname", "partnumber", "devicestatus", "activeind",
     "currentfirmwareversion",
     "primaryactivitytrackerindicator", "primaryactivitytrackersettingcapable",
-    "primarytrainingcapable", "imageurl", "devicecategories", "hasopticalheartrate"})
+    "primarytrainingcapable", "imageurl", "devicecategories", "hasopticalheartrate",
+    "solarpanelutilizationcapable"})
 PRIMARY_FIELDS = frozenset({"deviceid"})
 # What updates.parse_updates and beta_offered read of the software check.
 SOFTWARE_FIELDS = frozenset({
@@ -119,6 +135,8 @@ DISK_FIELDS: dict[str, frozenset[str]] = {
     SOFTWARE_UPDATES: SOFTWARE_FIELDS,
     UNIVERSAL_MAPS: MAP_FIELDS,
     UNIT_INFO: UNIT_INFO_FIELDS,
+    SENSORS: SENSOR_FIELDS,
+    SOLAR: SOLAR_FIELDS,
 }
 # The folder of the cache they are kept in (cache.CATEGORIES "answers").
 FOLDER = "answers"
@@ -239,8 +257,8 @@ class Answers:
         try:
             _tell("asked now")
             value = fetch()
-            if kind == UNIT_INFO:  # only the fields the program reads, in memory too
-                value = _fields(value, UNIT_INFO_FIELDS)
+            if kind in KEPT_FIELDS:  # only the fields the program reads, in memory too
+                value = _fields(value, KEPT_FIELDS[kind])
         except BaseException as e:
             flight.error = e
             raise

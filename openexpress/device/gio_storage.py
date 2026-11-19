@@ -90,6 +90,8 @@ SYSFS_USB = Path("/sys/bus/usb/devices")
 SYSFS_BLOCK = Path("/sys/class/block")
 # The device nodes libusb opens. A Flatpak has them only with the --device=usb permission.
 USB_NODES = Path("/dev/bus/usb")
+# The processes of this computer; inside the Flatpak only its own.
+PROC = Path("/proc")
 _ATTRS = "standard::name,standard::type,standard::size,time::modified"
 
 
@@ -1797,7 +1799,7 @@ def mtp_missing() -> bool:
 
 def holders() -> dict[tuple[int, int], str]:
     """The other programs that hold a Garmin device, by its place on USB: none known here, as
-    gvfs shares a device (one held elsewhere: held_elsewhere_text)."""
+    gvfs shares a device (one held elsewhere: held_elsewhere)."""
     return {}
 
 
@@ -1823,16 +1825,123 @@ def wanted_elsewhere(found: FoundDevice) -> bool:
     return False
 
 
-def held_elsewhere_text() -> str:
-    """The sentence added when the wait for a device in its normal mode ran out: KDE's kmtpd
-    (kio-extras, in kiod6) may hold it over MTP, so gvfs cannot offer it. Once Dolphin started
-    it, kmtpd keeps every MTP device until unplugged or kiod6 quits, and takes one plugged in
-    again at once. Nautilus does not: it reads through gvfs."""
-    # TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
-    # it; "kquitapp6 kiod6" is a command, not to be translated
-    return _("KDE's MTP service may be holding the device: it keeps it after Dolphin is closed "
-             "and takes it back when the cable is plugged in again. Close Dolphin and run "
-             "kquitapp6 kiod6, then unplug the cable and plug it in again.")
+# The KIO daemon in which KDE's MTP service (kmtpd) runs: Plasma 6, Plasma 5.
+KIOD = ("kiod6", "kiod5")
+# How long a look for a kiod in PROC holds: the window asks on each look at USB.
+KDE_LOOK_S = 5.0
+_kde_seen: tuple[float, str | None] | None = None  # (until, where KDE was seen, if anywhere)
+_held_said: tuple[str, str, str] | None = None  # what the log said last of a device not offered
+
+
+def _places_in_normal_mode() -> list[tuple[int, int]]:
+    """(bus, device number) of each Garmin device on USB in its normal mode: not in mass
+    storage mode, not starting, not one openExpress cannot use. Only /sys is read."""
+    devices = _garmin_at_ports()
+    unsupported = _unsupported_ports(devices)
+    places = []
+    for port, product, mass_storage in devices:
+        if mass_storage or product == STARTING_PRODUCT or port in unsupported:
+            continue
+        place = _sysfs_place(_UsbRecord(SYSFS_USB / port))
+        if place is not None:
+            places.append(place)
+    return places
+
+
+def _node_without_access() -> tuple[Path | None, str]:
+    """The node in USB_NODES of a Garmin device in its normal mode that this user may not open
+    (as over SSH, from another seat, or without a udev rule for it), and what the log says of
+    the nodes; None when each may be opened or none is known (no folder of nodes: a Flatpak
+    without --device=usb). Only the bus and device number name a node, never its serial."""
+    if not USB_NODES.is_dir():
+        return None, "not known"
+    nodes = [USB_NODES / f"{bus:03d}" / f"{devnum:03d}" for bus, devnum in _places_in_normal_mode()]
+    nodes = [node for node in nodes if node.exists()]
+    for node in nodes:
+        if not os.access(node, os.R_OK | os.W_OK):
+            return node, f"{node} without access"
+    return None, (", ".join(f"{node} with access" for node in nodes) or "not known")
+
+
+def kde_seen(clock=time.monotonic) -> str | None:
+    """Where KDE's MTP service may run: the environment names KDE as the desktop (also inside
+    the Flatpak, which does not see the processes outside it), or a kiod of this user runs
+    (outside the Flatpak). None: no sign of KDE. The look in PROC holds KDE_LOOK_S."""
+    global _kde_seen
+    names = " ".join(os.environ.get(name, "") for name in (
+        "XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION")).casefold()
+    if os.environ.get("KDE_FULL_SESSION") or "kde" in names or "plasma" in names:
+        return "the desktop"
+    now = clock()
+    if _kde_seen is not None and now < _kde_seen[0]:
+        return _kde_seen[1]
+    found = None
+    uid = os.getuid()
+    try:
+        entries = [entry for entry in PROC.iterdir() if entry.name.isdigit()]
+    except OSError:
+        entries = []
+    for entry in entries:
+        try:
+            if entry.stat().st_uid == uid and (entry / "comm").read_text().strip() in KIOD:
+                found = (entry / "comm").read_text().strip()
+                break
+        except (OSError, ValueError):
+            continue
+    _kde_seen = (now + KDE_LOOK_S, found)
+    return found
+
+
+def held_elsewhere(window: bool = False) -> tuple[str, bool]:
+    """The sentence about what may keep a device in its normal mode from gvfs once the wait for
+    it ran out, and whether it is this user's access; ("", False) when nothing is known. First
+    this user's access to its node: gvfs cannot open a device whose node this user may not
+    open (over SSH, from another seat, or without a udev rule that gives access). Then KDE's
+    kmtpd (kio-extras, in kiod6), only where KDE is seen: once Dolphin started it, kmtpd keeps
+    every MTP device until unplugged or kiod6 quits, and takes one plugged in again at once
+    (Nautilus does not: it reads through gvfs). The node is named on the command line and in
+    the log, not in the window (`window`). The log says what was found, once while it stays
+    the same."""
+    global _held_said
+    node, nodes = _node_without_access()
+    kde = kde_seen() if node is None else None
+    said = (nodes, kde or "not seen", "access" if node else "KDE" if kde else "none")
+    if said != _held_said:
+        _held_said = said
+        log.info("device: not offered by gvfs; USB nodes: %s; KDE: %s; told: %s", *said)
+    if node is not None and window:
+        # TRANSLATORS: added once the wait for a device on USB ran out: this user may not open
+        # it (over SSH, another user's session, or no udev rule gives access to it)
+        return _("This user has no access to the device on USB. Run openExpress as the user "
+                 "logged in at this computer's screen, not over SSH, or give this user access "
+                 "to the device (a udev rule)."), True
+    if node is not None:
+        # TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
+        # command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
+        return _("This user has no access to the device on USB ({node}). Run openExpress as "
+                 "the user logged in at this computer's screen, not over SSH, or give this "
+                 "user access to the device (a udev rule).").format(node=node), True
+    if kde:
+        # TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
+        # it; "kquitapp6 kiod6" is a command, not to be translated
+        return _("KDE's MTP service may be holding the device: it keeps it after Dolphin is "
+                 "closed and takes it back when the cable is plugged in again. Close Dolphin "
+                 "and run kquitapp6 kiod6, then unplug the cable and plug it in again."), False
+    return "", False
+
+
+def not_offered_text(advice: str, window: bool = False) -> str:
+    """What to tell once the wait for a device in its normal mode ran out: `advice` (the screen
+    and the PIN, in the window also plugging it in again), then what may hold it. When this
+    user may not open its node the advice helps nothing: only that the device is connected and
+    offers nothing, then the access."""
+    held, access = held_elsewhere(window)
+    if access:
+        # TRANSLATORS: the device on USB but not offered, when what keeps it from openExpress is
+        # known and said in the next sentence
+        connected = _("The Garmin device is connected, but it does not offer its files.")
+        return f"{connected} {held}"
+    return f"{advice} {held}" if held else advice
 
 
 def no_mtp_title() -> str:
@@ -1872,13 +1981,13 @@ def open_device_storage(uri: str | None = None, wait: bool = False, notify=None,
     a Garmin device on USB but not offered by gvfs yet is waited for up to WAIT_FOR_DEVICE_S,
     and `notify` is called once with a line saying so (found.wait_for_device). gvfs without
     its MTP backend never offers a device, and one not offered when the wait ran out may be
-    held by KDE's MTP service."""
+    one this user may not open, or held by KDE's MTP service."""
     return wait_for_device(
         lambda: _open_device_storage(uri), usb_state=usb_state, products=garmin_products_on_usb,
         not_ready_text=not_ready_text, starting_text=_starting_text, log=log, over="MTP",
         wait=wait, notify=notify, sleep=sleep, clock=clock,
         never_offered=lambda: no_mtp_text() if mtp_missing() else None,
-        held_elsewhere=held_elsewhere_text)
+        not_offered=not_offered_text, held_elsewhere=lambda: held_elsewhere()[0])
 
 
 def _starting_text() -> str:

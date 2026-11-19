@@ -170,7 +170,7 @@ EXPECTED = {
         "pl": ("2 nowe pliki, 1 wysłany · 2 odebrane", [
             ("Oznaczono 12 istniejących plików jako już wysłane", False),
             (f"Pliki z{NB}urządzenia: aktywności ×2", False),
-            (("Pominięto 1 plik: Twoim podstawowym urządzeniem typu wearable "
+            (("Pominięto 1 plik: Twoim podstawowym urządzeniem noszonym na ciele "
               f"w{NB}Garmin Connect jest inne urządzenie"), False),
             ("Zainstalowane aplikacje Connect IQ: Face It", False),
             ((f"1 aplikacja Connect IQ czeka w{NB}kolejce: nie można jeszcze instalować "

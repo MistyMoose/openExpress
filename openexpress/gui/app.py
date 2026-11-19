@@ -58,6 +58,7 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     TaskRunner,
     bottom_bar,
     collect_garbage,
+    fold_buttons,
     inform,
     log_unexpected,
     progress_reporter,
@@ -262,6 +263,8 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         self.map_row = self.apps_row = self.music_row = self.satellite_row = None
         self.storage_row = self.storage_bar = self.backup_row = None
         self.primary_row = self.last_sync_row = None
+        # The readings of the account (account_readings).
+        self.sensors_row = self.sensors_list = self.solar_row = None
         self._banner_kind = ""
         # The devices that stopped responding, until they are gone from their place on USB,
         # and whether a stall is being told (stalled.py).
@@ -542,6 +545,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         else:
             split.set_show_content(False)
         status_on_folded(self)  # Show All of the page Device Status, in its place
+        fold_buttons(self)  # the labels of the buttons beside a row's text
 
     def _on_show_content(self, split, _pspec) -> None:
         """Folded, back from the page to the side panel (or a page chosen) is kept for the

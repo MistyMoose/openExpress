@@ -25,6 +25,7 @@ openexpress/fit.py
 openexpress/forget.py
 openexpress/freeing.py
 openexpress/gpx.py
+openexpress/gui/account_readings.py
 openexpress/gui/activities_page.py
 openexpress/gui/activity_map.py
 openexpress/gui/activity_page.py
@@ -58,6 +59,7 @@ openexpress/netstatus.py
 openexpress/ownmaps.py
 openexpress/progress.py
 openexpress/proto.py
+openexpress/readings.py
 openexpress/service.py
 openexpress/settings.py
 openexpress/strava.py

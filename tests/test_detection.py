@@ -3995,7 +3995,7 @@ def test_device_that_stays_in_its_transitional_mode(plugged):
     assert gio_storage.WAIT_FOR_DEVICE_S == 45 and 45 <= plugged.clock.now <= 46
 
 
-def test_device_that_never_offers_its_files(plugged):
+def test_device_that_never_offers_its_files(plugged, kde_desktop):
     plugged.plug("51b4")
     with pytest.raises(gio_storage.DeviceError) as error:
         plugged.open()
@@ -4081,7 +4081,8 @@ def test_cli_waits_by_default_and_has_no_wait(plugged, monkeypatch, capsys):
     assert captured.out == "" and "The device is starting…" in captured.err  # not in the data
 
 
-def test_window_shows_a_starting_device_instead_of_an_empty_page(plugged, monkeypatch):
+def test_window_shows_a_starting_device_instead_of_an_empty_page(plugged, monkeypatch,
+                                                                  kde_desktop):
     from gi.repository import GLib
 
     from openexpress.gui.app import MainWindow
@@ -4210,7 +4211,7 @@ def _replug_lines(caplog):
 
 
 def test_a_device_in_its_normal_mode_without_mtp_for_15_s_is_to_be_plugged_in_again(
-        plugged, monkeypatch, caplog):
+        plugged, monkeypatch, caplog, kde_desktop):
     """An Edge 1050 restarted with its cable in: on USB in its normal mode, but gvfs
     mounts nothing, and only plugging it in again helps. After 15 s in its normal mode
     without MTP the page adds what to do (one line in the log); before, it says what it said."""

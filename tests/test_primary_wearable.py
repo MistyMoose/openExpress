@@ -1,5 +1,5 @@
 """The account's primary wearable (in Garmin Connect "Primary Wearable" / "Podstawowe
-urządzenie typu wearable": the device that steps and sleep come from), read only: the tooltip of
+urządzenie noszone na ciele": the device that steps and sleep come from), read only: the tooltip of
 the chip "Primary" and the row "Primary Wearable" of the device page, from the account's list it
 has already. Set as Primary with the account: test_ownership. All devices and accounts are made
 up."""
@@ -136,7 +136,8 @@ def test_the_page_says_which_device_is_the_primary_wearable_under_the_training_d
                             ("Primary Wearable", "This device")]
     (group,) = [g for g in section.groups if g.get_title() == "Garmin Connect Account"]
     titles = [w.get_title() for w in descendants(group) if isinstance(w, Adw.ActionRow)]
-    assert titles[-2:] == ["Primary Training Device", "Primary Wearable"]  # just under it
+    under = titles.index("Primary Training Device") + 1
+    assert titles[under] == "Primary Wearable"  # just under it
     _win, _section, texts = _page(account=_account(VENU))
     assert _rows(texts)[1] == ("Primary Wearable", "Venu 2")
     _win, _section, texts = _page(account=_account(None))
@@ -168,13 +169,15 @@ def test_no_row_for_a_device_that_cannot_be_one_or_while_the_list_is_not_known()
 
 @pytest.mark.needs_display
 def test_the_row_asks_nothing_of_the_account():
-    """From the list the ownership check read: nothing runs in the background for it."""
+    """From the list the ownership check read: nothing runs in the background for it (the
+    readings of the account below it, its sensors and solar charging, are asked for
+    themselves)."""
     win, _section, _texts = _page()
     asked = []
     win.in_background = lambda *a, **kw: asked.append(a)
     win._show_primary_training = lambda row: None
     win.show_overview()
-    assert asked == []
+    assert [a for a in asked if a[0].__module__ != "openexpress.gui.account_readings"] == []
 
 
 @pytest.mark.needs_display
@@ -184,14 +187,14 @@ def test_in_polish():
     i18n.setup("pl")
     try:
         _win, _section, texts = _page()
-        rows = [(t, s) for t, s in texts if t == "Podstawowe urządzenie typu wearable"]
+        rows = [(t, s) for t, s in texts if t == "Podstawowe urządzenie noszone na ciele"]
         ((_words, _style, tooltip),) = start.chips(_tile(primary=True))
         _win, _section, other = _page(account=_account(None))
-        unset = [s for t, s in other if t == "Podstawowe urządzenie typu wearable"]
+        unset = [s for t, s in other if t == "Podstawowe urządzenie noszone na ciele"]
     finally:
         i18n.setup("en")
-    assert rows == [("Podstawowe urządzenie typu wearable", "To urządzenie")]
+    assert rows == [("Podstawowe urządzenie noszone na ciele", "To urządzenie")]
     assert unset == ["Nie ustawiono"]
     # Hard spaces after the one-letter words (tools/po-hard-spaces.py).
-    assert tooltip == ("Podstawowe urządzenie typu wearable: kroki i\u00a0sen w\u00a0Garmin Connect "
+    assert tooltip == ("Podstawowe urządzenie noszone na ciele: kroki i\u00a0sen w\u00a0Garmin Connect "
                        "pochodzą z\u00a0tego urządzenia")

@@ -48,6 +48,7 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     refresh_space,
     render_space,
     row_label,
+    wraps_when_folded,
 )
 from openexpress.i18n import (  # noqa: E402
     _,
@@ -588,7 +589,8 @@ def render_history(win, view=None) -> None:
         g.add(row)
     view.status_history_rows = added
     if more and not narrow:
-        button = Gtk.Button(label=_("Show All"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+        button = wraps_when_folded(Gtk.Button(label=_("Show All"), valign=Gtk.Align.CENTER,
+                                              css_classes=["flat"]))
         button.connect("clicked", lambda _b, kept=kept: show_all(win, kept=kept))
         g.set_header_suffix(button)
     else:

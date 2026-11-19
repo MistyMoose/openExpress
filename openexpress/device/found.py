@@ -306,6 +306,7 @@ def wait_for_device(open_once: Callable[[], Storage], *, usb_state: Callable[[],
                     starting_text: Callable[[], str], log: logging.Logger, over: str,
                     wait: bool, notify, sleep, clock,
                     never_offered: Callable[[], str | None] | None = None,
+                    not_offered: Callable[[str], str] | None = None,
                     held_elsewhere: Callable[[], str] | None = None) -> Storage:
     """open_once() tried until it gives the storage of a device. Its errors are said by the
     USB state (usb_state(); products(): the Garmin product IDs on USB) as NotThereYet,
@@ -317,7 +318,9 @@ def wait_for_device(open_once: Callable[[], Storage], *, usb_state: Callable[[],
 
     What only one system has: never_offered(), asked of a device in its normal mode
     (PRESENT): the words when such a device is never offered here (nothing to wait for), else
-    None; held_elsewhere(): the sentence added when the wait for such a device ran out. One
+    None; not_offered(advice): what to say of such a device not offered when the wait ran
+    out, from not_ready_text's advice; held_elsewhere(): the sentence (or "") added to another
+    error of such a device when the wait ran out. One
     line in `log` when the device is opened (`over`: how) and when the USB state changes."""
     started = clock()
     deadline = started + WAIT_FOR_DEVICE_S
@@ -373,13 +376,15 @@ def wait_for_device(open_once: Callable[[], Storage], *, usb_state: Callable[[],
                     raise NotThereYet(starting_text()) from e
                 raise
             if clock() >= deadline:
-                held = held_elsewhere() if state == PRESENT and held_elsewhere else None
                 if isinstance(e, NotThereYet):
                     text = not_ready_text(state)
-                    raise NotThereYet(f"{text} {held}" if held else text) from e
+                    if state == PRESENT and not_offered:
+                        text = not_offered(text)
+                    raise NotThereYet(text) from e
+                held = held_elsewhere() if state == PRESENT and held_elsewhere else None
                 if held:
-                    # On USB in its normal mode, never offered (another program may hold it):
-                    # the error, then the sentence about that.
+                    # On USB in its normal mode, never offered (no access to it, or another
+                    # program holds it): the error, then the sentence about that.
                     said = str(e).rstrip()
                     raise DeviceError(f"{said}{'' if said.endswith('.') else '.'} {held}") from e
                 raise

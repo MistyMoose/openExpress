@@ -441,10 +441,18 @@ def country_name(code: str) -> str:
 
 
 def duration_text(seconds: float) -> str:
-    """A length of time as the user reads it: "45 s", "3 min", "3 min 20 s" (whole seconds;
-    a hard space between a number and its unit, as in human_size)."""
+    """A length of time as the user reads it: "45 s", "3 min", "3 min 20 s", and from an hour
+    on to the minute, "1 h", "4 h 10 min" (a hard space between a number and its unit, as in
+    human_size)."""
     total = max(0, round(seconds))
     minutes, rest = divmod(total, 60)
+    if minutes >= 60:
+        hours, minutes = divmod(minutes, 60)
+        if not minutes:
+            # TRANSLATORS: a length of time in hours
+            return _("{hours}\u00a0h").format(hours=hours)
+        # TRANSLATORS: a length of time in hours and minutes
+        return _("{hours}\u00a0h {minutes}\u00a0min").format(hours=hours, minutes=minutes)
     if not minutes:
         # TRANSLATORS: a length of time in seconds
         return _("{seconds}\u00a0s").format(seconds=rest)

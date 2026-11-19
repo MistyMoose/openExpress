@@ -55,7 +55,7 @@ example:
 | workouts, courses, segments | data that goes to the device | treningi, kursy, segmenty |
 | training status data, HRV status | data that goes to Garmin Connect | dane stanu wytrenowania, status HRV |
 | Primary Training Device | the device page | Podstawowe urządzenie treningowe |
-| Primary Wearable | the device page | Podstawowe urządzenie typu wearable |
+| Primary Wearable | the device page | Podstawowe urządzenie noszone na ciele |
 | Heart Rate Zones | an activity's page | Strefy tętna |
 | Training Effect, Training Load | an activity's page | Efekt treningu, Obciążenie wysiłkowe |
 | Total Ascent | an activity's tiles | Całkowity wznios |

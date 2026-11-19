@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 20:38+0100\n"
+"POT-Creation-Date: 2026-11-19 09:21+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3498,6 +3498,61 @@ msgid ""
 "--apply`, or change it in Garmin Connect."
 msgstr ""
 
+#: openexpress/cli.py
+#, python-brace-format
+msgid "a whole number from {least} to {most}, not {value}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "No sensors on this Garmin account."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "{count} sensor on the Garmin account"
+msgid_plural "{count} sensors on the Garmin account"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: after "3 sensors on the Garmin account · "
+#: openexpress/cli.py
+#, python-brace-format
+msgid "{count} with a low battery"
+msgid_plural "{count} with a low battery"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: one sensor in the command line: its name, then its battery and when it
+#. was last connected ("HRM-Pro Plus: Battery 80% · last connected 2 days ago")
+#: openexpress/cli.py
+#, python-brace-format
+msgid "{sensor}: {state}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "No device on this Garmin account charges from the sun."
+msgstr ""
+
+#. TRANSLATORS: the activity time the sun gained a device in the last {days} days,
+#. today among them, when it is less than a minute in all (a winter week)
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last {days} day"
+msgid_plural "Activity time gained: under a minute in the last {days} days"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: the activity time the sun gained a device: today, and in the last
+#. {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Activity time gained: today {today} · last {days} day {total}"
+msgid_plural "Activity time gained: today {today} · last {days} days {total}"
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS: `openexpress courses`: the points of a track of a GPX file (not its
 #. waypoints)
 #: openexpress/cli.py
@@ -4449,6 +4504,23 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid "the sensors on the Garmin account and their batteries"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"the activity time the sun gained the devices of the Garmin account that "
+"charge from the sun"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "how many days, today among them ({least}–{most}, {default} by default)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid ""
 "the courses on the device, the GPX files waiting for it and its saved "
 "locations (experimental)"
@@ -4865,6 +4937,22 @@ msgstr ""
 #: openexpress/connect.py
 #, python-brace-format
 msgid "Account device list"
+msgstr ""
+
+#. TRANSLATORS: the name of a request to Garmin's server (the sensors on the Garmin
+#. account, with their batteries), shown before its error
+#: openexpress/connect.py
+#, python-brace-format
+msgctxt "server request"
+msgid "Account sensors"
+msgstr ""
+
+#. TRANSLATORS: the name of a request to Garmin's server (the activity time the sun
+#. gained a device), shown before its error
+#: openexpress/connect.py
+#, python-brace-format
+msgctxt "server request"
+msgid "Solar charging"
 msgstr ""
 
 #. TRANSLATORS: name of a server request (the account's consent to uploads to Garmin
@@ -5402,6 +5490,26 @@ msgid ""
 "has no access to /run/media, where the system mounted it."
 msgstr ""
 
+#. TRANSLATORS: added once the wait for a device on USB ran out: this user may not open
+#. it (over SSH, another user's session, or no udev rule gives access to it)
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB. Run openExpress as the user "
+"logged in at this computer's screen, not over SSH, or give this user access "
+"to the device (a udev rule)."
+msgstr ""
+
+#. TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
+#. command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB ({node}). Run openExpress as "
+"the user logged in at this computer's screen, not over SSH, or give this "
+"user access to the device (a udev rule)."
+msgstr ""
+
 #. TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
 #. it; "kquitapp6 kiod6" is a command, not to be translated
 #: openexpress/device/gio_storage.py
@@ -5410,6 +5518,13 @@ msgid ""
 "KDE's MTP service may be holding the device: it keeps it after Dolphin is "
 "closed and takes it back when the cable is plugged in again. Close Dolphin "
 "and run kquitapp6 kiod6, then unplug the cable and plug it in again."
+msgstr ""
+
+#. TRANSLATORS: the device on USB but not offered, when what keeps it from openExpress is
+#. known and said in the next sentence
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid "The Garmin device is connected, but it does not offer its files."
 msgstr ""
 
 #. TRANSLATORS: title while a Garmin device is on USB and gvfs has no MTP support
@@ -5874,6 +5989,77 @@ msgstr ""
 #: openexpress/gpx.py
 #, python-brace-format
 msgid "This activity has no GPS positions, so it cannot be exported as GPX."
+msgstr ""
+
+#. TRANSLATORS: row in the group of the Garmin account on the device page, which opens on the
+#. sensors on the account (a heart rate strap, a Varia, a power meter…) and their batteries
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Account Sensors"
+msgstr ""
+
+#. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#, python-brace-format
+msgid "Sign in to see"
+msgstr ""
+
+#. TRANSLATORS: subtitle of a row (Device software, Maps, Primary training device) while Garmin's
+#. server is asked
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid "Checking…"
+msgstr ""
+
+#. TRANSLATORS: subtitle of "Primary Training Device" when the account could not be asked
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#, python-brace-format
+msgid "Could not check"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} sensor"
+msgid_plural "{count} sensors"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} with a low battery"
+msgid_plural "{count} with a low battery"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: row in the group of the Garmin account on the device page: the activity time
+#. the sun gained a device that charges from the sun
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Solar Charging"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
+#. than a minute of activity time in the last 7 days, today among them
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last 7 days"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: today {today}"
+msgstr ""
+
+#. TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "last 7 days {week}"
 msgstr ""
 
 #: openexpress/gui/activities_page.py
@@ -7128,8 +7314,8 @@ msgstr[1] ""
 msgid "Backup Incomplete"
 msgstr ""
 
-#. TRANSLATORS: Garmin Connect's name of the setting (in Polish "Podstawowe urządzenie typu
-#. wearable")
+#. TRANSLATORS: Garmin's name of the setting (in Polish its manuals say "Podstawowe urządzenie
+#. noszone na ciele")
 #: openexpress/gui/device_page.py openexpress/gui/start_window.py
 #, ignore-reused, python-brace-format
 msgid "Primary Wearable"
@@ -7230,30 +7416,11 @@ msgstr ""
 msgid "Satellite Data"
 msgstr ""
 
-#. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
-#: openexpress/gui/device_page.py
-#, python-brace-format
-msgid "Sign in to see"
-msgstr ""
-
 #. TRANSLATORS: subtitle of "Primary Training Device" of a device off the account
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgctxt "primary training device"
 msgid "Not available"
-msgstr ""
-
-#. TRANSLATORS: subtitle of "Primary Training Device" when the account could not be asked
-#: openexpress/gui/device_page.py
-#, python-brace-format
-msgid "Could not check"
-msgstr ""
-
-#. TRANSLATORS: subtitle of a row (Device software, Maps, Primary training device) while Garmin's
-#. server is asked
-#: openexpress/gui/device_page.py openexpress/gui/words.py
-#, python-brace-format
-msgid "Checking…"
 msgstr ""
 
 #. TRANSLATORS: the pages Maps, Apps and Music of a device connected as a USB drive
@@ -9903,8 +10070,8 @@ msgid_plural "{count} activities to upload now"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
-#. "Podstawowe urządzenie typu wearable")
+#. TRANSLATORS: "Primary wearable" is Garmin's name of the setting (in Polish its manuals
+#. say "Podstawowe urządzenie noszone na ciele")
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid ""
@@ -9970,13 +10137,14 @@ msgid "Free space after copying: {free}"
 msgstr ""
 
 #. TRANSLATORS: the time of an activity in hours and minutes ("1 h 02 min")
-#: openexpress/gui/words.py
+#. TRANSLATORS: a length of time in hours and minutes
+#: openexpress/gui/words.py openexpress/i18n.py
 #, ignore-same, python-brace-format
 msgid "{hours} h {minutes} min"
 msgstr ""
 
 #. TRANSLATORS: a length of time in minutes
-#: openexpress/gui/words.py openexpress/i18n.py
+#: openexpress/gui/words.py openexpress/i18n.py openexpress/readings.py
 #, ignore-same, python-brace-format
 msgid "{minutes} min"
 msgstr ""
@@ -10944,6 +11112,12 @@ msgctxt "thousands separator"
 msgid ","
 msgstr ""
 
+#. TRANSLATORS: a length of time in hours
+#: openexpress/i18n.py
+#, python-brace-format
+msgid "{hours} h"
+msgstr ""
+
 #. TRANSLATORS: a length of time in minutes and seconds
 #: openexpress/i18n.py
 #, ignore-same, python-brace-format
@@ -11688,6 +11862,68 @@ msgstr ""
 #: openexpress/proto.py
 #, python-brace-format
 msgid "Unsupported wire type {type}"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery, in per cent ("Battery 80%")
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery {percent}%"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery good"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery new"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery OK"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery low"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery critical"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery being charged
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Charging"
+msgstr ""
+
+#. TRANSLATORS: a sensor's battery in a word of Garmin's that openExpress does not know,
+#. shown as it comes ("Battery DEPLETED")
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery {status}"
+msgstr ""
+
+#. TRANSLATORS: a sensor whose battery the account does not tell
+#: openexpress/readings.py
+#, python-brace-format
+msgid "Battery status unknown"
+msgstr ""
+
+#. TRANSLATORS: when a sensor was last connected, after its battery ("Battery 80% · last
+#. connected 2 days ago"); {when}: "2 days ago", "yesterday, 23:41"…
+#: openexpress/readings.py
+#, python-brace-format
+msgid "last connected {when}"
 msgstr ""
 
 #: openexpress/service.py

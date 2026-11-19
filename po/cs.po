@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 17:36+0100\n"
+"POT-Creation-Date: 2026-11-19 00:25+0100\n"
 "PO-Revision-Date: 2026-11-17 19:00+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -367,11 +367,16 @@ msgstr ""
 msgid "Could not delete {path}: {error}"
 msgstr "Nepodařilo se odstranit {path}: {error}"
 
+#. TRANSLATORS: without the tool no translation is built, so openExpress shows its texts as
+#. they are written in the code
 #: openexpress/catalogs.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "GNU gettext's {tool} is needed to build the translations (the gettext "
+#| "package); without it openExpress stays in English."
 msgid ""
 "GNU gettext's {tool} is needed to build the translations (the gettext "
-"package); without it openExpress stays in English."
+"package); without it openExpress is not translated."
 msgstr ""
 "K sestavení překladů je potřeba nástroj {tool} z balíčku GNU gettext. Bez "
 "něj zůstane openExpress v angličtině."
@@ -5569,6 +5574,26 @@ msgstr ""
 "Zařízení Garmin je připojeno jako USB disk, ale tato verze (Flatpak) nemá "
 "přístup k /run/media, kam jej systém připojil."
 
+#. TRANSLATORS: added once the wait for a device on USB ran out: this user may not open
+#. it (over SSH, another user's session, or no udev rule gives access to it)
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB. Run openExpress as the user "
+"logged in at this computer's screen, not over SSH, or give this user access "
+"to the device (a udev rule)."
+msgstr ""
+
+#. TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
+#. command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB ({node}). Run openExpress as "
+"the user logged in at this computer's screen, not over SSH, or give this "
+"user access to the device (a udev rule)."
+msgstr ""
+
 #. TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
 #. it; "kquitapp6 kiod6" is a command, not to be translated
 #: openexpress/device/gio_storage.py
@@ -5581,6 +5606,14 @@ msgstr ""
 "Služba MTP v KDE může zařízení stále používat: ponechá si ho i po zavření "
 "Dolphinu a po opětovném připojení kabelu ho znovu převezme. Zavřete Dolphin "
 "a spusťte kquitapp6 kiod6, potom to zkuste znovu."
+
+#. TRANSLATORS: the device on USB but not offered, when what keeps it from openExpress is
+#. known and said in the next sentence
+#: openexpress/device/gio_storage.py
+#, fuzzy, python-brace-format
+#| msgid "The device was mounted again but its files are not visible."
+msgid "The Garmin device is connected, but it does not offer its files."
+msgstr "Zařízení bylo znovu připojeno, ale jeho soubory nejsou viditelné."
 
 #. TRANSLATORS: title while a Garmin device is on USB and gvfs has no MTP support
 #: openexpress/device/gio_storage.py
@@ -10305,8 +10338,8 @@ msgstr[0] "K nahrání: {count} aktivita"
 msgstr[1] "K nahrání: {count} aktivity"
 msgstr[2] "K nahrání: {count} aktivit"
 
-#. TRANSLATORS: "Primary wearable" is the name Garmin Connect gives the setting (in Polish
-#. "Podstawowe urządzenie typu wearable")
+#. TRANSLATORS: "Primary wearable" is Garmin's name of the setting (in Polish its manuals
+#. say "Podstawowe urządzenie noszone na ciele")
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid ""

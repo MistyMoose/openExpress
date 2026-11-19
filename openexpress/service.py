@@ -1730,6 +1730,10 @@ def apply_sync(s: DeviceSession, plan: SyncPlan,
         except (Exception, KeyboardInterrupt) as e:  # Ctrl+C too: the uploads are done
             e.sync_done_before = out  # what was done before it stopped (done_before)
             raise
+    # What the account said of its sensors and of the sun may have changed with this sync
+    # (new batteries, a new day of charging): asked anew.
+    if not plan.test_drive:
+        answers.ANSWERS.forget((answers.SENSORS, answers.SOLAR))
     return out
 
 

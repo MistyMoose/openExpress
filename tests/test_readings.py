@@ -305,7 +305,13 @@ SOLAR_EN = [
 SOLAR_PL = [
     "Made-up 8 Solar",
     "  Zyskany czas aktywności: dziś 35 min · ostatnie 7 dni 1 h 40 min",
-    *SOLAR_EN[2:],
+    "  21.10.2026  35 min",
+    "  20.10.2026  0 min",
+    "  19.10.2026  1 h 5 min",
+    "  18.10.2026  0 min",
+    "  17.10.2026  0 min",
+    "  16.10.2026  0 min",
+    "  15.10.2026  0 min",
 ]
 
 

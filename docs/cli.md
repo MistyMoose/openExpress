@@ -249,7 +249,8 @@ fēnix 8 Solar
   Activity time gained: today 35 min · last 7 days 4 h 10 min
 ```
 
-Then a line for each day, the newest first: its date (`YYYY-MM-DD`) and the time gained.
+Then a line for each day, the newest first: its date in the format of the language
+(`YYYY-MM-DD` in English) and the time gained.
 
 ## Exit codes
 

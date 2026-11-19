@@ -3031,7 +3031,7 @@ def cmd_solar(args) -> int:
                                                 total=readings.gained_text(
                                                     sum(ms for _day, ms in days))))
         for day, ms in days:
-            print(f"  {day.isoformat()}  {readings.gained_text(ms)}")
+            print(f"  {day.strftime(_('%Y-%m-%d'))}  {readings.gained_text(ms)}")
     return 0
 
 

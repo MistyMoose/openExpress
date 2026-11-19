@@ -1,8 +1,8 @@
 # Design: readings from the Garmin Connect account
 
-Status: waiting for review; nothing is implemented. Each decision of section 7 (D1–D10) has the
-option proposed. What the read-only check on the account (section 6) showed is in section 2, and
-D1, D2 and D5–D7 follow it; D4 waits for what the check has yet to show.
+Status: decided; nothing is implemented. D1–D3 and D5–D10 are chosen (marked so in section 7),
+D8 with `--apply`, as every command that writes; D4 waits for what the read-only check on the
+account (section 6) has yet to show. What the check showed is in section 2.
 
 ## 1. Scope
 
@@ -152,9 +152,10 @@ which opens a dialog:
 | Toast | Report saved | Zapisano raport |
 
 **Command line:** `openexpress connect-report KIND --period day|7d|4w|year [--until DATE]
-[--output FILE]`; without `--output` the file goes to `Documents/Garmin/Reports` under the name
-above and is never written over (a number is added). It writes only a file on this computer, so it
-takes no `--apply` (D8). **Kept answers:** none; the file is what is kept.
+[--output FILE] [--apply]`; without `--output` the file goes to `Documents/Garmin/Reports` under
+the name above and is never written over (a number is added). Without `--apply` it says the report
+and the file it would make and sends nothing; `--apply` makes the report, saves it and removes it
+on Garmin's side (D8). **Kept answers:** none; the file is what is kept.
 
 The export makes a report on Garmin's side and removes it after the download (`ack`): no data of
 the account changes, but these requests are not reads, so the window offers reports only once an
@@ -181,17 +182,17 @@ a wrong guess moves "today" or "yesterday" only near midnight.
 
 **D1. Where the sensor batteries come from.** (a) The account (section 2); (b) the newest activity
 on the device (`device_info`, public FIT profile), with no account and no network; (c) the account,
-and the activity when not signed in. *Proposed: (a)*: the account has every sensor with its
+and the activity when not signed in. *Chosen: (a)*: the account has every sensor with its
 battery and last connection; an activity has only the sensors used in it.
 
 **D2. Where the sensors are shown.** The account does not say which device a sensor is paired with.
 (a) As the account's list, on the page of each device of the account, titled so; (b) on the start
 page, under the tiles; (c) on a device's page only the sensors its newest activity names, matched
-with the account's by serial number in memory. *Proposed: (a)*: a sensor is often paired with more
+with the account's by serial number in memory. *Chosen: (a)*: a sensor is often paired with more
 than one device, the start page is seldom seen once a device is connected, and (c) reads the
 device and misses the sensors not used lately.
 
-**D3. How often.** *Proposed:* kept 30 minutes (sensors) and 60 (solar); asked when the device page
+**D3. How often.** *Chosen:* kept 30 minutes (sensors) and 60 (solar); asked when the device page
 is shown; Refresh, a sync of the device and another sign-in forget them. No timer.
 
 **D4. Which devices have Solar Charging.** `solarChargeCapable` does not tell (false for a fēnix 8
@@ -202,27 +203,28 @@ row of a solar device in a dark week.
 
 **D5. What the solar row says.** (a) The activity time gained, today and in the last 7 days; (b) the
 same a day at a time, in an expander row; (c) the solar intensity over a day, with a chart.
-*Proposed: (a)*; the days one by one in the command line.
+*Chosen: (a)*; the days one by one in the command line.
 
-**D6. The solar request.** *Proposed:* `solargain`: it answers with the time gained per day and
+**D6. The solar request.** *Chosen:* `solargain`: it answers with the time gained per day and
 nothing else. The phone's day view (`mobile-gateway`) also sends the user's sleep and activities,
 which this reading does not need.
 
-**D7. Which reports.** *Proposed:* only the kinds that the first export shows to work; at first
+**D7. Which reports.** *Chosen:* only the kinds that the first export shows to work; at first
 Wellness Activity (`wellnessactivity`), which every watch has, and Blood Pressure (`bloodpressure`)
 only for an account with readings. The whole list is learnt from the interface before the dialog
 (section 8).
 
-**D8. The command line and `--apply`.** *Proposed:* no `--apply`: the command changes no device and
-no account data, and writes only the file named or the one under Documents.
+**D8. The command line and `--apply`.** *Chosen:* with `--apply`, as every command that writes:
+the export is not a read (it makes a report on Garmin's side and removes it), and `backup`,
+`report` and `activities export`, which also write only on this computer, take `--apply` too.
 
 **D9. Where the reports go.** (a) The save dialog, starting in `Documents/Garmin/Reports`; (b) that
-folder with no dialog. *Proposed: (a)* in the window; the folder in the command line.
+folder with no dialog. *Chosen: (a)* in the window; the folder in the command line.
 
-**D10. What the log says.** One line per request, as for every request (method, address without its
-query, status, time; the address of a request that names the device left out, as the program does
-for such requests); the report's kind and period; never a sensor's name, a value or the file's
-name.
+**D10. What the log says.** *Chosen:* one line per request, as for every request (method,
+address without its query, status, time; the address of a request that names the device left out,
+as the program does for such requests); the report's kind and period; never a sensor's name, a
+value or the file's name.
 
 ## 8. Steps
 

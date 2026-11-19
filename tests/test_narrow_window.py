@@ -151,6 +151,30 @@ def _updates(copied: bool):
     return items
 
 
+def _hidden_inside_updates():
+    """A watch's software, a map support file and several updates whose folders the watch hides
+    inside a folder that is seen (not installed yet: the group says why once, each row in
+    short, its button off), some of them among the components to reinstall."""
+    items = [_update("Made-up Watch Software Bundle", "24.20", "Garmin/GUPDATE.GSP", 61_800_000,
+                     system=True),
+             _update("Made-up Audio Prompt Bundle, extended voices", "2.18",
+                     "GARMIN/PROMPTS/prompt_bundle.hvm", 154_300_000),
+             _update("Made-up Speech Model", "3.10", "Garmin/ASR/Updates/m0000001.srd",
+                     12_400_000),
+             _update("Made-up Keyboard Model", "1.40", "Garmin/KBD/Updates/k0000001.bin",
+                     2_100_000),
+             _update("Map support file", "2.70", "Garmin/SID/D0000300.sid", 65_100),
+             _update("Made-up Font", "5.20", "Garmin/ExtData/f0000001.fnt", 3_600_000,
+                     reinstall=True, on_device=True),
+             _update("Made-up Activity Videos", "1.10", "Garmin/RemoteSW/v0000001.zvp",
+                     8_800_000, reinstall=True, on_device=True)]
+    for u, folder in zip(items[1:4], ("Garmin/Prompts", "Garmin/ASR/Updates",
+                                      "Garmin/KBD/Updates"), strict=True):
+        u.folder_hidden = folder
+    items[5].folder_hidden = "Garmin/ExtData"
+    return items
+
+
 def _maps():
     from openexpress.maps import MapFile, UniversalMap
     from openexpress.ownmaps import Overview, OwnMap
@@ -487,6 +511,8 @@ def _fill(win, page: str) -> str:
     elif page == "updates-older":
         win.session.device.software_version_str = "33.21"
         MainWindow.show_updates(win, _edge_reinstalls())
+    elif page == "updates-hidden-inside":
+        MainWindow.show_updates(win, _hidden_inside_updates())
     elif key == "updates":
         MainWindow.show_updates(win, _updates(copied="copied" in page), beta=True)
     elif page == "maps-none":
@@ -1655,6 +1681,119 @@ def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, widt
     if NAVIGATOR_SHOTS:
         window_picture(win, Path(NAVIGATOR_SHOTS)
                        / f"{page}-{language}-{'360' if width == NARROWEST else 'wide'}.png")
+
+
+HIDDEN_INSIDE_SHOTS = os.environ.get("OPENEXPRESS_HIDDEN_INSIDE_SHOTS")
+HIDDEN_INSIDE_LINE = {"en": "Cannot be installed with openExpress yet",
+                      "pl": "openExpress nie może jeszcze tego zainstalować"}
+HIDDEN_INSIDE_GROUPS = {
+    "en": [("3 of these cannot be installed with openExpress yet: the device keeps them in "
+            "folders it hides from the USB connection (Garmin/Prompts, Garmin/ASR/Updates, "
+            "Garmin/KBD/Updates). The others install as usual."),
+           ("1 of these cannot be installed with openExpress yet: the device keeps it in a "
+            "folder it hides from the USB connection (Garmin/ExtData). The others install as "
+            "usual.")],
+    "pl": [("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
+            "w\u00a0folderach ukrytych przed połączeniem USB (Garmin/Prompts, Garmin/ASR/Updates, "
+            "Garmin/KBD/Updates). Pozostałe instalują się normalnie."),
+           ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
+            "w\u00a0folderze ukrytym przed połączeniem USB (Garmin/ExtData). Pozostałe instalują "
+            "się normalnie.")]}
+NOT_ALL = {"en": "1 update was not installed:", "pl": "Nie zainstalowano 1 aktualizacji:"}
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, 900], ids=["360", "900"])
+def test_updates_the_device_hides_say_why_once_with_buttons_off(narrow_window, language, width):
+    """Rows of updates whose folders the device hides inside a folder that is seen: their group
+    says why once, each row in short, its button there and off; Install All for the others. In
+    the narrowest window and a wide one. With OPENEXPRESS_HIDDEN_INSIDE_SHOTS, a picture of the
+    page and of the components to reinstall expanded."""
+    from pathlib import Path
+
+    from gi.repository import Adw, Gtk
+
+    win = narrow_window(language, width=width)
+    key = _fill(win, "updates-hidden-inside")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section(key)
+    _iterate(0.3)
+    widgets = list(descendants(win.sections[key].stack))
+    groups = [w.get_description() for w in widgets
+              if isinstance(w, Adw.PreferencesGroup) and w.get_description()]
+    assert groups == HIDDEN_INSIDE_GROUPS[language]
+    hidden = {"Made-up Audio Prompt Bundle, extended voices", "Made-up Speech Model",
+              "Made-up Keyboard Model", "Made-up Font"}
+    updates = {u.title for u in _hidden_inside_updates() if not u.is_system}
+    rows = {w.get_title(): w for w in widgets
+            if isinstance(w, Adw.ActionRow) and w.get_title() in updates}
+    assert set(rows) == updates
+    for title, row in rows.items():
+        buttons = [b for b in descendants(row) if isinstance(b, Gtk.Button)]
+        said = row.get_subtitle().splitlines()[-1] == HIDDEN_INSIDE_LINE[language]
+        assert (said, [b.get_sensitive() for b in buttons]) == (
+            (True, [False]) if title in hidden else (False, [True])), title
+    win.set_busy(True)  # a task's end turns on its buttons, never these
+    win.set_busy(False)
+    _iterate(0.3)
+    assert [b.get_sensitive() for t in hidden for b in descendants(rows[t])
+            if isinstance(b, Gtk.Button)] == [False] * len(hidden)
+    buttons = {w.get_label() for w in widgets if isinstance(w, Gtk.Button) and w.get_mapped()}
+    assert {"Install All", "Zainstaluj wszystkie"} & buttons
+    if width == NARROWEST:
+        assert _min_width(win.sections[key].stack) <= NARROWEST
+    if HIDDEN_INSIDE_SHOTS:
+        window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"wiersz-{language}-{width}.png")
+        (expander,) = [w for w in widgets if isinstance(w, Adw.ExpanderRow)]
+        expander.set_expanded(True)
+        _iterate(0.3)
+        for scrolled in [w for w in descendants(win.sections[key].stack)
+                         if isinstance(w, Gtk.ScrolledWindow)]:
+            bar = scrolled.get_vadjustment()
+            bar.set_value(bar.get_upper() - bar.get_page_size())  # down to the components
+        _iterate(0.3)
+        window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"komponenty-{language}-{width}.png")
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, 900], ids=["360", "900"])
+def test_done_says_what_was_not_installed_and_why(narrow_window, language, width):
+    """The message after Install All: the device's software copied, a file the device refused
+    as it was written not: Done, the steps, the one not installed and why; it fits the narrowest
+    window. With OPENEXPRESS_HIDDEN_INSIDE_SHOTS, a picture."""
+    import types
+    from pathlib import Path
+
+    from gi.repository import Adw, Gtk
+
+    from openexpress import updates
+    from openexpress.gui.updates_page import tell_update_done
+
+    win = narrow_window(language, width=width)
+    key = _fill(win, "updates-hidden-inside")
+    win.navigation.set_animate_transitions(False)
+    win.navigation.push(win.device_view)
+    win.select_section(key)
+    from openexpress.i18n import _
+
+    items = _hidden_inside_updates()
+    # The device refused one file as it was written (the error's words, in the language of the
+    # session): the software was written all the same.
+    (sid,) = [u for u in items if u.title == "Map support file"]
+    report = updates.InstallReport(written=[items[0]])
+    report.failed.append((sid, _("Cannot create directory {path}").format(
+        path="Garmin/SID") + ": made-up refusal"))
+    tell_update_done(win, types.SimpleNamespace(device=win.session.device), report)
+    _iterate(0.5)
+    dialog = win.get_visible_dialog()
+    assert isinstance(dialog, Adw.AlertDialog)
+    assert NOT_ALL[language] in dialog.get_body()
+    if width == NARROWEST:
+        assert dialog.measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= NARROWEST
+    if HIDDEN_INSIDE_SHOTS:
+        window_picture(win, Path(HIDDEN_INSIDE_SHOTS) / f"gotowe-{language}-{width}.png")
+    dialog.force_close()
 
 
 # What the row of a component Garmin offers older than the device's says, and whether it has

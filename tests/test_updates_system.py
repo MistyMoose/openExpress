@@ -738,7 +738,8 @@ def test_cli_says_a_copied_component_waits_for_the_device(device_root, monkeypat
     assert "Test Font" in out.split("Update copied, waiting")[1]
 
 def test_what_was_copied_before_a_failure_is_kept(device_root, tmp_path, monkeypatch):
-    """A copy that fails after some updates were written: those are kept as copied."""
+    """A copy that fails after some updates were written: those are kept as copied, the one
+    refused is said with why."""
     from openexpress import known_devices
 
     _remember_the_device()
@@ -760,8 +761,9 @@ def test_what_was_copied_before_a_failure_is_kept(device_root, tmp_path, monkeyp
         return write(path, local, progress, **kw)
 
     monkeypatch.setattr(storage, "write_file_checked", bundle_fails)
-    with pytest.raises(updates.UpdateError):
-        updates.install(items, storage, unit_id=UNIT)
+    report = updates.install(items, storage, unit_id=UNIT)
+    assert [(u.part_number, why) for u, why in report.failed] == [
+        ("006-V0000-00", "the cable came out")]
     assert list(dict(known_devices.load()[UNIT].copied_updates)) == ["006-D0000-00.23.40"]
 
 

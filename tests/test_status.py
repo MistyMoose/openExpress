@@ -186,7 +186,7 @@ def test_status_online_asks_the_account_and_the_update_server(monkeypatch, capsy
     monkeypatch.setattr(cli, "make_client", lambda settings, need_auth=False: client)
     monkeypatch.setattr(cli, "GarminClient", lambda settings: client)
     monkeypatch.setattr(upd, "parse_updates", lambda answer, device=None: [MAP_GROUPING_UPDATE])
-    monkeypatch.setattr(upd, "mark_present", lambda storage, items, count: items)
+    monkeypatch.setattr(upd, "mark_present", lambda storage, items, count, **kw: items)
     from openexpress import known_devices
 
     kept = known_devices.path()

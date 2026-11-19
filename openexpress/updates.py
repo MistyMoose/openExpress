@@ -37,7 +37,7 @@ from openexpress.device.storage import (
     connection,
 )
 from openexpress.errors import UserFacingError
-from openexpress.i18n import N_, _, ngettext
+from openexpress.i18n import N_, _, ngettext, pgettext
 from openexpress.progress import (
     Step,
     byte_steps,
@@ -198,6 +198,11 @@ class SoftwareUpdate:
     # Its file found in the folder read, by name: True at the size offered, False of another
     # size; None: not there, or not read. Its contents are never read.
     hidden_size_same: bool | None = None
+    # The folder its file goes to, as the device names it, when that folder is inside a folder
+    # the listing shows, the device names it for its own components (GarminDevice.xml), and the
+    # listing does not show it: the device hides it (mark_present, hidden_inside). openExpress
+    # does not install there yet; nothing of it is downloaded.
+    folder_hidden: str | None = None
     # A reinstall whose version on the device (GarminDevice.xml) is higher than the one offered
     # (offers_older): whether its file is the offered one (mark_present) - OLDER_SAME_FILE,
     # OLDER_SAME_SIZE, OLDER_DIFFERS or OLDER_NOT_COMPARED; None for every other update.
@@ -526,16 +531,20 @@ def older_offer_caption(u) -> str | None:
 
 
 def mark_present(storage: Storage, updates: list[SoftwareUpdate],
-                 components: int | None = None) -> list[SoftwareUpdate]:
+                 components: int | None = None,
+                 inside: dict[str, str] | None = None) -> list[SoftwareUpdate]:
     """Find the offered updates whose file the device already has (e.g. map support files
     it briefly does not list right after it is plugged in). They are not updates.
 
-    `components`: how many components the device's GarminDevice.xml lists, for the log."""
+    `components`: how many components the device's GarminDevice.xml lists, for the log;
+    `inside`: the folders the device hides inside a folder that is seen (hidden_inside)."""
     offered = [u for u in updates if u.is_offer]
     tops = hidden_folders.top_folders(storage)
     listing = hidden_folders.kept(storage)  # what this connection read of folders not seen
     for u in updates:
         place(u, tops, listing)
+        u.folder_hidden = (inside or {}).get(
+            posixpath.dirname(u.device_path.replace("\\", "/")).strip("/").casefold())
         u.hidden_size_same = None  # compared anew below, from what this connection read
         if u.hidden_read and not u.is_offer:
             # A reinstall's file there, by name and size: the question names what it replaces.
@@ -608,6 +617,37 @@ def place(u: SoftwareUpdate, tops: set[str] | None,
                         if u.hidden_folder is not None and listing is not None else None)
 
 
+def hidden_inside(storage: Storage, device) -> dict[str, str]:
+    """The folders the device hides inside a folder the listing shows: those its GarminDevice.xml
+    names for its own components (UpdateFile paths, so they hold files), whose top folder the
+    listing shows, and which the listing does not show itself (a fēnix keeps its voice prompts
+    so). By the folder in lower case, as the device names it. One that is not named so may only
+    not be there yet: it is made for a write like any other. A device that cannot be listed:
+    none."""
+    tops = hidden_folders.top_folders(storage)
+    if tops is None:
+        return {}
+    named: dict[str, str] = {}
+    for f in getattr(device, "update_files", None) or []:
+        folder = "/".join(p for p in (f.path or "").replace("\\", "/").split("/") if p)
+        if "/" in folder and hidden_folders.top_not_seen(folder, tops) is None:
+            named.setdefault(folder.casefold(), folder)
+    hidden = {}
+    for key, folder in named.items():
+        try:
+            seen = storage.resolve(folder) is not None
+        except DeviceNotResponding:
+            raise
+        except DeviceError:
+            continue  # not known: made for a write like any other
+        if not seen:
+            hidden[key] = folder
+    if hidden:
+        log.info("updates: %d folders the device names for its components are not listed: %s",
+                 len(hidden), ", ".join(sorted(hidden.values(), key=str.casefold)))
+    return hidden
+
+
 def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
     """The folders the updates and the reinstalls go to whose folder of the top level ordinary
     MTP does not show, and that this connection has not tried to read yet
@@ -626,6 +666,33 @@ def not_installed_here_text(u: SoftwareUpdate) -> str:
     return _("Not installed: {name} {version} goes to the folder {folder}, which openExpress "
              "cannot see on the device.").format(name=u.title, version=u.version,
                                                  folder=u.hidden_folder)
+
+
+def not_installed_inside_text(u: SoftwareUpdate) -> str:
+    # TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
+    # the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
+    return _("Not installed: {name} {version} goes to the folder {folder}, which the device hides "
+             "from the USB connection; openExpress cannot install it yet. The other updates "
+             "install as usual.").format(name=u.title, version=u.version, folder=u.folder_hidden)
+
+
+def hidden_inside_reason(u: SoftwareUpdate) -> str:
+    # TRANSLATORS: why an update was not installed, after its name in the list of those not
+    # installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
+    return _("the device keeps it in the folder {folder}, hidden from the USB connection; "
+             "openExpress cannot install it yet").format(folder=u.folder_hidden)
+
+
+def failed_text(report: InstallReport) -> str:
+    """The updates not installed and why, the others having been (InstallReport.failed): in the
+    window's message and on the command line."""
+    # TRANSLATORS: after updates were copied: the head of the list of those that were not
+    head = ngettext("{count} update was not installed:", "{count} updates were not installed:",
+                    len(report.failed)).format(count=len(report.failed))
+    # TRANSLATORS: an update not installed and why ({why}: the error's words)
+    lines = [pgettext("update not installed", "{name} {version}: {why}").format(
+        name=u.title, version=u.version, why=why) for u, why in report.failed]
+    return "\n".join([head, *lines])
 
 
 def hidden_software_text(folder: str) -> str:
@@ -667,8 +734,9 @@ def add_ons_text(count: int) -> str:
 
 def installable(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
     """Those that may be written: none whose top folder ordinary MTP does not show, unless that
-    folder was read through openExpress's own session (hidden_folders)."""
-    return [u for u in updates if not u.hidden_unread]
+    folder was read through openExpress's own session (hidden_folders), and none whose folder
+    the device hides inside a folder that is seen (folder_hidden)."""
+    return [u for u in updates if not u.hidden_unread and u.folder_hidden is None]
 
 
 def add_ons(updates: list[SoftwareUpdate]) -> list[SoftwareUpdate]:
@@ -725,7 +793,8 @@ def offered(storage: Storage, response: dict, device,
     before (mark_copied; `forget_installed`: False for a check that keeps nothing). A test
     drive carries a real device's unit ID: what was copied to that device is not its."""
     unit = None if _test_drive(storage) else getattr(device, "unit_id", None)
-    items = mark_present(storage, parse_updates(response, device), component_count(device))
+    items = mark_present(storage, parse_updates(response, device), component_count(device),
+                         inside=hidden_inside(storage, device))
     started = (_connection_started(device, storage)
                if unit and any(u.hidden_folder for u in items) else None)
     return mark_copied(items, unit, forget_installed, connected_at=started)
@@ -941,6 +1010,8 @@ def space_margin(storage: Storage) -> int:
 class InstallReport:
     # The updates written to the device, their -META entries too.
     written: list[SoftwareUpdate] = field(default_factory=list)
+    # Those not written, each with why (the words of its error): the others were written.
+    failed: list[tuple[SoftwareUpdate, str]] = field(default_factory=list)
 
     @property
     def copied(self) -> list[str]:
@@ -1027,6 +1098,15 @@ def _install(
             log.info("software update: %s %s not installed: its top folder %s is not seen",
                      u.part_number, u.version, u.hidden_folder)
             raise UpdateError(not_installed_here_text(u))
+    # A folder the device hides inside a folder that is seen (mark_present): refused before
+    # anything is downloaded; the others go on.
+    for u in [u for u in updates if u.folder_hidden is not None]:
+        log.info("software update: %s %s not installed: its folder %s is hidden",
+                 u.part_number, u.version, u.folder_hidden)
+        report.failed.append((u, hidden_inside_reason(u)))
+    updates = [u for u in updates if u.folder_hidden is None]
+    if not updates:
+        raise UpdateError(failed_text(report))
     # A file in a hidden folder is checked against the space in its own session.
     need, free = check_space(storage, [u for u in updates if u.hidden_folder is None])
     storage.require_space(need, space_margin(storage), error=UpdateError, free=free,
@@ -1053,34 +1133,57 @@ def _install(
                 )
         local_files[u.key] = local
     # From the first copy to the last the device must not be cut off: kept awake.
+    refused: list[Exception] = []
     with awake.kept_awake("software updates are copied", say=say):
         for u in sort_for_install(updates):
-            local = local_files[u.key]
             if u.hidden_folder is not None:
-                # As Garmin Express writes there; the device's own software after the rest, and the
-                # first failure stops all that would follow.
-                _write_hidden(storage, u, local, progress, report)
+                # Through openExpress's own session, as Garmin Express writes there: the
+                # device's own software after the rest, and the first failure stops all that
+                # would follow (the session may be left unusable).
+                _write_hidden(storage, u, local_files[u.key], progress, report)
                 continue
-            size = local.stat().st_size
-            log.debug("software update: copying %s", u.device_path)
-            copying = copying_text(u.title)
-            _clear_the_place(storage, u)  # deletes a file in another letter case, GUPDATE.TMP
-            # A failed write is cleaned up by the storage itself (half a file over MTP; nothing
-            # on a drive, nor when the copy never started): nothing more is deleted for it here,
-            # and what _clear_the_place deleted does not come back.
-            # A truncated firmware file must not stay where the watch would install it: one of
-            # another size is deleted.
-            # On a drive, read back from it (a step of its own) and compared with the server's
-            # MD5 before it counts.
-            real = storage.write_file_checked(
-                u.device_path, local, byte_steps(progress, copying), error=UpdateError,
-                md5=download.normalize_md5(u.md5),
-                checking=byte_steps(progress, checking_text(u.title)))
-            report.written.append(u)
-            # The whole path from the device's folder, as mark_present names it.
-            log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
-                     applog.size(size), real)
+            try:
+                _write_one(storage, u, local_files[u.key], progress, report)
+            except DeviceNotResponding:
+                raise
+            except (UpdateError, DeviceError) as e:
+                # One file refused: the others are written all the same (the device's own
+                # software does not depend on an add-on), unless the device is gone.
+                if hidden_folders.top_folders(storage) is None:
+                    raise
+                log.info("software update: %s %s not installed (%s), the others go on",
+                         u.part_number, u.version, type(e).__name__)
+                report.failed.append((u, str(e)))
+                refused.append(e)
+    if report.failed and not report.written:
+        if refused:
+            raise refused[0]  # nothing written: the copy failed with this, its own advice too
+        raise UpdateError(failed_text(report))
     return report
+
+
+def _write_one(storage: Storage, u: SoftwareUpdate, local: Path, progress,
+               report: InstallReport) -> None:
+    """The file of `u` to the device as any file, checked."""
+    size = local.stat().st_size
+    log.debug("software update: copying %s", u.device_path)
+    copying = copying_text(u.title)
+    _clear_the_place(storage, u)  # deletes a file in another letter case, GUPDATE.TMP
+    # A failed write is cleaned up by the storage itself (half a file over MTP; nothing
+    # on a drive, nor when the copy never started): nothing more is deleted for it here,
+    # and what _clear_the_place deleted does not come back.
+    # A truncated firmware file must not stay where the watch would install it: one of
+    # another size is deleted.
+    # On a drive, read back from it (a step of its own) and compared with the server's
+    # MD5 before it counts.
+    real = storage.write_file_checked(
+        u.device_path, local, byte_steps(progress, copying), error=UpdateError,
+        md5=download.normalize_md5(u.md5),
+        checking=byte_steps(progress, checking_text(u.title)))
+    report.written.append(u)
+    # The whole path from the device's folder, as mark_present names it.
+    log.info("software update: %s %s (%s) copied to %s", u.part_number, u.version,
+             applog.size(size), real)
 
 
 def _write_hidden(storage: Storage, u: SoftwareUpdate, local: Path, progress,

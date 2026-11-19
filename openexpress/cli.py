@@ -2005,6 +2005,8 @@ def cmd_updates(args) -> int:
                 print("      " + older)
             if u.hidden_unread:
                 print("      " + upd.not_installed_here_text(u))
+            if u.folder_hidden is not None:
+                print("      " + upd.not_installed_inside_text(u))
             note = _copied_note(u)
             if note:
                 print("      " + note)
@@ -2033,6 +2035,12 @@ def cmd_updates(args) -> int:
     refused = [u for u in chosen if u.hidden_unread]
     chosen = [u for u in chosen if not any(u is r for r in refused)]
     _print_hidden(refused, extra if args.install == ["all"] else [], lines=True)
+    # Nor to a folder the device hides inside a folder that is seen: the others go on.
+    inside = [u for u in chosen if u.folder_hidden is not None]
+    for u in inside:
+        print(upd.not_installed_inside_text(u))
+    chosen = [u for u in chosen if u.folder_hidden is None]
+    refused += inside
     # Never an older version over the device's own, unless it is the same file.
     older = [u for u in chosen if upd.reinstall_refused(u)]
     for u in older:
@@ -2095,6 +2103,9 @@ def cmd_updates(args) -> int:
                           unit_id=dev.unit_id, offered=items)
     n = len(rep.written)
     print("\n" + ngettext("Copied {count} file.", "Copied {count} files.", n).format(count=n))
+    if rep.failed:
+        print(upd.failed_text(rep))
+        refused += [u for u, _why in rep.failed]
     if n and getattr(st, "mass_storage", False) and not _eject_drive(st):
         return 1  # the cable must stay in: no steps that begin with unplugging it
     if n:

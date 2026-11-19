@@ -61,6 +61,9 @@ devices that connect over USB (MTP) should work too – reports are welcome.
   its space; frees up space taken by older memory dumps and updates it did not install.
 - Makes backups of the device and keeps copies of its diagnostic files on this computer.
 - Shows and sets the primary training device and the primary wearable.
+- Shows the sensors on your Garmin Connect account with their batteries, low ones first, and the
+  activity time the sun gained a device that charges from the sun: on the device page and with
+  `openexpress sensors` and `openexpress solar`; only read from the account.
 - Works in a GTK 4 / libadwaita window, on the command line and in the background.
 - Sends no telemetry. Translated on Hosted Weblate ([Help translate](#help-translate)).
 

@@ -69,6 +69,12 @@ The device page of a connected device:
 - shows, under the account's **Primary Training Device**, its **Primary Wearable** (only for a
   device that can be one); **Set as Primary** makes it this device, after the confirmation
   dialog;
+- shows, under the rows of the account, **Account Sensors**: the sensors on your account with
+  their batteries, low ones first, in a row that opens on them; under it, for a device that
+  charges from the sun, **Solar Charging**: the activity time the sun gained it today and in the
+  last 7 days (*under a minute* in a dark week). Both are read from the account, kept a while and
+  not shown for a device that is not on it
+  ([Privacy](privacy.md#readings-of-the-account-sensors-and-solar-charging));
 - has **Apps** and **Music** rows that lead to their pages, as **Maps** does, and say how many
   there are once those pages have read them;
 - has a **Backup** row that says when the last backup was made and how many there are (the

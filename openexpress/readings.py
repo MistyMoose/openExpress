@@ -4,8 +4,8 @@ sensors and the activity time the sun gained a device that charges from the sun
 client's (GarminClient.account_sensors, solar_gain), each answer kept for a while (answers).
 Nothing here asks a server.
 
-A sensor's last connection comes without a time zone and is read as UTC: the account names its
-local times so ("…Local"), and a wrong guess moves "today" or "yesterday" only near midnight.
+A sensor's last connection comes without a time zone and is in UTC (the account names its local
+times so: "…Local").
 """
 
 from __future__ import annotations
@@ -147,8 +147,9 @@ def minutes(ms: int) -> int:
 
 
 def gained_text(ms: int) -> str:
-    """Activity time gained, to the minute: "0 min", "35 min", "4 h 10 min"."""
+    """Activity time gained, to the minute: "0 min", "35 min", "4 h 10 min", with hard spaces
+    only, so that a caption that wraps never splits it."""
     if not minutes(ms):
         # TRANSLATORS: a length of time in minutes
         return _("{minutes}\u00a0min").format(minutes=0)
-    return duration_text(minutes(ms) * 60)
+    return duration_text(minutes(ms) * 60).replace(" ", "\u00a0")

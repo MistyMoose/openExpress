@@ -136,7 +136,8 @@ def test_the_page_says_which_device_is_the_primary_wearable_under_the_training_d
                             ("Primary Wearable", "This device")]
     (group,) = [g for g in section.groups if g.get_title() == "Garmin Connect Account"]
     titles = [w.get_title() for w in descendants(group) if isinstance(w, Adw.ActionRow)]
-    assert titles[-2:] == ["Primary Training Device", "Primary Wearable"]  # just under it
+    under = titles.index("Primary Training Device") + 1
+    assert titles[under] == "Primary Wearable"  # just under it
     _win, _section, texts = _page(account=_account(VENU))
     assert _rows(texts)[1] == ("Primary Wearable", "Venu 2")
     _win, _section, texts = _page(account=_account(None))
@@ -168,13 +169,15 @@ def test_no_row_for_a_device_that_cannot_be_one_or_while_the_list_is_not_known()
 
 @pytest.mark.needs_display
 def test_the_row_asks_nothing_of_the_account():
-    """From the list the ownership check read: nothing runs in the background for it."""
+    """From the list the ownership check read: nothing runs in the background for it (the
+    readings of the account below it, its sensors and solar charging, are asked for
+    themselves)."""
     win, _section, _texts = _page()
     asked = []
     win.in_background = lambda *a, **kw: asked.append(a)
     win._show_primary_training = lambda row: None
     win.show_overview()
-    assert asked == []
+    assert [a for a in asked if a[0].__module__ != "openexpress.gui.account_readings"] == []
 
 
 @pytest.mark.needs_display

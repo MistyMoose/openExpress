@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 08:11+0100\n"
+"POT-Creation-Date: 2026-11-19 23:17+0100\n"
 "PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
@@ -2760,6 +2760,22 @@ msgstr "Mises à jour disponibles : {count}"
 msgid "Install: {command}"
 msgstr "Installation : {command}"
 
+#. TRANSLATORS: `openexpress updates --install all --hidden-folder-trial`
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"--hidden-folder-trial takes the part numbers of the updates to try, not "
+"“all”."
+msgstr ""
+
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Not tried: {name} {version} does not go to a folder the device hides inside "
+"GARMIN."
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Skipped {count} file that is already on the device."
@@ -2790,6 +2806,18 @@ msgstr ""
 msgid "To install:"
 msgstr "Pour installer :"
 
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`, under
+#. the update; {folder}: the folder the device hides; {copies}: a folder on this
+#. computer
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"a trial: written into {folder}, which the device hides, through "
+"openExpress's own USB session; the file there now is copied to {copies} "
+"first and put back if the new one is not written whole; the first refusal "
+"stops the trial"
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Space: {needed} needed, {free} free"
@@ -2815,6 +2843,13 @@ msgid "Copied {count} file."
 msgid_plural "Copied {count} files."
 msgstr[0] "Copie {count} fichier."
 msgstr[1] "Copié {count} fichiers."
+
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial --apply`, after
+#. the copy; {path}: the copy on this computer of the file the update replaced
+#: openexpress/cli.py
+#, python-brace-format
+msgid "The file {name} replaced is kept at {path} (SHA-256 {sha256})."
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4519,6 +4554,14 @@ msgid ""
 msgstr ""
 "téléchargez les mises à jour choisies avec --install et copiez-les sur "
 "l’appareil, en acceptant leurs licences"
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"a trial: install the updates named with --install into a folder a watch "
+"hides inside GARMIN (e.g. Prompts), through openExpress's own USB session, "
+"the file there copied to this computer first"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -10128,11 +10171,34 @@ msgstr[1] ""
 msgid "License Agreement (EULA)"
 msgstr "Contrat de licence (EULA)"
 
+#. TRANSLATORS: heading of the message after some of the updates were copied and
+#. others were not (the list says which and why)
+#: openexpress/gui/updates_page.py
+#, fuzzy, python-brace-format
+#| msgid "Update Not Installed"
+msgid "Not All Updates Installed"
+msgstr "Mise à jour non installée"
+
 #. TRANSLATORS: heading of the error message when installing an update failed
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgid "Update Not Installed"
 msgstr "Mise à jour non installée"
+
+#. TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
+#. from the ordinary USB connection, which openExpress cannot write there (or the device
+#. refuses)
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgid ""
+"{count} of these cannot be installed with openExpress yet: the device keeps "
+"it in a folder it hides from the USB connection. The others install as usual."
+msgid_plural ""
+"{count} of these cannot be installed with openExpress yet: the device keeps "
+"them in folders it hides from the USB connection. The others install as "
+"usual."
+msgstr[0] ""
+msgstr[1] ""
 
 #. TRANSLATORS: heading of the message after an update was copied to the device or its
 #. drive was ejected (not a button)
@@ -10257,6 +10323,13 @@ msgstr[1] "Mises à jour non installées par l’appareil"
 #, python-brace-format
 msgid "Install All"
 msgstr "Tout installer"
+
+#. TRANSLATORS: a line of the row of an update that openExpress cannot install
+#. yet (its group says why), without a full stop
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgid "Cannot be installed with openExpress yet"
+msgstr ""
 
 #: openexpress/gui/updates_page.py
 #, python-brace-format
@@ -11415,6 +11488,15 @@ msgstr "Aucun problème trouvé"
 msgid "No Problems Found"
 msgstr "Aucun problème trouvé"
 
+#. TRANSLATORS: a step: the device was connected a moment ago and is not ready yet for the
+#. USB session openExpress opens of its own
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgctxt "courses"
+#| msgid "Waiting for the Device"
+msgid "Waiting for the device to get ready…"
+msgstr "Attente de l’appareil"
+
 #. TRANSLATORS: a step: openExpress reads a folder the device hides from the ordinary USB
 #. connection; {folder}: e.g. .System
 #: openexpress/hidden_folders.py
@@ -11502,6 +11584,86 @@ msgid ""
 msgstr ""
 "Le dossier {folder} ne se trouve pas sur l’appareil, et openExpress n’y crée "
 "pas de dossiers."
+
+#. TRANSLATORS: {name} is an update; openExpress copies the file on the device to this
+#. computer before it writes the new one, and that copy failed
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "{name} was not installed: Garmin's activation did not say where on the "
+#| "device its unlock file goes. Nothing on the device was changed."
+msgid ""
+"{name} was not written: the file there now could not be copied whole to this "
+"computer first. Nothing on the device was changed."
+msgstr ""
+"{name} n’a pas été installé : la procédure d’activation de Garmin n’a pas "
+"précisé à quel emplacement du appareil devait être placé son fichier de "
+"déverrouillage. Aucun élément sur l’appareil n’a été modifié."
+
+#. TRANSLATORS: a step of the trial on the command line: a small file written into a folder
+#. the device hides, read back and deleted, before anything there is replaced
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Reading the folder {folder}…"
+msgid "Trying a small test file in {folder}…"
+msgstr "Lecture du dossier {folder}…"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update, whose file now on
+#. the device is copied to this computer before it is replaced
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Copying {name} to the device"
+msgid "Copying the old {name} to this computer"
+msgstr "Copie {name} vers l’appareil"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "remove the map from the device"
+msgid "Removing the old {name} from the device"
+msgstr "Supprimer la carte de l’appareil"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update whose new file was
+#. not written whole, so its old one is written back from the copy on this computer
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Writing {name} to the device"
+msgid "Putting the old {name} back on the device"
+msgstr "Écriture {name} sur l’appareil"
+
+#. TRANSLATORS: {name} is an update; before it replaces anything, openExpress writes a small
+#. test file into the folder the device hides, reads it back and deletes it
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"{name} was not written: the device did not take a small test file into that "
+"folder, so the file there now was left as it is."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides, the file that
+#. was there before was written back from its copy on this computer
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid "The file that was there before was put back and read back the same."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides; {path}:
+#. the copy on this computer of the file that was there before; {sha256}: its checksum
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"The file that was there before was put back and read back the same as its "
+"copy ({path}, SHA-256 {sha256})."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides; {path}: the
+#. copy on this computer of the file that was there before; {sha256}: its checksum
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"The file that was there before could not be put back; its copy is at {path} "
+"(SHA-256 {sha256})."
+msgstr ""
 
 #. TRANSLATORS: {name} is a map; it was being written into a folder the device hides and
 #. stopped: {done} of its {count} files are on the device (the verb agrees with {done})
@@ -13523,6 +13685,15 @@ msgstr "Facultative"
 msgid "Unspecified"
 msgstr "Non spécifiée"
 
+#. TRANSLATORS: a step of the Updates page: a file on the device of the size Garmin offers is
+#. read whole to compare it with the server's ("… · 12.3 MB of 61.8 MB"); short, so that the
+#. numbers fit the bar of the narrowest window
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Checking the File…"
+msgid "Checking the update file"
+msgstr "Vérification du dossier…"
+
 #. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
 #. the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
 #. file on the device is the very file offered
@@ -13620,6 +13791,53 @@ msgstr ""
 "Non installé : {name} {version} est destiné au dossier {folder}, "
 "qu’openExpress ne parvient pas à voir sur l’appareil."
 
+#. TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
+#. the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Not installed: {name} {version} goes to the folder {folder}, which "
+#| "openExpress cannot see on the device."
+msgid ""
+"Not installed: {name} {version} goes to the folder {folder}, which the "
+"device hides from the USB connection; openExpress cannot install it yet. The "
+"other updates install as usual."
+msgstr ""
+"Non installé : {name} {version} est destiné au dossier {folder}, "
+"qu’openExpress ne parvient pas à voir sur l’appareil."
+
+#. TRANSLATORS: why an update was not installed, after its name in the list of those not
+#. installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "This device takes GPX files in its own folder {folder}, where openExpress "
+#| "does not copy them"
+msgid ""
+"the device keeps it in the folder {folder}, hidden from the USB connection; "
+"openExpress cannot install it yet"
+msgstr ""
+"Cet appareil prend en charge les fichiers GPX situés dans son propre dossier "
+"{folder}, dans lequel openExpress ne les copie pas."
+
+#. TRANSLATORS: after updates were copied: the head of the list of those that were not
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "{count} update available"
+#| msgid_plural "{count} updates available"
+msgid "{count} update was not installed:"
+msgid_plural "{count} updates were not installed:"
+msgstr[0] "{count} mise à jour disponible"
+msgstr[1] "{count} mises à jour disponibles"
+
+#. TRANSLATORS: an update not installed and why ({why}: the error's words)
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "{name} {version}"
+msgctxt "update not installed"
+msgid "{name} {version}: {why}"
+msgstr "{name} {version}"
+
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress
 #. cannot see over MTP; {folder}: e.g. .System
 #: openexpress/updates.py
@@ -13687,6 +13905,30 @@ msgstr "{part} : le serveur n’a pas fourni d’URL de téléchargement"
 #, python-brace-format
 msgid "{part}: the RGN format is not supported by openExpress"
 msgstr "{part} : le format RGN n’est pas pris en charge par openExpress"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is
+#. downloaded ("… · 1.2 MB of 3.4 MB")
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Downloading a file from Garmin Connect"
+msgid "Downloading the update information of {name}"
+msgstr "Téléchargement d’un fichier depuis Garmin Connect"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is
+#. copied to the device
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Copying {name} to the device"
+msgid "Copying the update information of {name} to the device"
+msgstr "Copie {name} vers l’appareil"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is read
+#. back from the device and compared
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Checking {name} on the device"
+msgid "Checking the update information of {name} on the device"
+msgstr "Vérification {name} sur l’appareil"
 
 #. TRANSLATORS: title of a notification of the background sync:
 #. the first sync of a device waits for the user's choice

@@ -427,8 +427,8 @@ def _fill(win, page: str) -> str:
             {"unitid": UNIT + 1, "productdisplayname": "Made-up Venu",
              "primaryactivitytrackerindicator": True}]
     if page == "device-readings":
-        # The readings of the account at their fullest: three sensors, one low, its row
-        # expanded, and the device's solar charging; asked at once.
+        # The readings of the account at their fullest: three sensors, one low, their row
+        # opened, and the device's solar charging; asked at once.
         win.session.account_devices[0].update({"solarpanelutilizationcapable": True,
                                                "deviceid": 91234567})
         win.session.client.account_sensors = lambda: [
@@ -448,8 +448,8 @@ def _fill(win, page: str) -> str:
                     failed(e)
                 return
             done(result)
-            if win.sensors_row is not None:
-                win.sensors_row.set_expanded(True)
+            if win.sensors_list is not None:
+                win.sensors_list.set_expanded(True)
 
         win.in_background = at_once
     if page == "device-off-account":

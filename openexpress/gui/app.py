@@ -263,7 +263,8 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         self.map_row = self.apps_row = self.music_row = self.satellite_row = None
         self.storage_row = self.storage_bar = self.backup_row = None
         self.primary_row = self.last_sync_row = None
-        self.sensors_row = self.solar_row = None  # the readings of the account (account_readings)
+        # The readings of the account (account_readings).
+        self.sensors_row = self.sensors_list = self.solar_row = None
         self._banner_kind = ""
         # The devices that stopped responding, until they are gone from their place on USB,
         # and whether a stall is being told (stalled.py).

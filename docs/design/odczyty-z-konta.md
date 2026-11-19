@@ -63,14 +63,15 @@ Account Sensors                             5 sensors · 1 with a low battery   
 
 - An expander row **Account Sensors** / **Czujniki na koncie**, after the rows of the account: its
   subtitle says how many and, when there are any, how many have a low or critical battery
-  (`ngettext`); open, a row for each sensor, its name as the account names it (`deviceName`).
+  (`ngettext`); open, a row for each sensor, its name as the account names it (`deviceName`). It
+  comes closed, also with a low or critical battery: the subtitle tells of it.
 - A sensor's line: the battery (`batteryLevel` as a percentage when it is a number, else
   `batteryStatus` in words), then when it was last connected (`relative_time`), joined by
   `caption()`. A low or critical battery takes the theme's warning colour, as an update does, and
   such sensors come first; the rest by the last connection, the newest first.
 - Only on the page of a device on the signed-in account; no sensor: the row is not shown.
-- **Signed out:** the row with "Sign in to see" (the words of the other rows of the account), not
-  expandable. **No answer and nothing kept:** "Could not check". **No network, an answer kept:** the
+- **Signed out:** a plain row, with no arrow, with "Sign in to see" (the words of the other rows of
+  the account). **No answer and nothing kept:** "Could not check", in the plain row too. **No network, an answer kept:** the
   kept answer, as for the other readings of the account.
 - Not shown, not kept, not logged: the serial number, part number, product, software version and
   picture of a sensor.
@@ -98,7 +99,9 @@ a device (it may have brought new batteries) and another sign-in forget it.
 
 ## 4. Solar charging
 
-**What the user sees** (device page, beside the device's storage), only for a device that charges
+**What the user sees** (device page, in the group of the account under Account Sensors, for the
+figure comes from the account, not from the device's storage; in the same place when the account
+has no sensor), only for a device that charges
 from the sun (D4), its entry on the account found by its unit ID as the ownership check finds it;
 not signed in, or the account's list not known, a device whose own model's name says Solar has the
 row too (with "Sign in to see" or "Could not check"):
@@ -109,12 +112,14 @@ Solar Charging        Activity time gained: today 35 min · last 7 days 4 h 10 m
 
 The figure is the one the account keeps per day: how much activity time the sun added to the
 battery (D5). "Today" is the day whose date is today's on this computer; a day without gain counts
-0, so the row shows "0 min" rather than nothing.
+0. A week under a minute (a winter one) is said in a sentence, not as "today 0 min · last 7 days
+0 min", which would look like a fault; a minute and more, as above, "0 min" for today among it.
 
 | Where | English | Polish |
 |---|---|---|
 | Row title | Solar Charging | Ładowanie słoneczne |
 | Its subtitle | Activity time gained: today {today} · last 7 days {week} | Zyskany czas aktywności: dziś {today} · ostatnie 7 dni {week} |
+| Its subtitle, a week under a minute | Activity time gained: under a minute in the last 7 days | Zyskany czas aktywności: poniżej minuty w ostatnich 7 dniach |
 
 Times by `duration_text`, which learns hours ("4 h 10 min"). Signed out, no answer, no network: as
 the sensors. **Command line:** `openexpress solar [--days N]` (7 by default): a line for each day.

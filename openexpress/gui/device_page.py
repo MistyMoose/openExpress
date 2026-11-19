@@ -39,8 +39,7 @@ from openexpress import (  # noqa: E402
 from openexpress.connect import ApiError, NotAccountDevice, OwnershipError  # noqa: E402
 from openexpress.device.gio_storage import DeviceSummary, FoundDevice  # noqa: E402
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
-from openexpress.gui import activity_page, pictures, start  # noqa: E402
-from openexpress.gui.account_readings import sensors_row, solar_row  # noqa: E402
+from openexpress.gui import account_readings, activity_page, pictures, start  # noqa: E402
 from openexpress.gui.add_to_account import (  # noqa: E402
     add_to_account_row,
     confirm_add_to_account,
@@ -1058,9 +1057,6 @@ class DevicePage:
         self.storage_bar.add_offset_value("full", 1.0)
         self.storage_row = section_row(self, _("Device Storage"), "status", self.storage_bar)
         g.add(self.storage_row)
-        row = solar_row(self, s)  # a device that charges from the sun: the time it gained
-        if row is not None:
-            g.add(row)
         render_space(self)
         if getattr(s, "space", None) is None:
             refresh_space(self, s)  # not read with the device: now, in the background
@@ -1159,8 +1155,9 @@ class DevicePage:
                 wearable = devicelist.primary_wearable(s.account_devices, d.unit_id)
                 if wearable is not None:
                     g.add(primary_wearable_row(self, wearable))
-            # The sensors on the account and their batteries: the account's, under its rows.
-            g.add(sensors_row(self, s))
+            # The sensors on the account and the device's solar charging: the account's, under
+            # its rows.
+            account_readings.add_rows(self, s, g)
         if offers_account_picture(s):
             g.add(account_picture_row(self, s))
 

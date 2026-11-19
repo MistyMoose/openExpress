@@ -1,8 +1,9 @@
 """The rows of the device page with the readings of the Garmin Connect account
 (docs/design/odczyty-z-konta.md): "Account Sensors" under the rows of the account, "Solar
-Charging" under the device's storage. Their states: the answers, no sensor (no row), not signed
-in ("Sign in to see"), and an account that could not be asked ("Could not check"). All devices,
-sensors and answers here are made up."""
+Charging" under it. Their states: the answers (the sensors in a closed row that opens on them),
+no sensor (no row), not signed in ("Sign in to see"), an account that could not be asked ("Could
+not check"), both in a plain row, and a week the sun gained nothing. All devices, sensors and
+answers here are made up."""
 
 import types
 from datetime import date, timedelta
@@ -102,25 +103,58 @@ def _page(logged_in=True, devices=None, sensors=SENSORS, solar=SOLAR, fail=False
 
 
 def sensors_of(win):
-    """The row Account Sensors: (shown, subtitle, expandable, [(name, line, low)])."""
+    """The row Account Sensors as shown: (shown, subtitle, opens, open, [(name, line, low)]);
+    "opens": a row that opens on the sensors, not a plain one, with no arrow."""
     from fakes import descendants
     from gi.repository import Adw
 
     from openexpress.gui.window_tasks import row_label
 
-    row = win.sensors_row
+    shown = [r for r in (win.sensors_row, win.sensors_list) if r.get_visible()]
+    if not shown:
+        return False, None, False, False, []
+    (row,) = shown
+    if not isinstance(row, Adw.ExpanderRow):
+        return True, row.get_subtitle(), False, False, []
     children = [w for w in descendants(row) if isinstance(w, Adw.ActionRow)
                 and w.get_parent() is not None and w.get_title() != row.get_title()]
-    return (row.get_visible(), row.get_subtitle(), row.get_enable_expansion(),
+    return (True, row.get_subtitle(), True, row.get_expanded(),
             [(c.get_title(), c.get_subtitle(),
               row_label(c, "subtitle").has_css_class("warning")) for c in children])
+
+
+def account_titles(section):
+    """The titles of the rows shown in the group of the account, in order; a row that opens
+    counts once, its sensors not."""
+    from fakes import descendants
+    from gi.repository import Adw
+
+    (group,) = [g for g in section.groups if g.get_title() == "Garmin Connect Account"]
+    titles = []
+    for w in descendants(group):
+        if not isinstance(w, Adw.PreferencesRow) or not w.get_visible():
+            continue
+        if any(isinstance(a, Adw.ExpanderRow) for a in ancestors(w, group)):
+            continue  # the row inside a row that opens, and the sensors in it
+        titles.append(w.get_title())
+    return titles
+
+
+def ancestors(widget, up_to):
+    """The widgets between `widget` and `up_to`."""
+    found, w = [], widget.get_parent()
+    while w is not None and w is not up_to:
+        found.append(w)
+        w = w.get_parent()
+    return found
 
 
 @pytest.mark.needs_display
 def test_the_sensors_low_ones_first_and_in_the_warning_colour(clock):
     win, _section, _asked = _page()
-    shown, subtitle, expandable, rows = sensors_of(win)
-    assert (shown, subtitle, expandable) == (True, f"3 sensors{NB}· 1 with a low battery", True)
+    shown, subtitle, opens, is_open, rows = sensors_of(win)
+    assert (shown, subtitle, opens) == (True, f"3 sensors{NB}· 1 with a low battery", True)
+    assert not is_open  # its subtitle tells of the low battery
     assert rows == [
         ("Made-up Light", f"Battery low{NB}· last connected 2 days ago", True),
         ("Made-up Strap", f"Battery 80%{NB}· last connected 3 h ago", False),
@@ -128,15 +162,28 @@ def test_the_sensors_low_ones_first_and_in_the_warning_colour(clock):
 
 
 @pytest.mark.needs_display
-def test_no_sensor_no_row(clock):
-    win, _section, _asked = _page(sensors=[])
-    assert not win.sensors_row.get_visible()
+def test_five_sensors_closed_also_with_a_critical_battery(clock):
+    five = [*SENSORS, {"devicename": "Made-up Power", "batterystatus": "CRITICAL"},
+            {"devicename": "Made-up Radar", "batterylevel": 40}]
+    win, _section, _asked = _page(sensors=five)
+    shown, subtitle, opens, is_open, rows = sensors_of(win)
+    assert (shown, subtitle, opens, is_open) == (
+        True, f"5 sensors{NB}· 2 with a low battery", True, False)
+    assert [name for name, _line, _low in rows][:2] == ["Made-up Light", "Made-up Power"]
 
 
 @pytest.mark.needs_display
-def test_not_signed_in_sign_in_to_see(clock):
+def test_no_sensor_no_row_and_solar_charging_in_its_place(clock):
+    win, section, _asked = _page(sensors=[])
+    assert sensors_of(win)[0] is False
+    titles = account_titles(section)
+    assert "Account Sensors" not in titles and titles[-1] == "Solar Charging"
+
+
+@pytest.mark.needs_display
+def test_not_signed_in_sign_in_to_see_in_a_plain_row(clock):
     win, _section, asked = _page(logged_in=False)
-    assert sensors_of(win)[:3] == (True, "Sign in to see", False)
+    assert sensors_of(win) == (True, "Sign in to see", False, False, [])
     assert win.solar_row.get_subtitle() == "Sign in to see"
     assert asked == []
     win, _section, _asked = _page(logged_in=False, description="Made-up 8")
@@ -144,9 +191,9 @@ def test_not_signed_in_sign_in_to_see(clock):
 
 
 @pytest.mark.needs_display
-def test_an_account_not_asked_could_not_check(clock):
+def test_an_account_not_asked_could_not_check_in_a_plain_row(clock):
     win, _section, _asked = _page(fail=True)
-    assert sensors_of(win)[:3] == (True, "Could not check", False)
+    assert sensors_of(win) == (True, "Could not check", False, False, [])
     assert win.solar_row.get_subtitle() == "Could not check"
 
 
@@ -156,12 +203,34 @@ def test_solar_charging_today_and_the_week(clock):
     assert win.solar_row.get_subtitle() == (
         f"Activity time gained: today 35{NB}min{NB}· last 7{NB}days 1{NB}h{NB}40{NB}min")
     assert asked == [(DEVICE_ID, date(2026, 10, 15), date(2026, 10, 21))]
-    (group,) = [g for g in section.groups if g.get_title() == "Storage"]
+    assert account_titles(section)[-2:] == ["Account Sensors", "Solar Charging"]
     from fakes import descendants
     from gi.repository import Adw
 
-    titles = [w.get_title() for w in descendants(group) if isinstance(w, Adw.ActionRow)]
-    assert titles[-1] == "Solar Charging"
+    (storage,) = [g for g in section.groups if g.get_title() == "Storage"]
+    assert "Solar Charging" not in [w.get_title() for w in descendants(storage)
+                                    if isinstance(w, Adw.PreferencesRow)]
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize("solar", [
+    [], [{"localconnectdate": "2026-10-21", "totalactivitytimegainedms": 0}],
+    [{"localconnectdate": "2026-10-17", "totalactivitytimegainedms": 12}],
+    [{"localconnectdate": "2026-10-21", "totalactivitytimegainedms": 9_000},
+     {"localconnectdate": "2026-10-18", "totalactivitytimegainedms": 20_000}]],
+    ids=["no day named", "today nothing", "12 ms", "under half a minute"])
+def test_a_week_under_a_minute_in_a_sentence(solar, clock):
+    win, _section, _asked = _page(solar=solar)
+    assert win.solar_row.get_subtitle() == (
+        f"Activity time gained: under a minute in the last 7{NB}days")
+
+
+@pytest.mark.needs_display
+def test_a_minute_in_the_week_is_told_as_the_others(clock):
+    win, _section, _asked = _page(
+        solar=[{"localconnectdate": "2026-10-16", "totalactivitytimegainedms": 60_000}])
+    assert win.solar_row.get_subtitle() == (
+        f"Activity time gained: today 0{NB}min{NB}· last 7{NB}days 1{NB}min")
 
 
 @pytest.mark.needs_display
@@ -178,15 +247,33 @@ def test_in_polish(clock):
     try:
         win, _section, _asked = _page()
         sensors = sensors_of(win)
-        titles = win.sensors_row.get_title(), win.solar_row.get_title()
+        titles = win.sensors_list.get_title(), win.solar_row.get_title()
         solar = win.solar_row.get_subtitle()
+        win, _section, _asked = _page(solar=[])
+        winter = win.solar_row.get_subtitle()
     finally:
         i18n.setup("en")
     assert titles == ("Czujniki na koncie", "Ładowanie słoneczne")
     assert sensors[1] == f"3 czujniki{NB}· 1 ze słabą baterią"
-    assert sensors[3][0][1] == f"Bateria słaba{NB}· ostatnio połączony 2 dni temu"
+    assert sensors[4][0][1] == f"Bateria słaba{NB}· ostatnio połączony 2 dni temu"
     assert solar == (f"Zyskany czas aktywności: dziś 35{NB}min{NB}· ostatnie 7{NB}dni "
                      f"1{NB}h{NB}40{NB}min")
+    assert winter == f"Zyskany czas aktywności: poniżej minuty w{NB}ostatnich 7{NB}dniach"
+
+
+@pytest.mark.needs_display
+def test_a_sensor_of_last_week_with_its_date_in_the_language(clock):
+    old = [{"devicename": "Made-up Cadence", "batterylevel": 70,
+            "lastconnected": utc_text(NOON - timedelta(days=9))}]
+    i18n.setup("pl")
+    try:
+        win, _section, _asked = _page(sensors=old)
+        polish = sensors_of(win)[4][0][1]
+    finally:
+        i18n.setup("en")
+    win, _section, _asked = _page(sensors=old)
+    assert polish == f"Bateria 70%{NB}· ostatnio połączony 12.10.2026 o{NB}12:00"
+    assert sensors_of(win)[4][0][1] == f"Battery 70%{NB}· last connected 2026-10-12 12:00"
 
 
 @pytest.mark.needs_display

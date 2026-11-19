@@ -6129,7 +6129,7 @@ msgid "This activity has no GPS positions, so it cannot be exported as GPX."
 msgstr ""
 "Ta aktywność nie ma pozycji GPS, więc nie da się jej wyeksportować do GPX."
 
-#. TRANSLATORS: expander row in the group of the Garmin account on the device page: the
+#. TRANSLATORS: row in the group of the Garmin account on the device page, which opens on the
 #. sensors on the account (a heart rate strap, a Varia, a power meter…) and their batteries
 #: openexpress/gui/account_readings.py
 #, python-brace-format
@@ -6176,12 +6176,19 @@ msgstr[0] "{count} ze słabą baterią"
 msgstr[1] "{count} ze słabą baterią"
 msgstr[2] "{count} ze słabą baterią"
 
-#. TRANSLATORS: row of the device page (group Storage): the activity time the sun gained a
-#. device that charges from the sun
+#. TRANSLATORS: row in the group of the Garmin account on the device page: the activity time
+#. the sun gained a device that charges from the sun
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Solar Charging"
 msgstr "Ładowanie słoneczne"
+
+#. TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
+#. than a minute of activity time in the last 7 days, today among them
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: under a minute in the last 7 days"
+msgstr "Zyskany czas aktywności: poniżej minuty w ostatnich 7 dniach"
 
 #. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
 #: openexpress/gui/account_readings.py

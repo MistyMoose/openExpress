@@ -71,7 +71,7 @@ def test_nothing_private_goes_to_disk(tmp_path):
 def test_every_kind_on_disk_has_its_fields_and_the_country_stays_in_memory():
     assert set(DISK_FIELDS) == {answers.ACCOUNT_DEVICES, answers.PRIMARY_TRAINING,
                                 answers.SOFTWARE_UPDATES, answers.UNIVERSAL_MAPS,
-                                answers.UNIT_INFO}
+                                answers.UNIT_INFO, answers.SENSORS, answers.SOLAR}
 
 
 def test_the_disk_is_in_the_cache_part_answers():

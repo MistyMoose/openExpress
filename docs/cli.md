@@ -40,6 +40,8 @@ the two are separate installations, see
 | `openexpress apps enable\|disable NAME [--type TYPE] [--apply]` | turn an app or a built-in activity on or off; `--type` (app, widget, watch-face, data-field, music-app, activity) picks the entry when two share a name |
 | `openexpress apps order [--from COPY] [--all] [--apply]` | put apps and widgets back in the order of a saved copy of the app list; without `--from` it lists the copies with how many apps each would move, `--all` lists every position that would change |
 | `openexpress primary [--wearable]`, `primary set [--wearable] [--apply]` | the account's primary training device, with `--wearable` its primary wearable (steps and sleep); `set` makes the connected device the primary training device (the main source of performance and training data in Garmin Connect, as `set` says first), `set --wearable` the primary wearable |
+| `openexpress sensors` | the sensors on your Garmin account (a heart rate strap, a Varia, a power meter…) with their batteries and when each was last connected, low batteries first; no device needed, the account does not say which device a sensor is paired with ([details](#sensors-and-solar)) |
+| `openexpress solar [--days N]` | for each device of your Garmin account that charges from the sun: the activity time the sun gained it today, in the last N days (7 by default, at most 31) and day by day ([details](#sensors-and-solar)) |
 | `openexpress courses` | experimental: the courses on the connected device, the GPX files waiting to become courses and the saved locations ([details](#courses)) |
 | `openexpress courses add FILE.gpx [--name COURSE] [--apply]` | experimental: copy a GPX file to `Garmin/NewFiles`, where the device turns it into courses when it is unplugged ([details](#courses-add)) |
 | `openexpress courses remove NAME [--apply]` | experimental: remove one course or one GPX file waiting for the device ([details](#courses-remove)) |
@@ -221,6 +223,33 @@ does not list, for example one registered only as a product on garmin.com.
 - Nothing is written to the device, and the device's own Garmin Connect credentials in Garmin's
   answer are not kept.
 - A device is removed from an account only in Garmin Connect.
+
+### sensors and solar
+
+Both only read your Garmin Connect account (signing in is needed; no device), one request each,
+kept a while (sensors 30 minutes, solar charging an hour; a sync asks anew), never asked again
+after an error or HTTP 429.
+
+```
+$ openexpress sensors
+3 sensors on the Garmin account · 1 with a low battery
+  Varia RTL515: Battery low · last connected 2 days ago
+  HRM-Pro Plus: Battery 80% · last connected 3 h ago
+  Speed Sensor 2: Battery good · last connected yesterday, 18:05
+```
+
+- A sensor's battery is its percentage when the account gives one, else its state (good, new,
+  OK, low, critical, charging).
+- A device charges from the sun when its entry on the account says so, or, for an entry that
+  does not say, when its model's name says Solar. A day the account does not name gained 0.
+
+```
+$ openexpress solar
+fēnix 8 Solar
+  Activity time gained: today 35 min · last 7 days 4 h 10 min
+```
+
+Then a line for each day, the newest first: its date (`YYYY-MM-DD`) and the time gained.
 
 ## Exit codes
 

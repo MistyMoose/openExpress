@@ -205,6 +205,23 @@ the device (Garmin Express sends the unit ID and the software version with some 
 file is kept in the cache for up to four hours, and after the server asks to wait (HTTP 429),
 nothing is asked until the time it gives.
 
+## Readings of the account: sensors and solar charging
+
+Two readings ask your Garmin Connect account, only when you run `openexpress sensors` or
+`openexpress solar`, and only read; nothing on the account or a device changes.
+
+| Request | What it sends | What is kept |
+|---|---|---|
+| The sensors on the account (`openexpress sensors`) | nothing but the signed request | each sensor's name, type, battery and last connection, for 30 minutes |
+| The activity time the sun gained a device (`openexpress solar`), for each device of the account that charges from the sun | the device's Garmin Connect ID and the days asked | the date and the time gained of each day, for an hour |
+
+- Never kept, shown or logged: a sensor's serial number, part number, product, software version
+  and picture.
+- The log has one line for each request, as for every request: the sensors' address without its
+  query, and for the solar request only the host, since its address names the device. Never a
+  sensor's name or a value.
+- A sync makes both be asked anew.
+
 ## How long Garmin's answers are kept
 
 What Garmin's servers answered is kept for a while, so that the program does not ask them more
@@ -213,12 +230,14 @@ files only you can read), each answer for its own time:
 
 | Answer | Kept for | Where | What is kept |
 |---|---|---|---|
-| The account's device list | 5 minutes | memory and cache | each device's Unit ID and Garmin Connect ID (they tell whether a device is on the account), its model, part number, software version, picture address and what the device can be |
+| The account's device list | 5 minutes | memory and cache | each device's Unit ID and Garmin Connect ID (they tell whether a device is on the account), its model, part number, software version, picture address and what the device can be (charging from the sun among it) |
 | The account's primary training device | 5 minutes | memory and cache | only its ID |
 | The software and map offers for a device | one hour | memory and cache | the offers, by the device's `GarminDevice.xml`, as Garmin Express keeps them |
 | What Garmin's update server says of a device (unit-info) | seven days | memory and cache | see [What Garmin is asked about a device](#what-garmin-is-asked-about-a-device) |
 | The account's country | one hour | memory only | |
 | The Connect IQ Store's list of the device's apps | two minutes | memory only | |
+| The account's sensors | 30 minutes | memory and cache | see [Readings of the account](#readings-of-the-account-sensors-and-solar-charging) |
+| A device's solar charging | one hour | memory and cache | see [Readings of the account](#readings-of-the-account-sensors-and-solar-charging) |
 
 - Of the device list and the primary training device, nothing else is kept: never a name you gave
   a device, a serial number, a date or anything of your profile.

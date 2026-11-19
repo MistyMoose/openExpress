@@ -146,7 +146,7 @@ def test_the_duration_in_words():
 
     assert [duration_text(s) for s in (0, 45, 60, 200, 299.4, 3600)] == [
         "0\u00a0s", "45\u00a0s", "1\u00a0min", "3\u00a0min 20\u00a0s", "4\u00a0min 59\u00a0s",
-        "60\u00a0min"]
+        "1\u00a0h"]
 
 
 # --- the sync and the session ----------------------------------------------------------------

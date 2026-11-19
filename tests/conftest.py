@@ -630,7 +630,7 @@ def clock(monkeypatch):
     for name in ("openexpress.i18n", "openexpress.gui.words", "openexpress.gui.start_window",
                  "openexpress.gui.device_page", "openexpress.diagnostics",
                  "openexpress.history", "openexpress.gui.status_page", "openexpress.freeing",
-                 "openexpress.status"):
+                 "openexpress.status", "openexpress.readings"):
         try:
             module = importlib.import_module(name)
         except (ImportError, ValueError):  # no PyGObject: no window to tell the time

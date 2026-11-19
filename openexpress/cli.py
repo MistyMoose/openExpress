@@ -17,7 +17,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from openexpress import __version__, applog, hidden_folders, i18n, known_devices, paths
+from openexpress import __version__, applog, hidden_folders, i18n, known_devices, paths, readings
 from openexpress.auth import store
 from openexpress.connect import (
     ApiError,
@@ -2959,6 +2959,90 @@ def _primary_role(wearable: bool) -> _PrimaryRole:
         })
 
 
+# The days of `openexpress solar`: a week by default, at most a month.
+SOLAR_DAYS = 7
+SOLAR_MOST_DAYS = 31
+
+
+def _days_back(text: str) -> int:
+    """The value of `solar --days`: a whole number from 1 to SOLAR_MOST_DAYS (else the command
+    line is wrong, exit code 2)."""
+    try:
+        number = int(text)
+    except ValueError:
+        number = 0
+    if not 1 <= number <= SOLAR_MOST_DAYS:
+        raise argparse.ArgumentTypeError(
+            _("a whole number from {least} to {most}, not {value}").format(
+                least=1, most=SOLAR_MOST_DAYS, value=text))
+    return number
+
+
+def cmd_sensors(args) -> int:
+    """The sensors on the Garmin account and their batteries, low ones first: one request,
+    kept a while (answers.SENSORS); no device needed. The account does not say which device
+    a sensor is paired with."""
+    client = make_client(Settings.load(), need_auth=True)
+    sensors = readings.in_order(client.account_sensors())
+    if not sensors:
+        print(_("No sensors on this Garmin account."))
+        return 0
+    head = ngettext("{count} sensor on the Garmin account", "{count} sensors on the Garmin account",
+                    len(sensors)).format(count=len(sensors))
+    low = sum(1 for sensor in sensors if readings.is_low(sensor))
+    if low:
+        # TRANSLATORS: after "3 sensors on the Garmin account · "
+        head = caption(head, ngettext("{count} with a low battery", "{count} with a low battery",
+                                      low).format(count=low))
+    print(head)
+    at = readings.now()
+    for sensor in sensors:
+        # TRANSLATORS: one sensor in the command line: its name, then its battery and when it
+        # was last connected ("HRM-Pro Plus: Battery 80% · last connected 2 days ago")
+        print("  " + _("{sensor}: {state}").format(
+            sensor=readings.sensor_name(sensor),
+            state=caption(readings.battery_text(sensor),
+                          readings.last_connected_text(sensor, at))))
+    return 0
+
+
+def cmd_solar(args) -> int:
+    """The activity time the sun gained each device of the Garmin account that charges from
+    the sun (readings.charges_from_sun): today, in the days asked and day by day; days that
+    gained under a minute in all (a winter week) in one line, not as zeros. The account's
+    devices and one request a device, each kept a while; no device needed."""
+    client = make_client(Settings.load(), need_auth=True)
+    devices = [d for d in client.account_devices()
+               if readings.charges_from_sun(d) and isinstance(d.get("deviceid"), int)]
+    if not devices:
+        print(_("No device on this Garmin account charges from the sun."))
+        return 0
+    start, end = readings.period(args.days, readings.now().date())
+    for n, device in enumerate(devices):
+        days = readings.solar_days(client.solar_gain(device["deviceid"], start, end), start, end)
+        if n:
+            print()
+        print(device.get("productdisplayname") or "?")
+        total = sum(ms for _day, ms in days)
+        if not readings.minutes(total):
+            # TRANSLATORS: the activity time the sun gained a device in the last {days} days,
+            # today among them, when it is less than a minute in all (a winter week)
+            print("  " + ngettext("Activity time gained: under a minute in the last {days} day",
+                                  "Activity time gained: under a minute in the last {days} days",
+                                  args.days).format(days=args.days))
+            continue
+        # TRANSLATORS: the activity time the sun gained a device: today, and in the last
+        # {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")
+        print("  " + ngettext("Activity time gained: today {today} · last {days} day {total}",
+                              "Activity time gained: today {today} · last {days} days {total}",
+                              args.days).format(today=readings.gained_text(days[0][1]),
+                                                days=args.days,
+                                                total=readings.gained_text(total)))
+        for day, ms in days:
+            print(f"  {day.strftime(_('%Y-%m-%d'))}  {readings.gained_text(ms)}")
+    return 0
+
+
 def cmd_primary(args) -> int:
     _st, dev = open_device(args)
     client = make_client(Settings.load(), need_auth=True)
@@ -3727,6 +3811,17 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--wearable", dest="set_wearable", action="store_true", help=wearable_help)
     m.add_argument("--apply", action="store_true", help=_("change it in your Garmin account"))
     s.set_defaults(func=cmd_primary)
+
+    s = sub.add_parser("sensors", help=_("the sensors on the Garmin account and their batteries"))
+    s.set_defaults(func=cmd_sensors)
+
+    s = sub.add_parser("solar", help=_("the activity time the sun gained the devices of the "
+                                       "Garmin account that charge from the sun"))
+    s.add_argument("--days", type=_days_back, default=SOLAR_DAYS, metavar="N",
+                   help=_("how many days, today among them ({least}–{most}, {default} by "
+                          "default)").format(least=1, most=SOLAR_MOST_DAYS,
+                                             default=SOLAR_DAYS))
+    s.set_defaults(func=cmd_solar)
 
     s = sub.add_parser("courses", help=_("the courses on the device, the GPX files waiting for "
                                          "it and its saved locations (experimental)"))

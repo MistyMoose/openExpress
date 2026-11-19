@@ -55,6 +55,7 @@ openexpress/netstatus.py
 openexpress/ownmaps.py
 openexpress/progress.py
 openexpress/proto.py
+openexpress/readings.py
 openexpress/service.py
 openexpress/settings.py
 openexpress/sync.py

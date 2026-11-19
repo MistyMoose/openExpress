@@ -10,6 +10,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
@@ -29,6 +30,8 @@ log = logging.getLogger(__name__)
 
 TIMEOUT = 60
 PRIMARY_TRAINING_PATH = "userprofile-service/userprofile/user-settings/primary-training-device"
+SENSORS_PATH = "device-service/sensors"
+SOLAR_GAIN_PATH = "device-service/devicemonitoring/solargain/{device}/{start}/{end}"
 REGISTER_PATH = "device-service/deviceregistration/device"
 # A 409 of the registration with this subcode: another account has an active subscription on
 # the device.
@@ -611,6 +614,51 @@ class GarminClient:
 
         return answers.ANSWERS.ask(answers.ACCOUNT_DEVICES, self.account_scope(), ask,
                                    fresh=fresh)
+
+    # --- readings of the account: its sensors, a device's solar charging ----------------
+
+    def account_sensors(self) -> list[dict]:
+        """The sensors on the account (a heart rate strap, a Varia, a power meter…), each with
+        its battery and last connection (only answers.SENSOR_FIELDS); the account does not
+        say which device a sensor is paired with. Read-only; kept for a while
+        (answers.LIFETIMES)."""
+        def ask():
+            # TRANSLATORS: the name of a request to Garmin's server (the sensors on the Garmin
+            # account, with their batteries), shown before its error
+            what = pgettext("server request", "Account sensors")
+            r = self._connect("GET", SENSORS_PATH, what)
+            if self._no_content(r):
+                return []
+            body = lower_keys(self._json(r, what))
+            if not isinstance(body, list):
+                raise ApiError(unexpected_answer_text(what))
+            return [s for s in body if isinstance(s, dict)]
+
+        return answers.ANSWERS.ask(answers.SENSORS, self.account_scope(), ask)
+
+    def solar_gain(self, device_id: int, start: date, end: date) -> list[dict]:
+        """The activity time the sun gained a device of the account each day from `start` to
+        `end` (its `deviceid` on the account): one entry a day, `localconnectdate` and
+        `totalactivitytimegainedms`. Read-only; the request names the device, so its address
+        stays out of the log. Kept for a while (answers.LIFETIMES)."""
+        def ask():
+            # TRANSLATORS: the name of a request to Garmin's server (the activity time the sun
+            # gained a device), shown before its error
+            what = pgettext("server request", "Solar charging")
+            path = SOLAR_GAIN_PATH.format(device=device_id, start=start.isoformat(),
+                                          end=end.isoformat())
+            r = self._connect("GET", path, what, quiet=True)
+            if self._no_content(r):
+                return []
+            body = lower_keys(self._json(r, what))
+            days = body.get("solargaindailydetaildtolist") if isinstance(body, dict) else None
+            if not isinstance(days, list):
+                raise ApiError(unexpected_answer_text(what))
+            return [d for d in days if isinstance(d, dict)]
+
+        return answers.ANSWERS.ask(
+            answers.SOLAR, (*self.account_scope(), device_id, start.isoformat(), end.isoformat()),
+            ask)
 
     # --- consents and account settings that decide whether data may be uploaded ---------
 

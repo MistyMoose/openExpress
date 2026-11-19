@@ -321,8 +321,8 @@ def primary_wearable_row(win, wearable):
     """The row "Primary Wearable" of the group of the account (devicelist.PrimaryWearable,
     from the account's list the ownership check read), with Set as Primary when this device
     is not the one (the list gives one only for a device that can be it)."""
-    # TRANSLATORS: Garmin Connect's name of the setting (in Polish "Podstawowe urządzenie typu
-    # wearable")
+    # TRANSLATORS: Garmin's name of the setting (in Polish its manuals say "Podstawowe urządzenie
+    # noszone na ciele")
     row = Adw.ActionRow(title=_("Primary Wearable"),
                         subtitle=GLib.markup_escape_text(primary_wearable_text(wearable)))
     if not wearable.is_this_device:

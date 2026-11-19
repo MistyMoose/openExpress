@@ -148,7 +148,7 @@ PL: „Tryb próbny: nic nie zmieniono. Dodaj --apply.” and the like; 4 texts.
 | Background sync | "Preferences, Sync in the background" (no such label) | "Preferences, Background Sync" | 1 |
 
 About 35 texts. PL follows the same terms (konto Garmin, Sklep Connect IQ, klucz aplikacji,
-podstawowe urządzenie typu wearable, Unit ID, oprogramowanie urządzenia); Polish already says „Synchronizacja w tle” in the last one.
+podstawowe urządzenie noszone na ciele, Unit ID, oprogramowanie urządzenia); Polish already says „Synchronizacja w tle” in the last one.
 
 ### D8. Punctuation
 

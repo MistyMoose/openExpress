@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 00:25+0100\n"
+"POT-Creation-Date: 2026-11-19 00:52+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -7366,8 +7366,8 @@ msgstr[2] "Kopia zapasowa gotowa: {count} plików ({size})"
 msgid "Backup Incomplete"
 msgstr "Nie wszystko trafiło do kopii zapasowej"
 
-#. TRANSLATORS: Garmin Connect's name of the setting (in Polish "Podstawowe urządzenie typu
-#. wearable")
+#. TRANSLATORS: Garmin's name of the setting (in Polish its manuals say "Podstawowe urządzenie
+#. noszone na ciele")
 #: openexpress/gui/device_page.py openexpress/gui/start_window.py
 #, ignore-reused, python-brace-format
 msgid "Primary Wearable"

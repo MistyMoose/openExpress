@@ -1,9 +1,10 @@
 # Design: readings from the Garmin Connect account
 
-Status: decided; nothing is implemented. D1–D10 are chosen (marked so in section 7), D8 with
-`--apply`, as every command that writes. What the read-only check on the account (section 6)
-showed is in section 2; the time zone of a sensor's last connection is read as UTC until the check
-tells it.
+Status: decided; the sensors and solar charging are implemented (the command line and the rows of
+the device page, steps 1–4 of section 8), the reports (section 5) not yet. D1–D10 are chosen
+(marked so in section 7), D8 with `--apply`, as every command that writes. What the read-only
+check on the account (section 6) showed is in section 2; the time zone of a sensor's last
+connection is read as UTC until the check tells it.
 
 ## 1. Scope
 
@@ -98,7 +99,9 @@ a device (it may have brought new batteries) and another sign-in forget it.
 ## 4. Solar charging
 
 **What the user sees** (device page, beside the device's storage), only for a device that charges
-from the sun (D4), its entry on the account found by its unit ID as the ownership check finds it:
+from the sun (D4), its entry on the account found by its unit ID as the ownership check finds it;
+not signed in, or the account's list not known, a device whose own model's name says Solar has the
+row too (with "Sign in to see" or "Could not check"):
 
 ```
 Solar Charging        Activity time gained: today 35 min · last 7 days 4 h 10 min

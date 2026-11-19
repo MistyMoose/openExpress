@@ -426,6 +426,32 @@ def _fill(win, page: str) -> str:
              "primaryactivitytrackerindicator": False},
             {"unitid": UNIT + 1, "productdisplayname": "Made-up Venu",
              "primaryactivitytrackerindicator": True}]
+    if page == "device-readings":
+        # The readings of the account at their fullest: three sensors, one low, its row
+        # expanded, and the device's solar charging; asked at once.
+        win.session.account_devices[0].update({"solarpanelutilizationcapable": True,
+                                               "deviceid": 91234567})
+        win.session.client.account_sensors = lambda: [
+            {"devicename": "Made-up Rear Light With a Long Name", "batterystatus": "CRITICAL",
+             "lastconnected": "2026-10-19T08:00:00.0"},
+            {"devicename": "Made-up Heart Rate Strap", "batterylevel": 80,
+             "lastconnected": "2026-10-21T09:00:00.0"},
+            {"devicename": "Made-up Speed Sensor", "batterystatus": "CHARGING"}]
+        win.session.client.solar_gain = lambda device, start, end: [
+            {"localconnectdate": end.isoformat(), "totalactivitytimegainedms": 15_000_000}]
+
+        def at_once(fn, done, failed=None):
+            try:
+                result = fn()
+            except Exception as e:  # noqa: BLE001 - as in_background
+                if failed is not None:
+                    failed(e)
+                return
+            done(result)
+            if win.sensors_row is not None:
+                win.sensors_row.set_expanded(True)
+
+        win.in_background = at_once
     if page == "device-off-account":
         # Not on the account, no picture from unit-info: Get Picture From Account offered.
         from openexpress.connect import NotAccountDevice
@@ -610,7 +636,7 @@ def _min_width(widget) -> int:
 
 
 DEVICE_PAGES = ["device", "device-maps-noted", "device-update-copied", "device-off-account",
-                "device-primary-other",
+                "device-primary-other", "device-readings",
                 "device-drive", "device-refused-drive", "updates-beta",
                 "updates-beta-drive",
                 "updates-beta-copied", "updates-beta-copied-drive", "updates-navigator",

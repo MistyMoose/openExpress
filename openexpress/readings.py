@@ -147,8 +147,9 @@ def minutes(ms: int) -> int:
 
 
 def gained_text(ms: int) -> str:
-    """Activity time gained, to the minute: "0 min", "35 min", "4 h 10 min"."""
+    """Activity time gained, to the minute: "0 min", "35 min", "4 h 10 min", with hard spaces
+    only, so that a caption that wraps never splits it."""
     if not minutes(ms):
         # TRANSLATORS: a length of time in minutes
         return _("{minutes}\u00a0min").format(minutes=0)
-    return duration_text(minutes(ms) * 60)
+    return duration_text(minutes(ms) * 60).replace(" ", "\u00a0")

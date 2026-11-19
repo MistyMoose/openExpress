@@ -17,7 +17,7 @@ from openexpress.answers import ANSWERS, Disk
 from openexpress.cli import main
 from openexpress.connect import SENSORS_PATH, ApiError
 
-NB = " "
+NB = "\u00a0"
 DEVICE_ID = 91234567  # a made-up Garmin Connect ID of a device
 OTHER_ID = 91234568
 SOLAR_PATH = "device-service/devicemonitoring/solargain/"
@@ -175,7 +175,7 @@ def test_every_day_of_the_period_newest_first_a_day_not_named_gained_nothing():
 
 @pytest.mark.parametrize("ms, text", [
     (0, f"0{NB}min"), (20_000, f"0{NB}min"), (2_100_000, f"35{NB}min"),
-    (3_600_000, f"1{NB}h"), (15_000_000, f"4{NB}h 10{NB}min")])
+    (3_600_000, f"1{NB}h"), (15_000_000, f"4{NB}h{NB}10{NB}min")])
 def test_the_time_gained_to_the_minute(ms, text):
     assert readings.gained_text(ms) == text
 

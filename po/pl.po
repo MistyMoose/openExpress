@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 07:49+0100\n"
+"POT-Creation-Date: 2026-11-19 08:05+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -6129,6 +6129,72 @@ msgid "This activity has no GPS positions, so it cannot be exported as GPX."
 msgstr ""
 "Ta aktywność nie ma pozycji GPS, więc nie da się jej wyeksportować do GPX."
 
+#. TRANSLATORS: expander row in the group of the Garmin account on the device page: the
+#. sensors on the account (a heart rate strap, a Varia, a power meter…) and their batteries
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Account Sensors"
+msgstr "Czujniki na koncie"
+
+#. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#, python-brace-format
+msgid "Sign in to see"
+msgstr "Zaloguj się, aby zobaczyć"
+
+#. TRANSLATORS: subtitle of a row (Device software, Maps, Primary training device) while Garmin's
+#. server is asked
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid "Checking…"
+msgstr "Sprawdzanie…"
+
+#. TRANSLATORS: subtitle of "Primary Training Device" when the account could not be asked
+#: openexpress/gui/account_readings.py openexpress/gui/device_page.py
+#, python-brace-format
+msgid "Could not check"
+msgstr "Nie udało się sprawdzić"
+
+#. TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} sensor"
+msgid_plural "{count} sensors"
+msgstr[0] "{count} czujnik"
+msgstr[1] "{count} czujniki"
+msgstr[2] "{count} czujników"
+
+#. TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgctxt "account sensors"
+msgid "{count} with a low battery"
+msgid_plural "{count} with a low battery"
+msgstr[0] "{count} ze słabą baterią"
+msgstr[1] "{count} ze słabą baterią"
+msgstr[2] "{count} ze słabą baterią"
+
+#. TRANSLATORS: row of the device page (group Storage): the activity time the sun gained a
+#. device that charges from the sun
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Solar Charging"
+msgstr "Ładowanie słoneczne"
+
+#. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "Activity time gained: today {today}"
+msgstr "Zyskany czas aktywności: dziś {today}"
+
+#. TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
+#: openexpress/gui/account_readings.py
+#, python-brace-format
+msgid "last 7 days {week}"
+msgstr "ostatnie 7 dni {week}"
+
 #: openexpress/gui/activities_page.py
 #, python-brace-format
 msgid "Export as GPX…"
@@ -7571,31 +7637,12 @@ msgstr ""
 msgid "Satellite Data"
 msgstr "Dane satelitarne"
 
-#. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
-#: openexpress/gui/device_page.py
-#, python-brace-format
-msgid "Sign in to see"
-msgstr "Zaloguj się, aby zobaczyć"
-
 #. TRANSLATORS: subtitle of "Primary Training Device" of a device off the account
 #: openexpress/gui/device_page.py
 #, python-brace-format
 msgctxt "primary training device"
 msgid "Not available"
 msgstr "Niedostępne"
-
-#. TRANSLATORS: subtitle of "Primary Training Device" when the account could not be asked
-#: openexpress/gui/device_page.py
-#, python-brace-format
-msgid "Could not check"
-msgstr "Nie udało się sprawdzić"
-
-#. TRANSLATORS: subtitle of a row (Device software, Maps, Primary training device) while Garmin's
-#. server is asked
-#: openexpress/gui/device_page.py openexpress/gui/words.py
-#, python-brace-format
-msgid "Checking…"
-msgstr "Sprawdzanie…"
 
 #. TRANSLATORS: the pages Maps, Apps and Music of a device connected as a USB drive
 #: openexpress/gui/device_page.py

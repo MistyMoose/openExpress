@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 19:54+0100\n"
+"POT-Creation-Date: 2026-11-18 20:33+0100\n"
 "PO-Revision-Date: 2026-11-15 19:13+0000\n"
 "Last-Translator: BeGiBue <begibue@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/openexpress/"
@@ -5549,6 +5549,26 @@ msgstr ""
 "Das Garmin-Gerät ist als USB-Laufwerk angeschlossen, aber diese Version "
 "(Flatpak) hat keinen Zugriff auf /run/media, wo das System es eingehängt hat."
 
+#. TRANSLATORS: added once the wait for a device on USB ran out: this user may not open
+#. it (over SSH, another user's session, or no udev rule gives access to it)
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB. Run openExpress as the user "
+"logged in at this computer's screen, not over SSH, or give this user access "
+"to the device (a udev rule)."
+msgstr ""
+
+#. TRANSLATORS: the same as "This user has no access to the device on USB. …", on the
+#. command line; {node} is a path such as /dev/bus/usb/001/009, not to be translated
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"This user has no access to the device on USB ({node}). Run openExpress as "
+"the user logged in at this computer's screen, not over SSH, or give this "
+"user access to the device (a udev rule)."
+msgstr ""
+
 #. TRANSLATORS: added once the wait for a device on USB ran out: KDE's MTP service may hold
 #. it; "kquitapp6 kiod6" is a command, not to be translated
 #: openexpress/device/gio_storage.py
@@ -5562,6 +5582,15 @@ msgstr ""
 "nachdem Dolphin geschlossen wurde, und übernimmt es wieder, wenn das Kabel "
 "erneut angeschlossen wird. Schließen Sie Dolphin und führen Sie kquitapp6 "
 "kiod6 aus, trennen Sie dann das Kabel und schließen Sie es wieder an."
+
+#. TRANSLATORS: the device on USB but not offered, when what keeps it from openExpress is
+#. known and said in the next sentence
+#: openexpress/device/gio_storage.py
+#, fuzzy, python-brace-format
+#| msgid "The device was mounted again but its files are not visible."
+msgid "The Garmin device is connected, but it does not offer its files."
+msgstr ""
+"Das Gerät wurde erneut eingehängt, aber seine Dateien sind nicht sichtbar."
 
 #. TRANSLATORS: title while a Garmin device is on USB and gvfs has no MTP support
 #: openexpress/device/gio_storage.py

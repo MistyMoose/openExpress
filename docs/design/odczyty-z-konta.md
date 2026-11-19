@@ -1,8 +1,9 @@
 # Design: readings from the Garmin Connect account
 
-Status: decided; nothing is implemented. D1–D3 and D5–D10 are chosen (marked so in section 7),
-D8 with `--apply`, as every command that writes; D4 waits for what the read-only check on the
-account (section 6) has yet to show. What the check showed is in section 2.
+Status: decided; nothing is implemented. D1–D10 are chosen (marked so in section 7), D8 with
+`--apply`, as every command that writes. What the read-only check on the account (section 6)
+showed is in section 2; the time zone of a sensor's last connection is read as UTC until the check
+tells it.
 
 ## 1. Scope
 
@@ -28,8 +29,8 @@ last column says what the check found for openExpress's own sign-in.
 | Reading | Request | Its answer for openExpress's sign-in |
 |---|---|---|
 | Sensors | `GET /device-service/sensors` | a list, one item per sensor on the account: `deviceName`, `sensorType`, `batteryLevel`, `batteryStatus`, `lastConnected`, `lastLowBatteryNotification`, `rechargeableSensorCapable`, `prioritySensor`, `manufacturer`, `productId`, `partNumber`, `softwareVersion`, `serialNumber`, `imageUrl`. No field names the device a sensor is paired with. |
-| Which device charges from the sun | `GET /device-service/deviceregistration/devices` (the account's devices, asked already) | `solarChargeCapable` and `solarPanelUtilizationCapable`, truth values, for each device; `solarChargeCapable` is false for every device of the account, a fēnix 8 Solar among them, so it does not mark a model that charges from the sun; the device's `deviceId` is what the solar requests take |
-| Solar gain | `GET /device-service/devicemonitoring/solargain/{deviceId}/{start}/{end}` | one item per day of the period, days without gain too: `localConnectDate`, `totalActivityTimeGainedMs` |
+| Which device charges from the sun | `GET /device-service/deviceregistration/devices` (the account's devices, asked already) | `solarChargeCapable` and `solarPanelUtilizationCapable`, truth values, for each device; `solarChargeCapable` is false for every device of the account, a fēnix 8 Solar among them, so it does not mark a model that charges from the sun; `solarPanelUtilizationCapable` is true for the device whose name says Solar and false for the others; the device's `deviceId` is what the solar requests take |
+| Solar gain | `GET /device-service/devicemonitoring/solargain/{deviceId}/{start}/{end}` | one item per day of the period, days without gain too, today among them: `localConnectDate` (text `YYYY-MM-DD`), `totalActivityTimeGainedMs` (a whole number) |
 | Solar, the phone's day view | `GET /mobile-gateway/solar/{deviceId}/{localStartDate}/{localEndDate}` | the solar input of each day, together with the user's sleep of each day and a list of activities |
 | Reports | `POST /reportexport-service/export/init/{reportCategory}/{fromDate}/{toDate}?locale=` (`reportSubCategory`, `reportFormat`, `contentToSkip`, `requestedDateFormatKey`) → `reportId`; `GET …/export/reportStatus/{reportId}`; `GET …/export/reportContent/{reportId}` (the PDF); `DELETE …/export/ack/{reportId}` | the status of a report that does not exist: 400 with `error` and `message`, not a refusal: the sign-in passes the service. Formats `Daily`, `SevenDays`, `FourWeeks`, `Yearly`; categories among them `bloodpressure`, `wellnessactivity` |
 
@@ -37,9 +38,8 @@ Values seen of `batteryStatus`: `GOOD`, `NEW`, `OK`, `UNKNOWN`; of `sensorType`:
 `BIKE_POWER`, `BIKE_SPEED`, `HEART_RATE`. `batteryLevel` is none or a whole number from 0 to 100;
 `lastConnected` is text of the form `YYYY-MM-DDThh:mm:ss.f`, with no time zone;
 `lastLowBatteryNotification` is none or the same form with milliseconds; `rechargeableSensorCapable`
-is none or a truth value. Still not known: which flag, if any, marks a device that charges from the
-sun; whether `lastConnected` is in UTC or local time; what kind of value the solar gain holds; and
-the whole list of report categories. The program uses only fields seen in an answer for its own
+is none or a truth value. Still not known: whether `lastConnected` is in UTC or local time, and the
+whole list of report categories. The program uses only fields seen in an answer for its own
 sign-in, and reads values whose kind is not known as not there.
 
 The sensors of an activity are also in the activity's FIT file: each `device_info` message (public
@@ -171,12 +171,10 @@ number, text with digits as 9, or none), never a name, a number, a date or an id
 the sensors, the account's devices, the solar gain of the device that charges from the sun, and the
 status of a report that does not exist. What it showed is in section 2.
 
-Before the core step it has yet to show: for each device of the account, whether its name says
-Solar beside the truth values of both flags (D4); what kind of value the solar gain holds and
-whether any day of it is more than 0; and whether any sensor's last connection read as UTC is later
-than now (then it is local time). The phone's day view is not needed (D6). If the check cannot tell
-the time zone, `lastConnected` is read as UTC: the account names its local times so (`…Local`), and
-a wrong guess moves "today" or "yesterday" only near midnight.
+It has yet to show whether any sensor's last connection, read as UTC, is later than now (then it
+is local time); a run within an hour after a sensor was connected can tell it. Until then
+`lastConnected` is read as UTC: the account names its local times so (`…Local`), and a wrong guess
+moves "today" or "yesterday" only near midnight. The phone's day view is not needed (D6).
 
 ## 7. Decisions
 
@@ -198,8 +196,9 @@ is shown; Refresh, a sync of the device and another sign-in forget them. No time
 **D4. Which devices have Solar Charging.** `solarChargeCapable` does not tell (false for a fēnix 8
 Solar). (a) `solarPanelUtilizationCapable`, if it is true for the solar model and false for the
 others; (b) the model's name on the account saying Solar; (c) a device whose solar gain is ever
-more than 0. *Proposed: (a)* if the check on the account shows it, else (b); (c) would hide the
-row of a solar device in a dark week.
+more than 0. *Chosen: (a)*, with (b) when a device's entry has no such flag: the check on the
+account showed the flag true for the device whose name says Solar and false for the others; (c)
+would hide the row of a solar device in a dark week.
 
 **D5. What the solar row says.** (a) The activity time gained, today and in the last 7 days; (b) the
 same a day at a time, in an expander row; (c) the solar intensity over a day, with a chart.
@@ -231,8 +230,8 @@ value or the file's name.
 Each step: tests that fail on the code before it, the texts with their Polish in the same commit,
 the usual checks; each waits for acceptance.
 
-1. The check on the account (section 6): what it has yet to show, the solar flag, the solar gain
-   and the time zone, before step 2.
+1. The time zone of a sensor's last connection (section 6): a run of the check within an hour
+   after a sensor was connected; until then UTC, so no step waits for it.
 2. Sensors and solar, the core: the requests, the kinds of kept answers, the reading of the fields,
    hours in `duration_text`; tests on made-up answers.
 3. The command line: `openexpress sensors`, `openexpress solar`; `docs/cli.md`.

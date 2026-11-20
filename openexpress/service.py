@@ -1512,7 +1512,7 @@ def run_sync(
                     type(e).__name__, e, extra=applog.TOLD)  # the caller tells why
         # TRANSLATORS: under "Last Sync", in its details: the error that stopped the sync
         _keep_stopped(s, e, _("The sync stopped before the end: {error}").format(
-            error=_stop_text(e)))
+            error=applog.error_text(e)))
         raise
     save_last_sync(s.device.unit_id, summary, test_drive=s.test_drive)
     log.info("sync: end after %.1f s: %d uploaded, %d already known, %d downloaded, %d errors",
@@ -1580,12 +1580,14 @@ def upload_skipped(s: DeviceSession, error: Exception) -> str:
     named by its host) could not be reached or answered with an error. The rest of the sync
     does not need it: Garmin Connect's queue, Connect IQ and TrueUp go on."""
     host = urlsplit(s.settings.hosts["omt"]).netloc
-    if isinstance(error, requests.RequestException):
+    # The client's error for a request without an answer carries the requests error.
+    cause = error.__cause__ if isinstance(error, ApiError) else error
+    if isinstance(cause, requests.RequestException):
         # TRANSLATORS: a sync uploaded nothing: Garmin's server that gives the upload settings
         # (its host, e.g. omt.garmin.com) could not be reached; the error in brackets
         return _("Uploads skipped: {host}, Garmin's server that says what to upload, could "
                  "not be reached ({error}).").format(
-            host=host, error=applog.network_error_text(error))
+            host=host, error=applog.network_error_text(cause))
     return _("Uploads skipped: {host}, Garmin's server that says what to upload, answered "
              "with an error ({error}).").format(host=host, error=error)
 
@@ -1747,14 +1749,6 @@ def apply_sync(s: DeviceSession, plan: SyncPlan,
     if not plan.test_drive:
         answers.ANSWERS.forget((answers.SENSORS, answers.SOLAR))
     return out
-
-
-def _stop_text(error: Exception) -> str:
-    """The error that stopped a sync, as the record keeps it: its words, those of a network
-    error without the address it names."""
-    if isinstance(error, requests.RequestException):
-        return applog.network_error_text(error)
-    return str(error) or type(error).__name__
 
 
 def _keep_stopped(s: DeviceSession, error: BaseException, why: str) -> None:

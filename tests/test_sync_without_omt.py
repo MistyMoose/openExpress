@@ -7,7 +7,7 @@ import shutil
 
 import pytest
 import requests
-from fakes import COURSE, RunNow, SyncAccount
+from fakes import COURSE, RunNow, SyncAccount, no_answer
 from fakes import window as stand_in
 
 from openexpress import applog, cli, service, sync
@@ -17,13 +17,14 @@ from openexpress.device.xmldevice import parse
 from openexpress.settings import Settings
 
 UNIT = SyncAccount.UNIT
+# What requests raises when nothing answers; the client raises its own error (no_answer).
 REFUSED = requests.ConnectionError(
     "HTTPSConnectionPool(host='omt.garmin.com', port=443): Max retries exceeded with url: "
     f"/UploadConfigurationService/UnitUploadSettings/{UNIT}?clientId=express-windows (Caused "
     "by NewConnectionError('<urllib3.connection.HTTPSConnection object>: Failed to establish "
     "a new connection: [Errno 111] Connection refused'))")
 SKIPPED = "Uploads skipped: omt.garmin.com, Garmin's server that says what to upload, "
-NOT_REACHED = SKIPPED + "could not be reached ("
+NOT_REACHED = SKIPPED + "could not be reached (no connection)."
 ANSWERED = SKIPPED + "answered with an error ("
 
 
@@ -60,7 +61,8 @@ def written(root) -> list[str]:
                                               ANSWERED)])
 def test_the_command_line_writes_the_queue_and_says_why_nothing_was_uploaded(
         device, monkeypatch, capsys, error, said):
-    account = WithoutOmt(error)
+    account = WithoutOmt(no_answer(error) if isinstance(error, requests.RequestException)
+                         else error)
     monkeypatch.setattr(cli, "make_client", lambda settings, need_auth: account)
     try:
         code = cli.main(["--path", str(device), "sync", "--apply"])
@@ -81,7 +83,7 @@ def test_the_window_writes_the_queue_and_says_why_nothing_was_uploaded(device):
     from openexpress.gui import app
 
     storage = LocalStorage(device)
-    account = WithoutOmt(REFUSED)
+    account = WithoutOmt(no_answer(REFUSED))
     said = []
     win = stand_in(
         session=service.DeviceSession(storage, parse(storage.read("GARMIN/GarminDevice.xml")),
@@ -97,17 +99,17 @@ def test_the_window_writes_the_queue_and_says_why_nothing_was_uploaded(device):
     assert said == ["Sync finished with errors"] and win.run_task.errors == []
     assert written(device) == ["course"] and account.acks == [5]
     record = service.load_last_sync(UNIT)
-    assert record["downloaded"] == 1 and record["errors"][0].startswith(NOT_REACHED)
+    assert record["downloaded"] == 1 and record["errors"][0] == NOT_REACHED
 
 
 def test_the_dry_run_plans_the_queue_and_says_why_nothing_would_be_uploaded(device,
                                                                            monkeypatch,
                                                                            capsys):
-    account = WithoutOmt(REFUSED)
+    account = WithoutOmt(no_answer(REFUSED))
     monkeypatch.setattr(cli, "make_client", lambda settings, need_auth: account)
     assert cli.main(["--path", str(device), "sync"]) == 0
     out = capsys.readouterr().out
-    assert any(line.startswith(NOT_REACHED) for line in out.splitlines())
+    assert NOT_REACHED in out.splitlines()
     assert "To download from Garmin Connect to the device: 1" in out
     assert written(device) == [] and account.acks == []
 
@@ -116,7 +118,7 @@ def test_a_first_sync_without_omt_writes_the_queue_and_leaves_the_choice(device,
                                                                        capsys):
     """The choice of the first sync is about the uploads: it stays to be made."""
     sync.state_path(UNIT).unlink()
-    account = WithoutOmt(REFUSED)
+    account = WithoutOmt(no_answer(REFUSED))
     monkeypatch.setattr(cli, "make_client", lambda settings, need_auth: account)
     try:
         assert cli.main(["--path", str(device), "sync", "--apply"]) == 1

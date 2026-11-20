@@ -968,6 +968,19 @@ def make_client(devices=None, auth=True, **routes):
                         RecordingSession(devices, **routes))
 
 
+def no_answer(error, unit_id=1234567890):
+    """What the client raises when a request of its gets no answer (`error`, a requests
+    error): its own error, made by its own code (the upload settings, asked of a session that
+    raises `error`)."""
+    from openexpress.connect import ApiError
+
+    try:
+        make_client(UnitUploadSettings=error).upload_settings(unit_id)
+    except ApiError as raised:
+        return raised
+    raise AssertionError("the client raised nothing")
+
+
 # Made-up FIT files. The base types of the FIT protocol, by the byte of a field definition:
 # the struct format of one value and the value that means "invalid" (written here apart from
 # the program's own table, openexpress/fit.py).

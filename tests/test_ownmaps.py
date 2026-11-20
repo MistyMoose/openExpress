@@ -543,6 +543,20 @@ def test_a_copy_that_left_nothing_behind(maps_cli, my_map, monkeypatch, capsys):
         "Error: Writing GARMIN/osm-test.img failed. (Cannot write: refused)")
 
 
+def test_a_copy_the_system_refused_says_it_in_its_words(maps_cli, my_map, monkeypatch, capsys):
+    """Without the number of the error and the path on this computer."""
+    from openexpress import cli
+
+    class Refused(LocalStorage):
+        def _write_file(self, real_path, local, progress=None):
+            raise OSError(5, "Input/output error", "/run/media/made-up/GARMIN/osm-test.img")
+
+    monkeypatch.setattr(cli, "LocalStorage", Refused)
+    assert main(["--path", str(maps_cli), "maps", "add", str(my_map), "--apply"]) == 1
+    assert capsys.readouterr().err.splitlines()[-1] == (
+        "Error: Writing GARMIN/osm-test.img failed. (Input/output error)")
+
+
 def test_a_file_that_appeared_meanwhile_is_not_touched(map_folder, my_map):
     st = LocalStorage(map_folder)
     dev = device()

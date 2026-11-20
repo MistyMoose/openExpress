@@ -31,6 +31,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk, Pango  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import applog  # noqa: E402
+from openexpress.applog import error_text  # noqa: E402
 from openexpress.errors import OrdinaryStop, UserFacingError  # noqa: E402
 from openexpress.gui import stalled  # noqa: E402
 from openexpress.gui.gui_settings import MIN_WINDOW  # noqa: E402
@@ -196,14 +197,6 @@ def trash_button(tooltip: str, cb) -> Gtk.Button:
 # words of the task comes only when the task takes longer than this; a quick one (a fast
 # device) shows no text that flashes and is gone.
 TEXT_AFTER_MS = 500
-
-
-def error_text(e: Exception) -> str:
-    """What the window says of a failure: a message for the user (UserFacingError) as it is;
-    the words of an error nobody foresaw filtered as the log is (a path, an address, a unit
-    ID), as the command line tells them."""
-    text = str(e) or type(e).__name__
-    return text if isinstance(e, UserFacingError) else applog.redact(text)
 
 
 # Marks a button of wraps_when_folded, and a row or a group whose text such a button stands

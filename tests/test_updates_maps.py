@@ -602,7 +602,9 @@ def test_maps_command_does_not_say_no_maps_when_the_check_fails(
         captured = capsys.readouterr()
         assert NO_MAPS_TEXT not in captured.out + captured.err
         assert captured.out == "" and "up to date" not in captured.err
-        assert "Server error: Map check" in captured.err and "Traceback" not in captured.err
+        said = ("Network error: could not reach the Garmin server (no connection)" if error
+                else "Server error: Map check")
+        assert said in captured.err and "Traceback" not in captured.err
 
 
 def _children(widget):

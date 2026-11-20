@@ -822,6 +822,33 @@ def test_the_preferences_switch_turns_the_copy_on_and_off():
     assert not diagnostics.copy_on()
 
 
+@pytest.mark.needs_display
+def test_a_switch_not_saved_says_why_in_the_systems_words(monkeypatch):
+    """The settings file cannot be written: the system's words, without the number of the error
+    or the path of the temporary file; the switch goes back."""
+    from gi.repository import Adw
+
+    from openexpress.gui.preferences import diagnostics_group
+
+    saves = []
+    save = Settings.save
+
+    def refused_once(self):
+        # Once only: putting the switch back is a change the row may tell again, saved then.
+        saves.append(self.diagnostics_copy)
+        if len(saves) == 1:
+            raise PermissionError(13, "Permission denied", "/made-up/openexpress/settings.json.tmp")
+        save(self)
+
+    monkeypatch.setattr(Settings, "save", refused_once)
+    said = []
+    group = diagnostics_group(stand_in(error=lambda title, text: said.append((title, text))))
+    switch = next(w for w in descendants(group) if isinstance(w, Adw.SwitchRow))
+    switch.set_active(True)
+    assert said == [("Setting Not Saved", "Permission denied")]
+    assert not switch.get_active()
+
+
 # --- the command line -----------------------------------------------------------------------
 
 

@@ -8,6 +8,7 @@ through its "quit" action over D-Bus.
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
@@ -24,6 +25,8 @@ from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.requi
 from openexpress import desktop  # noqa: E402
 from openexpress.i18n import _  # noqa: E402
 from openexpress.paths import in_flatpak  # noqa: E402
+
+log = logging.getLogger(__name__)
 
 WATCH_ID = desktop.DESKTOP_ID + ".Watch"
 WATCH_PATH = "/" + WATCH_ID.replace(".", "/")
@@ -84,8 +87,11 @@ def _portal_request(autostart: bool, parent: str, done: Callable[[bool, str], No
                       GLib.Variant("(sa{sv})", (parent, options)), None,
                       Gio.DBusCallFlags.NONE, -1, None)
     except GLib.Error as e:
+        # E.g. a desktop whose portal has no Background service: the words of D-Bus only to the
+        # log, the window says its own.
+        log.info("background sync: the portal refused the request: %s", e.message)
         bus.signal_unsubscribe(sub[0])
-        done(False, e.message)
+        done(False, "")
 
 
 def _systemctl(*args: str) -> tuple[bool, str]:

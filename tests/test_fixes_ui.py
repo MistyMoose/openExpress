@@ -7,6 +7,7 @@ import pytest
 import requests
 from fakes import (
     device_session,
+    no_answer,
     page_window,
     replace_in_window,
     software_update,
@@ -269,10 +270,10 @@ def test_sync_upload_errors_give_exit_code_1(device_root, xdg, fake_client, caps
 def test_network_error_is_a_clean_user_error(device_root, xdg, fake_client, capsys):
     """The upload settings not fetched: the dry run says why in one line (the uploads
     skipped, the rest of the plan shown), no traceback."""
-    fake_client["client"] = FakeClient(fail_config=requests.ConnectionError("boom"))
+    fake_client["client"] = FakeClient(fail_config=no_answer(requests.ConnectionError("boom")))
     assert main(["--path", str(device_root), "sync"]) == 0
     said = capsys.readouterr()
-    assert "could not be reached (boom)." in said.out
+    assert "could not be reached (no connection)." in said.out
     assert "Traceback" not in said.out + said.err
 
 
@@ -320,6 +321,13 @@ def test_music_match_rules():
 @pytest.mark.parametrize("pattern", ["", "  ", "ab"])
 def test_music_remove_rejects_short_patterns(device_root, xdg, capsys, pattern):
     assert main(["--path", str(device_root), "music", "remove", pattern, "--apply"]) == 1
+    assert "at least 3 characters" in capsys.readouterr().err
+
+
+def test_a_short_pattern_is_refused_before_the_device_is_opened(monkeypatch, xdg, capsys):
+    """A mistake of the command line: said at once, without waiting for the device."""
+    monkeypatch.setattr(cli, "open_device", lambda args: pytest.fail("the device was opened"))
+    assert main(["music", "remove", "ab", "--apply"]) == 1
     assert "at least 3 characters" in capsys.readouterr().err
 
 

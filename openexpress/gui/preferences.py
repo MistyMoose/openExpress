@@ -19,7 +19,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
-from openexpress import cache, diagnostics, i18n, paths, service  # noqa: E402
+from openexpress import applog, cache, diagnostics, i18n, paths, service  # noqa: E402
 from openexpress.auth import sso, store  # noqa: E402
 from openexpress.gui import activity_map  # noqa: E402
 from openexpress.gui.connected import open_address  # noqa: E402
@@ -40,6 +40,14 @@ log = logging.getLogger(__name__)
 # The language of the interface, read and kept in one place (i18n).
 load_ui_language = i18n.saved_ui_language
 save_ui_language = i18n.save_ui_language
+
+
+def not_saved_text(e: Exception) -> str:
+    """Why a setting was not saved: the system's words for a file it could not write (not the
+    number of the error, nor the path of the file), else the words of applog.error_text."""
+    if isinstance(e, OSError) and e.strerror:
+        return e.strerror
+    return applog.error_text(e)
 
 
 def diagnostics_group(win) -> Adw.PreferencesGroup:
@@ -74,7 +82,7 @@ def diagnostics_switch(win) -> Adw.SwitchRow:
             row.handler_unblock_by_func(toggled)
             # TRANSLATORS: heading of the error when a switch of the preferences could not be
             # saved
-            win.error(_("Setting Not Saved"), str(e))
+            win.error(_("Setting Not Saved"), not_saved_text(e))
             return
         log.info("diagnostics: the copy at each connection turned %s", "on" if wanted else "off")
 
@@ -328,9 +336,9 @@ class Preferences:
 
         try:
             background.set_enabled(enabled, done)
-        except Exception as e:  # noqa: BLE001
-            log.debug("%s", traceback.format_exc())
-            done(False, str(e))
+        except Exception as e:  # the window says its own words, the log the error
+            log.warning("background sync not changed: %s", type(e).__name__, exc_info=e)
+            done(False, "")
 
     def _auto_sync_row(self) -> Adw.SwitchRow:
         """The background sync, on or off as it is, on the device page and in Preferences: a
@@ -391,7 +399,7 @@ class Preferences:
             except (OSError, ValueError) as e:
                 # TRANSLATORS: heading of the error when the language of the interface could not
                 # be saved
-                self.error(_("Language Not Changed"), str(e))
+                self.error(_("Language Not Changed"), not_saved_text(e))
                 return
             shown = self._preferences
             if shown is not None:

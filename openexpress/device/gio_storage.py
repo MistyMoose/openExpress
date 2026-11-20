@@ -64,6 +64,12 @@ def _err(e: GLib.Error, what: str) -> DeviceError:
     return DeviceError(f"{what}: {e.message}")
 
 
+def _os_said(what: str, e: OSError) -> str:
+    """`what` with the system's words for `e`: not its number, nor the path of a file the user
+    does not know of (the temporary file on its way to the device)."""
+    return f"{what}: {e.strerror or e}"
+
+
 def _host_visible(path: Path) -> bool:
     """Whether the host sees the file under the same path (Flatpak shares these locations)."""
     p = str(Path(path).resolve())
@@ -102,7 +108,7 @@ def _temporary_file(what: str, keep_open: bool):
             if not keep_open:
                 os.close(fd)
         except OSError as e:
-            raise CopyNotStarted(f"{what}: {e}") from e
+            raise CopyNotStarted(_os_said(what, e)) from e
         try:
             yield (fd if keep_open else None), Path(tmp)
         finally:
@@ -191,7 +197,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
             res = subprocess.run([*command, source, target_uri],
                                  capture_output=True, text=True, timeout=HOST_COPY_TIMEOUT_S,
                                  check=False)
-        except OSError as e:  # the command could not be started
+        except OSError as e:  # the command could not be started: its name said
             raise CopyNotStarted(f"{what}: {e}") from e
         except subprocess.TimeoutExpired as e:
             raise _timed_out(what) from e
@@ -202,7 +208,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         size = Path(local).stat().st_size
         proc = subprocess.Popen([*command, "-p", source, target_uri],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except OSError as e:  # the command could not be started
+    except OSError as e:  # the command could not be started: its name said
         raise CopyNotStarted(f"{what}: {e}") from e
     errors: list[bytes] = []
     reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
@@ -240,7 +246,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         except subprocess.TimeoutExpired:
             log.warning("host copy: gio copy did not end 5 s after it was killed")
         reader.join(5)
-        raise DeviceError(f"{what}: {e}") from e
+        raise DeviceError(_os_said(what, e)) from e
     finally:
         watchdog.cancel()
     reader.join(5)
@@ -487,7 +493,7 @@ class GioStorage(Storage):
                 with os.fdopen(fd, "wb") as f:
                     f.write(data)
             except OSError as e:
-                raise CopyNotStarted(f"{what}: {e}") from e
+                raise CopyNotStarted(_os_said(what, e)) from e
             self._write_file(real_path, tmp)
 
     def _write_file(self, real_path: str, local, progress=None) -> None:
@@ -500,7 +506,7 @@ class GioStorage(Storage):
         try:
             local.stat()
         except OSError as e:
-            raise CopyNotStarted(f"{what}: {e}") from e
+            raise CopyNotStarted(_os_said(what, e)) from e
         # What the target is before the copy: the evidence _discard_partial goes by.
         self._attempts[real_path] = _Attempt(self._size_now(real_path))
         try:
@@ -518,7 +524,7 @@ class GioStorage(Storage):
                 try:
                     shutil.copyfile(local, tmp)
                 except OSError as e:
-                    raise CopyNotStarted(f"{what}: {e}") from e
+                    raise CopyNotStarted(_os_said(what, e)) from e
                 self._copy_local(tmp, real_path, progress, what)
             return
         self._copy_local(local, real_path, progress, what)

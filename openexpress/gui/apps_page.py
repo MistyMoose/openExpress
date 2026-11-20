@@ -78,7 +78,11 @@ class AppsPage:
             return
         if s.ownership_error is not None:
             sec.clear()
-            sec.show_error(str(s.ownership_error))  # an error: Try Again checks once more
+            # An error: Try Again checks once more. The account's list not had: the words of the
+            # banner, not those of the sync it stopped, which this page did not start.
+            error = s.ownership_error
+            sec.show_error(self._ownership_title(error)
+                           if isinstance(error, service.OwnershipUnknown) else str(error))
             return
 
         def work():

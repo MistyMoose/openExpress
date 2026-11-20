@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from gi.repository import GLib
 
 from openexpress import known_devices, service
+from openexpress.applog import error_text
 from openexpress.device.gio_storage import (
     ABSENT,
     DRIVE_OFF,
@@ -83,7 +84,7 @@ from openexpress.gui.navigation import (
 )
 from openexpress.gui.navigation import plan as detection_plan
 from openexpress.gui.tasks import forget_on_refresh
-from openexpress.gui.window_tasks import error_text, read_space
+from openexpress.gui.window_tasks import read_space
 from openexpress.i18n import N_, _
 
 log = logging.getLogger(__name__)

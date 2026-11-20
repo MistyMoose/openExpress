@@ -4,6 +4,7 @@ opened. The language of the interface is read and kept by one pair of functions 
 the window, the command line and the start."""
 
 import json
+import logging
 import types
 
 from fakes import window as stand_in
@@ -37,6 +38,61 @@ def test_the_background_switch_keeps_the_view_chosen_since_the_window_opened(mon
         "window": {"width": 900, "height": 700, "maximized": False}, "start_view": "list",
         "background": True}
     assert win.gui_settings["background"] is True  # what the window knows now
+
+
+NOT_CHANGED = ("Background Sync Not Changed", "Background sync could not be turned on or off.")
+
+
+def test_a_portal_without_background_is_said_in_the_programs_words(monkeypatch, caplog):
+    """A desktop whose portal has no Background service: the window says the program's words,
+    the words of D-Bus go to the log."""
+    from gi.repository import Gio, GLib
+
+    from openexpress import background
+    from openexpress.gui import app
+
+    class Bus:
+        def get_unique_name(self):
+            return ":1.42"
+
+        def signal_subscribe(self, *args):
+            return 7
+
+        def signal_unsubscribe(self, subscription):
+            pass
+
+        def call_sync(self, *args):
+            raise GLib.Error.new_literal(
+                Gio.dbus_error_quark(), "GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: "
+                "No such interface “org.freedesktop.portal.Background”",
+                Gio.DBusError.UNKNOWN_METHOD)
+
+    monkeypatch.setattr(background, "in_flatpak", lambda: True)
+    monkeypatch.setattr(background.Gio, "bus_get_sync", lambda *args: Bus())
+    win, shown = _window()
+    with caplog.at_level(logging.INFO, logger="openexpress"):
+        app.MainWindow.set_background(win, True)
+    assert shown == [NOT_CHANGED]
+    assert any("UnknownMethod" in r.getMessage() for r in caplog.records)
+
+
+def test_a_background_switch_that_fails_is_said_in_the_programs_words(monkeypatch, caplog):
+    """The words of an error nobody foresaw are not the user's: the log has it, with its
+    traceback."""
+    from openexpress import background
+    from openexpress.gui import app
+
+    def broken(enabled, done):
+        raise RuntimeError("made-up failure")
+
+    monkeypatch.setattr(background, "set_enabled", broken)
+    win, shown = _window()
+    with caplog.at_level(logging.WARNING, logger="openexpress"):
+        app.MainWindow.set_background(win, True)
+    assert shown == [NOT_CHANGED]
+    (logged,) = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert logged.getMessage() == "background sync not changed: RuntimeError"
+    assert logged.exc_info is not None
 
 
 def test_every_change_of_gui_json_keeps_the_other_keys():

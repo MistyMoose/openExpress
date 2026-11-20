@@ -1273,7 +1273,7 @@ def _install(
                     raise
                 log.info("software update: %s %s not installed (%s), the others go on",
                          u.part_number, u.version, type(e).__name__)
-                report.failed.append((u, str(e)))
+                report.failed.append((u, applog.error_text(e)))
                 refused.append(e)
                 not_written.add(u.part_number.upper())
     if report.failed and not report.written:

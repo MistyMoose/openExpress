@@ -1313,7 +1313,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
             except (ApiError, AppListCopyError, DeviceNotResponding):
                 raise
             except Exception as e:  # noqa: BLE001
-                report.failed.append((name, str(e)))
+                report.failed.append((name, applog.error_text(e)))
     except BaseException:
         # Nothing was written for the apps meant for PTP; they stay in the queue.
         interrupted = True
@@ -1333,7 +1333,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
             except Exception as e:
                 for p in new_paths:
                     storage.delete_quietly(p)
-                report.failed += [(name, str(e)) for _m, name in to_ack]
+                report.failed += [(name, applog.error_text(e)) for _m, name in to_ack]
                 raise CiqError(_("Cannot register the apps on the device: {error}")
                                .format(error=e)) from e
         for m, name in to_ack:
@@ -1341,7 +1341,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
                 _acknowledge(client, device, m)
             except Exception as e:  # noqa: BLE001
                 # The app is installed; the server will offer it again and it will be overwritten.
-                report.failed.append((name, str(e)))
+                report.failed.append((name, applog.error_text(e)))
                 continue
             report.installed.append(name)
     return report, leftover

@@ -36,6 +36,7 @@ from openexpress import (  # noqa: E402
     sync,
     tile_facts,
 )
+from openexpress.applog import error_text  # noqa: E402
 from openexpress.connect import ApiError, NotAccountDevice, OwnershipError  # noqa: E402
 from openexpress.device.gio_storage import DeviceSummary, FoundDevice  # noqa: E402
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
@@ -71,7 +72,6 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     chip,
     confirm,
     diagnostics_state,
-    error_text,
     inform,
     log_unexpected,
     refresh_space,

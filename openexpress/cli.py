@@ -23,6 +23,7 @@ from openexpress.connect import (
     ApiError,
     ClockSkew,
     GarminClient,
+    NetworkError,
     Unauthorized,
 )
 from openexpress.console import error as _error
@@ -887,10 +888,14 @@ def _export_activities(args, found) -> int:
         try:
             track = gpx.track(data, name=stem)
             count = sum(1 for _point in fit.points(data))
-        except (gpx.NoPositions, fit.FitError) as e:
-            kind = "no positions" if isinstance(e, gpx.NoPositions) else "damaged"
+        except gpx.NoPositions as e:
             # TRANSLATORS: an activity not exported to GPX: {name} its file name, {error} why
-            refused.append((kind, _("{name}: {error}").format(name=a.name, error=e)))
+            refused.append(("no positions", _("{name}: {error}").format(name=a.name, error=e)))
+            continue
+        except fit.FitError as e:  # damaged inside: the words of a file that cannot be read
+            log.info("activities export: a file not read (%s)", e)
+            refused.append(("damaged", _("{name} cannot be read as a FIT file.").format(
+                name=a.name)))
             continue
         target = dest / f"{stem}.gpx"
         if target.exists() or any(target == p for p, _track, _count in planned):
@@ -1116,7 +1121,7 @@ def cmd_login(args) -> int:
     auth, error = service.signed_in(client, settings, ticket)
     if error is not None:
         print(_("Warning: could not fetch the profile ({error})").format(
-            error=str(error) or error.__class__.__name__), file=sys.stderr)
+            error=applog.error_text(error)), file=sys.stderr)
     store.save(auth)
     print(_("Signed in as {account}.").format(account=auth.masked_display))
     return 0
@@ -3422,14 +3427,14 @@ def match_music_paths(device_paths: list[str], roots: list[str], patterns: list[
 def cmd_music(args) -> int:
     from openexpress import music
 
-    st, dev = open_device(args)
     cmd = args.music_cmd or "list"
-    if cmd == "remove":
+    if cmd == "remove":  # a mistake of the command line: said before the device is opened
         bad = [p for p in args.paths if len(p.strip()) < MIN_MUSIC_PATTERN]
         if bad:
             print(_("Error: each TEXT must have at least {count} characters: {texts}").format(
                 count=MIN_MUSIC_PATTERN, texts=", ".join(repr(p) for p in bad)), file=sys.stderr)
             return 1
+    st, dev = open_device(args)
     kinds = music.supported_kinds(dev)
     if not kinds:
         if cmd != "list":
@@ -3627,6 +3632,16 @@ ARGPARSE_MESSAGES = [
 ]
 
 
+class _Commands(argparse._SubParsersAction):
+    """The commands of a parser: each one's own --help page opens with the words the list of
+    commands gives it."""
+
+    def add_parser(self, name, **kwargs):
+        if "help" in kwargs:
+            kwargs.setdefault("description", kwargs["help"])
+        return super().add_parser(name, **kwargs)
+
+
 def build_parser() -> argparse.ArgumentParser:
     argparse._ = _
     argparse.ngettext = ngettext
@@ -3641,7 +3656,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("interface language, e.g. {examples}").format(
                        examples=", ".join(i18n.available_languages())))
     _device_options(p)
-    sub = p.add_subparsers(dest="cmd")
+    sub = p.add_subparsers(dest="cmd", metavar="COMMAND", action=_Commands)
     # Without a command the application window opens (as from the application menu), and
     # it is logged as the window. After add_subparsers: it would set "cmd" to None.
     p.set_defaults(func=cmd_gui, cmd="gui")
@@ -3700,7 +3715,7 @@ def build_parser() -> argparse.ArgumentParser:
     backups_help = _("folder of the backups (default: {path})").format(
         path=paths.shown_path(paths.default_backup_dir()))
     s.add_argument("--backups", metavar="DIR", help=backups_help)
-    asub = s.add_subparsers(dest="activities_cmd")
+    asub = s.add_subparsers(dest="activities_cmd", action=_Commands)
     m = asub.add_parser("export", help=_("write activities as GPX files"))
     m.add_argument("names", nargs="+", metavar="NAME",
                    help=_("the file name of an activity, as the list of activities shows it"))
@@ -3712,7 +3727,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_activities)
 
     s = sub.add_parser("fit", help=_("FIT files on this computer"))
-    fsub = s.add_subparsers(dest="fit_cmd", metavar="inspect", required=True)
+    fsub = s.add_subparsers(dest="fit_cmd", metavar="inspect", required=True, action=_Commands)
     m = fsub.add_parser("inspect", help=_("what a FIT file holds: its type, its messages and "
                                           "whether it is whole"))
     m.add_argument("file", metavar="FILE", help=_("a FIT file on this computer"))
@@ -3824,7 +3839,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("maps", help=_("maps on the device (TopoActive, base maps, CourseView…)"))
     s.add_argument("--all", action="store_true", help=_("also show maps available for download"))
-    msub = s.add_subparsers(dest="maps_cmd")
+    msub = s.add_subparsers(dest="maps_cmd", action=_Commands)
     m = msub.add_parser("install", help=_("install a map"))
     m.add_argument("name", metavar="NAME",
                    help=_("the map's name, or a part of it that only one map has, as maps --all "
@@ -3855,7 +3870,7 @@ def build_parser() -> argparse.ArgumentParser:
     wearable_help = _("the primary wearable (steps and sleep in Garmin Connect) instead of the "
                       "primary training device")
     s.add_argument("--wearable", action="store_true", help=wearable_help)
-    psub = s.add_subparsers(dest="primary_cmd")
+    psub = s.add_subparsers(dest="primary_cmd", action=_Commands)
     m = psub.add_parser("set", help=_("make the connected device the primary training device"))
     m.add_argument("--wearable", dest="set_wearable", action="store_true", help=wearable_help)
     m.add_argument("--apply", action="store_true", help=_("change it in your Garmin account"))
@@ -3874,7 +3889,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("courses", help=_("the courses on the device, the GPX files waiting for "
                                          "it and its saved locations (experimental)"))
-    csub = s.add_subparsers(dest="courses_cmd")
+    csub = s.add_subparsers(dest="courses_cmd", action=_Commands)
     m = csub.add_parser("add", help=_("copy a GPX file to the device, which makes courses of "
                                       "its tracks and routes (experimental)"))
     m.add_argument("file", metavar="FILE", help=_("a GPX file on this computer"))
@@ -3890,16 +3905,15 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--apply", action="store_true", help=_("remove it from the device"))
     s.set_defaults(func=cmd_courses)
 
-    register_help = _("add the connected device to your Garmin account (experimental; a "
-                      "dry run without --apply)")
-    s = sub.add_parser("register", help=register_help, description=register_help)
+    s = sub.add_parser("register", help=_("add the connected device to your Garmin account "
+                                          "(experimental; a dry run without --apply)"))
     s.add_argument("--apply", action="store_true",
                    help=_("add it: changes your Garmin account"))
     s.set_defaults(func=cmd_register)
 
     s = sub.add_parser("apps", help=_("Connect IQ apps, watch faces and data fields"))
     s.add_argument("--builtin", action="store_true", help=_("also list built-in activities"))
-    asub = s.add_subparsers(dest="apps_cmd")
+    asub = s.add_subparsers(dest="apps_cmd", action=_Commands)
     change_help = _("write the change to the device (it takes effect once unplugged)")
     apply_help = {
         "install": _("install the app, or queue it in Garmin Connect where USB cannot"),
@@ -3943,7 +3957,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_apps)
 
     s = sub.add_parser("music", help=_("music, podcasts and audiobooks on the device"))
-    msub = s.add_subparsers(dest="music_cmd")
+    msub = s.add_subparsers(dest="music_cmd", action=_Commands)
     m = msub.add_parser("add", help=_("copy audio files or folders to the device"))
     m.add_argument("paths", nargs="+", metavar="PATH",
                    help=_("audio files or folders on this computer"))
@@ -4153,6 +4167,15 @@ def _run(args) -> int:
         log.info("error: %s: %s", type(e).__name__, e)  # shown to the user below
         _error(_("Error: {error}").format(error=e))
         return 1
+    except (NetworkError, requests.RequestException) as e:
+        # No answer: the network, not a server. The client's NetworkError (an ApiError, so
+        # before it) carries the requests error as its cause.
+        cause = e.__cause__ if isinstance(e, NetworkError) and e.__cause__ is not None else e
+        _error(_("Network error: could not reach the Garmin server ({error})").format(
+            error=applog.network_error_text(cause)))
+        log.info("network error: %s", type(cause).__name__)
+        log.debug("network error", exc_info=True)
+        return 1
     except ApiError as e:
         log.info("server error: %s: %s", type(e).__name__, e)
         # TRANSLATORS: CLI error from a Garmin server ({error}: the request's name and what went
@@ -4168,12 +4191,6 @@ def _run(args) -> int:
         log.info("error: %s: %s", type(e).__name__, e)  # shown to the user below
         _error(_("Error: {error}").format(error=e))
         return 1
-    except requests.RequestException as e:
-        _error(_("Network error: could not reach the Garmin server ({error})").format(
-            error=applog.network_error_text(e)))
-        log.info("network error: %s", type(e).__name__)
-        log.debug("network error", exc_info=True)
-        return 1
     except KeyboardInterrupt:
         # TRANSLATORS: CLI: the command was stopped with Ctrl+C
         _error(_("Interrupted."))
@@ -4183,5 +4200,5 @@ def _run(args) -> int:
         # -v; both filtered. Its text may carry a device address or a path, so the message for
         # the user is filtered as well.
         log.info("unexpected error: %s", type(e).__name__, exc_info=True)
-        _error(applog.redact(_("Error: {error}").format(error=str(e) or type(e).__name__)))
+        _error(_("Error: {error}").format(error=applog.error_text(e)))
         return 1

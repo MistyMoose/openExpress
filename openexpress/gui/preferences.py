@@ -333,8 +333,8 @@ class Preferences:
             done(False, str(e))
 
     def _auto_sync_row(self) -> Adw.SwitchRow:
-        """The background sync, on or off as it is, from the device page (the same as in
-        Preferences): a change that fails puts the switch back."""
+        """The background sync, on or off as it is, on the device page and in Preferences: a
+        change that fails puts the switch back."""
         row = Adw.SwitchRow(title=_("Background Sync"),
                             subtitle=_("Syncs each time a device is connected, even when "
                                        "the window is closed"),
@@ -371,27 +371,7 @@ class Preferences:
                                              setattr(self, "_storage", None),
                                              setattr(self, "_preferences", None)))
         g = Adw.PreferencesGroup(title=_("Sync With Garmin Connect"))
-        sw = Adw.SwitchRow(
-            title=_("Background Sync"),
-            subtitle=_("Syncs each time a device is connected, even when the window is "
-                       "closed"),
-            active=self._background_enabled())
-
-        def toggled(row, _pspec):
-            wanted = row.get_active()
-            if wanted == self._background_enabled():
-                return
-
-            def result(ok):
-                if not ok:
-                    row.handler_block_by_func(toggled)
-                    row.set_active(not wanted)
-                    row.handler_unblock_by_func(toggled)
-
-            self.set_background(wanted, result)
-
-        sw.connect("notify::active", toggled)
-        g.add(sw)
+        g.add(self._auto_sync_row())
         page.add(g)
 
         g = Adw.PreferencesGroup(title=_("Language"))
@@ -608,19 +588,11 @@ class Preferences:
 
             def work():
                 client = service.make_client(settings)
-                token, secret = client.exchange_ticket(st.ticket, st.service)
-                auth = store.ConnectAuth(token, secret, settings.environment)
-                client.auth = auth
-                profile_ok = True
-                try:
-                    prof = client.user_profile()
-                    auth.account = {k: prof.get(k) for k in
-                                    ("userprofilepk", "username", "emailaddress", "garminguid")}
-                except Exception:  # noqa: BLE001 - the token works without the profile
-                    log.debug("%s", traceback.format_exc())
-                    profile_ok = False
+                auth, error = service.signed_in(client, settings, st)
+                if error is not None:
+                    log.debug("%s", "".join(traceback.format_exception(error)))
                 store.save(auth)
-                return auth, profile_ok
+                return auth, error is None
 
             def done(result):
                 auth, profile_ok = result

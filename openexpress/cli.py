@@ -1103,6 +1103,7 @@ def _inspection(name: str, found) -> list[str]:
 
 
 def cmd_login(args) -> int:
+    from openexpress import service
     from openexpress.auth import sso
 
     settings = Settings.load()
@@ -1112,16 +1113,10 @@ def cmd_login(args) -> int:
     else:
         print(_("Opening the Garmin sign-in window…"))
         ticket = sso.login_with_webview(settings)
-    token, secret = client.exchange_ticket(ticket.ticket, ticket.service)
-    auth = store.ConnectAuth(token, secret, settings.environment)
-    client.auth = auth
-    try:
-        prof = client.user_profile()
-        auth.account = {k: prof.get(k) for k in
-                        ("userprofilepk", "username", "emailaddress", "garminguid")}
-    except Exception as e:  # noqa: BLE001 - the token is valid even without the profile
+    auth, error = service.signed_in(client, settings, ticket)
+    if error is not None:
         print(_("Warning: could not fetch the profile ({error})").format(
-            error=str(e) or e.__class__.__name__), file=sys.stderr)
+            error=str(error) or error.__class__.__name__), file=sys.stderr)
     store.save(auth)
     print(_("Signed in as {account}.").format(account=auth.masked_display))
     return 0
@@ -3010,8 +3005,7 @@ def _primary_role(wearable: bool) -> _PrimaryRole:
         })
 
 
-# The days of `openexpress solar`: a week by default, at most a month.
-SOLAR_DAYS = 7
+# The days of `openexpress solar`: a week by default (readings.SOLAR_DAYS), at most a month.
 SOLAR_MOST_DAYS = 31
 
 
@@ -3872,10 +3866,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("solar", help=_("the activity time the sun gained the devices of the "
                                        "Garmin account that charge from the sun"))
-    s.add_argument("--days", type=_days_back, default=SOLAR_DAYS, metavar="N",
+    s.add_argument("--days", type=_days_back, default=readings.SOLAR_DAYS, metavar="N",
                    help=_("how many days, today among them ({least}–{most}, {default} by "
                           "default)").format(least=1, most=SOLAR_MOST_DAYS,
-                                             default=SOLAR_DAYS))
+                                             default=readings.SOLAR_DAYS))
     s.set_defaults(func=cmd_solar)
 
     s = sub.add_parser("courses", help=_("the courses on the device, the GPX files waiting for "
@@ -4131,7 +4125,7 @@ def _run(args) -> int:
 
     from openexpress.auth.sso import LoginCancelled
     from openexpress.device.gio_storage import MassStorageNotice, UnsupportedDevice
-    from openexpress.errors import OrdinaryStop, UserFacingError
+    from openexpress.errors import OrdinaryStop
 
     try:
         return args.func(args)

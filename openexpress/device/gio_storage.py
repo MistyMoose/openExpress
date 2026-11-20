@@ -826,7 +826,6 @@ def _identify(uri: str | None, volume, monitor=None) -> GarminUsb | None:
         device = volume.get_identifier("unix-device") if volume is not None else None
         address = _UNIX_DEVICE.fullmatch(device or "")
     # An address of the older form mtp://[usb:BBB,DDD]/ carries the numbers itself.
-    # That branch is covered by tests only: it was not tried on a device.
     ids = _sysfs_ids(int(address.group(1)), int(address.group(2))) if address else None
     if ids is not None:
         if ids[0] != GARMIN_VID:
@@ -1312,10 +1311,9 @@ def open_ums_storage(dev: FoundDevice) -> UmsStorage:
     return st
 
 
-# When this process mounted a device (by its address, _key), or first found it mounted, for the
-# log of a stall: a mount this process did not make may be older than the process, and gvfs-mtp
-# asks a mounted device something only every 900 s.
-# When a device was mounted, by its address and its place on USB (None: not known): unplugged
+# When this process mounted a device, or first found it mounted, for the log of a stall: a mount
+# this process did not make may be older than the process, and gvfs-mtp asks a mounted device
+# something only every 900 s. By its address and its place on USB (None: not known): unplugged
 # and plugged in again, a device has the same address of gvfs but a new device number.
 _mounted_here: dict[tuple, float] = {}
 _found_mounted: dict[tuple, float] = {}

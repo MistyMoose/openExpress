@@ -1163,7 +1163,8 @@ def install_queued(
     report, leftover = _install_pass(device, storage, client, messages, known, only, progress,
                                      op, direct=direct)
     if leftover:
-        # The PTP session did not find their folder either: the old way, creating it.
+        # The PTP session did not find their folder either: through the mounted storage,
+        # creating the folder there.
         again, _none = _install_pass(device, storage, client, leftover, known, only, progress,
                                      op, direct=False, ptp_tried=True)
         report.installed += again.installed
@@ -1249,7 +1250,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
                 # A folder the device only hides (an app of its own has a file there, out of
                 # sight) is not asked for without a PTP session: the request is pointless and
                 # its refusal would be kept as if the folder could not be had. Once a session
-                # did not find it, it is created the old way.
+                # did not find it, it is created through the mounted storage.
                 folder_hidden = (not over_ptp and not ptp_tried and where == DIRECT
                                  and op.hides_app_files())
                 if folder_hidden or (not over_ptp

@@ -13,7 +13,6 @@ What can be freed is told by one function, plan(), for the page and the command 
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import posixpath
 import re
@@ -189,7 +188,7 @@ def _changed() -> ListChanged:
 
 def _copy(storage: Storage, dumps: list[Dump], where: Path, freed: Freed, progress,
           copies: dict[str, Path]) -> list[Dump]:
-    """Copy `dumps` into `where`, each checked (size and SHA-256 of the copy read back);
+    """Copy `dumps` into `where`, each checked (its size, and the copy read back);
     returns those copied, each copy's file in `copies`. A failed or wrong copy is not kept, and
     its dump is not removed."""
     # TRANSLATORS: a step of copying the memory dumps ("… · 1 of 3")
@@ -214,7 +213,7 @@ def _copy(storage: Storage, dumps: list[Dump], where: Path, freed: Freed, progre
             target.unlink(missing_ok=True)
             freed.copy_failed.append(path)
             continue
-        if len(data) != size or hashlib.sha256(whole).digest() != hashlib.sha256(data).digest():
+        if len(data) != size or whole != data:
             log.warning("freeing: the copy of a memory dump does not match it")
             target.unlink(missing_ok=True)
             freed.copy_failed.append(path)

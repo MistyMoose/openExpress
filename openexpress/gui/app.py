@@ -513,9 +513,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         self.load_section(sec.key)
 
     def select_section(self, key: str) -> None:
-        for i, sec in enumerate(self.sections.values()):
-            if sec.key == key:
-                self.nav.select_row(self.nav.get_row_at_index(i))
+        _select_nav_row(self, key)
         self._show_content()
 
     def _front_device_page(self) -> None:
@@ -524,9 +522,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
         always opens there (folded, on the side panel, as when it first opens)."""
         self._content_chosen = False
         self.split.set_show_content(False)
-        for i, sec in enumerate(self.sections.values()):
-            if sec.key == "watch":
-                self.nav.select_row(self.nav.get_row_at_index(i))
+        _select_nav_row(self, "watch")
 
     def _show_content(self) -> None:
         """The page chosen in the side panel, in front of the panel while the window is
@@ -581,6 +577,13 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
             save_window_geometry(width, height, self.is_maximized())
         except OSError as e:
             log.warning("Could not save the window size: %s", e)
+
+
+def _select_nav_row(win, key: str) -> None:
+    """The row of the section `key` selected in the side panel."""
+    for i, sec in enumerate(win.sections.values()):
+        if sec.key == key:
+            win.nav.select_row(win.nav.get_row_at_index(i))
 
 
 GC_INTERVAL_S = 30

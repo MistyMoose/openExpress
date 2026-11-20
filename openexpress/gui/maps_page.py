@@ -5,19 +5,18 @@ mixin of MainWindow (gui/app.py), without __init__ of its own; what it uses of t
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
+from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import answers, service  # noqa: E402
 from openexpress.gui.hidden_reading import read_again  # noqa: E402
 from openexpress.gui.tasks import read_again_after_failure, writes_to_device  # noqa: E402
-from openexpress.gui.window_tasks import Answer, confirm  # noqa: E402
+from openexpress.gui.window_tasks import Answer, choose_local_file, confirm  # noqa: E402
 from openexpress.gui.words import free_after_text, space_text  # noqa: E402
 from openexpress.i18n import _, caption, human_size  # noqa: E402
 
@@ -305,25 +304,9 @@ class MapsPage:
         return True
 
     def choose_map(self) -> None:
-        dialog = Gtk.FileDialog(title=_("Choose a Map File (.img)"))
-        only_maps = Gtk.FileFilter(name=_("Garmin map files (*.img)"))
-        only_maps.add_pattern("*.img")
-        only_maps.add_pattern("*.IMG")
-        filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(only_maps)
-        dialog.set_filters(filters)
-
-        def chosen(dlg, res):
-            try:
-                path = dlg.open_finish(res).get_path()
-            except GLib.Error:
-                return  # cancelled
-            if path is None:
-                self.toast(_("Choose a file stored on this computer"))
-                return
-            self.add_own_map(Path(path))
-
-        dialog.open(self, None, chosen)
+        choose_local_file(self, _("Choose a Map File (.img)"), _("Garmin map files (*.img)"),
+                          ("*.img", "*.IMG"), _("Choose a file stored on this computer"),
+                          self.add_own_map)
 
     @staticmethod
     def _add_map_text(plan) -> str:

@@ -588,8 +588,6 @@ def _copy_of(session, item, dest: Path, name: str,
     """The file `item` read whole into `dest` on this computer, with its checksums, its bytes
     told to `told` as they come; WriteRefused (nothing on the device changed) when it is not
     read whole."""
-    import hashlib
-
     dest.parent.mkdir(parents=True, exist_ok=True)
     sha, md5 = hashlib.sha256(), hashlib.md5()  # MD5: the checksum Garmin gives, not security
 

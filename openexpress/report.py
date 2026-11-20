@@ -146,13 +146,12 @@ def _diagnostics(device: GarminDevice, storage: Storage, ask: bool, found) -> li
     what it read now (`found`, diagnostics.read_now; read here when not given); else what the
     page tells (status.crashes_known and status.dumps_now, from what the window read at the
     opening, `found`, diagnostics.AtOpen; None: not read yet)."""
-    from openexpress import crashes, diagnostics, status
+    from openexpress import diagnostics, status
 
     if ask:
         read = found if found is not None else diagnostics.read_now(device, storage)
         errors_known = read.errors_known
-        found_crashes = crashes.history(device.unit_id, read.entries if errors_known else None,
-                                        test_drive=bool(getattr(storage, "test_drive", False)))
+        found_crashes = status.crashes_known(device, storage, read)
         dumps = ((len(read.dumps), sum(size for _p, size in read.dumps)) if read.dumps_known
                  else None)
     else:

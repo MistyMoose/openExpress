@@ -829,7 +829,7 @@ def test_preferences_have_the_storage_group(cache, monkeypatch):
                    set_background=lambda on, done=None: None, choose_dll=lambda: None,
                    error=lambda title, text: None, run_task=None, toast=None)
     for name in ("_button", "_cache_group", "_ask_clear_cache",
-                 "_account_group", "_account_action"):
+                 "_account_group", "_account_action", "_auto_sync_row"):
         if hasattr(MainWindow, name):  # one missing: the test fails on what it checks
             setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
     titles, add = [], Adw.PreferencesPage.add
@@ -869,7 +869,7 @@ def test_the_preferences_show_the_account_and_log_in_or_out(monkeypatch, in_the_
                    logout=lambda: calls.append("logout"),
                    login=lambda: calls.append("login"))
     for name in ("_button", "_cache_group", "_ask_clear_cache",
-                 "_account_group", "_account_action"):
+                 "_account_group", "_account_action", "_auto_sync_row"):
         if hasattr(MainWindow, name):  # one missing: the test fails on what it checks
             setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
     groups, add = [], Adw.PreferencesPage.add

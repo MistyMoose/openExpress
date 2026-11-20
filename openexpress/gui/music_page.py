@@ -11,10 +11,10 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
+from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress.gui.tasks import read_again_after_failure, writes_to_device  # noqa: E402
-from openexpress.gui.window_tasks import Answer, confirm  # noqa: E402
+from openexpress.gui.window_tasks import Answer, choose_local_file, confirm  # noqa: E402
 from openexpress.gui.words import space_text  # noqa: E402
 from openexpress.i18n import _, caption, human_size, ngettext  # noqa: E402
 
@@ -155,26 +155,9 @@ class MusicPage:
                       failed_title=_("Music Not Copied"))
 
     def choose_playlist(self) -> None:
-        dialog = Gtk.FileDialog(title=_("Choose a Playlist to Add to the Device"))
-        only = Gtk.FileFilter()
-        only.set_name(_("Playlists (.m3u, .m3u8)"))
-        for pattern in ("*.m3u", "*.m3u8", "*.M3U", "*.M3U8"):
-            only.add_pattern(pattern)
-        filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(only)
-        dialog.set_filters(filters)
-
-        def chosen(dlg, res):
-            try:
-                path = dlg.open_finish(res).get_path()
-            except GLib.Error:
-                return
-            if not path:
-                self.toast(_("Choose files stored on this computer"))
-                return
-            self.add_playlist(Path(path))
-
-        dialog.open(self, None, chosen)
+        choose_local_file(self, _("Choose a Playlist to Add to the Device"),
+                          _("Playlists (.m3u, .m3u8)"), ("*.m3u", "*.m3u8", "*.M3U", "*.M3U8"),
+                          _("Choose files stored on this computer"), self.add_playlist)
 
     @staticmethod
     def _copy_summary(plan) -> str:

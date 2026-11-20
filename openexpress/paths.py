@@ -5,6 +5,7 @@ from __future__ import annotations
 import configparser
 import contextlib
 import fcntl
+import json
 import os
 import subprocess
 import tempfile
@@ -214,13 +215,20 @@ def locked(path: Path, *, mode: str = "a", shared: bool = False, wait: bool = Tr
 
 
 @contextlib.contextmanager
+def folder_locked(folder: Path, name: str):
+    """The lock file `name` in `folder`, the folder made when it is not there, held for the
+    block (locked)."""
+    make_dir(folder)
+    with locked(folder / name):
+        yield
+
+
+@contextlib.contextmanager
 def settings_locked():
     """One writer of settings.json at a time, in any process and any thread (each opens the
     lock file of its own); the system lets go of it when the process ends. Reading alone
     needs no lock: the file is replaced whole (write_private)."""
-    folder = config_dir()
-    make_dir(folder)
-    with locked(folder / "settings.lock"):
+    with folder_locked(config_dir(), "settings.lock"):
         yield
 
 
@@ -247,3 +255,13 @@ def write_private(path: Path, data: str | bytes) -> None:
                 os.unlink(tmp)
             except OSError:
                 pass
+
+
+def read_json_object(path: Path) -> dict | None:
+    """What a JSON file holds, read as write_private writes it (UTF-8, whatever the locale);
+    None when it does not read or holds no object (a file changed by hand)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None

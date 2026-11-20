@@ -7,8 +7,8 @@ row_subtitle), the free space of the device read again after a task that writes 
 (read_space, render_space, refresh_space), the bar at the bottom in the column of the pages
 (bottom_bar, page_column), the name of a task in the log (task_name), the
 collection of reference cycles after it (collect_garbage), an error nobody expected, in
-the log (log_unexpected), and the questions and messages of the window, which close as
-Cancel (confirm, Answer, inform).
+the log (log_unexpected), the questions and messages of the window, which close as
+Cancel (confirm, Answer, inform), and one file of this computer chosen (choose_local_file).
 
 Has: the task under way (busy, _waiting, _task_lets_close, _reporter) and the action buttons.
 """
@@ -21,13 +21,14 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, GLib, Gtk, Pango  # noqa: E402 - imports must follow gi.require_version
+from gi.repository import Adw, Gio, GLib, Gtk, Pango  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import applog  # noqa: E402
 from openexpress.errors import OrdinaryStop, UserFacingError  # noqa: E402
@@ -744,6 +745,32 @@ def inform(parent, name: str, heading: str, body: str, *, label: str | None = No
     _log_shown(name, heading, body, private)
     d.present(parent)
     return d
+
+
+def choose_local_file(win, title: str, filter_name: str, patterns: tuple[str, ...],
+                      not_local: str, then: Callable[[Path], object]) -> None:
+    """One file chosen through the file chooser (the portal in the Flatpak: any folder), only
+    those of `patterns` shown, under `filter_name`; `then` gets its path. Cancelled: nothing;
+    a file without a path on this computer: the toast `not_local`."""
+    dialog = Gtk.FileDialog(title=title)
+    only = Gtk.FileFilter(name=filter_name)
+    for pattern in patterns:
+        only.add_pattern(pattern)
+    filters = Gio.ListStore.new(Gtk.FileFilter)
+    filters.append(only)
+    dialog.set_filters(filters)
+
+    def chosen(dlg, res):
+        try:
+            path = dlg.open_finish(res).get_path()
+        except GLib.Error:
+            return  # cancelled
+        if path is None:
+            win.toast(not_local)
+            return
+        then(Path(path))
+
+    dialog.open(win, None, chosen)
 
 
 class TaskRunner:

@@ -174,7 +174,6 @@ class GarminClient:
         self,
         method: str,
         url: str,
-        form: list[tuple[str, str]] | None = None,
         with_token: bool = True,
     ) -> str:
         if self.consumer is None:
@@ -190,7 +189,7 @@ class GarminClient:
                 raise Unauthorized(_("Not signed in. Run: openexpress login"))
             token, secret = self.auth.token, self.auth.token_secret
         return authorization_header(
-            method, url, self.consumer.key, self.consumer.secret, token, secret, form
+            method, url, self.consumer.key, self.consumer.secret, token, secret
         )
 
     def require_verified(self, unit_id: int | None = None) -> None:
@@ -305,7 +304,6 @@ class GarminClient:
         path: str,
         what: str,
         params: dict | list | None = None,
-        form: list[tuple[str, str]] | None = None,
         headers: dict | None = None,
         **kw,
     ) -> requests.Response:
@@ -315,10 +313,8 @@ class GarminClient:
         url = self._prepared_url(method, url)
         h = self._client_headers()
         h.update(headers or {})
-        h["Authorization"] = self._sign(method, url, form)
-        data = urlencode(form) if form is not None else kw.pop("data", None)
-        if form is not None:
-            h["Content-Type"] = "application/x-www-form-urlencoded"
+        h["Authorization"] = self._sign(method, url)
+        data = kw.pop("data", None)
         resp = self._request(method, url, what, headers=h, data=data, **kw)
         return self._check(resp, what)
 

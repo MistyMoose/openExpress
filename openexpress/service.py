@@ -223,8 +223,26 @@ def make_client(settings: Settings, need_auth: bool | None = None) -> GarminClie
     return GarminClient(settings, consumer, auth)
 
 
-def open_session(device_uri: str | None = None, storage: Storage | None = None,
-                 allow_ums: bool = False, found=None) -> DeviceSession:
+def signed_in(client: GarminClient, settings: Settings,
+              ticket) -> tuple[store.ConnectAuth, Exception | None]:
+    """The sign-in's ticket (sso) exchanged for the account's token, the client signed in with
+    it, and the account's details from its profile; with the error that kept the profile from
+    being read (the token works without it), else None. Not saved: the caller tells the error
+    its own way first."""
+    token, secret = client.exchange_ticket(ticket.ticket, ticket.service)
+    auth = store.ConnectAuth(token, secret, settings.environment)
+    client.auth = auth
+    try:
+        prof = client.user_profile()
+        auth.account = {k: prof.get(k) for k in
+                        ("userprofilepk", "username", "emailaddress", "garminguid")}
+    except Exception as e:  # noqa: BLE001 - the token works without the profile
+        return auth, e
+    return auth, None
+
+
+def open_session(storage: Storage | None = None, allow_ums: bool = False,
+                 found=None) -> DeviceSession:
     """A session on the connected device: MTP alone, unless `allow_ums` (the window) also
     lets a Garmin device in mass storage mode be opened. `found`: the device chosen from
     find_all_devices, of whatever kind."""
@@ -234,8 +252,7 @@ def open_session(device_uri: str | None = None, storage: Storage | None = None,
     if storage is None:
         from openexpress.device.gio_storage import open_device_storage
 
-        storage = (open_device_or_drive() if allow_ums and device_uri is None
-                   else open_device_storage(device_uri))
+        storage = open_device_or_drive() if allow_ums else open_device_storage()
     device = read_device(storage, found_now=detected)
     settings = Settings.load()
     return DeviceSession(storage, device, settings, make_client(settings))
@@ -1633,7 +1650,7 @@ def _other_synced_after(unit_id: int, state: sync.SyncState) -> float | None:
     other = state.other.last_sync if state.other is not None else None
     if other is None:
         return None
-    own = _usable_last_sync(_read_json(device_last_sync_path(unit_id)))
+    own = _usable_last_sync(paths.read_json_object(device_last_sync_path(unit_id)))
     if own is not None and own.get("time", 0.0) >= other:
         return None
     log.info("sync: the other install of this computer synced the device after this one")
@@ -1862,14 +1879,6 @@ def save_last_sync(unit_id: int, summary: SyncSummary, test_drive: bool = False)
     tile_facts.note_synced(unit_id)  # for its tile
 
 
-def _read_json(path) -> dict | None:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))  # as written, whatever the locale
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
-
-
 _LAST_SYNC_COUNTS = ("uploaded", "downloaded", "skipped_known", "rejected")
 
 
@@ -1895,21 +1904,20 @@ def _usable_last_sync(data: dict | None) -> dict | None:
     return data
 
 
-def sync_stamp(unit_id: int | None, test_drive: bool = False) -> str | None:
+def sync_stamp(unit_id: int | None) -> str | None:
     """The version of what this installation knows of the sync of a device: when its
     state.json was written and its size, and the time of its last sync recorded; with those of
     the other install's state.json, when it has one (sync.other_state_path). A count of its
     activities is shown from a record only while this is the same (known_devices.SyncCount).
-    None: never synced here (no state.json, in neither install). A test drive: its own record
-    alone (sync.records_dir)."""
+    None: never synced here (no state.json, in neither install)."""
     if not unit_id:
         return None
-    own = _file_stamp(sync.state_path(unit_id, test_drive))
-    other_path = None if test_drive else sync.other_state_path(unit_id)
+    own = _file_stamp(sync.state_path(unit_id))
+    other_path = sync.other_state_path(unit_id)
     other = _file_stamp(other_path) if other_path is not None else None
     if own is None and other is None:
         return None
-    record = load_last_sync(unit_id, test_drive)
+    record = load_last_sync(unit_id)
     when = record.get("time") if record else None
     stamp = f"{own or '-'}-{when}"
     return stamp if other is None else f"{stamp}+{other}"
@@ -1928,13 +1936,14 @@ def load_last_sync(unit_id: int | None = None, test_drive: bool = False) -> dict
     first; the shared file, which earlier versions wrote alone, counts only when it is of
     this device. A test drive standing in for it: its own file alone."""
     if unit_id is not None and test_drive:
-        data = _usable_last_sync(_read_json(device_last_sync_path(unit_id, test_drive=True)))
+        data = _usable_last_sync(
+            paths.read_json_object(device_last_sync_path(unit_id, test_drive=True)))
         return data if data is not None and data.get("unit_id") == unit_id else None
     if unit_id is not None:
-        data = _usable_last_sync(_read_json(device_last_sync_path(unit_id)))
+        data = _usable_last_sync(paths.read_json_object(device_last_sync_path(unit_id)))
         if data is not None and data.get("unit_id") == unit_id:
             return data
-    data = _usable_last_sync(_read_json(last_sync_path()))
+    data = _usable_last_sync(paths.read_json_object(last_sync_path()))
     if data is None or (unit_id is not None and data.get("unit_id") != unit_id):
         return None
     return data

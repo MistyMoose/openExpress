@@ -33,7 +33,7 @@ def _preferences_window():
                    set_background=lambda on, done=None: None, choose_dll=lambda: None,
                    error=lambda title, text: None, run_task=None, toast=None)
     for name in ("_button", "_cache_group", "_ask_clear_cache", "_account_group",
-                 "_account_action"):
+                 "_account_action", "_auto_sync_row"):
         setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
     return win
 

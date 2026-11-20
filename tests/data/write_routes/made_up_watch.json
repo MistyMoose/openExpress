@@ -35,6 +35,9 @@
   },
   "Garmin/NewFolder": {
    "made-up answer": 1
+  },
+  "Garmin/SQL": {
+   "made-up answer": 2
   }
  },
  "expected": {
@@ -51,6 +54,9 @@
    "updates": "ordinary"
   },
   "Garmin/NewFolder": {
+   "updates": "ordinary"
+  },
+  "Garmin/SQL": {
    "updates": "ordinary"
   }
  },
@@ -69,6 +75,31 @@
   },
   "Garmin/NewFolder": {
    "updates": "ordinary"
+  },
+  "Garmin/SQL": {
+   "updates": "ordinary"
   }
+ },
+ "hidden_files": [
+  "GARMIN/SQL/MadeUpGrouping.db"
+ ],
+ "target_files": {
+  "Garmin/SQL/MadeUpGrouping.db": [
+   "made-up answer"
+  ],
+  "Garmin/SQL/D0000005A.db": [
+   "made-up answer"
+  ],
+  "Garmin/SID/D0000004A.sid": [
+   "made-up answer"
+  ],
+  "GARMIN/PROMPTS/made_up_bundle.hvm": [
+   "made-up answer"
+  ]
+ },
+ "expected_files": {
+  "Garmin/SQL/MadeUpGrouping.db": "ordinary",
+  "Garmin/SQL/D0000005A.db": "ordinary",
+  "Garmin/SID/D0000004A.sid": "ordinary"
  }
 }

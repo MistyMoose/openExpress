@@ -12,13 +12,14 @@ are asked twice: with openExpress's own session to be had, and without it (the F
 USB, a device not over MTP), where every hidden target is refused, never written the ordinary way.
 
 The data: for each device, the folders it hides as a reading of its own session found them (with
-what its GarminDevice.xml says of each) and the folders the saved answers of Garmin's servers
-write to, by answer: one whose name says "map" is the maps answer, any other the update
+what its GarminDevice.xml says of each), the files it hides in folders the ordinary listing shows,
+and the folders and files the saved answers of Garmin's servers write to, by answer: one whose name says "map" is the maps answer, any other the update
 server's (whose saved answer may carry the maps too, into the same folders). A made-up device in
 tests/data/write_routes/ always; the real devices of testdata/write-routes/ when they are there
 (made with the private tool of the readings)."""
 
 import json
+import posixpath
 import types
 from pathlib import Path
 
@@ -178,6 +179,56 @@ def test_no_folder_of_a_real_device_takes_the_ordinary_write_into_a_hidden_one(p
     data = json.loads(path.read_text(encoding="utf-8"))
     wrong = _wrong(data, tmp_path, session)
     assert wrong == [], f"{data['device']} {data['software']}: " + "; ".join(wrong)
+
+
+# --- files the device hides in a folder the ordinary listing shows ----------------------------
+#
+# A known behaviour, kept on purpose: such a file is not seen by the ordinary listing, and no rule
+# looks for it, so an update writes it the ordinary way, as any file of a folder that is seen. A
+# fēnix 8 with software 24.20 keeps GARMIN/SQL/MapRegionGrouping.db so; an ordinary write of that
+# file over it replaced it, without an error and without a second, seen file of that name. It
+# stays so until such files are written through openExpress's own session.
+
+
+def file_routes(data: dict, root: Path) -> dict[str, str]:
+    """Each file an update answer writes into a folder the ordinary listing shows: its route, as
+    updates.mark_present and _install take it."""
+    storage, inside = _device(root, data)
+    hidden = [h["folder"] for h in data["hidden"]]
+    tops = hidden_folders.top_folders(storage)
+    out = {}
+    for path, answers in data.get("target_files", {}).items():
+        folder = posixpath.dirname(path)
+        if UPDATES not in _kinds(dict.fromkeys(answers)) or _hidden_at(folder, hidden):
+            continue  # a map's, or one in a hidden folder: the rule of the folders
+        u = _update(folder)
+        u.device_path = path
+        updates.place(u, tops, hidden_folders.Listing())
+        u.folder_hidden = inside.get(folder.casefold())
+        u.folder_writable = u.folder_hidden is not None
+        if not updates.installable([u]):
+            out[path] = REFUSED
+        elif u.hidden_folder is not None or u.folder_hidden is not None:
+            out[path] = OWN_SESSION
+        else:
+            out[path] = ORDINARY
+    return out
+
+
+@pytest.mark.parametrize("path", [*MADE_UP, *REAL], ids=[p.stem for p in [*MADE_UP, *REAL]])
+def test_a_known_behaviour_a_file_hidden_in_a_seen_folder_takes_the_ordinary_write(path,
+                                                                                    tmp_path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    hidden_files = {h.casefold() for h in data.get("hidden_files", [])}
+    got = file_routes(data, tmp_path)
+    assert {p: route for p, route in got.items()
+            if p.casefold() in hidden_files and route != ORDINARY} == {}
+
+
+@pytest.mark.parametrize("path", MADE_UP, ids=[p.stem for p in MADE_UP])
+def test_the_made_up_device_s_files(path, tmp_path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert file_routes(data, tmp_path) == data["expected_files"]
 
 
 @pytest.mark.parametrize("path", [*MADE_UP, *REAL], ids=[p.stem for p in [*MADE_UP, *REAL]])

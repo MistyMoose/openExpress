@@ -331,8 +331,9 @@ def cmd_diagnostics(args) -> int:
     if not args.apply:
         print(_("Dry run: nothing was copied. Add --apply to copy the files the device shows now."))
         if args.crash_logs:
-            print(_("With --apply, --crash-logs also reads its hidden crash logs in a session "
-                    "of its own: the device leaves the file manager for a moment."))
+            print(_("With --apply, --crash-logs also reads the device's hidden crash logs over "
+                    "a direct USB connection: the device disappears from the file manager for "
+                    "a moment."))
         return 0
     with _progress() as progress:
         done = diagnostics.copy_files(dev, st, progress=progress)
@@ -1047,8 +1048,8 @@ def _fit_check(found) -> str:
         return _("Check: damaged: the CRC does not match ({read} B read)").format(
             read=not_whole.read)
     if not_whole.problem is Problem.AFTER_THE_END:
-        return _("Check: damaged: {count} B after the whole FIT data are no FIT file").format(
-            count=not_whole.after)
+        return _("Check: damaged: {count} B after the end of the FIT data do not belong to a "
+                 "FIT file").format(count=not_whole.after)
     return _("Check: not a FIT file ({read} B read)").format(read=not_whole.read)
 
 
@@ -1431,7 +1432,7 @@ def cmd_devices(args) -> int:
     if not args.apply:
         print(_("Device to forget: {device}").format(device=name))
         print(_("What this installation keeps of it goes too: what was uploaded from it, its "
-                "last sync, its connection log, the maps of your own copied to it and "
+                "last sync, its connection log, your own maps copied to it and "
                 "the copies of its diagnostic files. Its next sync with this program will be a "
                 "first sync again."))
         if kept.pending:
@@ -1676,7 +1677,7 @@ def _queue_file_words(found, makers=None) -> str:
     elif not_whole.problem is Problem.CRC:
         parts.append(_("damaged: the CRC does not match"))
     else:
-        parts.append(_("damaged: {count} B after the end are no FIT file").format(
+        parts.append(_("damaged: {count} B after the end do not belong to a FIT file").format(
             count=not_whole.after))
     return " · ".join(parts)
 
@@ -1915,11 +1916,12 @@ def _print_not_installed(untaken) -> None:
         print("  " + _update_line(u))
         when = full_time(datetime.fromtimestamp(u.copied_at))
         if u.changed_on_device:
-            print("      " + _("Copied {when}; the device was unplugged since, changed or refused "
-                               "the file and has not installed it.").format(when=when))
+            print("      " + _("Copied {when}; since then the device has been unplugged, has "
+                               "changed or refused the file, and has not installed it.").format(
+                when=when))
         else:
-            print("      " + _("Copied {when}; the device was unplugged since and has not "
-                               "installed it (the file is still on it).").format(when=when))
+            print("      " + _("Copied {when}; since then the device has been unplugged and has "
+                               "not installed it (the file is still on it).").format(when=when))
 
 
 def _print_present(present, verbose: bool) -> None:
@@ -2107,9 +2109,9 @@ def cmd_updates(args) -> int:
             # TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`, under
             # the update; {folder}: the folder the device hides; {copies}: a folder on this
             # computer
-            print("      " + _("a trial: written into {folder}, which the device hides, through "
-                               "openExpress's own USB session; the file there now is copied "
-                               "to {copies} first and put back if the new one is not written "
+            print("      " + _("a trial: written into {folder}, which the device hides, over a "
+                               "direct USB connection; the file there now is copied to "
+                               "{copies} first and put back if the new one is not written "
                                "whole; the first refusal stops the trial").format(
                 folder=u.folder_hidden, copies=_hidden_trial_folder()))
     print(_("Space: {needed} needed, {free} free").format(needed=human_size(need),
@@ -2611,7 +2613,7 @@ def _apps_order(args, dev, st, state) -> int:
     for line, indented in ciq.describe_order(plan, None if args.all else 10):
         print(("  " if indented else "") + line)
     _print_app_list_size(len(plan.entries), sum(1 for a in state.apps if not a.pending))
-    print("  " + _("the same apps with the same flags; only the order changes"))
+    print("  " + _("the same apps with the same settings; only the order changes"))
     if not args.apply:
         print(ciq.app_list_copy_note(dev, st))
         print(_("Dry run: nothing was changed. Add --apply."))
@@ -2633,15 +2635,15 @@ def _remove_app_directly(args, dev, st, state, app, api) -> int:
     if settings:
         print("  " + _("and its settings file, if the device has one: {path}").format(
             path=settings))
-    print("  " + _("The device does not show this file to ordinary file access. openExpress "
-                   "will delete it over a direct USB connection; the device disappears from "
-                   "the file manager for a moment."))
+    print("  " + _("This file is hidden from the file manager. openExpress will delete it "
+                   "over a direct USB connection; the device disappears from the file "
+                   "manager for a moment."))
     preview = ciq.preview_removal(state, app)
     _print_app_list_size(preview.entries, preview.on_device)
     if preview.pending or not preview.kept:
         raise _app_list_mismatch()
     print("  " + _("every other app on the device is kept, in the same order and with the "
-                   "same flags"))
+                   "same settings"))
     kind = ciq.app_type_name(app.app_type) or app.app_type
     print("  " + _("to be removed: {name} ({type})").format(name=app.name, type=kind))
     if not args.apply:
@@ -2699,7 +2701,8 @@ def _print_in_bin_preview(preview) -> None:
         print("  " + ngettext("{count} more app is registered and waits for the device",
                               "{count} more apps are registered and wait for the device",
                               preview.pending).format(count=preview.pending))
-    print("  " + (_("every app on the device is kept, in the same order and with the same flags")
+    print("  " + (_("every app on the device is kept, in the same order and with the same "
+                    "settings")
                   if preview.kept else
                   _("Warning: the new list does not match the apps on the device")))
     for name, app_type, disabled in preview.new:
@@ -2822,10 +2825,10 @@ def cmd_apps(args) -> int:
                                "yet. The app will be queued in Garmin Connect and installed by "
                                "the phone or Garmin Express.").format(name=a.name))
             elif dirs[a.app_id] == ciq.DIRECT:
-                print("  " + _("{name}: the device does not show the app folder {path} to "
-                               "ordinary file access. openExpress will write the app over a "
-                               "direct USB connection; the device disappears from the file "
-                               "manager for a moment.").format(name=a.name, path=folder))
+                print("  " + _("{name}: the app folder {path} is hidden from the file manager. "
+                               "openExpress will write the app over a direct USB connection; "
+                               "the device disappears from the file manager for a "
+                               "moment.").format(name=a.name, path=folder))
             elif dirs[a.app_id] == ciq.MISSING:
                 print("  " + _("{name}: the app folder {path} does not exist on the device. "
                                "openExpress will try to create it; if the device refuses, the "
@@ -3648,6 +3651,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="openexpress",
         description=_("Unofficial Linux app for Garmin watches and bike computers."),
+        # TRANSLATORS: CLI, at the end of "openexpress --help"; setup, login, logout and --apply
+        # are a command and an option, not to be translated
+        epilog=_("Commands that change anything only say what they would do; add --apply to do "
+                 "it. Only setup, login and logout change openExpress's own settings and "
+                 "sign-in at once."),
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     # TRANSLATORS: CLI help of -v/--verbose: print more details
@@ -3661,7 +3669,9 @@ def build_parser() -> argparse.ArgumentParser:
     # it is logged as the window. After add_subparsers: it would set "cmd" to None.
     p.set_defaults(func=cmd_gui, cmd="gui")
 
-    s = sub.add_parser("setup", help=_("configuration: OAuth1 key, environment, locale"))
+    s = sub.add_parser("setup", help=_("the application key from the Garmin Express installer, "
+                                       "and the settings: Garmin's servers, the languages, the "
+                                       "diagnostics copy"))
     s.add_argument("--from-installer", metavar="GarminExpress.exe",
                    help=_("read the needed data from the Garmin Express installer for Windows "
                           "(GarminExpress.exe from garmin.com); it is only read, nothing is "
@@ -3674,12 +3684,14 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("the application key of Garmin Express (its OAuth1 consumer key); "
                           "only together with --secret"))
     s.add_argument("--secret",
-                   help=_("OAuth1 consumer secret of Garmin Express; only together with --key"))
+                   help=_("the application secret of Garmin Express (its OAuth1 consumer "
+                          "secret); only together with --key"))
     s.add_argument("--environment", choices=sorted(ENVIRONMENTS),
                    help=_("Garmin servers to use: production (default) or china"))
-    # TRANSLATORS: CLI help of "setup --locale": "for example" ({example}: a locale code such as
-    # pl_PL)
-    s.add_argument("--locale", help=_("e.g. {example}").format(example="pl_PL"))
+    # TRANSLATORS: CLI help of "setup --locale" ({example}: a locale code such as pl_PL)
+    s.add_argument("--locale", help=_("the language to request from Garmin's servers (by "
+                                      "default the program's), e.g. {example}").format(
+        example="pl_PL"))
     s.add_argument("--ui-language", choices=i18n.available_languages() + ["system"],
                    help=_("language of this program (\"system\": follow the system locale)"))
     s.add_argument("--diagnostics-copy", choices=("on", "off"),
@@ -3689,8 +3701,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("report", help=_("device report for GitHub, without serial numbers"))
     s.add_argument("--log", action="store_true",
-                   help=_("print the last lines of the log file instead, for the form "
-                          "(filtered)"))
+                   help=_("print the last lines of the log instead, filtered, for the “Log” "
+                          "field of the report form"))
     s.set_defaults(func=cmd_report)
 
     s = sub.add_parser("info", help=_("information about the connected device"))
@@ -3698,9 +3710,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_info)
 
     s = sub.add_parser("files", help=_("files on the device by data type"))
-    s.add_argument("--type", help=_("e.g. {example} (activities)").format(example="FIT_TYPE_4"))
+    s.add_argument("--type", help=_("only this data type, each file listed, e.g. {example} "
+                                    "(activities)").format(example="FIT_TYPE_4"))
     s.add_argument("--limit", type=int, default=0, metavar="N",
-                   help=_("show only the last N files"))
+                   help=_("with --type or -v: only the last N files"))
     s.set_defaults(func=cmd_files)
 
     from openexpress.activities import PAGE
@@ -3743,10 +3756,10 @@ def build_parser() -> argparse.ArgumentParser:
                           "manager for a moment)"))
     s.add_argument("--dumps", action="store_true", help=_("also copy the memory dumps"))
     s.add_argument("--free-space", action="store_true",
-                   help=_("only what can be freed on the device: the older memory dumps "
-                          "(copied to this computer first where they fit) and the files of "
-                          "updates it did not install; with --apply they are removed (not with "
-                          "--dumps or --crash-logs)"))
+                   help=_("free space on the device: older memory dumps (copied to this "
+                          "computer first where they fit) and files of updates it did not "
+                          "install; with --apply they are removed (not with --dumps or "
+                          "--crash-logs)"))
     s.set_defaults(func=cmd_diagnostics, _parser=s)
 
     s = sub.add_parser("login", help=_("sign in to Garmin Connect"))
@@ -3771,7 +3784,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("devices", help=_("the devices this installation has seen"))
     s.add_argument("--forget", type=int, metavar="N",
                    help=_("forget device number N of the list and what this installation "
-                          "keeps of it (its sync state, its last sync)"))
+                          "keeps of it, as Forget Device in the window does"))
     s.add_argument("--discard-pending", action="store_true",
                    help=_("with --forget: also when files of it have not been uploaded yet "
                           "(they are lost)"))
@@ -3792,24 +3805,29 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_whoami)
 
     s = sub.add_parser("upload-config",
-                       help=_("upload configuration from the Garmin server (OMT)"))
+                       help=_("what data the device uploads and where, as Garmin's server "
+                              "says (OMT)"))
     s.add_argument("--json", action="store_true",
                    help=_("print the server's whole answer as JSON"))
     s.set_defaults(func=cmd_upload_config)
 
     s = sub.add_parser("sync", help=_("sync with Garmin Connect (dry run by default)"))
-    s.add_argument("--apply", action="store_true", help=_("actually upload and write"))
+    s.add_argument("--apply", action="store_true",
+                   help=_("upload and write (without it: a dry run)"))
     s.add_argument("--all", action="store_true", help=_("upload everything on the first sync"))
     s.add_argument("--upload-only", action="store_true",
                    help=_("only upload; leave what waits in Garmin Connect for the device"))
     s.add_argument("--download-only", action="store_true",
                    help=_("only write what waits in Garmin Connect; upload nothing"))
-    s.add_argument("--type", action="append", help=_("only the given data type (repeatable)"))
+    s.add_argument("--type", action="append",
+                   help=_("upload only this data type, e.g. {example} (repeatable)").format(
+                       example="FIT_TYPE_4"))
     s.add_argument("--include-diagnostics", action="store_true",
                    help=_("also upload device diagnostics and telemetry to Garmin"))
     s.set_defaults(func=cmd_sync)
 
-    s = sub.add_parser("baseline", help=_("mark current files as already uploaded"))
+    s = sub.add_parser("baseline", help=_("mark the device's files as already uploaded, for the "
+                                          "first sync (nothing is uploaded)"))
     s.add_argument("--apply", action="store_true", help=_("mark the files (nothing is uploaded)"))
     s.set_defaults(func=cmd_baseline)
 
@@ -3817,8 +3835,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--dest", metavar="DIR",
                    help=_("destination directory (default: {path})").format(
                        path=paths.shown_path(paths.default_backup_dir())))
-    s.add_argument("--keep", type=int, default=3, metavar="N",
-                   help=_("how many most recent backups to keep"))
+    keep = 3
+    s.add_argument("--keep", type=int, default=keep, metavar="N",
+                   help=_("how many of the newest backups to keep (default: {count}; 0 keeps "
+                          "them all)").format(count=keep))
     s.add_argument("--apply", action="store_true",
                    help=_("copy the files (and remove backups beyond --keep)"))
     s.set_defaults(func=cmd_backup)
@@ -3879,8 +3899,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("sensors", help=_("the sensors on the Garmin account and their batteries"))
     s.set_defaults(func=cmd_sensors)
 
-    s = sub.add_parser("solar", help=_("the activity time the sun gained the devices of the "
-                                       "Garmin account that charge from the sun"))
+    s = sub.add_parser("solar", help=_("activity time gained from the sun by the account's "
+                                       "solar-charging devices"))
     s.add_argument("--days", type=_days_back, default=readings.SOLAR_DAYS, metavar="N",
                    help=_("how many days, today among them ({least}–{most}, {default} by "
                           "default)").format(least=1, most=SOLAR_MOST_DAYS,
@@ -4201,4 +4221,9 @@ def _run(args) -> int:
         # the user is filtered as well.
         log.info("unexpected error: %s", type(e).__name__, exc_info=True)
         _error(_("Error: {error}").format(error=applog.error_text(e)))
+        if applog.is_fault(e):
+            # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
+            # and "openexpress report --log" are commands, not to be translated
+            _error(_("This is a bug in openExpress. To report it, run openexpress report and "
+                     "attach the output of openexpress report --log."))
         return 1

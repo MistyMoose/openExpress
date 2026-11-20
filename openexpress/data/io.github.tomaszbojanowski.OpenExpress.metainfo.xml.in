@@ -23,6 +23,8 @@
       <li>Copy music, podcasts and audiobooks, with playlists</li>
       <li>See each activity on its own page: the track on a map, charts, laps, heart rate zones and training effect</li>
       <li>See the device's crashes, software updates and storage, and free up space taken by older memory dumps and updates it did not install</li>
+      <li>Keep the GPS satellite data of some devices current without the phone (experimental)</li>
+      <li>See the batteries of the sensors on your Garmin Connect account and the solar charging of a device</li>
       <li>Make backups of the device</li>
       <li>Sync in the background whenever the device is connected</li>
       <!-- TRANSLATORS: a feature in the description for software centres: the program sends no
@@ -54,7 +56,7 @@
       <image>https://raw.githubusercontent.com/TomaszBojanowski/openExpress/main/docs/screenshots/start.png</image>
     </screenshot>
     <screenshot>
-      <caption>Software updates: a system update and two more updates offered for the device</caption>
+      <caption>Software updates: the device software and two more updates offered for it</caption>
       <image>https://raw.githubusercontent.com/TomaszBojanowski/openExpress/main/docs/screenshots/updates.png</image>
     </screenshot>
     <screenshot>

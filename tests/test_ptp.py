@@ -142,7 +142,7 @@ def test_answer_split_over_many_reads(device):
 def test_wrong_transaction_id_stops_the_conversation(device):
     with ptp.Session(device) as session:
         device.wrong_transaction = True
-        with pytest.raises(ptp.PtpError, match="out of step"):
+        with pytest.raises(ptp.PtpError, match="does not match the request"):
             session.storages()
         sent = len(device.transfers)
         with pytest.raises(ptp.PtpError):

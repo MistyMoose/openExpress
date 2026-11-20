@@ -331,7 +331,7 @@ class AppsPage:
 
         lines = [("  " if indented else "") + text
                  for text, indented in ciq.describe_order(plan, 10)]
-        lines += ["", _("The same apps with the same flags; only the order changes."), copy_note]
+        lines += ["", _("The same apps with the same settings; only the order changes."), copy_note]
         return "\n".join(lines)
 
     def choose_order(self, button: Gtk.Button | None = None) -> None:

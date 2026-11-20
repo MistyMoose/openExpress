@@ -571,7 +571,7 @@ def test_cli_install_dry_run_shows_the_app_list(iq_device, device_root, apps_cli
     out = capsys.readouterr().out.splitlines()
     assert out[1:] == [
         "App list to be written (IN.BIN): 3 entries; the device lists 2 (OUT.BIN)",
-        "  every app on the device is kept, in the same order and with the same flags",
+        "  every app on the device is kept, in the same order and with the same settings",
         "  new: Face It (watch face), added as inactive",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply.",
@@ -1563,7 +1563,7 @@ def test_cli_dry_run_announces_the_direct_connection(hidden_apps, apps_cli, monk
     monkeypatch.setattr(cli, "open_device", lambda args: (st, _dev))
     assert main(["--path", str(st.root), "apps", "install", "Face It"]) == 0
     out = capsys.readouterr().out
-    assert "does not show the app folder GARMIN/APPS/MEDIA" in out
+    assert "the app folder GARMIN/APPS/MEDIA is hidden from the file manager" in out
     assert "direct USB connection" in out and "Dry run" in out
     assert fake.operations == [] and st.sessions == 0 and FakeStore.queued == []
 
@@ -1703,7 +1703,7 @@ def test_hidden_app_is_removed_like_express_does(hidden_spot):
     assert ciq.files_on_device(dev, st, app) == [] and ciq.removal_way(dev, st, app) == ciq.DIRECT
     assert ciq.remove(dev, st, app) == ["GARMIN/APPS/MEDIA/0A1B2C3D.PRG"]
     assert fake.names("GARMIN/Apps/Media") == ["DADE7E4.PRG"]
-    # The app list: the same entries in the same order with the same flags, minus the app.
+    # The app list: the same entries in the same order with the same settings, minus the app.
     assert [(p[0], p[1], p[2]) for p in fake_in_bin(fake)] == [
         (STORE_ID, 1, False), (PRELOADED, 8, True)]
     # The file is deleted first, the list written after it; then the device is mounted again.
@@ -2112,7 +2112,7 @@ def test_cli_removes_a_hidden_app(hidden_spot, apps_cli, monkeypatch, capsys):
                       "GARMIN/APPS/SETTINGS/0A1B2C3D.SET")
     assert out[3:] == [
         "App list to be written (IN.BIN): 2 entries; the device lists 3 (OUT.BIN)",
-        "  every other app on the device is kept, in the same order and with the same flags",
+        "  every other app on the device is kept, in the same order and with the same settings",
         "  to be removed: Face It (watch face)",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply.",
@@ -2503,7 +2503,7 @@ def test_cli_apps_order(order_device, apps_cli, monkeypatch, capsys):
     assert out[0] == "Order of the apps from the copy GARMIN-APPS 2026-01-02 (03.04.05)"
     assert out[-4:] == [
         "App list to be written (IN.BIN): 7 entries; the device lists 7 (OUT.BIN)",
-        "  the same apps with the same flags; only the order changes",
+        "  the same apps with the same settings; only the order changes",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply."]
     assert not (st.root / "GARMIN/APPS/IN.BIN").exists()
@@ -2907,7 +2907,7 @@ def test_order_summary_shows_the_first_ten_changes(order_device):
         "  3: Calendar (now: Music)", "  4: Maps (now: Calendar)", "  5: Music (now: Maps)",
         "  6: Tides (now: Moon)", "  7: Moon (now: Tides)",
         "",
-        "The same apps with the same flags; only the order changes.",
+        "The same apps with the same settings; only the order changes.",
         "Before any change, a copy of the app list of the device is made."]
     many = ciq.OrderPlan(entries=plan.entries, moved=plan.moved * 5, only_in_copy=[],
                          only_on_device=[plan.entries[0]])
@@ -3180,7 +3180,7 @@ def test_cli_update_of_a_hidden_app(hidden_update, apps_cli, monkeypatch, capsys
     assert out.splitlines()[0].startswith("Update Face It")
     assert "direct USB connection" in out and "cannot update" not in out
     assert "App list to be written (IN.BIN): 3 entries; the device lists 3 (OUT.BIN)" in out
-    assert "every app on the device is kept, in the same order and with the same flags" in out
+    assert "every app on the device is kept, in the same order and with the same settings" in out
     assert "Before any change, a copy of the app list of the device is made." in out
     assert fake.operations == [] and st.sessions == 0
 

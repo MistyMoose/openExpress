@@ -66,15 +66,16 @@ def not_installed_text(u) -> str:
         if old:
             # TRANSLATORS: below an update the device has not installed although it was unplugged
             # since: {when} when it was copied, {old} the version the device still reports
-            return _("Copied {when}. The device was unplugged since, changed or refused the "
-                     "file and still reports version {old}.").format(when=when, old=old)
-        return _("Copied {when}. The device was unplugged since, changed or refused the file "
-                 "and has not installed it.").format(when=when)
+            return _("Copied {when}. Since then the device has been unplugged, has changed or "
+                     "refused the file, and still reports version {old}.").format(when=when,
+                                                                                  old=old)
+        return _("Copied {when}. Since then the device has been unplugged, has changed or "
+                 "refused the file, and has not installed it.").format(when=when)
     if old:
-        return _("Copied {when}. The device was unplugged since and still reports version "
-                 "{old}; the file is still on it, unchanged.").format(when=when, old=old)
-    return _("Copied {when}. The device was unplugged since and has not installed it; the "
-             "file is still on it, unchanged.").format(when=when)
+        return _("Copied {when}. Since then the device has been unplugged and still reports "
+                 "version {old}; the file is still on it, unchanged.").format(when=when, old=old)
+    return _("Copied {when}. Since then the device has been unplugged and has not installed "
+             "it; the file is still on it, unchanged.").format(when=when)
 
 
 def not_installed_advice(hidden_folder: bool = False) -> str:

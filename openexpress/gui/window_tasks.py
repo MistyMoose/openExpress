@@ -8,7 +8,8 @@ row_subtitle), the free space of the device read again after a task that writes 
 (bottom_bar, page_column), the name of a task in the log (task_name), the
 collection of reference cycles after it (collect_garbage), an error nobody expected, in
 the log (log_unexpected), the questions and messages of the window, which close as
-Cancel (confirm, Answer, inform), and one file of this computer chosen (choose_local_file).
+Cancel (confirm, Answer, inform), one file of this computer chosen (choose_local_file), and
+a switch of a setting saved or put back with why (switch_saved, not_saved_text).
 
 Has: the task under way (busy, _waiting, _task_lets_close, _reporter) and the action buttons.
 """
@@ -39,6 +40,7 @@ from openexpress.gui.tasks import WindowClosed  # noqa: E402
 from openexpress.gui.words import space_text  # noqa: E402
 from openexpress.i18n import _, ngettext  # noqa: E402
 from openexpress.progress import Reporter, Step, TimedWait, Waiting  # noqa: E402
+from openexpress.settings import SetupError  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -455,6 +457,49 @@ def error_heading(failed_title: str | None) -> str:
     did not happen), else a general one; never the words of its progress ("Saving…")."""
     # TRANSLATORS: heading of an error of a task that has no heading of its own
     return failed_title or _("Something Went Wrong")
+
+
+def failed_text(e: BaseException) -> str:
+    """The words of the error dialog of a task: those of the error, and for a fault of
+    openExpress (applog.is_fault) how to report it."""
+    if not applog.is_fault(e):
+        return error_text(e)
+    # TRANSLATORS: under the words of an error nobody foresaw, in the window; {item}: the item
+    # of the main menu, "Report a Device or Problem…" in your language (put your language's
+    # quotation marks around it); "Attach the last log" is the check box of that dialog
+    note = _("This is a bug in openExpress. To report it, choose “{item}” in the main menu "
+             "and attach the last log.").format(item=_("Report a Device or Problem…"))
+    return f"{error_text(e)}\n\n{note}"
+
+
+def not_saved_text(e: Exception) -> str:
+    """Why a setting was not saved: the system's words for a file it could not write (not the
+    number of the error, nor the path of the file), else the words of applog.error_text."""
+    if isinstance(e, OSError) and e.strerror:
+        return e.strerror
+    return error_text(e)
+
+
+def switch_saved(win, row, handler, saved: bool, save) -> bool:
+    """A switch of a setting turned (its handler `handler` of notify::active): `save(on)` with
+    what it shows now, unless that is `saved` already: the switch put back after a change that
+    was not saved, which a row may tell again though its handler is blocked, so nothing loops.
+    A change that cannot be saved puts the switch back and says why (Setting Not Saved). True:
+    the change is saved."""
+    on = row.get_active()
+    if on == saved:
+        return False
+    try:
+        save(on)
+    except (OSError, SetupError) as e:
+        row.handler_block_by_func(handler)
+        row.set_active(not on)
+        row.handler_unblock_by_func(handler)
+        # TRANSLATORS: heading of the error when a switch of a setting could not be saved (in
+        # the preferences, on the device page, under the map of an activity)
+        win.error(_("Setting Not Saved"), not_saved_text(e))
+        return False
+    return True
 
 
 def wait_for_the_diagnostics(session, fn) -> None:
@@ -960,7 +1005,7 @@ class TaskRunner:
             try:
                 with stalled.telling(self, e):  # a stall: the banner, no error dialog
                     if not (on_error and on_error(e)):
-                        self.error(error_heading(failed_title), error_text(e))
+                        self.error(error_heading(failed_title), failed_text(e))
             finally:
                 self._run_pending_refresh()
             return False

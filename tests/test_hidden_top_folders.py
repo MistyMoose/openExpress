@@ -183,7 +183,7 @@ NOT_INSTALLED_TZ = ("      Not installed: Time zone map 9.00 goes to the folder 
                     "openExpress cannot see on the device.")
 NOTICE = ("openExpress cannot see the folder .System, where this device keeps its software, so it "
           "installs nothing there. Some devices, such as car navigators, hide it from the "
-          "ordinary USB connection.")
+          "file manager.")
 ADD_ONS = ("2 add-ons that are not on the device are not listed: openExpress does not install "
            "add-ons yet.")
 
@@ -767,7 +767,7 @@ def test_the_words_of_a_folder_not_seen_in_both_languages(language):
                 "openExpress nie widzi na urządzeniu."),
                ("openExpress nie widzi folderu .System, w\u00a0którym to urządzenie trzyma swoje "
                 "oprogramowanie, więc niczego tam nie instaluje. Niektóre urządzenia, np. "
-                "nawigacje samochodowe, ukrywają go przed zwykłym połączeniem USB."),
+                "nawigacje samochodowe, ukrywają go przed menedżerem plików."),
                ("Pominięto 2 dodatki, których nie ma na urządzeniu: openExpress jeszcze nie "
                 "instaluje dodatków.")]}
     assert texts == expected[language]
@@ -775,7 +775,7 @@ def test_the_words_of_a_folder_not_seen_in_both_languages(language):
 
 # --- what the pages and the command line say of a folder read -------------------------------------
 
-NO_SESSION_LINE = ("openExpress cannot open its own USB session with this device, so it cannot "
+NO_SESSION_LINE = ("openExpress cannot open a direct USB connection to this device, so it cannot "
                    "read the folder .System.")
 
 
@@ -887,7 +887,7 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
                ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
                 "from the folder .System yet.")],
         "pl": ["Odczytywanie folderu .System…",
-               ("openExpress nie może otworzyć własnej sesji USB z\u00a0tym urządzeniem, więc nie "
+               ("openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym urządzeniem, więc nie "
                 "odczyta folderu .System."),
                "openExpress jeszcze nie instaluje map w\u00a0folderze .System",
                ("Nie można usunąć mapy „Made-up City Navigator”: openExpress jeszcze nie usuwa map "

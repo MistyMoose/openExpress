@@ -192,12 +192,12 @@ connected device; no login is needed.
   the same size), the row says both versions and *the same file* and keeps **Reinstall**;
   otherwise the row says *an older version* and has no button, and `openexpress updates
   --install` refuses it.
-- A component that goes to a folder the watch hides from the ordinary USB connection (on a
-  fēnix 8 `GARMIN/Prompts`, `ASR`, `KBD`, `ExtData`) is written there through openExpress's own
-  USB session: the device leaves the file manager for a moment, a small test file is written
-  and deleted first, the file it replaces is copied to this computer (and removed again once
-  the new one is read back whole, or put back if the new one is not written whole). Without
-  that session (the Flatpak without its USB permission) it is not installed: its group says
+- A component that goes to a folder the watch hides from the file manager (on a fēnix 8
+  `GARMIN/Prompts`, `ASR`, `KBD`, `ExtData`) is written there over a direct USB connection: the
+  device disappears from the file manager for a moment, a small test file is written and deleted
+  first, the file it replaces is copied to this computer (and removed again once the new one is
+  read back whole, or put back if the new one is not written whole). Without that connection
+  (the Flatpak without its USB permission) it is not installed: its group says
   so once, its row says it in short and its **Install** button is off.
 - While software updates or a map's files are copied, openExpress keeps the computer from
   sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
@@ -221,9 +221,9 @@ connected device; no login is needed.
   still waits for the device.
 
 - A car navigator may hide the folder where it keeps its software and maps (`.System` on a
-  Drive 53 EX) from the ordinary USB connection. Right after such a device is opened, openExpress
-  reads that folder once through its own USB session (*Reading the folder .System…*; the
-  device leaves the file manager for a moment) and compares the files offered with those there
+  Drive 53 EX) from the file manager. Right after such a device is opened, openExpress reads that
+  folder once over a direct USB connection (*Reading the folder .System…*; the device
+  disappears from the file manager for a moment) and compares the files offered with those there
   by name and size; their contents are not read. It installs software updates and the time zone
   map there as Garmin Express writes them: the old file of that name is deleted first, and the
   new one is checked by its size and read back whole; the device's own software goes last, and
@@ -231,12 +231,13 @@ connected device; no login is needed.
   written stops the rest and says what is on the device. **Reinstall Components** writes
   a component already there again the same way; afterwards the page shows nothing waiting for
   the device, as on a watch.
-  **Check Again** reads the folder anew. When the session cannot be opened (the Flatpak
-  without its USB permission), the page says why the folder could not be read. Voices and
-  vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not installed.
+  **Check Again** reads the folder anew. When the direct USB connection cannot be opened (the
+  Flatpak without its USB permission), the page says why the folder could not be read. Voices
+  and vehicles Garmin offers to add to such a device are listed as **Add-Ons** and not
+  installed.
 
 Installing a system update was tested on an Edge 1050 (betas 33.12, 33.20 and 33.21) and a
-fēnix 8 (24.20), and reported working on a fēnix 7 ([#6](https://github.com/TomaszBojanowski/openExpress/issues/6)); component updates were tested on a Venu 2 and a fēnix 8 (a map support file, and voice prompts and a font in folders the watch hides).
+fēnix 8 (24.20), and reported working on a fēnix 7 ([#6](https://github.com/TomaszBojanowski/openExpress/issues/6)); component updates were tested on a Venu 2 and a fēnix 8 (a map support file, and voice prompts and a font in folders hidden from the file manager).
 
 <p align="center">
   <img src="screenshots/update-confirm.png" width="700"
@@ -261,25 +262,26 @@ Under the device's free space, **Maps use** is what the files of its maps take t
 several maps use counted once; while a folder of them cannot be read, the size is left out. A map
 with an update names the version offered and what the update downloads.
 
-On a car navigator that keeps its maps in the folder it hides (`.System/Map`), the Maps page shows
-them as read through that USB session (see [Software updates](#software-updates)), without
+On a car navigator that keeps its maps in the folder it hides from the file manager
+(`.System/Map`), the Maps page shows them as read over that direct USB connection (see
+[Software updates](#software-updates)), without
 **Update** or **Remove**: the window does not install or remove maps in that folder; the command
-line can install one as a trial (see below). When the device's folder for maps of your own is one
-the ordinary USB connection does not show either (the folder Map on a Drive 53 EX), **Add Map…**
+line can install one as a trial (see below). When the device's folder for maps of your own is
+hidden from the file manager too (the folder Map on a Drive 53 EX), **Add Map…**
 is off for the same reason.
 
 ### Maps on a car navigator (a trial)
 
 `openexpress maps install NAME --hidden-folder-trial` installs a map into the folder a car
-navigator hides, through openExpress's own USB session; it was tried once on a real device, a
-Drive 53 EX, with a map update of 8.3 GB. Without `--apply` it changes nothing: it lists the old files it would remove (none that
+navigator hides from the file manager, over a direct USB connection; it was tried once on a real
+device, a Drive 53 EX, with a map update of 8.3 GB. Without `--apply` it changes nothing: it lists the old files it would remove (none that
 other maps use) and the new ones it would write, with their sizes, the space on the device and on
 this computer, an estimate of the time and the largest file, and says what would refuse it (a
 folder not read or not on the device, a file over 4 GiB, a file without a checksum). With
 `--apply`, the whole map is downloaded, checked against its checksums and activated before the
 device changes; an activation that does not say where the unlock file goes refuses it then. Then
 the old files are removed and each new one is written and read back whole, the unlock files last;
-a file the device refuses is written again up to three times while the session goes on.
+a file the device refuses is written again up to three times while the connection goes on.
 
 From the first removal until the last file is written, the device has no complete map: do not
 unplug it until openExpress has finished, and once unplugged keep it powered (its car cable or a
@@ -375,9 +377,9 @@ What courses from GPX files cannot do:
 
 ## Connect IQ apps
 
-- Some watches (e.g. the fēnix 8) keep their app folder out of the ordinary file listing.
+- Some watches (e.g. the fēnix 8) hide their app folder from the file manager.
   On such a device `apps install`, `apps update`, `apps remove` and the buttons in the window
-  talk to it through openExpress's own USB session; the device disappears from the file manager
+  talk to it over a direct USB connection; the device disappears from the file manager
   for a moment and is mounted again afterwards. The device finishes the change after it is
   unplugged; until then the app is shown as waiting. A sync never does this: it leaves such
   apps in the queue. In the Flatpak this needs its USB permission (see
@@ -581,8 +583,8 @@ Space, copying its crash logs and memory dumps, the report) is left out until it
   example) may read cut short: gvfs keeps the size the file had when it was first looked at.
   At the first such file a sync mounts the device again for a moment, which gives fresh sizes,
   and reads the file once more; once a sync. The progress says *Refreshing the device's
-  files…*, and the device leaves the file manager for that moment. A file still cut short is
-  not uploaded: the summary says so, and the next sync reads it again. If the device is not
+  files…*, and the device disappears from the file manager for that moment. A file still cut
+  short is not uploaded: the summary says so, and the next sync reads it again. If the device is not
   mounted again, the sync stops and says to unplug it and plug it in again. A device connected
   as a USB drive needs none of this.
 - **Last Sync** on the device page, `openexpress sync` and the notification of the background
@@ -606,15 +608,15 @@ size openExpress does not know is not written, and the row says so):
   watch's. If the watch rejects it (it renames it to `CPE_BAD.bin`), openExpress turns the
   switch off for that watch and says so; turned on again, the next sync tries once more.
 - fēnix 8: `GPE.bin` (data for seven days, written when the watch's is older than a day) and
-  `GPES.bin` (twelve hours, written when older than four hours) in `GARMIN/RemoteSW`, through
-  openExpress's own USB session (the watch leaves the file manager for a moment; in the Flatpak
-  this needs its USB permission). The watch hides them from the ordinary USB connection once it
-  has unpacked them, so the row appears after the first sync, once openExpress has found them.
+  `GPES.bin` (twelve hours, written when older than four hours) in `GARMIN/RemoteSW`, over a
+  direct USB connection (the watch disappears from the file manager for a moment; in the Flatpak
+  this needs its USB permission). The watch hides them from the file manager once it has
+  unpacked them, so the row appears after the first sync, once openExpress has found them.
   A file still as written when it is due again, although the watch was unplugged since, counts
   as not taken: openExpress says so and turns the switch off.
-- Edge 1050: only `GPES.bin`, which the ordinary USB connection shows, so the row appears as
-  soon as the device page is opened; written when the Edge's is older than four hours, through
-  openExpress's own USB session. The Edge unpacks it about two minutes after it is unplugged.
+- Edge 1050: only `GPES.bin`, which the file manager shows, so the row appears as soon as the
+  device page is opened; written when the Edge's is older than four hours, over a direct USB
+  connection. The Edge unpacks it about two minutes after it is unplugged.
 
 The row says when a sync last wrote the data; right after a write it adds that the device takes
 it in once unplugged. When the device holds newer data than the last file written (from the

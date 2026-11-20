@@ -77,6 +77,7 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     render_space,
     row_label,
     still_in_window,
+    switch_saved,
 )
 from openexpress.gui.words import (  # noqa: E402
     checked_text,
@@ -520,7 +521,7 @@ def read_satellite(s) -> None:
 def satellite_row(win) -> Adw.SwitchRow:
     """The row Satellite Data of the device page: hidden until the device is known to have the
     satellite data file of the format known (show_satellite); its switch turns them on or off
-    for the device."""
+    for the device, and goes back saying why when that cannot be saved (switch_saved)."""
     # TRANSLATORS: row of the device page, with a switch: the GPS satellite data of a watch
     # that keeps it as CPE.BIN, written with each sync while on
     row = Adw.SwitchRow(title=_("Satellite Data"), visible=False)
@@ -528,10 +529,14 @@ def satellite_row(win) -> Adw.SwitchRow:
     def switched(r, _param) -> None:
         s = win.session
         state = s.satellite if s is not None else None
-        if state is None or r.get_active() == state.on:
+        if state is None:
             return
-        s.satellite = satellite.set_on(s.device.unit_id, r.get_active())
-        show_satellite(win)
+
+        def save(on: bool) -> None:
+            s.satellite = satellite.set_on(s.device.unit_id, on)
+
+        if switch_saved(win, r, switched, state.on, save):
+            show_satellite(win)
 
     row.connect("notify::active", switched)
     return row

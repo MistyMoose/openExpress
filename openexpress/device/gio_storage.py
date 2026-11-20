@@ -64,6 +64,18 @@ def _err(e: GLib.Error, what: str) -> DeviceError:
     return DeviceError(f"{what}: {e.message}")
 
 
+def _refused(e: GLib.Error, what: str) -> DeviceError:
+    """A new folder or a copy that failed: gvfs passes on a refusal of the device as a plain
+    failure, in libmtp's words ("Could not send object info"), which do not say that the
+    device refused it; said after them. Any other answer as _err says it."""
+    if not e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.FAILED):
+        return _err(e, what)
+    # TRANSLATORS: after the words of a write or a new folder that failed on the device (e.g.
+    # "Cannot write GARMIN/x.fit: Could not send object info.")
+    said = _("The device refused it; a device report helps find out why.")
+    return DeviceError(f"{what}: {e.message.rstrip('.')}. {said}")
+
+
 def _os_said(what: str, e: OSError) -> str:
     """`what` with the system's words for `e`: not its number, nor the path of a file the user
     does not know of (the temporary file on its way to the device)."""
@@ -586,7 +598,7 @@ class GioStorage(Storage):
             Gio.File.new_for_path(str(local)).copy(target, Gio.FileCopyFlags.OVERWRITE,
                                                    None, cb, None)
         except GLib.Error as e:
-            raise _err(e, what) from e
+            raise _refused(e, what) from e
 
     def _delete(self, real_path: str) -> None:
         self._responding()
@@ -601,7 +613,7 @@ class GioStorage(Storage):
         try:
             self._f(real_path).make_directory(None)
         except GLib.Error as e:
-            raise _err(e, _("Cannot create directory {path}").format(path=real_path)) from e
+            raise _refused(e, _("Cannot create the folder {path}").format(path=real_path)) from e
 
     def _fs_attr(self, attr: str) -> int | None:
         found: list = []

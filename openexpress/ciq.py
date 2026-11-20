@@ -1564,9 +1564,10 @@ def write_app_list(device: GarminDevice, storage: Storage, data: bytes) -> str:
     log.warning("apps: writing the app list failed; what was written of it is deleted")
     if before is not None:
         raise CiqError(_(
-            "The app list for the device could not be written ({error}), nor the one that "
-            "waited written back: it was deleted, so the changes of the apps that waited for "
-            "the device are lost. Make them again.").format(error=failure)) from failure
+            "The app list for the device could not be written ({error}), and the list that was "
+            "waiting for the device could not be put back either: it was deleted, so the app "
+            "changes that were waiting for the device are lost. Make them again.").format(
+            error=failure)) from failure
     raise failure
 
 

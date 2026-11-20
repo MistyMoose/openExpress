@@ -87,11 +87,26 @@ def _portal_request(autostart: bool, parent: str, done: Callable[[bool, str], No
                       GLib.Variant("(sa{sv})", (parent, options)), None,
                       Gio.DBusCallFlags.NONE, -1, None)
     except GLib.Error as e:
-        # E.g. a desktop whose portal has no Background service: the words of D-Bus only to the
-        # log, the window says its own.
+        # The words of D-Bus only to the log, the window says its own.
         log.info("background sync: the portal refused the request: %s", e.message)
         bus.signal_unsubscribe(sub[0])
-        done(False, "")
+        done(False, _no_background_text() if _no_background(e) else "")
+
+
+def _no_background_text() -> str:
+    # TRANSLATORS: why background sync could not be turned on in the Flatpak: the desktop's
+    # portal has no Background service; "the version from source" is openExpress installed from
+    # its source code, which runs in the background without the portal
+    return _("This desktop does not let Flatpak apps run in the background (its portal has no "
+             "Background service). Use the version from source to sync in the background.")
+
+
+def _no_background(e: GLib.Error) -> bool:
+    """Whether the portal's answer says that the desktop has no Background service: its portal
+    does not know the interface (e.g. sessions of wlroots), or there is no portal at all."""
+    return any(e.matches(Gio.dbus_error_quark(), code) for code in (
+        Gio.DBusError.UNKNOWN_METHOD, Gio.DBusError.UNKNOWN_INTERFACE,
+        Gio.DBusError.SERVICE_UNKNOWN))
 
 
 def _systemctl(*args: str) -> tuple[bool, str]:

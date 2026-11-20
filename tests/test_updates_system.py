@@ -535,10 +535,10 @@ NOT_INSTALLED_TITLE = "Update Not Installed by the Device"
 NOT_INSTALLED_ROW = "Update copied, not installed by the device"
 NOT_INSTALLED_ADVICE = ("Check the version on the device (Settings \u2192 System \u2192 About). "
                         "Ejecting it again does not help; a device report helps find out why.")
-AS_COPIED_LINE = (f"Copied {COPIED_WHEN}. The device was unplugged since and has not installed "
-                  "it; the file is still on it, unchanged.")
-CHANGED_LINE = (f"Copied {COPIED_WHEN}. The device was unplugged since, changed or refused the "
-                "file and has not installed it.")
+AS_COPIED_LINE = (f"Copied {COPIED_WHEN}. Since then the device has been unplugged and has not "
+                  "installed it; the file is still on it, unchanged.")
+CHANGED_LINE = (f"Copied {COPIED_WHEN}. Since then the device has been unplugged, has changed "
+                "or refused the file, and has not installed it.")
 
 
 def _gps_on_the_device(root, data=GPS):
@@ -663,8 +663,8 @@ def test_cli_says_the_device_did_not_install_it(device_root, monkeypatch, capsys
     assert out[1:4] == [
         "Copied, not installed by the device:",
         "  006-B0001-00          6.70  Recommended       12 B  Test GPS Software",
-        (f"      Copied {COPIED_WHEN}; the device was unplugged since and has not installed it "
-         "(the file is still on it).")]
+        (f"      Copied {COPIED_WHEN}; since then the device has been unplugged and has not "
+         "installed it (the file is still on it).")]
     assert not any("to install it" in line.lower() for line in out)
     assert main(["--path", str(device_root), "updates", "--install", "all"]) == 0
     assert "To install:" not in capsys.readouterr().out

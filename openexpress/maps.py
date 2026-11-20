@@ -555,8 +555,8 @@ def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
     `hidden_trial`: the reasons of the server and the account only (the trial installs into a
     folder the device hides)."""
     if m.hidden_folder is not None and not hidden_trial:
-        # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-        # e.g. .System
+        # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+        # .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     if m.restricted is True:
@@ -786,7 +786,7 @@ def no_complete_map_text() -> str:
 
 def folder_not_read_text(folder: str) -> str:
     # TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
-    return _("The folder {folder} was not read through openExpress's own USB session.").format(
+    return _("The folder {folder} was not read over a direct USB connection.").format(
         folder=folder)
 
 
@@ -1253,7 +1253,7 @@ def removal_refused(m: UniversalMap) -> str | None:
                  "on the device.").format(name=m.name)
     if m.hidden_folder is not None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
-        # ordinary USB connection, e.g. .System
+        # file manager, e.g. .System
         return _("Map “{name}” cannot be removed: openExpress does not remove maps from "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     return None

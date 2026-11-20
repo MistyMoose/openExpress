@@ -1624,10 +1624,10 @@ NAVIGATOR_WORDS = {
     "updates-navigator": {
         "en": "openExpress cannot see the folder .System, where this device keeps its software, so "
               "it installs nothing there. Some devices, such as car navigators, hide it from the "
-              "ordinary USB connection.",
+              "file manager.",
         "pl": "openExpress nie widzi folderu .System, w\u00a0którym to urządzenie trzyma swoje "
               "oprogramowanie, więc niczego tam nie instaluje. Niektóre urządzenia, np. "
-              "nawigacje samochodowe, ukrywają go przed zwykłym połączeniem USB."},
+              "nawigacje samochodowe, ukrywają go przed menedżerem plików."},
     "maps-navigator": {
         "en": "Cannot be read: openExpress cannot see the folder of its files on this device",
         "pl": "Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu jej plików"},
@@ -1696,13 +1696,13 @@ HIDDEN_INSIDE_LINE = {"en": "Cannot be installed with openExpress yet",
                       "pl": "openExpress nie może jeszcze tego zainstalować"}
 HIDDEN_INSIDE_GROUPS = {
     "en": [("3 of these cannot be installed with openExpress yet: the device keeps them in "
-            "folders it hides from the USB connection. The others install as usual."),
+            "folders it hides from the file manager. The others install as usual."),
            ("1 of these cannot be installed with openExpress yet: the device keeps it in a "
-            "folder it hides from the USB connection. The others install as usual.")],
+            "folder it hides from the file manager. The others install as usual.")],
     "pl": [("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-            "w\u00a0folderach ukrytych przed połączeniem USB. Pozostałe instalują się normalnie."),
+            "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie."),
            ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
-            "w\u00a0folderze ukrytym przed połączeniem USB. Pozostałe instalują się normalnie.")]}
+            "w\u00a0folderze ukrytym przed menedżerem plików. Pozostałe instalują się normalnie.")]}
 NOT_ALL = {"en": "1 update was not installed:", "pl": "Nie zainstalowano 1 aktualizacji:"}
 
 
@@ -1786,7 +1786,7 @@ def test_done_says_what_was_not_installed_and_why(narrow_window, language, width
     # session): the software was written all the same.
     (sid,) = [u for u in items if u.title == "Map support file"]
     report = updates.InstallReport(written=[items[0]])
-    report.failed.append((sid, _("Cannot create directory {path}").format(
+    report.failed.append((sid, _("Cannot create the folder {path}").format(
         path="Garmin/SID") + ": made-up refusal"))
     tell_update_done(win, types.SimpleNamespace(device=win.session.device), report)
     _iterate(0.5)

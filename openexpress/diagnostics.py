@@ -639,7 +639,7 @@ def ptp_unavailable_text(storage: Storage) -> str:
         return _("The Flatpak version has no access to USB devices, so it cannot read the "
                  "hidden crash logs. Give it the permission (see the README) or use the "
                  "version from source.")
-    return _("openExpress cannot open its own USB session with this device, so it cannot "
+    return _("openExpress cannot open a direct USB connection to this device, so it cannot "
              "read the hidden crash logs.")
 
 

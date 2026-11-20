@@ -757,14 +757,14 @@ def not_installed_inside_text(u: SoftwareUpdate) -> str:
     # TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
     # the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
     return _("Not installed: {name} {version} goes to the folder {folder}, which the device hides "
-             "from the USB connection; openExpress cannot install it yet. The other updates "
+             "from the file manager; openExpress cannot install it yet. The other updates "
              "install as usual.").format(name=u.title, version=u.version, folder=u.folder_hidden)
 
 
 def hidden_inside_reason(u: SoftwareUpdate) -> str:
     # TRANSLATORS: why an update was not installed, after its name in the list of those not
     # installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
-    return _("the device keeps it in the folder {folder}, hidden from the USB connection; "
+    return _("the device keeps it in the folder {folder}, hidden from the file manager; "
              "openExpress cannot install it yet").format(folder=u.folder_hidden)
 
 
@@ -785,7 +785,7 @@ def hidden_software_text(folder: str) -> str:
     # cannot see over MTP; {folder}: e.g. .System
     return _("openExpress cannot see the folder {folder}, where this device keeps its software, "
              "so it installs nothing there. Some devices, such as car navigators, hide it from "
-             "the ordinary USB connection.").format(folder=folder)
+             "the file manager.").format(folder=folder)
 
 
 def power_needed(written: list[SoftwareUpdate]) -> bool:

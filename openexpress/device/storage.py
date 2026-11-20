@@ -647,7 +647,7 @@ class LocalStorage(Storage):
             _sync_folder(target.parent)
 
     def _mkdir(self, real_path: str) -> None:
-        with _os_errors(_("Cannot create directory {path}").format(path=real_path)):
+        with _os_errors(_("Cannot create the folder {path}").format(path=real_path)):
             target = self._p(real_path)
             target.mkdir()
             _sync_folder(target.parent)

@@ -487,7 +487,7 @@ def test_without_access_to_usb_it_says_why(device):
     with pytest.raises(diagnostics.DiagnosticsError, match="Flatpak version has no access"):
         diagnostics.copy_crash_logs(dev, st)
     st.blocked = False
-    with pytest.raises(diagnostics.DiagnosticsError, match="cannot open its own USB session"):
+    with pytest.raises(diagnostics.DiagnosticsError, match="cannot open a direct USB connection"):
         diagnostics.copy_crash_logs(dev, st)
 
 

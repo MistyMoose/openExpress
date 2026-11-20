@@ -19,13 +19,19 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
-from openexpress import applog, cache, diagnostics, i18n, paths, service  # noqa: E402
+from openexpress import cache, diagnostics, i18n, paths, service  # noqa: E402
 from openexpress.auth import sso, store  # noqa: E402
 from openexpress.gui import activity_map  # noqa: E402
 from openexpress.gui.connected import open_address  # noqa: E402
 from openexpress.gui.gui_settings import update_gui_settings  # noqa: E402
 from openexpress.gui.navigation import Cause  # noqa: E402
-from openexpress.gui.window_tasks import Answer, confirm, wraps_when_folded  # noqa: E402
+from openexpress.gui.window_tasks import (  # noqa: E402
+    Answer,
+    confirm,
+    not_saved_text,
+    switch_saved,
+    wraps_when_folded,
+)
 from openexpress.i18n import N_, _, caption, human_size, ngettext, pgettext  # noqa: E402
 from openexpress.settings import (  # noqa: E402
     Settings,
@@ -42,14 +48,6 @@ load_ui_language = i18n.saved_ui_language
 save_ui_language = i18n.save_ui_language
 
 
-def not_saved_text(e: Exception) -> str:
-    """Why a setting was not saved: the system's words for a file it could not write (not the
-    number of the error, nor the path of the file), else the words of applog.error_text."""
-    if isinstance(e, OSError) and e.strerror:
-        return e.strerror
-    return applog.error_text(e)
-
-
 def diagnostics_group(win) -> Adw.PreferencesGroup:
     """The "Diagnostics" group of the preferences: the copy of the device's diagnostic files
     at each connection (diagnostics_switch)."""
@@ -62,7 +60,7 @@ def diagnostics_switch(win) -> Adw.SwitchRow:
     """Keep Diagnostic Files: the copy of the device's diagnostic files at each connection,
     off unless chosen (settings.json; the same as `setup --diagnostics-copy`), in the
     preferences and on the page Device Status. A change that cannot be saved puts the switch
-    back."""
+    back and says why (switch_saved)."""
     # TRANSLATORS: switch in the preferences and on the page Device Status: a copy of the
     # device's diagnostic files at each connection
     sw = Adw.SwitchRow(title=_("Keep Diagnostic Files"),
@@ -70,25 +68,15 @@ def diagnostics_switch(win) -> Adw.SwitchRow:
                                   "computer; openExpress never sends them"),
                        active=diagnostics.copy_on())
 
+    def save(on: bool) -> None:
+        settings = Settings.load()
+        settings.diagnostics_copy = on
+        settings.save()
+
     def toggled(row, _pspec):
-        wanted = row.get_active()
-        if wanted == diagnostics.copy_on():
-            # The switch put back after a change that was not saved: nothing to save (the row
-            # may tell it again though its handler is blocked).
-            return
-        try:
-            settings = Settings.load()
-            settings.diagnostics_copy = wanted
-            settings.save()
-        except (OSError, SetupError) as e:
-            row.handler_block_by_func(toggled)
-            row.set_active(not wanted)
-            row.handler_unblock_by_func(toggled)
-            # TRANSLATORS: heading of the error when a switch of the preferences could not be
-            # saved
-            win.error(_("Setting Not Saved"), not_saved_text(e))
-            return
-        log.info("diagnostics: the copy at each connection turned %s", "on" if wanted else "off")
+        if switch_saved(win, row, toggled, diagnostics.copy_on(), save):
+            log.info("diagnostics: the copy at each connection turned %s",
+                     "on" if row.get_active() else "off")
 
     sw.connect("notify::active", toggled)
     return sw
@@ -97,7 +85,7 @@ def diagnostics_switch(win) -> Adw.SwitchRow:
 def maps_group(win) -> Adw.PreferencesGroup:
     """The "Activity Maps" group: OpenStreetMap's tiles under the track of an activity, off
     until the yes (here or on the page, gui.json); taken back or given here, the map shown now
-    follows."""
+    follows. A change that cannot be saved puts the switch back and says why (switch_saved)."""
     # TRANSLATORS: group in the preferences: the street map from OpenStreetMap under the track of an
     # activity
     g = Adw.PreferencesGroup(title=_("Activity Maps"))
@@ -107,8 +95,8 @@ def maps_group(win) -> Adw.PreferencesGroup:
                        active=activity_map.tiles_on())
 
     def toggled(row, _pspec):
-        activity_map.set_tiles(row.get_active())
-        activity_map.tiles_changed(win)
+        if switch_saved(win, row, toggled, activity_map.tiles_on(), activity_map.set_tiles):
+            activity_map.tiles_changed(win)
 
     sw.connect("notify::active", toggled)
     g.add(sw)

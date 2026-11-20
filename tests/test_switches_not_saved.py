@@ -1,6 +1,6 @@
 """A switch of the window whose change cannot be saved at all (a file of this computer not
 writable, the device refusing the app list, the background service not turned on): the change
-is tried once, never again for the switch put back or left as it is; an Adw.SwitchRow may tell
+is tried once, the switch goes back and the window says why, once; an Adw.SwitchRow may tell
 a change made by its handler again though that handler is blocked. Each refusal below has a
 fuse: the tenth save goes through, so that the test ends even where the switch would go on
 forever. All apps, devices and settings are made up."""
@@ -19,6 +19,8 @@ from openexpress.gui import gui_settings
 
 UNIT = 3000000001
 REFUSED = "The device did not take the app list"
+# What the window says for a switch whose file cannot be written (as Keep Diagnostic Files).
+NOT_SAVED = ("Setting Not Saved", "Permission denied")
 
 
 def refused_file(saves: list, value) -> None:
@@ -95,45 +97,57 @@ def test_an_app_switch_never_saved_goes_back_once_and_asks_no_more(monkeypatch):
 
 
 @pytest.mark.needs_display
-def test_satellite_data_never_saved_is_tried_once(clock, monkeypatch, uncaught):
-    """The state file cannot be written: one try, its error to the window's log."""
+def test_satellite_data_never_saved_goes_back_once_and_says_why(clock, monkeypatch, uncaught):
+    """The state file cannot be written: one try, the switch back, the window says why."""
     from openexpress.gui.device_page import satellite_row, show_satellite
 
-    saves = []
+    saves, said = [], []
     monkeypatch.setattr(satellite, "save", lambda unit_id, state: refused_file(saves, state.on))
     win = stand_in(session=device_session(device=types.SimpleNamespace(unit_id=UNIT),
-                                          satellite=satellite.State()))
+                                          satellite=satellite.State()),
+                   error=lambda title, text: said.append((title, text)))
     switch = win.satellite_row = satellite_row(win)
     show_satellite(win)
     switch.set_active(True)
-    assert (saves, uncaught) == ([True], [PermissionError])
+    assert (saves, said, switch.get_active(), uncaught) == ([True], [NOT_SAVED], False, [])
 
 
 # --- the switch Colours under an activity's map: gui.json -----------------------------------------
 
 
 @pytest.mark.needs_display
-def test_track_colours_never_saved_are_tried_once(gui_json_refused, uncaught):
-    """gui.json cannot be written: one try, its error to the window's log."""
+def test_track_colours_never_saved_go_back_once_and_say_why(gui_json_refused, uncaught):
+    """gui.json cannot be written: one try, the switch back, its window says why."""
+    from gi.repository import Gtk
+
     from openexpress.gui import activity_map
 
     shown = activity_map.ActivityMap(
         activity_map.Track((0, 600), ((51.5, -0.16), (51.51, -0.16))))
+    said = []
+    window = Gtk.Window(child=shown)  # the window of the page, as the switch finds it
+    window.error = lambda title, text: said.append((title, text))
     shown.legend.switch.set_active(False)
-    assert (gui_json_refused, uncaught) == ([{"track_colours": False}], [PermissionError])
+    got = (gui_json_refused, said, shown.legend.switch.get_active(), uncaught)
+    window.destroy()
+    assert got == ([{"track_colours": False}], [NOT_SAVED], True, [])
 
 
 # --- the switch Streets and Terrain From OpenStreetMap (Preferences): gui.json --------------------
 
 
 @pytest.mark.needs_display
-def test_the_openstreetmap_switch_never_saved_is_tried_once(gui_json_refused, uncaught):
-    """gui.json cannot be written: one try, its error to the window's log."""
+def test_the_openstreetmap_switch_never_saved_goes_back_once_and_says_why(gui_json_refused,
+                                                                        uncaught):
+    """gui.json cannot be written: one try, the switch back, the window says why."""
     from openexpress.gui.preferences import maps_group
 
-    (switch,) = switch_rows(maps_group(stand_in()))
+    said = []
+    (switch,) = switch_rows(maps_group(stand_in(
+        error=lambda title, text: said.append((title, text)))))
     switch.set_active(True)
-    assert (gui_json_refused, uncaught) == ([{"map_tiles": True}], [PermissionError])
+    assert (gui_json_refused, said, switch.get_active(), uncaught) == (
+        [{"map_tiles": True}], [NOT_SAVED], False, [])
 
 
 # --- the switch Background Sync (the device page, Preferences): the service of the sync --------

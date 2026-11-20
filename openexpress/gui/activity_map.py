@@ -47,6 +47,7 @@ from openexpress.gui import activity_colours  # noqa: E402
 from openexpress.gui.activity_chart import nearest  # noqa: E402
 from openexpress.gui.gui_settings import load_gui_settings, update_gui_settings  # noqa: E402
 from openexpress.gui.palette import GREEN, rgba  # noqa: E402
+from openexpress.gui.window_tasks import switch_saved  # noqa: E402
 from openexpress.i18n import _  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -780,12 +781,13 @@ def _network_monitor():
 
 
 def _colours_switched(switch, _pspec) -> None:
-    """The switch under the map: the track's colours on or off, kept for the next pages."""
-    on = switch.get_active()
-    if on == activity_colours.colours_on():
+    """The switch under the map: the track's colours on or off, kept for the next pages; a
+    change that cannot be saved puts it back and the window says why (switch_saved)."""
+    if not switch_saved(switch.get_root(), switch, _colours_switched,
+                        activity_colours.colours_on(), activity_colours.set_colours):
         return
-    activity_colours.set_colours(on)
-    log.info("activity map: the track's colours turned %s", "on" if on else "off")
+    log.info("activity map: the track's colours turned %s",
+             "on" if switch.get_active() else "off")
     shown = switch.get_ancestor(ActivityMap)
     if shown is not None:
         shown.colour_by(shown.series)

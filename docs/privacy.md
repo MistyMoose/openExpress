@@ -76,7 +76,7 @@ Otherwise the device's diagnostic files stay on this computer:
   files of more than 4 MB are only listed.
 - Only when you ask: the hidden crash logs of a fēnix 8 (its boot log and event logs) are read
   with **Copy** in the row **Crash Logs** of the Device Status page or
-  `openexpress diagnostics --crash-logs --apply`, through openExpress's own USB session; the
+  `openexpress diagnostics --crash-logs --apply`, over a direct USB connection; the
   memory dumps (encrypted by Garmin) are copied with **Copy** in the row **Memory Dumps** or
   `openexpress diagnostics --dumps --apply`.
 - Before older memory dumps are removed from the device (**Free Up Space** → **Remove** on the
@@ -298,12 +298,13 @@ Besides these, it has three permissions that weaken the sandbox:
    - If you prefer not to grant it, use the [version from source](install.md#from-source):
      writing to the device then works without it.
 2. It can open USB devices (`--device=usb`: the nodes in `/dev/bus/usb`, nothing else of `/dev`).
-   - It uses this only where openExpress needs its own USB session: Connect IQ apps on devices
-     that hide their app folder (e.g. the fēnix 8: installing, updating and removing them);
-     software updates for folders a watch hides inside `GARMIN` (on a fēnix 8: voice prompts,
-     speech and keyboard models, fonts); satellite data (experimental: `GPE.bin` and `GPES.bin`
-     of a fēnix 8, `GPES.bin` of an Edge 1050); the hidden crash logs, when you ask; and the
-     folder a car navigator hides (`.System`): reading the names and sizes of its files, once a
+   - It uses this only where openExpress needs a direct USB connection: Connect IQ apps on
+     devices that hide their app folder from the file manager (e.g. the fēnix 8: installing,
+     updating and removing them); software updates for folders a watch hides inside `GARMIN` from
+     the file manager (on a fēnix 8: voice prompts, speech and keyboard models, fonts); satellite
+     data (experimental: `GPE.bin` and `GPES.bin` of a fēnix 8, `GPES.bin` of an Edge 1050); the
+     hidden crash logs, when you ask; and the folder a car navigator hides from the file manager
+     (`.System`): reading the names and sizes of its files, once a
      connection, and writing there the navigator's software updates, its time zone map and, as a
      command-line trial, a map, when you install them.
      The device disappears from the file manager for a moment while it is used.
@@ -312,7 +313,7 @@ Besides these, it has three permissions that weaken the sandbox:
    - Without it, on devices that hide their app folder, installs and updates are only queued in
      Garmin Connect, from where the phone or Garmin Express installs them; apps are removed on the
      phone; nothing is written to the device; updates for a folder a watch hides are not
-     installed, and the Updates page says so; satellite data that needs the session is not
+     installed, and the Updates page says so; satellite data that needs that connection is not
      written; the hidden crash logs and a navigator's hidden folder cannot be read, and nothing
      is installed into that folder.
 3. It can read and write the drives the system mounts under `/run/media` and `/media`

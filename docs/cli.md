@@ -17,7 +17,7 @@ the two are separate installations, see
 | `openexpress status [--online]` | the sign-in, the Garmin devices connected (name, USB mode, whether they are on the account), the last sync of each with the activities it has to upload now, what the window's last check of its updates found, and for a device with satellite data (experimental) whether they are on and when they were last written; `--online` also asks Garmin Connect and Garmin's update server, or uses their answers from a moment ago ([How long Garmin's answers are kept](privacy.md#how-long-garmins-answers-are-kept)); without it nothing is asked of a server |
 | `openexpress devices [--forget N] [--discard-pending] [--backups] [--apply]` | the devices this installation has seen; `--forget N` forgets device number N of the list and what this installation keeps of it, as **Forget Device** does ([what that is](guide.md#the-start-page-and-the-device-page)); files not uploaded yet go only with `--discard-pending`, its backups only with `--backups`; a connected device is not forgotten |
 | `openexpress setup --from-installer GarminExpress.exe` | one-time setup from the Garmin Express installer for Windows (only read, nothing installed); instead of it `--from-dll Networking.dll [--utilities-dll Utilities.dll]` or `--key KEY --secret SECRET` |
-| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china]` | settings: the program's language, the copy of the device's diagnostic files, the language asked of Garmin's servers (by default the program's), Garmin's servers; without options it shows the servers and the language asked of them |
+| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china]` | settings: the program's language, the copy of the device's diagnostic files, the language to request from Garmin's servers (by default the program's), Garmin's servers; without options it shows the servers and the language asked of them |
 | `openexpress login [--manual]` | sign in on the Garmin SSO page (WebKitGTK window) |
 | `openexpress whoami [--check]`, `logout` | account (its name masked: a user name as `t…b`, an e-mail address as `t…@e…`, as in every command's output), sign out (removes the local token) |
 | `openexpress upload-config [--json]` | what data is uploaded for this device and where (Garmin server) |
@@ -30,7 +30,7 @@ the two are separate installations, see
 | `openexpress updates --install PART… --hidden-folder-trial [--apply]` | as `--install`, for updates whose folder a watch hides inside `GARMIN`, but the file it replaces is kept in `hidden-folder-trial/` in openExpress's data folder (its SHA-256 printed) and the first refusal ends it; part numbers only, not `all`; the window does not offer it |
 | `openexpress maps [--all]` | installed maps and maps of your own; `--all` also those available for download (TopoActive, base maps, CourseView, Ski) |
 | `openexpress maps install NAME [--apply]` | install a map assigned to the device (download, activation, write) |
-| `openexpress maps install NAME --hidden-folder-trial [--apply]` | a trial: install a map whose files go to a folder the device hides (a car navigator's `.System`), through openExpress's own USB session; see [Maps on a car navigator](guide.md#maps-on-a-car-navigator-a-trial) |
+| `openexpress maps install NAME --hidden-folder-trial [--apply]` | a trial: install a map whose files go to a folder the device hides from the file manager (a car navigator's `.System`), over a direct USB connection; see [Maps on a car navigator](guide.md#maps-on-a-car-navigator-a-trial) |
 | `openexpress maps update [--apply]`, `maps remove NAME [--apply]` | update and remove maps |
 | `openexpress maps add FILE.img [--name NAME] [--apply]` | copy a map of your own (e.g. made from OpenStreetMap data) to the device; never overwrites a file |
 | `openexpress maps remove --own NAME [--apply]` | remove a map of your own that was copied with `maps add` |
@@ -144,8 +144,8 @@ as GPX 1.1 files.
 - its log of connections: the newest five, and the storage by kind of file at the last.
 
 `--apply` copies the files it shows now; with it, `--crash-logs` also reads its hidden crash
-logs (the device leaves the file manager for a moment) and `--dumps` also copies its memory
-dumps.
+logs over a direct USB connection (the device disappears from the file manager for a moment)
+and `--dumps` also copies its memory dumps.
 
 `--free-space` is an action of its own (not with `--crash-logs` or `--dumps`): it shows only what
 can be freed on the device, the list of **Free Up Space** on the Device Status page
@@ -186,14 +186,16 @@ now or later, then restarts.
 - `--reinstalls` also lists what can be installed again. A component offered at a lower version
   than the device lists is installed again only when its file is the one offered, and the list
   says so.
-- An update whose folder a watch hides inside `GARMIN` (on a fēnix 8: `Prompts`, `ASR`, `KBD`,
-  `ExtData`) is written there through openExpress's own USB session, in the Flatpak with its USB
-  permission; the file it replaces is copied to this computer first and put back when the new
-  one is not written whole ([Files on the device](privacy.md#files-on-the-device)). Without that
-  session such an update is refused before anything is downloaded, and the others are installed.
-- On a car navigator that hides its `.System` folder, that folder is read once through
-  openExpress's own USB session (names and sizes); every command that opens such a device reads
-  it once too, as does `status --online`, so that they count and compare what the window does.
+- An update whose folder a watch hides inside `GARMIN` from the file manager (on a fēnix 8:
+  `Prompts`, `ASR`, `KBD`, `ExtData`) is written there over a direct USB connection, in the
+  Flatpak with its USB permission; the file it replaces is copied to this computer first and put
+  back when the new one is not written whole
+  ([Files on the device](privacy.md#files-on-the-device)). Without that connection such an
+  update is refused before anything is downloaded, and the others are installed.
+- On a car navigator that hides its `.System` folder from the file manager, that folder is read
+  once over a direct USB connection (names and sizes); every command that opens such a device
+  reads it once too, as does `status --online`, so that they count and compare what the window
+  does.
   The updates that go there (and with `--reinstalls` the components installed again) are written
   as Garmin Express writes them: the old file of that name deleted first, the new one checked by
   its size and read back whole against its MD5. The device's other updates go first, its own

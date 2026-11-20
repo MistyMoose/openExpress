@@ -73,7 +73,9 @@ def test_every_message_for_the_user_is_logged_without_a_traceback(module, name, 
     Exception.__init__(error, "made-up words for the user")
     code, log = _run(error, log_file)
     assert code == 1
-    assert "made-up words for the user" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "made-up words for the user" in err
+    assert "bug in openExpress" not in err
     assert "unexpected error" not in log and "Traceback" not in log
 
 
@@ -94,7 +96,7 @@ def test_a_proto_error_is_unexpected_with_its_traceback(log_file, capsys):
 
     code, log = _run(ProtoError("field 3 is cut short"), log_file)
     assert code == 1
-    assert capsys.readouterr().err.strip() == "Error: field 3 is cut short"
+    assert capsys.readouterr().err.splitlines() == ["Error: field 3 is cut short", FAULT]
     (line,) = _lines(log_file, "unexpected error: ProtoError")
     assert " INFO " in line
     assert "Traceback (most recent call last)" in log
@@ -116,3 +118,19 @@ def test_the_answers_of_a_server_keep_their_words(error, said, log_file, capsys)
     assert code == 1
     assert capsys.readouterr().err.strip().startswith(said)
     assert "Traceback" not in log
+
+
+FAULT = ("This is a bug in openExpress. To report it, run openexpress report and attach the "
+         "output of openexpress report --log.")
+
+
+def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress(log_file, capsys):
+    code, _log = _run(RuntimeError("made-up failure"), log_file)
+    assert code == 1
+    assert capsys.readouterr().err.splitlines() == ["Error: made-up failure", FAULT]
+
+
+def test_a_file_the_system_could_not_write_says_no_fault(log_file, capsys):
+    code, _log = _run(OSError(28, "No space left on device"), log_file)
+    assert code == 1
+    assert "bug in openExpress" not in capsys.readouterr().err

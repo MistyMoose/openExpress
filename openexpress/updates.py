@@ -367,8 +367,6 @@ def _md5_key(storage: Storage, real: str, size: int, mtime: float) -> str:
 
 
 def _kept_md5() -> dict[str, str]:
-    from openexpress import paths
-
     try:
         kept = json.loads((paths.cache_dir() / MD5_KEPT).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -377,8 +375,6 @@ def _kept_md5() -> dict[str, str]:
 
 
 def _keep_md5(key: str, digest: str) -> None:
-    from openexpress import paths
-
     kept = _kept_md5()
     kept.pop(key, None)
     kept[key] = digest
@@ -1277,7 +1273,7 @@ def _install(
                     raise
                 log.info("software update: %s %s not installed (%s), the others go on",
                          u.part_number, u.version, type(e).__name__)
-                report.failed.append((u, str(e)))
+                report.failed.append((u, applog.error_text(e)))
                 refused.append(e)
                 not_written.add(u.part_number.upper())
     if report.failed and not report.written:
@@ -1343,8 +1339,6 @@ def _write_one(storage: Storage, u: SoftwareUpdate, local: Path, progress,
 def replaced_path(u: SoftwareUpdate, name: str) -> Path:
     """Where the file an update replaces in a folder the device hides is copied first: kept on
     this computer only when it could not be put back (hidden_folders.write)."""
-    from openexpress import paths
-
     return paths.data_dir() / "replaced" / f"{u.part_number}-{u.version}-{name}"
 
 

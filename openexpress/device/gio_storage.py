@@ -64,6 +64,12 @@ def _err(e: GLib.Error, what: str) -> DeviceError:
     return DeviceError(f"{what}: {e.message}")
 
 
+def _os_said(what: str, e: OSError) -> str:
+    """`what` with the system's words for `e`: not its number, nor the path of a file the user
+    does not know of (the temporary file on its way to the device)."""
+    return f"{what}: {e.strerror or e}"
+
+
 def _host_visible(path: Path) -> bool:
     """Whether the host sees the file under the same path (Flatpak shares these locations)."""
     p = str(Path(path).resolve())
@@ -102,7 +108,7 @@ def _temporary_file(what: str, keep_open: bool):
             if not keep_open:
                 os.close(fd)
         except OSError as e:
-            raise CopyNotStarted(f"{what}: {e}") from e
+            raise CopyNotStarted(_os_said(what, e)) from e
         try:
             yield (fd if keep_open else None), Path(tmp)
         finally:
@@ -191,7 +197,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
             res = subprocess.run([*command, source, target_uri],
                                  capture_output=True, text=True, timeout=HOST_COPY_TIMEOUT_S,
                                  check=False)
-        except OSError as e:  # the command could not be started
+        except OSError as e:  # the command could not be started: its name said
             raise CopyNotStarted(f"{what}: {e}") from e
         except subprocess.TimeoutExpired as e:
             raise _timed_out(what) from e
@@ -202,7 +208,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         size = Path(local).stat().st_size
         proc = subprocess.Popen([*command, "-p", source, target_uri],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except OSError as e:  # the command could not be started
+    except OSError as e:  # the command could not be started: its name said
         raise CopyNotStarted(f"{what}: {e}") from e
     errors: list[bytes] = []
     reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
@@ -240,7 +246,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         except subprocess.TimeoutExpired:
             log.warning("host copy: gio copy did not end 5 s after it was killed")
         reader.join(5)
-        raise DeviceError(f"{what}: {e}") from e
+        raise DeviceError(_os_said(what, e)) from e
     finally:
         watchdog.cancel()
     reader.join(5)
@@ -487,7 +493,7 @@ class GioStorage(Storage):
                 with os.fdopen(fd, "wb") as f:
                     f.write(data)
             except OSError as e:
-                raise CopyNotStarted(f"{what}: {e}") from e
+                raise CopyNotStarted(_os_said(what, e)) from e
             self._write_file(real_path, tmp)
 
     def _write_file(self, real_path: str, local, progress=None) -> None:
@@ -500,7 +506,7 @@ class GioStorage(Storage):
         try:
             local.stat()
         except OSError as e:
-            raise CopyNotStarted(f"{what}: {e}") from e
+            raise CopyNotStarted(_os_said(what, e)) from e
         # What the target is before the copy: the evidence _discard_partial goes by.
         self._attempts[real_path] = _Attempt(self._size_now(real_path))
         try:
@@ -518,7 +524,7 @@ class GioStorage(Storage):
                 try:
                     shutil.copyfile(local, tmp)
                 except OSError as e:
-                    raise CopyNotStarted(f"{what}: {e}") from e
+                    raise CopyNotStarted(_os_said(what, e)) from e
                 self._copy_local(tmp, real_path, progress, what)
             return
         self._copy_local(local, real_path, progress, what)
@@ -642,7 +648,12 @@ class GioStorage(Storage):
             return None
         try:
             ptp.load_libusb()
-        except ptp.UsbUnavailable:
+        except ptp.UsbUnavailable as e:
+            # Said once: a folder the device hides is then refused the ordinary way, and the
+            # log names the reason.
+            if not _no_libusb_said:
+                _no_libusb_said.append(str(e))
+                log.info("PTP: no session of its own: %s", e)
             return None
         return _exclusive(self, node)
 
@@ -826,7 +837,6 @@ def _identify(uri: str | None, volume, monitor=None) -> GarminUsb | None:
         device = volume.get_identifier("unix-device") if volume is not None else None
         address = _UNIX_DEVICE.fullmatch(device or "")
     # An address of the older form mtp://[usb:BBB,DDD]/ carries the numbers itself.
-    # That branch is covered by tests only: it was not tried on a device.
     ids = _sysfs_ids(int(address.group(1)), int(address.group(2))) if address else None
     if ids is not None:
         if ids[0] != GARMIN_VID:
@@ -1067,6 +1077,7 @@ def drives_on_usb() -> frozenset[UsbAddress]:
 TEST_DRIVE_ENV = "OPENEXPRESS_TEST_DRIVE_USB"
 _TEST_DRIVE_IDS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
 _test_drive_said: set[str] = set()  # the warnings about it already in the log
+_no_libusb_said: list[str] = []  # why libusb could not be loaded, once in the log
 
 
 def _warn_once(key: str, *message) -> None:
@@ -1312,10 +1323,9 @@ def open_ums_storage(dev: FoundDevice) -> UmsStorage:
     return st
 
 
-# When this process mounted a device (by its address, _key), or first found it mounted, for the
-# log of a stall: a mount this process did not make may be older than the process, and gvfs-mtp
-# asks a mounted device something only every 900 s.
-# When a device was mounted, by its address and its place on USB (None: not known): unplugged
+# When this process mounted a device, or first found it mounted, for the log of a stall: a mount
+# this process did not make may be older than the process, and gvfs-mtp asks a mounted device
+# something only every 900 s. By its address and its place on USB (None: not known): unplugged
 # and plugged in again, a device has the same address of gvfs but a new device number.
 _mounted_here: dict[tuple, float] = {}
 _found_mounted: dict[tuple, float] = {}

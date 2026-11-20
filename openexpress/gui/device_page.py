@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import sys
 import threading
-import traceback
 import types
 from datetime import datetime
 
@@ -36,6 +35,7 @@ from openexpress import (  # noqa: E402
     sync,
     tile_facts,
 )
+from openexpress.applog import error_text  # noqa: E402
 from openexpress.connect import ApiError, NotAccountDevice, OwnershipError  # noqa: E402
 from openexpress.device.gio_storage import DeviceSummary, FoundDevice  # noqa: E402
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
@@ -71,7 +71,6 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     chip,
     confirm,
     diagnostics_state,
-    error_text,
     inform,
     log_unexpected,
     refresh_space,
@@ -263,7 +262,6 @@ def show_loaded(win, key: str, show, result) -> None:
         # Not "loading" for good: the page says so, and is read again when it is chosen again
         # (or with Try again).
         log_unexpected(f"showing the page {key}", sys.exc_info())
-        traceback.print_exc()  # to stderr too
         sec.loaded = False
         sec.clear()
         win._action_buttons = still_in_window(win._action_buttons)
@@ -495,19 +493,16 @@ def read_diagnostics(win) -> None:
             reading.set()  # also when it failed: the tasks go on
         read_satellite(s)
 
-    def done(_result) -> None:
+    def done(_result_or_error) -> None:
+        # Read or not: the row, and the page when it waits or is shown (when the reading
+        # failed, as the records tell them).
         if win.session is s:
-            status_changed(win)  # the row, and the page when it waits or is shown
-            show_satellite(win)
-
-    def failed(_error) -> None:
-        if win.session is s:
-            status_changed(win)  # the row and the page as the records tell them
+            status_changed(win)
             show_satellite(win)
 
     # Once the page is shown, not in the opening: on a watch it took 3.7-4.4 s of the
     # 4.5-5 s of an opening.
-    win.in_background(work, done, failed)
+    win.in_background(work, done, done)
 
 
 def read_satellite(s) -> None:
@@ -1497,7 +1492,7 @@ class DevicePage:
             self.map_state = "noted"
         elif held:
             self.map_state = "onboard"
-        elif any(m.installed or m.incomplete for m in all_maps):
+        elif self.map_count:
             self.map_state = "current"
         else:
             self.map_state = "empty"

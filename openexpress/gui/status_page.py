@@ -650,8 +650,7 @@ def _free_up_space(win, sec, facts: status.Facts) -> None:
         if plan is not None:
             button = win._button(_("Remove"), lambda button: confirm_dumps(win, plan, button),
                                  style="destructive-action", with_button=True)
-            button.set_tooltip_text(_dumps_answer(plan))
-            button.update_property([Gtk.AccessibleProperty.LABEL], [_dumps_answer(plan)])
+            _full_name(button, _dumps_answer(plan))
             row.add_suffix(button)
         g.add(row)
     for u in facts.not_installed:
@@ -967,8 +966,7 @@ def _diagnostic_files(win, sec, facts: status.Facts, now: datetime,
         button = win._button(pgettext("open the folder of the copies", "Open"),
                              lambda: open_copies(win, unit))
         # TRANSLATORS: the full name of the button that opens the folder of the copies
-        button.set_tooltip_text(_("Open Folder"))
-        button.update_property([Gtk.AccessibleProperty.LABEL], [_("Open Folder")])
+        _full_name(button, _("Open Folder"))
         copies.add_suffix(button)
     g.add(copies)
     if not facts.connected:
@@ -1010,9 +1008,14 @@ def _copy_button(win, name: str, cb) -> Gtk.Button:
     # TRANSLATORS: a button of the rows "Crash Logs" and "Memory Dumps" on the page Device
     # Status: copies them to this computer (the row says what); short, for a narrow window
     button = win._button(pgettext("copy diagnostic files", "Copy"), cb, with_button=True)
+    _full_name(button, name)
+    return button
+
+
+def _full_name(button: Gtk.Button, name: str) -> None:
+    """The full `name` of a button of fewer words, in its tooltip and for screen readers."""
     button.set_tooltip_text(name)
     button.update_property([Gtk.AccessibleProperty.LABEL], [name])
-    return button
 
 
 def _dumps_at_last(facts: status.Facts) -> str:

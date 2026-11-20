@@ -214,8 +214,10 @@ def _apps():
         StoreApp,
     )
 
+    ids = (uuid.UUID(int=n) for n in range(1, 10))
+
     def store(name, kind, version):
-        return InstalledApp(app_id=uuid.uuid4(), app_type=kind, name=name, disabled=False,
+        return InstalledApp(app_id=next(ids), app_type=kind, name=name, disabled=False,
                             version=version, filename="ABCDEF12", size=265_493)
 
     weather = store("Weather Forecast & Radar Widget Pro", 2, 41)
@@ -227,7 +229,7 @@ def _apps():
                                  store("Spotify", 7, 73), weather, store("Face It", 3, 42),
                                  *built_in],
                            available_space=66_000_000, available_slots=27)
-    account = [StoreApp(uuid.uuid4(), "Garmin Coach Training Plans Companion",
+    account = [StoreApp(next(ids), "Garmin Coach Training Plans Companion",
                         "Garmin Ltd or its subsidiaries", "watch-app", 238_504, 3, "3.0.2",
                         False)]
     # The update asks for new permissions: the longest line of an app.
@@ -596,10 +598,11 @@ def _iterate(seconds):
 
 
 @pytest.fixture
-def narrow_window(monkeypatch):
+def narrow_window(monkeypatch, clock):
     """A function that gives the real window in the language asked for, folded (narrower than
     its breakpoint) unless a wider `width` is asked for; nothing is detected, loaded or asked.
-    GTK's settings and the language are put back afterwards."""
+    The window's words of time are told by the made-up clock. GTK's settings and the language
+    are put back afterwards."""
     from gi.repository import Gtk
 
     from openexpress import i18n
@@ -1174,7 +1177,7 @@ def test_captions_break_only_where_they_should(narrow_window, language, page):
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
-def test_the_line_of_the_last_sync_keeps_its_separators_too(language):
+def test_the_line_of_the_last_sync_keeps_its_separators_too(language, clock):
     """When the last sync was and its numbers, joined in the command line's words (service):
     in the window "·" stays with the part before it."""
     from openexpress import i18n
@@ -1511,14 +1514,14 @@ pytestmark = [pytest.mark.needs_display,
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
-def test_the_page_from_the_records_fits_the_narrowest_window(narrow_window, language):
+def test_the_page_from_the_records_fits_the_narrowest_window(narrow_window, language, clock):
     from openexpress import status
     from openexpress.crashes import Crash
     from openexpress.gui import status_page
 
     win = narrow_window(language)
     win.set_default_size(NARROWEST, 800)
-    now = datetime.now()
+    now = clock.current
     crashes = [Crash(now - timedelta(days=2), software="21.18", error="0x003",
                      program_counter="0x10000abc", screen="2301", sources={"device log"})]
     facts = status.Facts(

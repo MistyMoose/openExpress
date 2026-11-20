@@ -277,7 +277,7 @@ def account_calls(client, device):
         "store_updates": lambda: api.updates(device, [], "en-US"),
         "store_queue_install": lambda: api.queue_install(device, []),
         "store_forget": lambda: api.forget(device, []),
-        "store_icon_urls": lambda: api.icon_urls([ciq.uuid.uuid4()]),
+        "store_icon_urls": lambda: api.icon_urls([ciq.uuid.UUID(int=1)]),
     }
 
 
@@ -485,7 +485,7 @@ def test_cli_refusal_comes_after_the_device_line_also_in_a_pipe(device_root, xdg
     (store.NotLoggedIn("Not logged in."), "Error: Not logged in.", 1),
     (ApiError("Map check: HTTP 500", 500), "Server error: Map check: HTTP 500", 1),
     (requests.ConnectionError("down"),
-     "Network error: could not reach the Garmin server (down)", 1),
+     "Network error: could not reach the Garmin server (no connection)", 1),
     (KeyboardInterrupt(), "Interrupted.", 130),
 ])
 def test_cli_errors_come_after_what_was_printed(error, line, code, monkeypatch):

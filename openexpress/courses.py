@@ -490,10 +490,14 @@ def add(plan: AddPlan, device: GarminDevice, storage: Storage,
             real = storage.write_checked(plan.path, plan.data, error=CourseError)
         except (DeviceNotResponding, CourseError):
             raise
-        except (DeviceError, OSError) as e:
+        except DeviceError as e:  # its words name the file already
+            log.warning("courses: the copy failed (%s)", type(e).__name__)
+            raise CourseError(str(e)) from e
+        except OSError as e:
             log.warning("courses: the copy failed (%s)", type(e).__name__)
             failed = _("Writing {path} failed.").format(path=plan.path)
-            raise CourseError(f"{failed} ({e})") from e
+            # The system's words: not the number of the error, nor the path on this computer.
+            raise CourseError(f"{failed} ({e.strerror or e})") from e
         copies = [c for c in recorded(device.unit_id)
                   if str(c.get("file", "")).casefold() != plan.name.casefold()]
         _keep(device.unit_id, [*copies, {"file": plan.name, "courses": plan.courses,

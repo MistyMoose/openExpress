@@ -4,6 +4,7 @@ cache; the help of `cache` names its parts, that of `--path` is not for a drive;
 (CONTRIBUTING.md) names the variables of the tests, and the Flatpak permissions
 (docs/privacy.md) every folder the manifest opens."""
 
+import argparse
 import re
 from pathlib import Path
 
@@ -24,7 +25,7 @@ def _commands() -> dict:
     from openexpress import cli
 
     parser = cli.build_parser()
-    sub = next(a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction")
+    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
     return dict(sub.choices)
 
 
@@ -64,7 +65,7 @@ def test_the_help_of_cache_names_every_part():
     from openexpress.cache import CATEGORIES
 
     parser = cli.build_parser()
-    sub = next(a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction")
+    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
     line = next(c.help for c in sub._choices_actions if c.dest == "cache")
     assert [part for part in CATEGORIES if part not in line] == []
 

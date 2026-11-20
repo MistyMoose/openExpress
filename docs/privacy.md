@@ -1,14 +1,10 @@
 # Privacy and security
 
-Garmin Express exists only for Windows and macOS. openExpress is an independent implementation for
-Linux with its own code: how the Garmin services and the device's files work was learned by
-analysing the official application, solely to interoperate with them. It contains no Garmin code;
-the application key, its secret and the value that signs download addresses are read from **your
-own copy** of the official installer during setup.
-
-openExpress does contain the names by which Garmin Express introduces itself to Garmin's servers:
-its client identifiers and the values of its client headers (see
-[How openExpress identifies itself](#how-openexpress-identifies-itself)).
+openExpress contains no Garmin code: the application key, its secret and the value that signs
+download addresses are read from **your own copy** of the official installer during setup
+([What it is](../README.md#what-it-is)). It does contain the names by which Garmin Express
+introduces itself to Garmin's servers: its client identifiers and the values of its client
+headers (see [How openExpress identifies itself](#how-openexpress-identifies-itself)).
 
 ## Signing in
 
@@ -31,6 +27,9 @@ Besides the login, this installation keeps what it knows of each device in
 - the names of the files already uploaded, and the last sync;
 - copies of files whose upload failed, until they are uploaded;
 - the list of your own maps;
+- for a device that keeps satellite data in a format openExpress knows: whether **Satellite
+  Data** is on, when its files were last written or looked at and the checksums of those written
+  (`satellite.json`, `satellite-checked.json`);
 - a short log of each connection (`history.jsonl`): the software version, the storage by kind of
   file, the number and size of memory dumps, the crashes the error logs held (kind, time, error,
   where the software stopped, screen, which of the two logs), how many error logs it has and how
@@ -77,8 +76,8 @@ Otherwise the device's diagnostic files stay on this computer:
   files of more than 4 MB are only listed.
 - Only when you ask: the hidden crash logs of a fēnix 8 (its boot log and event logs) are read
   with **Copy** in the row **Crash Logs** of the Device Status page or
-  `openexpress diagnostics --crash-logs --apply`, in a session of openExpress's own; the memory
-  dumps (encrypted by Garmin) are copied with **Copy** in the row **Memory Dumps** or
+  `openexpress diagnostics --crash-logs --apply`, through openExpress's own USB session; the
+  memory dumps (encrypted by Garmin) are copied with **Copy** in the row **Memory Dumps** or
   `openexpress diagnostics --dumps --apply`.
 - Before older memory dumps are removed from the device (**Free Up Space** → **Remove** on the
   Device Status page, `openexpress diagnostics --free-space --apply`), those that fit are copied
@@ -150,11 +149,23 @@ The map data is © OpenStreetMap contributors, under the Open Database License.
   map of the answer or a map of your own). openExpress does not remove them yet.
 - A write to the device that fails leaves no half-written file: what was written of it is
   deleted, and when the copy did not start, the file that was there stays. On a device in mass
-  storage mode the new file is written beside the old one and only then takes its place.
+  storage mode the new file is written beside the old one and only then takes its place. In a
+  car navigator's hidden `.System` the old file is deleted first, as Garmin Express does; when
+  the new one then fails, the message says what is on the device. In a folder a watch hides, the
+  old file is copied to this computer first and put back when the new one fails (below).
 - After such a failure the list of apps waiting for the device (`IN.BIN`) is put back as it was,
   or, if even that fails, deleted, and the message says that the changes are lost.
 - Software updates and maps: the downloaded files are verified (size, MD5) and copied to the
   device only after all files have been downloaded. The RGN format (older devices) is rejected.
+- To know an update file it wrote or read whole on the device without reading it again,
+  openExpress's cache keeps `md5-on-device.json` (at most 300 entries): a hash of the device's
+  address (never the address, which carries its serial number), the file's path, size, time on
+  the device and MD5.
+- When an update replaces a file in a folder a watch hides, that file is first copied to
+  `~/.local/share/openexpress/replaced/` (in the Flatpak under
+  `~/.var/app/io.github.tomaszbojanowski.OpenExpress/data/openexpress/`) and deleted again once the
+  new one is checked or the old one is put back; it stays only when it could not be put back, and
+  the message names it.
 
 ## Uploads
 
@@ -196,12 +207,12 @@ Of the update server's answer:
 - The market segment also tells whether an update erases the device's data.
 - The log names only the map update type (which map service Garmin uses for the model) and, for
   a device whose kind Garmin does not tell otherwise, the market segment and the connect support,
-  always with the part number only, as it names the account's categories of such a device.
+  always with the part number only, never the Unit ID.
 
 With **Satellite Data** on for a device, each sync asks `api.gcs.garmin.com` for the current
 satellite data file (for a fēnix 8, each of its two files when the watch's is old enough; for an
-Edge 1050, its one file `GPES.bin`). The requests carry no account, unit ID or other detail of
-the device (Garmin Express sends the unit ID and the software version with some of them); each
+Edge 1050, its one file `GPES.bin`). The requests carry no account, Unit ID or other detail of
+the device (Garmin Express sends the Unit ID and the software version with some of them); each
 file is kept in the cache for up to four hours, and after the server asks to wait (HTTP 429),
 nothing is asked until the time it gives.
 
@@ -248,15 +259,6 @@ files only you can read), each answer for its own time:
 - Uploads, the consents, the queue of Garmin Connect and every change to the account are always
   asked anew.
 - Signing out deletes what is kept of the account, on disk too.
-
-Of the device's update files, the cache keeps `md5-on-device.json` (at most 300 entries): for a
-file the program wrote or read whole on the device, a hash of the device's address (never the
-address, which carries its serial number), the file's path, size, time on the device and MD5,
-so that the same file is not read again. When an update replaces a file in a folder the device
-hides, that file is copied to `~/.local/share/openexpress/replaced/` first (in the Flatpak under
-`~/.var/app/io.github.tomaszbojanowski.OpenExpress/data/openexpress/`) and deleted again once the
-new one is checked or the old one is put back; it stays only when it could not be put back, and
-the message names it.
 - Answers out of date leave the disk when the program starts.
 - `openexpress cache --clear --only answers --apply`, or the row **Garmin Server Responses** in
   Preferences → **Storage**, deletes what is kept. Nothing of it is ever sent anywhere.
@@ -296,19 +298,23 @@ Besides these, it has three permissions that weaken the sandbox:
    - If you prefer not to grant it, use the [version from source](install.md#from-source):
      writing to the device then works without it.
 2. It can open USB devices (`--device=usb`: the nodes in `/dev/bus/usb`, nothing else of `/dev`).
-   - It uses this only for three things that need a direct USB connection: Connect IQ apps on
-     devices that hide their app folder (e.g. the fēnix 8: installing, updating and removing
-     them), reading the hidden crash logs of such a device when you ask, and the folder a car
-     navigator hides (`.System`): reading the names and sizes of its files, once a connection,
-     and writing there the navigator's software updates, its time zone map and, as a
+   - It uses this only where openExpress needs its own USB session: Connect IQ apps on devices
+     that hide their app folder (e.g. the fēnix 8: installing, updating and removing them);
+     software updates for folders a watch hides inside `GARMIN` (on a fēnix 8: voice prompts,
+     speech and keyboard models, fonts); satellite data (experimental: `GPE.bin` and `GPES.bin`
+     of a fēnix 8, `GPES.bin` of an Edge 1050); the hidden crash logs, when you ask; and the
+     folder a car navigator hides (`.System`): reading the names and sizes of its files, once a
+     connection, and writing there the navigator's software updates, its time zone map and, as a
      command-line trial, a map, when you install them.
      The device disappears from the file manager for a moment while it is used.
    - To turn it off: `flatpak override --user --nodevice=usb io.github.tomaszbojanowski.OpenExpress`.
      A Flatpak older than 1.16 does not know this permission and runs as without it.
    - Without it, on devices that hide their app folder, installs and updates are only queued in
      Garmin Connect, from where the phone or Garmin Express installs them; apps are removed on the
-     phone; nothing is written to the device; the hidden crash logs and a navigator's hidden
-     folder cannot be read, and nothing is installed into that folder.
+     phone; nothing is written to the device; updates for a folder a watch hides are not
+     installed, and the Updates page says so; satellite data that needs the session is not
+     written; the hidden crash logs and a navigator's hidden folder cannot be read, and nothing
+     is installed into that folder.
 3. It can read and write the drives the system mounts under `/run/media` and `/media`
    (`--filesystem=/run/media`, `--filesystem=/media`): every removable drive mounted there (USB
    sticks, memory cards, external disks), not only Garmin devices.

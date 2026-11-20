@@ -27,12 +27,12 @@
   minute with a small drive beside it): openExpress cannot use it. The window says so with
   the device's name and USB ID, and commands end with the same words (exit code 1). A report
   still works and says what is connected ([Reporting a problem](#reporting-a-problem)).
-- **"Cannot create directory GARMIN/PROMPTS" (or ASR, KBD, ExtData).** Some watches keep part
-  of their files (voice prompts, speech recognition and keyboard models) in folders that the
-  ordinary USB connection does not show. In older versions of openExpress, an update for such a
-  file ended with this error and stopped Install All. openExpress now writes these files
-  through its own USB connection, as it already does for a car navigator, and checks each one
-  after the copy. Update openExpress and click Install All again.
+- **"Cannot create directory GARMIN/PROMPTS" (or ASR, KBD, ExtData).** A watch such as the
+  fēnix 8 keeps voice prompts, speech and keyboard models and fonts in folders the ordinary USB
+  connection does not show. This error comes from an openExpress that wrote there through gvfs:
+  update openExpress, which writes these files through its own USB session, and click
+  **Install All** again. In the Flatpak this needs its USB permission
+  ([Flatpak permissions](privacy.md#flatpak-permissions)).
 - **"This user has no access to the device on USB."** The device is connected, but the user
   running openExpress may not open it, for example when openExpress runs over SSH or as another
   user than the one at the computer's screen; then gvfs cannot offer it either. Run openExpress

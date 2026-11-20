@@ -1023,7 +1023,7 @@ def satellite_reason(reason: str | None) -> str:
         # e.g. "14:05"
         return _("Garmin's server asks to wait until {time}").format(time=f"{until:%H:%M}")
     if reason and reason.startswith(satellite.NETWORK):
-        return reason[len(satellite.NETWORK):]  # the network error, as the log tells it
+        return reason[len(satellite.NETWORK):]  # the words of the network error
     return reason or ""
 
 

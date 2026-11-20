@@ -130,7 +130,7 @@ def test_exchange_ticket_missing_secret(monkeypatch, server):
     assert c.exchange_ticket("T", "svc") == ("abc", "def")
 
 
-def test_a_network_error_in_the_ticket_exchange_does_not_show_the_ticket(monkeypatch):
+def test_a_network_error_in_the_ticket_exchange_does_not_show_the_ticket(monkeypatch, caplog):
     ticket = "ST-0123456-AbCdEfGhIjKlMnOp-cas"
 
     def refused(self, method, url, **kw):
@@ -144,13 +144,15 @@ def test_a_network_error_in_the_ticket_exchange_does_not_show_the_ticket(monkeyp
 
     monkeypatch.setattr(requests.Session, "request", refused)
     c = GarminClient(Settings(client_guid="g"), Consumer("ckey", "csecret"))
-    with pytest.raises(ApiError) as error:
+    with caplog.at_level(logging.INFO, logger="openexpress"), \
+            pytest.raises(ApiError) as error:
         c.exchange_ticket(ticket, "https://sso.garmin.com/sso/embed")
-    text = str(error.value)  # what the window and the command line show
-    assert "ST-" not in text and "AbCdEfGhIjKlMnOp" not in text
-    # It still says what happened, and with which server.
-    assert text.startswith("Ticket exchange: network error (")
-    assert "connectapi.garmin.com" in text and "Connection refused" in text
+    # What the window and the command line show.
+    assert str(error.value) == "Ticket exchange: network error (no connection)"
+    # The log file says what happened, and with which server, without the ticket.
+    (logged,) = [r.getMessage() for r in caplog.records if "HTTPSConnectionPool" in r.getMessage()]
+    assert "ST-" not in logged and "AbCdEfGhIjKlMnOp" not in logged
+    assert "connectapi.garmin.com" in logged and "Connection refused" in logged
 
 
 # --- polling where an upload is processed -----------------------------------------------

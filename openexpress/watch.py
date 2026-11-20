@@ -32,16 +32,16 @@ from openexpress.progress import nothing  # noqa: E402
 log = logging.getLogger(__name__)
 OPEN_RETRIES = 3
 OPEN_RETRY_DELAY_S = 5
+SYNC_DELAY_S = 5  # from a Garmin device's mount to its sync
 
 
 class Watcher(Gio.Application):
-    def __init__(self, delay_s: int = 5):
+    def __init__(self):
         # The GUI's ID with ".Watch" (its own launcher: desktop.files): notifications get
         # the app icon and name.
         # Unique: a second start (autostart + GUI switch) just exits.
         super().__init__(application_id=APP_ID + ".Watch",
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
-        self.delay_s = delay_s
         self.running = False
         self.pending = False
         self.quit_requested = False
@@ -60,7 +60,7 @@ class Watcher(Gio.Application):
         # The watch may have been connected before the service started.
         for m in self.monitor.get_mounts():
             if garmin_usb(m, self.monitor):
-                GLib.timeout_add_seconds(self.delay_s, self.start_sync)
+                GLib.timeout_add_seconds(SYNC_DELAY_S, self.start_sync)
 
     def do_activate(self):
         pass
@@ -74,7 +74,7 @@ class Watcher(Gio.Application):
         if own_remount(mount):
             return  # mounted again by our own install, not plugged in
         if garmin_usb(mount):
-            GLib.timeout_add_seconds(self.delay_s, self.start_sync)
+            GLib.timeout_add_seconds(SYNC_DELAY_S, self.start_sync)
 
     def request_quit(self) -> None:
         """Quit now, or after the running sync (never interrupt writes to the watch)."""

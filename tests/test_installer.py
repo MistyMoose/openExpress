@@ -357,7 +357,7 @@ def test_the_preferences_say_which_installer(monkeypatch):
                    set_background=lambda on, done=None: None, choose_dll=lambda: None,
                    error=lambda title, text: None, run_task=None, toast=None)
     for name in ("_button", "_cache_group", "_ask_clear_cache", "_account_group",
-                 "_account_action"):
+                 "_account_action", "_auto_sync_row"):
         setattr(win, name, types.MethodType(getattr(MainWindow, name), win))
     MainWindow.show_preferences(win)
     (setup,) = [g for g in groups if g.get_title() == "Setup"]
@@ -524,7 +524,7 @@ def test_the_wix_layout_still_gives_both(monkeypatch, tmp_path):
     assert found
 
 
-def test_the_two_new_texts_in_polish(tmp_path):
+def test_the_refusals_of_an_installer_in_polish(tmp_path):
     from openexpress import i18n
 
     other = tmp_path / "inny.exe"

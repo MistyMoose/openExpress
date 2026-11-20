@@ -80,8 +80,8 @@ Checked by the developer over MTP:
   kind of file; Free Up Space removed five older memory dumps (44.9 MB) after copying them, the
   checksums of the copies matching, and the newest dump stayed; the page from the records once
   the watch was unplugged, and the ordinary page again once it was plugged in.
-- Not tested on this watch yet: updating a Connect IQ app, installing a software update, the
-  button **Copy Crash Logs** of the Device Status page (over PTP).
+- Not tested on this watch yet: updating a Connect IQ app, the button **Copy Crash Logs** of the
+  Device Status page (over PTP).
 
 ### Edge 1050
 
@@ -152,11 +152,9 @@ and in the version from source:
 - Once its drive is ejected, a watch in this mode switches to its Garmin USB mode, which
   openExpress does not use: unplug the cable and plug it in again to use it again.
 
-Tested in this mode: by the developer on the Varia RTL515 (also copying a component update and
-ejecting the drive in the window); users report software updates working on an inReach Mini 2, a
-Forerunner 55, a Forerunner 920XT, a Forerunner 45 and an Edge 820, and sync on an Instinct 2S, a
-Forerunner 45 and a Forerunner 55 (see the table). Reports from other devices in mass storage
-mode are welcome.
+Tested in this mode by the developer on the Varia RTL515 (also copying a component update and
+ejecting the drive in the window), and by users on the devices marked *USB drive* in the table.
+Reports from other devices in mass storage mode are welcome.
 
 ### HID only
 

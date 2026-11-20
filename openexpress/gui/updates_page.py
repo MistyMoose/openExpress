@@ -18,6 +18,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import answers, known_devices, service  # noqa: E402
+from openexpress.applog import error_text  # noqa: E402
 from openexpress.connect import ApiError  # noqa: E402
 from openexpress.device.gio_storage import (  # noqa: E402
     DriveNotMounted,
@@ -32,7 +33,6 @@ from openexpress.gui.window_tasks import (  # noqa: E402
     WRAP_BOX,
     Answer,
     confirm,
-    error_text,
     inform,
     still_in_window,
     wrapping_row,

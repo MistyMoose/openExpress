@@ -192,7 +192,7 @@ msgstr "Spróbuj ponownie"
 #: openexpress/auth/sso.py
 #, python-brace-format
 msgid "Sign in to Garmin"
-msgstr "Zaloguj się do Garmin"
+msgstr "Zaloguj się do Garmina"
 
 #: openexpress/auth/sso.py
 #, python-brace-format
@@ -1030,9 +1030,9 @@ msgstr "{position}: {new} (teraz: {old})"
 #, ignore-same, ignore-same-plurals, python-brace-format
 msgid "… and {count} more"
 msgid_plural "… and {count} more"
-msgstr[0] "… i {count} więcej"
-msgstr[1] "… i {count} więcej"
-msgstr[2] "… i {count} więcej"
+msgstr[0] "… i jeszcze {count}"
+msgstr[1] "… i jeszcze {count}"
+msgstr[2] "… i jeszcze {count}"
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -1634,7 +1634,7 @@ msgstr "Oprogramowanie:"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Unit ID:"
-msgstr "Identyfikator urządzenia:"
+msgstr "Unit ID:"
 
 #. TRANSLATORS: label in `openexpress info`, followed by where the files are: the MTP
 #. storage's name or "USB drive (…)"
@@ -2013,7 +2013,7 @@ msgstr "Utworzony: {when}"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Messages: {kinds}, {count} in all"
-msgstr "Wiadomości: {kinds}, łącznie {count}"
+msgstr "Komunikaty: {kinds}, łącznie {count}"
 
 #. TRANSLATORS: fit inspect: fills {kinds} in "Messages: {kinds}, {count} in all": how many
 #. kinds of messages
@@ -2029,7 +2029,7 @@ msgstr[2] "{count} rodzajów"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "message {number}"
-msgstr "wiadomość {number}"
+msgstr "komunikat {number}"
 
 #. TRANSLATORS: fit inspect: the file has developer data (fields that Connect IQ apps add)
 #: openexpress/cli.py
@@ -2769,7 +2769,7 @@ msgid ""
 "--hidden-folder-trial takes the part numbers of the updates to try, not "
 "“all”."
 msgstr ""
-"--hidden-folder-trial przyjmuje numery części aktualizacji do próby, nie "
+"--hidden-folder-trial przyjmuje numery katalogowe aktualizacji do próby, nie "
 "„all”."
 
 #. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`
@@ -3117,7 +3117,7 @@ msgstr[2] "Zapisano {count} plików map."
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Unlock files written: {count}"
-msgstr "Zapisane pliki odblokowujące: {count}"
+msgstr "Zapisane pliki odblokowania: {count}"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3175,7 +3175,7 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "No copies of the app list in {path}."
-msgstr "Nie znaleziono kopii listy aplikacji w katalogu {path}."
+msgstr "Nie znaleziono kopii listy aplikacji w folderze {path}."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4081,8 +4081,8 @@ msgid ""
 "A second entry with the same name would hide it. Use --force to install "
 "anyway, or turn on background sync in the Flatpak window."
 msgstr ""
-"Zainstalowany jest Flatpak openExpress, który dodaje już skrót w menu. Drugi "
-"skrót o tej samej nazwie by go zasłonił. Użyj --force, aby mimo to "
+"Zainstalowany jest Flatpak openExpressu, który dodaje już skrót w menu. "
+"Drugi skrót o tej samej nazwie by go zasłonił. Użyj --force, aby mimo to "
 "zainstalować, albo włącz synchronizację w tle w oknie wersji Flatpak."
 
 #. TRANSLATORS: CLI install-desktop: a file of the launcher, icon or service that was
@@ -4126,12 +4126,12 @@ msgstr "opcje"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "show this help message and exit"
-msgstr "wyświetla tę pomoc i kończy działanie"
+msgstr "wyświetl tę pomoc i zakończ"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "show program's version number and exit"
-msgstr "wyświetla wersję programu i kończy działanie"
+msgstr "wyświetl wersję programu i zakończ"
 
 #: openexpress/cli.py
 #, python-format, python-brace-format
@@ -4326,7 +4326,7 @@ msgstr "pliki FIT na tym komputerze"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "what a FIT file holds: its type, its messages and whether it is whole"
-msgstr "co zawiera plik FIT: jego typ, wiadomości i czy jest cały"
+msgstr "co zawiera plik FIT: jego typ, komunikaty i czy jest cały"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4468,7 +4468,7 @@ msgstr "sprawdź token na serwerze"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "upload configuration from the Garmin server (OMT)"
-msgstr "konfiguracja wysyłania z serwera Garmin (OMT)"
+msgstr "konfiguracja wysyłania z serwera Garmina (OMT)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4508,7 +4508,7 @@ msgstr "tylko podany typ danych (można powtarzać)"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "also upload device diagnostics and telemetry to Garmin"
-msgstr "wysyłaj także diagnostykę i telemetrię urządzenia do Garmin"
+msgstr "wysyłaj także diagnostykę i telemetrię urządzenia do Garmina"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4528,7 +4528,7 @@ msgstr "lokalna kopia zapasowa danych urządzenia"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "destination directory (default: {path})"
-msgstr "katalog docelowy (domyślnie: {path})"
+msgstr "folder docelowy (domyślnie: {path})"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4553,7 +4553,7 @@ msgstr "wyświetl także pozycje dostępne do ponownej instalacji"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "part numbers to install, or “all”"
-msgstr "numery części do zainstalowania lub „all”"
+msgstr "numery katalogowe do zainstalowania lub „all”"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4639,7 +4639,7 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "remove a map of your own that was copied with “maps add”"
-msgstr "usuwa własną mapę skopiowaną przez „maps add”"
+msgstr "usuń własną mapę skopiowaną przez „maps add”"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4649,7 +4649,7 @@ msgstr "usuń mapę z urządzenia"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "copy a map of your own (.img) to the device"
-msgstr "kopiuje własną mapę (.img) na urządzenie"
+msgstr "skopiuj własną mapę (.img) na urządzenie"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4724,7 +4724,7 @@ msgid ""
 "copy a GPX file to the device, which makes courses of its tracks and routes "
 "(experimental)"
 msgstr ""
-"kopiuje plik GPX na urządzenie, które zrobi kursy z jego śladów i tras "
+"skopiuj plik GPX na urządzenie, które zrobi kursy z jego śladów i tras "
 "(eksperymentalne)"
 
 #: openexpress/cli.py
@@ -4748,7 +4748,7 @@ msgstr "skopiuj plik na urządzenie"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "remove a course or a GPX file waiting for the device (experimental)"
-msgstr "usuwa kurs albo plik GPX czekający na urządzenie (eksperymentalne)"
+msgstr "usuń kurs albo plik GPX czekający na urządzenie (eksperymentalne)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4860,17 +4860,17 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "put the apps back in the order of a saved app list"
-msgstr "przywraca kolejność aplikacji z zapisanej kopii listy"
+msgstr "przywróć kolejność aplikacji z zapisanej kopii listy"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "a copy of the app list: part of its folder name, or a path"
-msgstr "kopia listy aplikacji: część nazwy jej katalogu albo ścieżka"
+msgstr "kopia listy aplikacji: część nazwy jej folderu albo ścieżka"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "list every position that would change"
-msgstr "wypisuje każdą pozycję, która by się zmieniła"
+msgstr "wypisz każdą pozycję, która by się zmieniła"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4983,7 +4983,7 @@ msgstr "zamiast tego usuń skrót w menu, ikonę i usługę"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "install even if the Flatpak of openExpress is installed"
-msgstr "zainstaluj nawet wtedy, gdy zainstalowany jest Flatpak openExpress"
+msgstr "zainstaluj nawet wtedy, gdy zainstalowany jest Flatpak openExpressu"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4999,7 +4999,7 @@ msgstr "URI urządzenia MTP, np. {example}"
 #, python-brace-format
 msgid "do not wait for a device that was just plugged in and is still starting"
 msgstr ""
-"nie czeka na urządzenie, które dopiero podłączono i które jeszcze się "
+"nie czekaj na urządzenie, które dopiero podłączono i które jeszcze się "
 "uruchamia"
 
 #: openexpress/cli.py
@@ -5036,7 +5036,7 @@ msgstr "Błąd serwera: {error}"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Network error: could not reach the Garmin server ({error})"
-msgstr "Błąd sieci: nie można połączyć się z serwerem Garmin ({error})"
+msgstr "Błąd sieci: nie można połączyć się z serwerem Garmina ({error})"
 
 #. TRANSLATORS: CLI: the command was stopped with Ctrl+C
 #: openexpress/cli.py
@@ -6085,8 +6085,7 @@ msgstr "Nie pobrano {url}: pliki są pobierane tylko przez HTTPS"
 #: openexpress/download.py
 #, python-brace-format
 msgid "The server gave no MD5 checksum for this file, so it was not downloaded"
-msgstr ""
-"Serwer nie podał sumy kontrolnej MD5 tego pliku, więc nie został pobrany"
+msgstr "Serwer nie podał sumy kontrolnej MD5 tego pliku, więc go nie pobrano"
 
 #: openexpress/download.py
 #, python-brace-format
@@ -6708,8 +6707,8 @@ msgid ""
 "Wait until it finishes before closing openExpress, so that no files on the "
 "device are left half-written."
 msgstr ""
-"Poczekaj na jej zakończenie przed zamknięciem openExpress, aby żaden plik na "
-"urządzeniu nie został zapisany tylko częściowo."
+"Poczekaj na jej zakończenie przed zamknięciem openExpressu, aby żaden plik "
+"na urządzeniu nie został zapisany tylko częściowo."
 
 #: openexpress/gui/app.py
 #, python-brace-format
@@ -8233,7 +8232,7 @@ msgstr "Plik {path} ({size}) zostanie usunięty z urządzenia."
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid "openExpress did not copy this map to the device."
-msgstr "Tej mapy nie wgrał openExpress."
+msgstr "openExpress nie skopiował tej mapy na urządzenie."
 
 #. TRANSLATORS: button that removes an own map openExpress did not copy to the device
 #: openexpress/gui/maps_page.py
@@ -8375,7 +8374,7 @@ msgstr "Dodaj na urządzenie"
 #: openexpress/gui/music_page.py
 #, python-brace-format
 msgid "Folders…"
-msgstr "Katalogi…"
+msgstr "Foldery…"
 
 #. TRANSLATORS: button beside Music, Podcasts or Audiobooks: chooses files to copy to the
 #. device
@@ -8532,7 +8531,7 @@ msgid ""
 "Downloads folders."
 msgstr ""
 "openExpress zainstalowany jako Flatpak może odczytywać muzykę tylko "
-"z katalogów Muzyka i Pobrane."
+"z folderów Muzyka i Pobrane."
 
 #. TRANSLATORS: toast after a playlist was added to the device
 #: openexpress/gui/music_page.py
@@ -8815,7 +8814,7 @@ msgstr "Język"
 #: openexpress/gui/preferences.py
 #, python-brace-format
 msgid "System default"
-msgstr "Domyślny systemu"
+msgstr "Język systemu"
 
 #: openexpress/gui/preferences.py
 #, python-brace-format
@@ -9465,7 +9464,7 @@ msgstr "Wolne"
 msgid ""
 "Another task is running – free up space or copy diagnostic files when it ends"
 msgstr ""
-"Trwa inne zadanie – po nim zwolnisz miejsce lub skopiujesz pliki "
+"Trwa inne zadanie – gdy się skończy, zwolnij miejsce lub skopiuj pliki "
 "diagnostyczne"
 
 #. TRANSLATORS: group of the page Device Status
@@ -9519,9 +9518,9 @@ msgstr "Szczegóły kategorii"
 #, python-brace-format
 msgid "the same error as the one before"
 msgid_plural "the same error as the {count} before"
-msgstr[0] "ten sam błąd co poprzednia"
-msgstr[1] "ten sam błąd co {count} wcześniejsze"
-msgstr[2] "ten sam błąd co {count} wcześniejszych"
+msgstr[0] "ten sam błąd co w poprzedniej"
+msgstr[1] "ten sam błąd co w {count} wcześniejszych"
+msgstr[2] "ten sam błąd co w {count} wcześniejszych"
 
 #. TRANSLATORS: a row of "Crashes and Updates" on the page Device Status
 #: openexpress/gui/status_page.py
@@ -10570,7 +10569,7 @@ msgstr "Nie zsynchronizowano"
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "Never synced by this installation of openExpress"
-msgstr "Ta instalacja openExpress nie synchronizowała tego urządzenia"
+msgstr "Ta instalacja openExpressu nie synchronizowała tego urządzenia"
 
 #. TRANSLATORS: the subtitle of "Last Sync" after the files of the device were marked as
 #. uploaded without a sync (or synced by an old version)
@@ -12105,7 +12104,7 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid "Writing the unlock file again ({attempt} of {tries})"
-msgstr "Ponawianie zapisu pliku odblokowującego ({attempt} z {tries})"
+msgstr "Ponawianie zapisu pliku odblokowania ({attempt} z {tries})"
 
 #: openexpress/maps.py
 #, python-brace-format
@@ -12459,7 +12458,7 @@ msgid ""
 "may have been copied by hand or by another installation), so it is not "
 "removed. Delete it in the file manager if you want it gone."
 msgstr ""
-"Plik {name} nie został skopiowany przez tę instalację openExpress (mógł "
+"Plik {name} nie został skopiowany przez tę instalację openExpressu (mógł "
 "zostać skopiowany ręcznie albo przez inną instalację), więc nie zostanie "
 "usunięty. Jeśli chcesz go usunąć, zrób to w menedżerze plików."
 
@@ -12955,7 +12954,7 @@ msgstr "temperatura skóry"
 #: openexpress/service.py
 #, python-brace-format
 msgid "primary training device data"
-msgstr "dane urządzenia głównego"
+msgstr "dane podstawowego urządzenia treningowego"
 
 #. TRANSLATORS: a type of data: a Garmin Coach training plan (Garmin Coach is a name)
 #: openexpress/service.py
@@ -13132,7 +13131,7 @@ msgstr[2] ""
 #: openexpress/service.py
 #, python-brace-format
 msgid "TrueUp: daily totals aligned with your other Garmin devices"
-msgstr "TrueUp: dzienne podsumowania uzgodnione z innymi urządzeniami Garmin"
+msgstr "TrueUp: dzienne sumy uzgodnione z innymi urządzeniami Garmin"
 
 #. TRANSLATORS: a line of the details of "Last Sync" and of the end of
 #. `openexpress sync --apply`
@@ -13294,8 +13293,8 @@ msgid ""
 "Uploads skipped: {host}, Garmin's server that says what to upload, could not "
 "be reached ({error})."
 msgstr ""
-"Wysyłka pominięta: nie udało się połączyć z {host}, serwerem Garmina, który "
-"wskazuje, co wysłać ({error})."
+"Wysyłanie pominięte: nie udało się połączyć z {host}, serwerem Garmina, "
+"który wskazuje, co wysłać ({error})."
 
 #: openexpress/service.py
 #, python-brace-format
@@ -13303,7 +13302,7 @@ msgid ""
 "Uploads skipped: {host}, Garmin's server that says what to upload, answered "
 "with an error ({error})."
 msgstr ""
-"Wysyłka pominięta: {host}, serwer Garmina, który wskazuje, co wysłać, "
+"Wysyłanie pominięte: {host}, serwer Garmina, który wskazuje, co wysłać, "
 "odpowiedział błędem ({error})."
 
 #: openexpress/service.py
@@ -13314,7 +13313,7 @@ msgstr "Nie zalogowano do Garmin Connect."
 #: openexpress/service.py
 #, python-brace-format
 msgid "Fetching configuration from the Garmin server…"
-msgstr "Pobieranie konfiguracji z serwera Garmin…"
+msgstr "Pobieranie konfiguracji z serwera Garmina…"
 
 #: openexpress/service.py
 #, python-brace-format
@@ -13988,7 +13987,7 @@ msgstr ""
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Copy music, podcasts and audiobooks, with playlists"
-msgstr "Kopiowanie muzyki, podcastów i audiobooków, z playlistami"
+msgstr "Kopiowanie muzyki, podcastów i audiobooków, z listami odtwarzania"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid ""

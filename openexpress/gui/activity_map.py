@@ -618,13 +618,10 @@ def _just_before(before, at) -> tuple[float, float]:
     return at[0] - dx * back, at[1] - dy * back
 
 
-def _by_colour(runs, colours) -> dict[str | None, list[list[int]]]:
+def _by_colour(runs, colours: list[str]) -> dict[str, list[list[int]]]:
     """The runs cut into pieces of one colour, each piece in the colour of the point it
-    starts at and reaching the next piece's first point; without colours, the runs as they
-    are (None: the track's colour)."""
-    if colours is None:
-        return {None: runs}
-    out: dict[str | None, list[list[int]]] = {}
+    starts at and reaching the next piece's first point."""
+    out: dict[str, list[list[int]]] = {}
     for run in runs:
         if len(run) == 1:
             out.setdefault(colours[run[0]], []).append(run)

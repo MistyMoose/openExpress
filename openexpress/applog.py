@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from openexpress import __version__, i18n, paths
+from openexpress.errors import UserFacingError
 from openexpress.i18n import _
 
 LOG_NAME = "openexpress.log"
@@ -153,10 +154,38 @@ _ERROR_ADDRESS = re.compile(r"(with url: |\b[a-z][a-z0-9+.-]*://)[^\s'\"()]+")
 
 
 def network_error_text(error) -> str:
-    """The text of a network error for the user and the log: without the address it names
-    (its query may carry a unit ID or the signature of a download), then filtered as every
-    line of the log is."""
+    """The words of a network error for the user, those of the state of Garmin's servers: "no
+    connection" when no server answered (none reached, or none in time), the status of an
+    answer with an error; any other error (a certificate refused, as by the sign-in page of a
+    hotel's network) as network_error_detail tells it."""
+    import requests
+
+    if isinstance(error, requests.HTTPError) and error.response is not None:
+        return _("server error (HTTP {status})").format(status=error.response.status_code)
+    if (isinstance(error, (requests.ConnectionError, requests.Timeout))
+            and not isinstance(error, requests.exceptions.SSLError)):
+        return _("no connection")
+    return network_error_detail(error)
+
+
+def network_error_detail(error) -> str:
+    """The text of a network error for the log, the words of requests: without the address it
+    names (its query may carry a unit ID or the signature of a download), then filtered as
+    every line of the log is."""
     return redact(_ERROR_ADDRESS.sub(lambda m: m.group(1) + "<address>", str(error)))
+
+
+def error_text(error: BaseException) -> str:
+    """The words of an error for the user: those of a message for the user (UserFacingError) as
+    they are, those of a network error as network_error_text gives them; those of an error
+    nobody foresaw filtered as the log is (a path, an address, a unit ID). An error without
+    words is named by its class."""
+    import requests
+
+    if isinstance(error, requests.RequestException):
+        return network_error_text(error)
+    text = str(error) or type(error).__name__
+    return text if isinstance(error, UserFacingError) else redact(text)
 
 
 def redact(text: str) -> str:

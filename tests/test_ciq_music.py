@@ -1240,7 +1240,7 @@ def test_the_apps_page_in_a_sandbox_reads_the_app_list_once_more(hidden_apps, mo
     assert st.read_paths.count(OUT_BIN) == 2
 
 
-def test_no_ptp_session_keeps_the_old_behaviour(hidden_apps, monkeypatch):
+def test_without_a_ptp_session_the_app_is_only_queued(hidden_apps, monkeypatch):
     """E.g. in a Flatpak sandbox: the folder is tried, refused, and the app only queued."""
     from openexpress.device.storage import DeviceError
 

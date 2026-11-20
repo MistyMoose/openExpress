@@ -21,8 +21,9 @@ Requirements:
 - Linux with Python 3.11+, `requests`, PyGObject 3.46+ with GTK 4, libadwaita 1.5+, WebKitGTK 6.0
   (login window) and GIO/gvfs (MTP). Optional: `7z` (7-Zip or p7zip; setup needs it only for
   a Garmin Express installer older than version 8), `mutagen` (music tags), `libusb-1.0`
-  (Connect IQ apps on devices that hide their app folder, and their hidden crash logs;
-  usually installed), libshumate 1.1+ (the map on the page of an activity; without
+  (openExpress's own USB session: Connect IQ apps and updates in folders a device hides,
+  satellite data, hidden crash logs, a car navigator's `.System`; usually installed),
+  libshumate 1.1+ (the map on the page of an activity; without
   libshumate the page says so and has no map, and with an older one the track has no
   streets under it). GNU gettext (`msgfmt`)
   builds the translations, which are not kept compiled in the repository; without it

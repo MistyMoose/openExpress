@@ -26,9 +26,8 @@ GitHub account:
   before each release: the tests are run then, and your name goes to `TRANSLATORS`. Weblate also
   brings each new text of the template into your language.
 - **In a release**: as a rule a language goes into the program once at least 90% of its texts
-  are translated; the project then adds it to `po/LINGUAS` (Weblate does not). French went in
-  earlier, so that its translator sees the work in a release: its texts not translated yet
-  stay in English.
+  are translated; the project then adds it to `po/LINGUAS` (Weblate does not). Texts not
+  translated yet stay in English.
 
 ## What not to translate
 
@@ -110,8 +109,7 @@ connected device as usual.
 ## Credits and sending a translation
 
 - Translate "translator-credits" into your name, one translator per line: the About dialog
-  shows it. Add your language and name to [TRANSLATORS](../TRANSLATORS) too.
+  shows it. The project adds your name to [TRANSLATORS](../TRANSLATORS) when it merges Weblate's
+  pull request.
 - The name of your language is not a text to translate: the project writes it in your language
   ("Deutsch", "Français") into the program, for the list of languages in the Preferences.
-- Weblate sends your translation; the project adds your language to `po/LINGUAS` with its name,
-  as a rule once at least 90% of its texts are translated, and your name to `TRANSLATORS`.

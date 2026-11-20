@@ -1,8 +1,10 @@
 """The help of the commands: the folders they use by default as the program finds them (in the
 Documents folder of the user's XDG folders, with ~ for the home folder), the folders of
 `activities` and `activities export` as DIR, the file of `fit inspect` in capitals (every name:
-test_cli_argument_names)."""
+test_cli_argument_names); each command's own page says what it does, as the list of commands
+does, and the list is not repeated in the usage line."""
 
+import argparse
 from pathlib import Path
 
 import pytest
@@ -54,3 +56,28 @@ def test_the_file_of_fit_inspect_in_capitals(capsys):
 def test_a_path_is_shown_with_a_tilde_for_the_home_folder():
     assert paths.shown_path(Path.home() / "Dokumenty" / "Garmin") == "~/Dokumenty/Garmin"
     assert paths.shown_path(Path("/srv/garmin")) == "/srv/garmin"
+
+
+def _commands(parser, words=()):
+    """Each command and subcommand: its words, its parser and its line in the list of commands."""
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            lines = {choice.dest: choice.help for choice in action._choices_actions}
+            for name, command in action.choices.items():
+                yield (*words, name), command, lines.get(name)
+                yield from _commands(command, (*words, name))
+
+
+def test_each_command_says_on_its_own_page_what_it_does(capsys):
+    commands = list(_commands(cli.build_parser()))
+    assert len(commands) > 40
+    for words, parser, line in commands:
+        assert line and parser.description == line, " ".join(words)
+    assert "sync with Garmin Connect (dry run by default)" in help_of(capsys, "sync")
+
+
+def test_the_usage_line_does_not_list_every_command(capsys):
+    said = help_of(capsys)
+    usage = " ".join(said.split("\n\n")[0].split())  # the usage line, however it is wrapped
+    assert usage.startswith("usage: openexpress ") and "COMMAND" in usage
+    assert "{setup," not in said

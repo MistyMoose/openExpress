@@ -36,8 +36,9 @@ analysing the official application, solely to interoperate with them. It contain
 the application key, its secret and the value that signs download addresses are read from **your
 own copy** of the official installer during setup.
 
-**Status:** beta. The main features work and are tested on the devices below; other Garmin
-devices that connect over USB (MTP) should work too – reports are welcome.
+**Status:** beta. The main features are tested on the developer's fēnix 8 and Edge 1050; what
+was checked on other devices is in the table below. Other Garmin devices that connect over USB
+(MTP) should work too – reports are welcome.
 
 - Syncs with Garmin Connect: new activities, sleep, HRV and other data go up; courses, workouts
   and Connect IQ apps queued in Garmin Connect come down to the device; TrueUp. A device not yet
@@ -184,33 +185,22 @@ changes anything only shows its plan until you add `--apply`. Every command:
   **Sync** button or `openexpress sync`, never in the background
   ([USB modes](docs/devices.md#usb-modes-mtp-and-mass-storage)).
 - Maps are not updated on devices whose maps Garmin serves another way than its universal map
-  service (the window and `openexpress maps` say so, and the Maps page names the map update type
-  Garmin gives the device, which helps a report). Maps go only to the device's internal memory,
-  not to a memory card.
-- A car navigator that hides the folder of its software and maps (`.System`) from the ordinary USB
-  connection, such as the Drive 53 EX ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)),
-  gets its software updates and its time zone map installed there, and reinstalled from
-  **Reinstall Components**: openExpress reads that folder through its own USB session and
-  writes them as Garmin Express does, each checked by its size and read back whole. Its maps
-  there are shown in the window; the command line can install one only as a trial
-  (`openexpress maps install NAME --hidden-folder-trial`), tried once on a Drive 53 EX with a
-  map update of 8.3 GB.
-  Voices and vehicles Garmin offers to add are not installed.
-- A watch that keeps a component in a folder it hides from the ordinary USB connection inside
-  `GARMIN` (on a fēnix 8: voice prompts in `Prompts`, speech and keyboard models in `ASR` and
-  `KBD`, fonts in `ExtData`) gets it through openExpress's own USB session, as a car navigator
-  does: a small test file first, the file it replaces copied to this computer and put back if
-  the new one is not written whole, the new one read back whole. Confirmed with the voice
-  prompts on one fēnix 8. Such a folder is known by the device naming it in `GarminDevice.xml`
-  while the ordinary listing does not show it. Where that session cannot be had (the Flatpak
-  without the USB permission), the Updates page says so once for the group and leaves its
-  **Install** button off, **Install All** installs the others, and `openexpress updates` says
-  the same.
-- GPS satellite data is written only to devices that already keep it in a format openExpress
-  knows (`CPE.BIN` of the Forerunner 45, `GPE.bin` and `GPES.bin` of the fēnix 8, `GPES.bin` of
-  the Edge 1050), and only when **Satellite Data** is turned on for them (experimental); other
-  devices get it from the phone app as before. On a watch that hides these files, such as the
-  fēnix 8, the row appears after the first sync.
+  service; the window and `openexpress maps` say so, and the Maps page names the map update type
+  Garmin gives the device, for a report. Maps go only to the device's internal memory, not to a
+  memory card.
+- A car navigator that hides its `.System` folder, such as the Drive 53 EX
+  ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)), gets its software updates
+  and its time zone map there through openExpress's own USB session. Its maps there are only
+  shown in the window; the command line installs one only as a trial
+  ([details](docs/guide.md#maps-on-a-car-navigator-a-trial)). Voices and vehicles Garmin offers
+  to add are not installed.
+- On a watch that hides a folder inside `GARMIN` from the ordinary USB connection (on a fēnix 8:
+  voice prompts, speech and keyboard models, fonts), updates for that folder need openExpress's
+  own USB session, in the Flatpak its USB permission; without it the Updates page says so, and
+  **Install All** installs the others ([Software updates](docs/guide.md#software-updates)).
+- GPS satellite data is written only to a device that already keeps it in a format openExpress
+  knows (the Forerunner 45, the fēnix 8 and the Edge 1050), and only with **Satellite Data**
+  turned on (experimental); other devices get it from the phone app.
 - ECG recordings are not uploaded: they go to Garmin Health, which needs a sign-in of its own. A
   sync leaves them on the device and says how many there are.
 - The privacy-policy consents are not checked before a sync; the upload consent is
@@ -237,8 +227,9 @@ More: [Privacy and security](docs/privacy.md).
 ### Flatpak permissions
 
 Besides a window and the network, the Flatpak may run `gio copy` on the host (gvfs lets no
-sandboxed app write to MTP devices), open USB devices (`--device=usb`: Connect IQ apps on
-watches that hide their app folder, the folder a car navigator hides) and use the drives mounted under `/run/media` and `/media`
+sandboxed app write to MTP devices), open USB devices (`--device=usb`: openExpress's own USB
+session, for Connect IQ apps and updates in folders a watch hides, satellite data, hidden crash
+logs and the folder a car navigator hides) and use the drives mounted under `/run/media` and `/media`
 (devices in mass storage mode). What each is for and how to turn it off:
 [Flatpak permissions](docs/privacy.md#flatpak-permissions).
 
@@ -259,11 +250,11 @@ also when everything works.
 
 <a href="https://hosted.weblate.org/projects/openexpress/"><img alt="Translation status on Hosted Weblate" src="https://hosted.weblate.org/widget/openexpress/openexpress/svg-badge.svg"></a>
 
-openExpress speaks English, Polish, German, Czech and, in part, French. To add your language or
-correct one, translate it in your browser on
-[Hosted Weblate](https://hosted.weblate.org/projects/openexpress/) (Polish, which the project
-keeps itself: an issue or a pull request):
-[Translating openExpress](docs/translating.md). To see your translation in the program before a
+openExpress speaks English, Polish, German, Czech and French; texts not translated yet stay in
+English. To add your language or correct one, translate it in your browser on
+[Hosted Weblate](https://hosted.weblate.org/projects/openexpress/):
+[Translating openExpress](docs/translating.md). Polish is kept by the project itself: send a
+correction as an issue or a pull request. To see your translation in the program before a
 release, see [Trying a translation in the window](docs/translating.md#trying-a-translation-in-the-window).
 
 ## Documentation

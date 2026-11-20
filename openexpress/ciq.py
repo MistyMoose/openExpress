@@ -1163,7 +1163,8 @@ def install_queued(
     report, leftover = _install_pass(device, storage, client, messages, known, only, progress,
                                      op, direct=direct)
     if leftover:
-        # The PTP session did not find their folder either: the old way, creating it.
+        # The PTP session did not find their folder either: through the mounted storage,
+        # creating the folder there.
         again, _none = _install_pass(device, storage, client, leftover, known, only, progress,
                                      op, direct=False, ptp_tried=True)
         report.installed += again.installed
@@ -1249,7 +1250,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
                 # A folder the device only hides (an app of its own has a file there, out of
                 # sight) is not asked for without a PTP session: the request is pointless and
                 # its refusal would be kept as if the folder could not be had. Once a session
-                # did not find it, it is created the old way.
+                # did not find it, it is created through the mounted storage.
                 folder_hidden = (not over_ptp and not ptp_tried and where == DIRECT
                                  and op.hides_app_files())
                 if folder_hidden or (not over_ptp
@@ -1312,7 +1313,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
             except (ApiError, AppListCopyError, DeviceNotResponding):
                 raise
             except Exception as e:  # noqa: BLE001
-                report.failed.append((name, str(e)))
+                report.failed.append((name, applog.error_text(e)))
     except BaseException:
         # Nothing was written for the apps meant for PTP; they stay in the queue.
         interrupted = True
@@ -1332,7 +1333,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
             except Exception as e:
                 for p in new_paths:
                     storage.delete_quietly(p)
-                report.failed += [(name, str(e)) for _m, name in to_ack]
+                report.failed += [(name, applog.error_text(e)) for _m, name in to_ack]
                 raise CiqError(_("Cannot register the apps on the device: {error}")
                                .format(error=e)) from e
         for m, name in to_ack:
@@ -1340,7 +1341,7 @@ def _install_pass(device, storage, client, messages, known, only, progress, op: 
                 _acknowledge(client, device, m)
             except Exception as e:  # noqa: BLE001
                 # The app is installed; the server will offer it again and it will be overwritten.
-                report.failed.append((name, str(e)))
+                report.failed.append((name, applog.error_text(e)))
                 continue
             report.installed.append(name)
     return report, leftover

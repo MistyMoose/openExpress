@@ -143,6 +143,17 @@ i18n.setup("en")
 
 # --- tests that make GTK widgets need a display ------------------------------------------------
 
+# The versions of GTK and libadwaita, set before any test imports them (setting a version opens
+# no display): a test that imports Adw before any other, in whatever order, gets no PyGIWarning.
+try:
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Gdk", "4.0")
+    gi.require_version("Adw", "1")
+except (ImportError, ValueError):  # no PyGObject or no libadwaita: as display_available() finds
+    pass
+
 
 @functools.cache
 def display_available() -> bool:
@@ -502,6 +513,16 @@ def program_locale(monkeypatch):
         os.environ.pop("LC_ALL", None)
     else:
         os.environ["LC_ALL"] = before
+
+
+@pytest.fixture(autouse=True)
+def english_after_each_test():
+    """Every test ends in English, as the tests run: a test that set another language and
+    failed before it set English back leaves no other language to the tests after it."""
+    from openexpress import i18n
+
+    yield
+    i18n.setup("en")
 
 
 @pytest.fixture(autouse=True)

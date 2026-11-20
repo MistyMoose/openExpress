@@ -409,7 +409,8 @@ def test_names_for_the_training_status_primary_device_and_coach_files():
     finally:
         i18n.setup("en")
     assert line == ("Pliki z\u00a0urządzenia: dziennik zmian ustawień, dane stanu wytrenowania, dane "
-                    "urządzenia głównego, plan Garmin Coach ×2, inne dane (FIT_TYPE_70)")
+                    "podstawowego urządzenia treningowego, plan Garmin Coach ×2, inne dane "
+                    "(FIT_TYPE_70)")
 
 
 # --- each device keeps its own last sync -----------------------------------------------------

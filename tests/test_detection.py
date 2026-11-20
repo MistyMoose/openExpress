@@ -3575,6 +3575,24 @@ def test_no_ptp_session_where_it_cannot_work(exclusive, monkeypatch, tmp_path, c
     assert st.exclusive_ptp() is None
 
 
+def test_no_libusb_is_said_in_the_log_once(exclusive, monkeypatch, caplog):
+    """Without libusb a write that needs a session of openExpress's own goes the ordinary way,
+    and a folder the device hides is refused there: the log says why, once."""
+    from openexpress.device import ptp
+
+    st, _fake, _events = exclusive
+
+    def missing():
+        raise ptp.UsbUnavailable("libusb is not available: made-up")
+
+    monkeypatch.setattr(ptp, "load_libusb", missing)
+    monkeypatch.setattr(gio_storage, "_no_libusb_said", [])
+    with caplog.at_level("INFO", logger="openexpress.device.gio_storage"):
+        assert (st.exclusive_ptp(), st.exclusive_ptp()) == (None, None)
+    said = [r.getMessage() for r in caplog.records if "libusb" in r.getMessage()]
+    assert said == ["PTP: no session of its own: libusb is not available: made-up"]
+
+
 # --- a Flatpak with the --device=usb permission ------------------------------------------
 
 

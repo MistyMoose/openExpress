@@ -516,6 +516,16 @@ def program_locale(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def english_after_each_test():
+    """Every test ends in English, as the tests run: a test that set another language and
+    failed before it set English back leaves no other language to the tests after it."""
+    from openexpress import i18n
+
+    yield
+    i18n.setup("en")
+
+
+@pytest.fixture(autouse=True)
 def log_file(tmp_path, monkeypatch) -> Path:
     """No test writes to the real log file; the log set up by a test is closed after it."""
     from openexpress import applog

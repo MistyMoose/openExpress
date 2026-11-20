@@ -648,7 +648,12 @@ class GioStorage(Storage):
             return None
         try:
             ptp.load_libusb()
-        except ptp.UsbUnavailable:
+        except ptp.UsbUnavailable as e:
+            # Said once: a folder the device hides is then refused the ordinary way, and the
+            # log names the reason.
+            if not _no_libusb_said:
+                _no_libusb_said.append(str(e))
+                log.info("PTP: no session of its own: %s", e)
             return None
         return _exclusive(self, node)
 
@@ -1072,6 +1077,7 @@ def drives_on_usb() -> frozenset[UsbAddress]:
 TEST_DRIVE_ENV = "OPENEXPRESS_TEST_DRIVE_USB"
 _TEST_DRIVE_IDS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
 _test_drive_said: set[str] = set()  # the warnings about it already in the log
+_no_libusb_said: list[str] = []  # why libusb could not be loaded, once in the log
 
 
 def _warn_once(key: str, *message) -> None:

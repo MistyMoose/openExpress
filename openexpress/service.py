@@ -1956,7 +1956,8 @@ def _install_queued_apps(s, messages, progress, errors, received: list) -> list[
     try:
         known = {a.app_id: a for a in ciq.StoreApi(s.client).account_apps(
             s.device, language_tag(s.settings.locale))}
-    except Exception:  # noqa: BLE001 - names are only cosmetic
+    except Exception as e:  # noqa: BLE001 - names are only cosmetic
+        log.info("apps: names from the store not read (%s)", type(e).__name__)
         known = {}
     try:
         rep = ciq.install_queued(s.device, s.storage, s.client, messages, known,

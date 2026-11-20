@@ -157,7 +157,7 @@ class MusicPage:
     def choose_playlist(self) -> None:
         choose_local_file(self, _("Choose a Playlist to Add to the Device"),
                           _("Playlists (.m3u, .m3u8)"), ("*.m3u", "*.m3u8", "*.M3U", "*.M3U8"),
-                          _("Choose files stored on this computer"), self.add_playlist)
+                          _("Choose a file stored on this computer"), self.add_playlist)
 
     @staticmethod
     def _copy_summary(plan) -> str:

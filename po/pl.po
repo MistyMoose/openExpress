@@ -10569,7 +10569,7 @@ msgstr "Nie zsynchronizowano"
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "Never synced by this installation of openExpress"
-msgstr "Ta instalacja openExpress nie synchronizowała tego urządzenia"
+msgstr "Ta instalacja openExpressu nie synchronizowała tego urządzenia"
 
 #. TRANSLATORS: the subtitle of "Last Sync" after the files of the device were marked as
 #. uploaded without a sync (or synced by an old version)
@@ -12954,7 +12954,7 @@ msgstr "temperatura skóry"
 #: openexpress/service.py
 #, python-brace-format
 msgid "primary training device data"
-msgstr "dane urządzenia głównego"
+msgstr "dane podstawowego urządzenia treningowego"
 
 #. TRANSLATORS: a type of data: a Garmin Coach training plan (Garmin Coach is a name)
 #: openexpress/service.py
@@ -13131,7 +13131,7 @@ msgstr[2] ""
 #: openexpress/service.py
 #, python-brace-format
 msgid "TrueUp: daily totals aligned with your other Garmin devices"
-msgstr "TrueUp: dzienne podsumowania uzgodnione z innymi urządzeniami Garmin"
+msgstr "TrueUp: dzienne sumy uzgodnione z innymi urządzeniami Garmin"
 
 #. TRANSLATORS: a line of the details of "Last Sync" and of the end of
 #. `openexpress sync --apply`

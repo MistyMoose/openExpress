@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import sys
 import threading
-import traceback
 import types
 from datetime import datetime
 
@@ -263,7 +262,6 @@ def show_loaded(win, key: str, show, result) -> None:
         # Not "loading" for good: the page says so, and is read again when it is chosen again
         # (or with Try again).
         log_unexpected(f"showing the page {key}", sys.exc_info())
-        traceback.print_exc()  # to stderr too
         sec.loaded = False
         sec.clear()
         win._action_buttons = still_in_window(win._action_buttons)

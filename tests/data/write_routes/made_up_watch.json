@@ -38,10 +38,37 @@
   }
  },
  "expected": {
-  ".System/Map": "own session (top level)",
-  "GARMIN/PROMPTS": "own session",
-  "Garmin/ASR/Updates": "own session",
-  "Garmin/SID": "ordinary",
-  "Garmin/NewFolder": "ordinary"
+  ".System/Map": {
+   "maps": "refused"
+  },
+  "GARMIN/PROMPTS": {
+   "updates": "own session"
+  },
+  "Garmin/ASR/Updates": {
+   "updates": "own session"
+  },
+  "Garmin/SID": {
+   "updates": "ordinary"
+  },
+  "Garmin/NewFolder": {
+   "updates": "ordinary"
+  }
+ },
+ "expected_without_session": {
+  ".System/Map": {
+   "maps": "refused"
+  },
+  "GARMIN/PROMPTS": {
+   "updates": "refused"
+  },
+  "Garmin/ASR/Updates": {
+   "updates": "refused"
+  },
+  "Garmin/SID": {
+   "updates": "ordinary"
+  },
+  "Garmin/NewFolder": {
+   "updates": "ordinary"
+  }
  }
 }

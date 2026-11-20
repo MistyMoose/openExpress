@@ -1,14 +1,22 @@
 """Every folder a server's answer writes to has a route, decided by the program's own rules: the
 ordinary write (a folder the ordinary listing shows, or one made for the write), openExpress's
 own session (a folder the device hides at its top level, or one it names for its components in
-GarminDevice.xml inside a folder that is seen), or a refusal where that session cannot be had.
-None may reach the ordinary making of a folder the device has and hides: that write fails ("Cannot
-create directory …").
+GarminDevice.xml inside a folder that is seen), or a refusal. None may reach the ordinary making
+of a folder the device has and hides: that write fails ("Cannot create directory …").
+
+Each target is routed by the rule of what writes it: a file of an update by the rule of the
+updates (updates.place, the folders hidden inside a seen one, updates.installable), a file of a
+map by the rule of the maps (maps.mark_waiting, maps.can_install: only a folder of the top level
+the listing does not show, and a map there is refused outside the command line's trial). Both
+are asked twice: with openExpress's own session to be had, and without it (the Flatpak without
+USB, a device not over MTP), where every hidden target is refused, never written the ordinary way.
 
 The data: for each device, the folders it hides as a reading of its own session found them (with
 what its GarminDevice.xml says of each) and the folders the saved answers of Garmin's servers
-write to. A made-up device in tests/data/write_routes/ always; the real devices of
-testdata/write-routes/ when they are there (made with the private tool of the readings)."""
+write to, by answer: one whose name says "map" is the maps answer, any other the update
+server's (whose saved answer may carry the maps too, into the same folders). A made-up device in
+tests/data/write_routes/ always; the real devices of testdata/write-routes/ when they are there
+(made with the private tool of the readings)."""
 
 import json
 import types
@@ -16,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from openexpress import hidden_folders, updates
+from openexpress import hidden_folders, maps, updates
 from openexpress.device.storage import LocalStorage
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +32,8 @@ MADE_UP = sorted((ROOT / "tests" / "data" / "write_routes").glob("*.json"))
 REAL = sorted((ROOT / "testdata" / "write-routes").glob("*.json"))
 
 ORDINARY, OWN_SESSION, OWN_SESSION_TOP = "ordinary", "own session", "own session (top level)"
+REFUSED = "refused"
+UPDATES, MAPS = "updates", "maps"
 
 
 def _hidden_at(folder: str, hidden: list[str]) -> str | None:
@@ -35,46 +45,108 @@ def _hidden_at(folder: str, hidden: list[str]) -> str | None:
     return None
 
 
-def routes(data: dict, root: Path) -> dict[str, tuple[str, str | None]]:
-    """Each target folder: (its route by the program's rules, the hidden folder it is in). A
-    device without saved answers: the hidden folders its GarminDevice.xml names, where the
-    server would write its components."""
+def _kinds(sources: dict) -> list[str]:
+    """What writes into a folder: the maps answer, the update server's answer, or both."""
+    return sorted({MAPS if "map" in name.casefold() else UPDATES for name in sources})
+
+
+def _update(folder: str) -> updates.SoftwareUpdate:
+    return updates.SoftwareUpdate(
+        part_number="006-D0000-00", name="Made-up Part", version="1.00", severity="Recommended",
+        is_primary=False, is_reinstall=False, restart_required=False,
+        device_path=f"{folder}/made_up.bin", url="https://example.org/made_up.bin",
+        md5="0123456789ABCDEF0123456789ABCDEF", size=4, order=0)
+
+
+def _map(folder: str) -> dict:
+    return {
+        "displayname": "Made-up Map", "maptype": "CityNavigator", "installationstate": 0,
+        "isreinstall": False, "canuninstall": True,
+        "release": {"majorversion": 2026, "minorversion": 20},
+        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
+                          "failoverhosts": []},
+        "filestoremove": [],
+        "installoptions": [{"ispreferred": True, "identifier": {"regionpartnumber": "M"},
+                            "files": [{"filename": f"{folder}/D0000001A.img", "datatype": "X",
+                                       "deliverableoptions": [{
+                                           "type": 1, "url": "x.img",
+                                           "md5": "0123456789ABCDEF0123456789ABCDEF",
+                                           "sizeinbytes": 4}]}]}],
+    }
+
+
+def _device(root: Path, data: dict) -> tuple[LocalStorage, dict[str, str]]:
+    """The device as the ordinary listing shows it (GARMIN and every target folder not hidden),
+    and the folders it hides inside a seen one (updates.hidden_inside). A device without saved
+    answers: the hidden folders its GarminDevice.xml names, where the server would write its
+    components."""
     hidden = [h["folder"] for h in data["hidden"]]
     named = [h["folder"] for h in data["hidden"] if h["xml"] == "names the folder"]
-    targets = data["targets"] or {folder: {"GarminDevice.xml": 1} for folder in named}
-    # The device as the ordinary listing shows it: GARMIN and every target folder not hidden.
     (root / "GARMIN").mkdir(parents=True, exist_ok=True)
-    for folder in targets:
+    for folder in data["targets"] or named:
         if _hidden_at(folder, hidden) is None:
             (root / folder).mkdir(parents=True, exist_ok=True)
     storage = LocalStorage(root)
-    tops = hidden_folders.top_folders(storage)
     device = types.SimpleNamespace(update_files=[
         types.SimpleNamespace(path=f, filename="file") for f in named])
-    inside = updates.hidden_inside(storage, device)
+    return storage, updates.hidden_inside(storage, device)
+
+
+def _update_route(folder: str, tops, inside: dict[str, str], session: bool) -> str:
+    """As updates.mark_present and _install route it: a top folder not seen read through the
+    session when it can be had; a folder hidden inside a seen one written through it."""
+    u = _update(folder)
+    listing = hidden_folders.Listing()
+    if session:
+        listing.folders[folder.casefold()] = (folder, [])
+    else:
+        listing.state = hidden_folders.NO_SESSION
+    updates.place(u, tops, listing)
+    u.folder_hidden = inside.get(folder.casefold())
+    u.folder_writable = u.folder_hidden is not None and session
+    if not updates.installable([u]):
+        return REFUSED
+    if u.hidden_folder is not None:
+        return OWN_SESSION_TOP
+    return OWN_SESSION if u.folder_hidden is not None else ORDINARY
+
+
+def _map_route(folder: str, storage: LocalStorage) -> str:
+    """As maps.mark_waiting and _install route it: written the ordinary way, or refused (a
+    folder of the top level the listing does not show)."""
+    found, _count = maps.read_maps({"maps": [_map(folder)]})
+    maps.mark_waiting(storage, found)
+    return ORDINARY if maps.can_install(found[0]) else REFUSED
+
+
+def routes(data: dict, root: Path, session: bool = True) -> dict[str, dict[str, str]]:
+    """Each target folder: its route for each kind of answer that writes there."""
+    storage, inside = _device(root, data)
+    tops = hidden_folders.top_folders(storage)
+    named = [h["folder"] for h in data["hidden"] if h["xml"] == "names the folder"]
+    targets = data["targets"] or {folder: {"GarminDevice.xml": 1} for folder in named}
     out = {}
-    for folder in targets:
-        if hidden_folders.top_not_seen(folder, tops) is not None:
-            route = OWN_SESSION_TOP
-        elif folder.casefold() in inside:
-            route = OWN_SESSION
-        else:
-            route = ORDINARY
-        out[folder] = (route, _hidden_at(folder, hidden))
+    for folder, sources in targets.items():
+        out[folder] = {kind: (_map_route(folder, storage) if kind == MAPS
+                              else _update_route(folder, tops, inside, session))
+                       for kind in _kinds(sources)}
     return out
 
 
-def _wrong(data: dict, root: Path) -> list[str]:
-    return [f"{folder}: the ordinary write, into {at}, which the device hides"
-            for folder, (route, at) in routes(data, root).items()
-            if route == ORDINARY and at is not None]
+def _wrong(data: dict, root: Path, session: bool = True) -> list[str]:
+    hidden = [h["folder"] for h in data["hidden"]]
+    return [f"{folder} ({kind}): the ordinary write, into {at}, which the device hides"
+            for folder, by_kind in routes(data, root, session).items()
+            if (at := _hidden_at(folder, hidden)) is not None
+            for kind, route in by_kind.items() if route == ORDINARY]
 
 
 @pytest.mark.parametrize("path", MADE_UP, ids=[p.stem for p in MADE_UP])
-def test_the_made_up_devices_have_a_route_for_every_folder(path, tmp_path):
+@pytest.mark.parametrize("session", [True, False], ids=["session", "no session"])
+def test_the_made_up_devices_have_a_route_for_every_folder(path, tmp_path, session):
     data = json.loads(path.read_text(encoding="utf-8"))
-    got = {folder: route for folder, (route, _at) in routes(data, tmp_path).items()}
-    assert got == data["expected"]
+    expected = data["expected" if session else "expected_without_session"]
+    assert routes(data, tmp_path, session) == expected
 
 
 def test_a_hidden_folder_the_device_does_not_name_is_caught(tmp_path):
@@ -83,12 +155,40 @@ def test_a_hidden_folder_the_device_does_not_name_is_caught(tmp_path):
     data = {"hidden": [{"folder": "GARMIN/Secret", "xml": "names its folder"}],
             "targets": {"GARMIN/Secret": {"made-up answer": 1}, "GARMIN/SID": {"made-up": 2}}}
     assert _wrong(data, tmp_path) == [
-        "GARMIN/Secret: the ordinary write, into GARMIN/Secret, which the device hides"]
+        "GARMIN/Secret (updates): the ordinary write, into GARMIN/Secret, which the device hides"]
+
+
+def test_a_known_limit_of_the_maps_rule_a_map_into_a_folder_hidden_inside_a_seen_one(tmp_path):
+    """A known limit of the rule of the maps, kept on purpose: it knows only the folders of the
+    top level the listing does not show, so a map into a folder the device hides inside a seen
+    one, even one GarminDevice.xml names, would take the ordinary write. No saved answer of a
+    map server writes into such a folder; writing maps through openExpress's own session would
+    lift the limit. The test says it, as the guard of the real devices would."""
+    data = {"hidden": [{"folder": "GARMIN/Maps", "xml": "names the folder"}],
+            "targets": {"GARMIN/Maps": {"made-up maps answer": 1}}}
+    assert _wrong(data, tmp_path) == [
+        "GARMIN/Maps (maps): the ordinary write, into GARMIN/Maps, which the device hides"]
 
 
 @pytest.mark.skipif(not REAL, reason="no readings of real devices in testdata/write-routes/")
 @pytest.mark.parametrize("path", REAL, ids=[p.stem for p in REAL])
-def test_no_folder_of_a_real_device_takes_the_ordinary_write_into_a_hidden_one(path, tmp_path):
+@pytest.mark.parametrize("session", [True, False], ids=["session", "no session"])
+def test_no_folder_of_a_real_device_takes_the_ordinary_write_into_a_hidden_one(path, tmp_path,
+                                                                              session):
     data = json.loads(path.read_text(encoding="utf-8"))
-    wrong = _wrong(data, tmp_path)
+    wrong = _wrong(data, tmp_path, session)
     assert wrong == [], f"{data['device']} {data['software']}: " + "; ".join(wrong)
+
+
+@pytest.mark.parametrize("path", [*MADE_UP, *REAL], ids=[p.stem for p in [*MADE_UP, *REAL]])
+def test_without_a_session_every_hidden_target_is_refused(path, tmp_path):
+    """Where openExpress's own session cannot be had, nothing goes through it, and every target
+    in a folder the device hides is refused."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    hidden = [h["folder"] for h in data["hidden"]]
+    got = routes(data, tmp_path, session=False)
+    assert {route for by_kind in got.values() for route in by_kind.values()} <= {ORDINARY,
+                                                                                 REFUSED}
+    assert {folder: by_kind for folder, by_kind in got.items()
+            if _hidden_at(folder, hidden) is not None
+            and set(by_kind.values()) != {REFUSED}} == {}

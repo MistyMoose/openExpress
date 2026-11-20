@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 23:17+0100\n"
+"POT-Creation-Date: 2026-11-20 09:10+0100\n"
 "PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
@@ -164,6 +164,18 @@ msgstr "Sport {number}"
 msgid "Reading activities"
 msgstr "Activités de lecture"
 
+#: openexpress/applog.py openexpress/netstatus.py
+#, python-brace-format
+msgid "server error (HTTP {status})"
+msgstr "erreur serveur (HTTP {status})"
+
+#. TRANSLATORS: a part of Garmin's servers could not be reached: the word beside its time
+#. in the popover of the server state button
+#: openexpress/applog.py openexpress/netstatus.py
+#, python-brace-format
+msgid "no connection"
+msgstr "Pas de connexion"
+
 #: openexpress/applog.py
 #, python-brace-format
 msgid "No log file: {error}"
@@ -192,8 +204,9 @@ msgid "Try Again"
 msgstr "Essayer à nouveau"
 
 #: openexpress/auth/sso.py
-#, python-brace-format
-msgid "Sign in to Garmin"
+#, fuzzy, python-brace-format
+#| msgid "Sign in to Garmin"
+msgid "Sign In to Garmin"
 msgstr "Connectez-vous à Garmin"
 
 #: openexpress/auth/sso.py
@@ -273,6 +286,17 @@ msgstr "Le démarrage lors de la connexion n’était pas autorisé."
 #, python-brace-format
 msgid "Sync the device with Garmin Connect when it is connected."
 msgstr "Synchronisez l'appareil avec Garmin Connect lorsqu'il est connecté."
+
+#. TRANSLATORS: why background sync could not be turned on in the Flatpak: the desktop's
+#. portal has no Background service; "the version from source" is openExpress installed from
+#. its source code, which runs in the background without the portal
+#: openexpress/background.py
+#, python-brace-format
+msgid ""
+"This desktop does not let Flatpak apps run in the background (its portal has "
+"no Background service). Use the version from source to sync in the "
+"background."
+msgstr ""
 
 #: openexpress/background.py
 #, python-brace-format
@@ -841,11 +865,16 @@ msgstr ""
 "l’appareil pouvait lire la moitié d’une liste et supprimer les applications."
 
 #: openexpress/ciq.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "The app list for the device could not be written ({error}), nor the one "
+#| "that waited written back: it was deleted, so the changes of the apps that "
+#| "waited for the device are lost. Make them again."
 msgid ""
-"The app list for the device could not be written ({error}), nor the one that "
-"waited written back: it was deleted, so the changes of the apps that waited "
-"for the device are lost. Make them again."
+"The app list for the device could not be written ({error}), and the list "
+"that was waiting for the device could not be put back either: it was "
+"deleted, so the app changes that were waiting for the device are lost. Make "
+"them again."
 msgstr ""
 "La liste des applications pour l’appareil n’a pas pu être écrite ({error}), "
 "ni celle qui attendait a été réécrite : elle a été supprimée, donc les "
@@ -1233,10 +1262,14 @@ msgstr ""
 "fichiers affichés par l’appareil maintenant."
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "With --apply, --crash-logs also reads its hidden crash logs in a session "
+#| "of its own: the device leaves the file manager for a moment."
 msgid ""
-"With --apply, --crash-logs also reads its hidden crash logs in a session of "
-"its own: the device leaves the file manager for a moment."
+"With --apply, --crash-logs also reads the device's hidden crash logs over a "
+"direct USB connection: the device disappears from the file manager for a "
+"moment."
 msgstr ""
 "Avec --apply, --crash-logs lit également ses logs de crash cachés lors d’une "
 "session à part entière : l’appareil quitte le gestionnaire de fichiers "
@@ -1979,8 +2012,11 @@ msgid "Check: damaged: the CRC does not match ({read} B read)"
 msgstr "Vérification : endommagée : le CRC ne correspond pas ({read} B lu)"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "Check: damaged: {count} B after the whole FIT data are no FIT file"
+#, fuzzy, python-brace-format
+#| msgid "Check: damaged: {count} B after the whole FIT data are no FIT file"
+msgid ""
+"Check: damaged: {count} B after the end of the FIT data do not belong to a "
+"FIT file"
 msgstr ""
 "Vérification : endommagée : {count} B après que toutes les données FIT ne "
 "soient pas de fichier FIT"
@@ -2362,12 +2398,17 @@ msgid "Device to forget: {device}"
 msgstr "Dispositif à oublier : {device}"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "What this installation keeps of it goes too: what was uploaded from it, "
+#| "its last sync, its connection log, the maps of your own copied to it and "
+#| "the copies of its diagnostic files. Its next sync with this program will "
+#| "be a first sync again."
 msgid ""
 "What this installation keeps of it goes too: what was uploaded from it, its "
-"last sync, its connection log, the maps of your own copied to it and the "
-"copies of its diagnostic files. Its next sync with this program will be a "
-"first sync again."
+"last sync, its connection log, your own maps copied to it and the copies of "
+"its diagnostic files. Its next sync with this program will be a first sync "
+"again."
 msgstr ""
 "Ce que cette installation conserve de cette installation vaut aussi : ce qui "
 "a été téléchargé depuis celle-ci, sa dernière synchronisation, son journal "
@@ -2566,8 +2607,9 @@ msgid "damaged: the CRC does not match"
 msgstr "endommagé : le CRC ne correspond pas"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "damaged: {count} B after the end are no FIT file"
+#, fuzzy, python-brace-format
+#| msgid "damaged: {count} B after the end are no FIT file"
+msgid "damaged: {count} B after the end do not belong to a FIT file"
 msgstr "endommagé : {count} B après la fin ne sont pas de fichier FIT"
 
 #: openexpress/cli.py
@@ -2709,19 +2751,25 @@ msgid "Copied, not installed by the device:"
 msgstr "Copié, non installé par l’appareil :"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}; the device was unplugged since, changed or refused the "
+#| "file and has not installed it."
 msgid ""
-"Copied {when}; the device was unplugged since, changed or refused the file "
-"and has not installed it."
+"Copied {when}; since then the device has been unplugged, has changed or "
+"refused the file, and has not installed it."
 msgstr ""
 "Copié {when} ; l’appareil a été débranché depuis, modifié ou refusé le "
 "fichier et ne l’a pas installé."
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}; the device was unplugged since and has not installed it "
+#| "(the file is still on it)."
 msgid ""
-"Copied {when}; the device was unplugged since and has not installed it (the "
-"file is still on it)."
+"Copied {when}; since then the device has been unplugged and has not "
+"installed it (the file is still on it)."
 msgstr ""
 "Copié {when} ; l’appareil a été débranché depuis et ne l’a pas installé (le "
 "fichier est toujours dessus)."
@@ -2812,10 +2860,9 @@ msgstr "Pour installer :"
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"a trial: written into {folder}, which the device hides, through "
-"openExpress's own USB session; the file there now is copied to {copies} "
-"first and put back if the new one is not written whole; the first refusal "
-"stops the trial"
+"a trial: written into {folder}, which the device hides, over a direct USB "
+"connection; the file there now is copied to {copies} first and put back if "
+"the new one is not written whole; the first refusal stops the trial"
 msgstr ""
 
 #: openexpress/cli.py
@@ -3190,8 +3237,9 @@ msgid "The apps on the device are already in this order."
 msgstr "Les applications sur l’appareil sont déjà dans cet ordre."
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "the same apps with the same flags; only the order changes"
+#, fuzzy, python-brace-format
+#| msgid "the same apps with the same flags; only the order changes"
+msgid "the same apps with the same settings; only the order changes"
 msgstr "les mêmes applications avec les mêmes drapeaux ; seule l’ordre change"
 
 #: openexpress/cli.py
@@ -3219,21 +3267,28 @@ msgid "and its settings file, if the device has one: {path}"
 msgstr "et son fichier de paramètres, si l’appareil en possède un : {path}"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "The device does not show this file to ordinary file access. openExpress "
+#| "will delete it over a direct USB connection; the device disappears from "
+#| "the file manager for a moment."
 msgid ""
-"The device does not show this file to ordinary file access. openExpress will "
-"delete it over a direct USB connection; the device disappears from the file "
-"manager for a moment."
+"This file is hidden from the file manager. openExpress will delete it over a "
+"direct USB connection; the device disappears from the file manager for a "
+"moment."
 msgstr ""
 "L’appareil n’affiche pas ce fichier à l’accès ordinaire aux fichiers. "
 "openExpress le supprimera via une connexion USB directe ; l’appareil "
 "disparaît du gestionnaire de fichiers pendant un instant."
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "every other app on the device is kept, in the same order and with the "
+#| "same flags"
 msgid ""
 "every other app on the device is kept, in the same order and with the same "
-"flags"
+"settings"
 msgstr ""
 "toutes les autres applications sur l’appareil sont conservées, dans le même "
 "ordre et avec les mêmes indicateurs"
@@ -3294,9 +3349,11 @@ msgstr[1] ""
 "{count} plus d’applications sont enregistrées et attendent l’appareil"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "every app on the device is kept, in the same order and with the same flags"
 msgid ""
-"every app on the device is kept, in the same order and with the same flags"
+"every app on the device is kept, in the same order and with the same settings"
 msgstr ""
 "Chaque application sur l’appareil est conservée, dans le même ordre et avec "
 "les mêmes indicateurs"
@@ -3422,11 +3479,15 @@ msgstr ""
 "Connect et installée par le téléphone ou Garmin Express."
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "{name}: the device does not show the app folder {path} to ordinary file "
+#| "access. openExpress will write the app over a direct USB connection; the "
+#| "device disappears from the file manager for a moment."
 msgid ""
-"{name}: the device does not show the app folder {path} to ordinary file "
-"access. openExpress will write the app over a direct USB connection; the "
-"device disappears from the file manager for a moment."
+"{name}: the app folder {path} is hidden from the file manager. openExpress "
+"will write the app over a direct USB connection; the device disappears from "
+"the file manager for a moment."
 msgstr ""
 "{name} : l’appareil n’affiche pas le dossier de l’application {path} accès "
 "ordinaire aux fichiers. openExpress écrira l’application via une connexion "
@@ -4144,6 +4205,16 @@ msgid "Unofficial Linux app for Garmin watches and bike computers."
 msgstr ""
 "Application Linux non officielle pour montres Garmin et ordinateurs vélo."
 
+#. TRANSLATORS: CLI, at the end of "openexpress --help"; setup, login, logout and --apply
+#. are a command and an option, not to be translated
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Commands that change anything only say what they would do; add --apply to do "
+"it. Only setup, login and logout change openExpress's own settings and sign-"
+"in at once."
+msgstr ""
+
 #. TRANSLATORS: CLI help of -v/--verbose: print more details
 #: openexpress/cli.py
 #, python-brace-format
@@ -4157,8 +4228,10 @@ msgstr "Langage d’interface, par exemple {examples}"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "configuration: OAuth1 key, environment, locale"
-msgstr "configuration : clé OAuth1, environnement, locale"
+msgid ""
+"the application key from the Garmin Express installer, and the settings: "
+"Garmin's servers, the languages, the diagnostics copy"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4190,21 +4263,29 @@ msgstr ""
 "uniquement avec --secret"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "OAuth1 consumer secret of Garmin Express; only together with --key"
-msgstr "OAuth1 secret consommateur de Garmin Express ; uniquement avec --key"
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "the application key of Garmin Express (its OAuth1 consumer key); only "
+#| "together with --secret"
+msgid ""
+"the application secret of Garmin Express (its OAuth1 consumer secret); only "
+"together with --key"
+msgstr ""
+"la clé d’application de Garmin Express (sa clé consommateur OAuth1) ; "
+"uniquement avec --secret"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Garmin servers to use: production (default) or china"
 msgstr "Serveurs Garmin à utiliser : production (par défaut) ou Chine"
 
-#. TRANSLATORS: CLI help of "setup --locale": "for example" ({example}: a locale code such as
-#. pl_PL)
+#. TRANSLATORS: CLI help of "setup --locale" ({example}: a locale code such as pl_PL)
 #: openexpress/cli.py
 #, python-brace-format
-msgid "e.g. {example}"
-msgstr "par exemple {example}"
+msgid ""
+"the language to request from Garmin's servers (by default the program's), "
+"e.g. {example}"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4228,8 +4309,12 @@ msgid "device report for GitHub, without serial numbers"
 msgstr "rapport périphérique pour GitHub, sans numéros de série"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "print the last lines of the log file instead, for the form (filtered)"
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "print the last lines of the log file instead, for the form (filtered)"
+msgid ""
+"print the last lines of the log instead, filtered, for the “Log” field of "
+"the report form"
 msgstr ""
 "imprimez plutôt les dernières lignes du fichier journal, pour le formulaire "
 "(filtré)"
@@ -4251,12 +4336,13 @@ msgstr "fichiers sur l’appareil par type de données"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "e.g. {example} (activities)"
-msgstr "par exemple {example} (activités)"
+msgid "only this data type, each file listed, e.g. {example} (activities)"
+msgstr ""
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "show only the last N files"
+#, fuzzy, python-brace-format
+#| msgid "show only the last N files"
+msgid "with --type or -v: only the last N files"
 msgstr "afficher uniquement les derniers N fichiers"
 
 #: openexpress/cli.py
@@ -4345,11 +4431,15 @@ msgid "also copy the memory dumps"
 msgstr "copiez également les dumps mémoire"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "only what can be freed on the device: the older memory dumps (copied to "
+#| "this computer first where they fit) and the files of updates it did not "
+#| "install; with --apply they are removed (not with --dumps or --crash-logs)"
 msgid ""
-"only what can be freed on the device: the older memory dumps (copied to this "
-"computer first where they fit) and the files of updates it did not install; "
-"with --apply they are removed (not with --dumps or --crash-logs)"
+"free space on the device: older memory dumps (copied to this computer first "
+"where they fit) and files of updates it did not install; with --apply they "
+"are removed (not with --dumps or --crash-logs)"
 msgstr ""
 "Seuls ce qui peut être libéré sur l’appareil : les anciens dumps de mémoire "
 "(copiés d’abord sur cet ordinateur là où ils rentrent) et les fichiers des "
@@ -4398,10 +4488,13 @@ msgid "the devices this installation has seen"
 msgstr "les périphériques que cette installation a vus"
 
 #: openexpress/cli.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "forget device number N of the list and what this installation keeps of it "
+#| "(its sync state, its last sync)"
 msgid ""
-"forget device number N of the list and what this installation keeps of it "
-"(its sync state, its last sync)"
+"forget device number N of the list and what this installation keeps of it, "
+"as Forget Device in the window does"
 msgstr ""
 "oubliez le périphérique numéro N de la liste et ce que cette installation "
 "conserve de celui-ci (son état de synchronisation, sa dernière "
@@ -4454,8 +4547,8 @@ msgstr "vérifiez le jeton auprès du serveur"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "upload configuration from the Garmin server (OMT)"
-msgstr "Configuration de téléchargement depuis le serveur Garmin (OMT)"
+msgid "what data the device uploads and where, as Garmin's server says (OMT)"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4469,8 +4562,8 @@ msgstr "synchronisation avec Garmin Connect (essai à sec par défaut)"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "actually upload and write"
-msgstr "en ligne et en écriture réellement"
+msgid "upload and write (without it: a dry run)"
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4490,8 +4583,9 @@ msgid "only write what waits in Garmin Connect; upload nothing"
 msgstr "n’écrivez que ce qui attend dans Garmin Connect ; ne rien télécharger"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "only the given data type (repeatable)"
+#, fuzzy, python-brace-format
+#| msgid "only the given data type (repeatable)"
+msgid "upload only this data type, e.g. {example} (repeatable)"
 msgstr "uniquement le type de données donné (répétable)"
 
 #: openexpress/cli.py
@@ -4502,9 +4596,19 @@ msgstr ""
 "Garmin"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "mark current files as already uploaded"
-msgstr "marquer les fichiers actuels comme déjà téléchargés"
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Marked {count} file as already uploaded. The next `sync` will upload only "
+#| "new data."
+#| msgid_plural ""
+#| "Marked {count} files as already uploaded. The next `sync` will upload "
+#| "only new data."
+msgid ""
+"mark the device's files as already uploaded, for the first sync (nothing is "
+"uploaded)"
+msgstr ""
+"Marqué {count} fichier comme déjà téléchargé. La prochaine 'synchronisation' "
+"ne téléversera que les nouvelles données."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4522,9 +4626,11 @@ msgid "destination directory (default: {path})"
 msgstr "Répertoire de destination (par défaut : {path})"
 
 #: openexpress/cli.py
-#, python-brace-format
-msgid "how many most recent backups to keep"
-msgstr "combien de sauvegardes les plus récentes conserver"
+#, fuzzy, python-brace-format
+#| msgid "show the newest N (default: {count})"
+msgid ""
+"how many of the newest backups to keep (default: {count}; 0 keeps them all)"
+msgstr "afficher le N le plus récent (par défaut : {count})"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4688,8 +4794,7 @@ msgstr "{model} est déjà sur le compte Garmin {account}."
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"the activity time the sun gained the devices of the Garmin account that "
-"charge from the sun"
+"activity time gained from the sun by the account's solar-charging devices"
 msgstr ""
 
 #: openexpress/cli.py
@@ -5036,6 +5141,11 @@ msgstr ""
 "install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1), puis exécutez à nouveau la "
 "commande."
 
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Network error: could not reach the Garmin server ({error})"
+msgstr "Erreur réseau : impossible d’atteindre le serveur Garmin ({error})"
+
 #. TRANSLATORS: CLI error from a Garmin server ({error}: the request's name and what went
 #. wrong)
 #: openexpress/cli.py
@@ -5043,16 +5153,20 @@ msgstr ""
 msgid "Server error: {error}"
 msgstr "Erreur serveur : {error}"
 
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Network error: could not reach the Garmin server ({error})"
-msgstr "Erreur réseau : impossible d’atteindre le serveur Garmin ({error})"
-
 #. TRANSLATORS: CLI: the command was stopped with Ctrl+C
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Interrupted."
 msgstr "Interrompu."
+
+#. TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
+#. and "openexpress report --log" are commands, not to be translated
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"This is a bug in openExpress. To report it, run openexpress report and "
+"attach the output of openexpress report --log."
+msgstr ""
 
 #: openexpress/connect.py
 #, python-brace-format
@@ -5522,6 +5636,15 @@ msgstr "Synchronisation, mises à jour et cartes pour appareils Garmin"
 msgid "Garmin;Fenix;Connect;sync;"
 msgstr "Garmin ; Fenix ; Connect ; Sync ;"
 
+#. TRANSLATORS: after the words of a write or a new folder that failed on the device (e.g.
+#. "Cannot write GARMIN/x.fit: Could not send object info.")
+#: openexpress/device/gio_storage.py
+#, fuzzy, python-brace-format
+#| msgid "The device refused to delete {path} ({reason}); nothing was changed."
+msgid "The device refused it; a device report helps find out why."
+msgstr ""
+"L’appareil a refusé de supprimer {path} ({reason}) ; rien n’a été modifié."
+
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "the Flatpak is missing the permission to copy files to the device"
@@ -5554,8 +5677,9 @@ msgid "Cannot delete {path}"
 msgstr "Impossible de supprimer {path}"
 
 #: openexpress/device/gio_storage.py openexpress/device/storage.py
-#, python-brace-format
-msgid "Cannot create directory {path}"
+#, fuzzy, python-brace-format
+#| msgid "Cannot create directory {path}"
+msgid "Cannot create the folder {path}"
 msgstr "Impossible de créer un répertoire {path}"
 
 #: openexpress/device/gio_storage.py
@@ -5683,6 +5807,7 @@ msgstr ""
 "« {item} » dans le menu principal."
 
 #: openexpress/device/gio_storage.py openexpress/gui/app.py
+#: openexpress/gui/window_tasks.py
 #, python-brace-format
 msgid "Report a Device or Problem…"
 msgstr "Signaler un appareil ou un problème…"
@@ -5952,8 +6077,9 @@ msgstr "La lecture depuis l’appareil a échoué : {error}"
 
 #: openexpress/device/ptp.py
 #, python-brace-format
-msgid "The connection to the device is out of step."
-msgstr "La connexion à l’appareil est décalée."
+msgid ""
+"An earlier exchange with the device failed, so nothing more is sent to it."
+msgstr ""
 
 #: openexpress/device/ptp.py
 #, python-brace-format
@@ -5961,8 +6087,9 @@ msgid "The file is too large to send."
 msgstr "Le fichier est trop volumineux pour être envoyé."
 
 #: openexpress/device/ptp.py
-#, python-brace-format
-msgid "The device answered out of step."
+#, fuzzy, python-brace-format
+#| msgid "The device answered out of step."
+msgid "The device's answer does not match the request."
 msgstr "L’appareil répondit hors de rythme."
 
 #: openexpress/device/ptp.py
@@ -6067,9 +6194,12 @@ msgstr ""
 "README) ou utilisez la version source."
 
 #: openexpress/diagnostics.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "openExpress cannot open its own USB session with this device, so it "
+#| "cannot read the hidden crash logs."
 msgid ""
-"openExpress cannot open its own USB session with this device, so it cannot "
+"openExpress cannot open a direct USB connection to this device, so it cannot "
 "read the hidden crash logs."
 msgstr ""
 "openExpress ne peut pas ouvrir sa propre session USB avec cet appareil, il "
@@ -6931,8 +7061,9 @@ msgstr ""
 "le, attendez qu’il soit prêt puis réessayez."
 
 #: openexpress/gui/apps_page.py
-#, python-brace-format
-msgid "The same apps with the same flags; only the order changes."
+#, fuzzy, python-brace-format
+#| msgid "The same apps with the same flags; only the order changes."
+msgid "The same apps with the same settings; only the order changes."
 msgstr "Les mêmes applications avec les mêmes drapeaux ; seul l’ordre change."
 
 #. TRANSLATORS: heading of the error when the order of the apps could not
@@ -7490,7 +7621,7 @@ msgid "GPX files (*.gpx)"
 msgstr "Fichiers GPX (*.gpx)"
 
 #: openexpress/gui/courses_page.py openexpress/gui/maps_page.py
-#: openexpress/gui/preferences.py
+#: openexpress/gui/music_page.py openexpress/gui/preferences.py
 #, python-brace-format
 msgid "Choose a file stored on this computer"
 msgstr "Choisissez un fichier stocké sur cet ordinateur"
@@ -8058,15 +8189,23 @@ msgid "Forget Device"
 msgstr "Oublier l’appareil"
 
 #: openexpress/gui/forget_device.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "openExpress forgets what it keeps of this device on this computer: what "
+#| "was uploaded from it, its last sync, its connection log, the maps of your "
+#| "own copied to it and the copies of its diagnostic files. Nothing changes "
+#| "on the device or on your Garmin account.\n"
+#| "\n"
+#| "Connected again, it is a new device: its first sync asks again whether to "
+#| "upload everything or new data only."
 msgid ""
 "openExpress forgets what it keeps of this device on this computer: what was "
-"uploaded from it, its last sync, its connection log, the maps of your own "
-"copied to it and the copies of its diagnostic files. Nothing changes on the "
-"device or on your Garmin account.\n"
+"uploaded from it, its last sync, its connection log, your own maps copied to "
+"it and the copies of its diagnostic files. Nothing changes on the device or "
+"on your Garmin account.\n"
 "\n"
-"Connected again, it is a new device: its first sync asks again whether to "
-"upload everything or new data only."
+"When it is connected again, it counts as a new device: its first sync asks "
+"again whether to upload everything or new data only."
 msgstr ""
 "openExpress oublie ce qu’il conserve de cet appareil sur cet ordinateur : ce "
 "qui a été téléchargé depuis lui, sa dernière synchronisation, son journal de "
@@ -8128,7 +8267,7 @@ msgid "Check Again"
 msgstr "Vérifier à nouveau"
 
 #. TRANSLATORS: on the Maps page, under a map whose files are in a folder the device hides
-#. from the ordinary USB connection (a car navigator's .System), without a full stop
+#. from the file manager (a car navigator's .System), without a full stop
 #: openexpress/gui/maps_page.py
 #, python-brace-format
 msgid ""
@@ -8670,13 +8809,6 @@ msgid ""
 msgstr ""
 "Une copie des fichiers de diagnostic de l’appareil reste sur cet "
 "ordinateur ; openExpress ne les envoie jamais"
-
-#. TRANSLATORS: heading of the error when a switch of the preferences could not be
-#. saved
-#: openexpress/gui/preferences.py
-#, python-brace-format
-msgid "Setting Not Saved"
-msgstr "Réglage Non enregistré"
 
 #. TRANSLATORS: group in the preferences: the street map from OpenStreetMap under the track of an
 #. activity
@@ -9335,8 +9467,9 @@ msgid "Not mounted; choose it to open it"
 msgstr "Non monté ; choisissez-le pour l’ouvrir"
 
 #: openexpress/gui/start_window.py
-#, python-brace-format
-msgid "No GarminDevice.xml found"
+#, fuzzy, python-brace-format
+#| msgid "No GarminDevice.xml found"
+msgid "Its device description (GarminDevice.xml) was not found"
 msgstr "Aucune GarminDevice.xml trouvée"
 
 #: openexpress/gui/start_window.py
@@ -10095,12 +10228,17 @@ msgstr ""
 #. TRANSLATORS: on the Updates page, under the device's software that openExpress does not
 #. install; {folder}: the folder of the device's top level, e.g. .System
 #: openexpress/gui/updates_page.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgctxt "updates page"
+#| msgid ""
+#| "openExpress cannot see the folder {folder}, where this device keeps its "
+#| "software, so it installs nothing there. Some devices, such as car "
+#| "navigators, hide it from the ordinary USB connection."
 msgctxt "updates page"
 msgid ""
 "openExpress cannot see the folder {folder}, where this device keeps its "
 "software, so it installs nothing there. Some devices, such as car "
-"navigators, hide it from the ordinary USB connection."
+"navigators, hide it from the file manager."
 msgstr ""
 "openExpress ne parvient pas à détecter le dossier {folder} — dans lequel cet "
 "appareil conserve ses logiciels — et n’y installe donc rien. Certains "
@@ -10124,7 +10262,7 @@ msgstr[0] "La mise à jour ne peut pas être installée"
 msgstr[1] "Les mises à jour ne peuvent pas être installées"
 
 #. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
-#. ordinary USB connection, e.g. .System
+#. file manager, e.g. .System
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgctxt "updates page"
@@ -10137,13 +10275,17 @@ msgstr ""
 "pas lire le dossier {folder}. Accordez-lui l’autorisation nécessaire "
 "(consultez le fichier README) ou utilisez la version issue du code source."
 
-#. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
-#. ordinary USB connection, e.g. .System
+#. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
+#. manager, e.g. .System
 #: openexpress/gui/updates_page.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgctxt "updates page"
+#| msgid ""
+#| "openExpress cannot open its own USB session with this device, so it "
+#| "cannot read the folder {folder}."
 msgctxt "updates page"
 msgid ""
-"openExpress cannot open its own USB session with this device, so it cannot "
+"openExpress cannot open a direct USB connection to this device, so it cannot "
 "read the folder {folder}."
 msgstr ""
 "openExpress ne parvient pas à ouvrir sa propre session USB avec cet "
@@ -10186,17 +10328,15 @@ msgid "Update Not Installed"
 msgstr "Mise à jour non installée"
 
 #. TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
-#. from the ordinary USB connection, which openExpress cannot write there (or the device
-#. refuses)
+#. from the file manager, which openExpress cannot write there (or the device refuses)
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgid ""
 "{count} of these cannot be installed with openExpress yet: the device keeps "
-"it in a folder it hides from the USB connection. The others install as usual."
+"it in a folder it hides from the file manager. The others install as usual."
 msgid_plural ""
 "{count} of these cannot be installed with openExpress yet: the device keeps "
-"them in folders it hides from the USB connection. The others install as "
-"usual."
+"them in folders it hides from the file manager. The others install as usual."
 msgstr[0] ""
 msgstr[1] ""
 
@@ -10398,6 +10538,23 @@ msgstr "Appareil non éjecté"
 msgid "Ejecting the Device…"
 msgstr "Éjection de l’appareil…"
 
+#. TRANSLATORS: under the words of an error nobody foresaw, in the window; {item}: the item
+#. of the main menu, "Report a Device or Problem…" in your language (put your language's
+#. quotation marks around it); "Attach the last log" is the check box of that dialog
+#: openexpress/gui/window_tasks.py
+#, python-brace-format
+msgid ""
+"This is a bug in openExpress. To report it, choose “{item}” in the main menu "
+"and attach the last log."
+msgstr ""
+
+#. TRANSLATORS: heading of the error when a switch of a setting could not be saved (in
+#. the preferences, on the device page, under the map of an activity)
+#: openexpress/gui/window_tasks.py
+#, python-brace-format
+msgid "Setting Not Saved"
+msgstr "Réglage Non enregistré"
+
 #: openexpress/gui/window_tasks.py
 #, python-brace-format
 msgid "Cancel"
@@ -10452,37 +10609,49 @@ msgstr "Copié {when}, vérifiez l’appareil qu’il est installé"
 #. TRANSLATORS: below an update the device has not installed although it was unplugged
 #. since: {when} when it was copied, {old} the version the device still reports
 #: openexpress/gui/words.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}. The device was unplugged since, changed or refused the "
+#| "file and still reports version {old}."
 msgid ""
-"Copied {when}. The device was unplugged since, changed or refused the file "
-"and still reports version {old}."
+"Copied {when}. Since then the device has been unplugged, has changed or "
+"refused the file, and still reports version {old}."
 msgstr ""
 "Copié {when}. L’appareil a été débranché depuis, a modifié ou refusé le "
 "fichier et affiche toujours la version {old}."
 
 #: openexpress/gui/words.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}. The device was unplugged since, changed or refused the "
+#| "file and has not installed it."
 msgid ""
-"Copied {when}. The device was unplugged since, changed or refused the file "
-"and has not installed it."
+"Copied {when}. Since then the device has been unplugged, has changed or "
+"refused the file, and has not installed it."
 msgstr ""
 "Copié {when}. L’appareil a été débranché depuis, modifié ou refusé le "
 "fichier et ne l’a pas installé."
 
 #: openexpress/gui/words.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}. The device was unplugged since and still reports version "
+#| "{old}; the file is still on it, unchanged."
 msgid ""
-"Copied {when}. The device was unplugged since and still reports version "
-"{old}; the file is still on it, unchanged."
+"Copied {when}. Since then the device has been unplugged and still reports "
+"version {old}; the file is still on it, unchanged."
 msgstr ""
 "Copié {when}. L’appareil a été débranché depuis et affiche toujours la "
 "version {old} ; le fichier est toujours dessus, sans changement."
 
 #: openexpress/gui/words.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Copied {when}. The device was unplugged since and has not installed it; "
+#| "the file is still on it, unchanged."
 msgid ""
-"Copied {when}. The device was unplugged since and has not installed it; the "
-"file is still on it, unchanged."
+"Copied {when}. Since then the device has been unplugged and has not "
+"installed it; the file is still on it, unchanged."
 msgstr ""
 "Copié {when}. L’appareil a été débranché depuis et ne l’a pas installé ; le "
 "fichier est toujours dessus, inchangé."
@@ -11504,8 +11673,8 @@ msgstr "Attente de l’appareil"
 msgid "Reading the folder {folder}…"
 msgstr "Lecture du dossier {folder}…"
 
-#. TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-#. e.g. .System
+#. TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+#. .System
 #: openexpress/hidden_folders.py
 #, python-brace-format
 msgid ""
@@ -11517,12 +11686,14 @@ msgstr ""
 "pas lire le dossier {folder}. Accordez-lui l’autorisation nécessaire "
 "(consultez le fichier README) ou utilisez la version issue du code source."
 
-#. TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection, e.g.
-#. .System
+#. TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g. .System
 #: openexpress/hidden_folders.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "openExpress cannot open its own USB session with this device, so it "
+#| "cannot read the folder {folder}."
 msgid ""
-"openExpress cannot open its own USB session with this device, so it cannot "
+"openExpress cannot open a direct USB connection to this device, so it cannot "
 "read the folder {folder}."
 msgstr ""
 "openExpress ne parvient pas à ouvrir sa propre session USB avec cet "
@@ -11959,8 +12130,8 @@ msgstr ""
 msgid "Cannot be installed: the server did not provide all of its files"
 msgstr "Impossible d’installer : le serveur n’a pas fourni tous ses fichiers"
 
-#. TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-#. e.g. .System
+#. TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+#. .System
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
@@ -12020,8 +12191,10 @@ msgstr ""
 
 #. TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
 #: openexpress/maps.py
-#, python-brace-format
-msgid "The folder {folder} was not read through openExpress's own USB session."
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "The folder {folder} was not read through openExpress's own USB session."
+msgid "The folder {folder} was not read over a direct USB connection."
 msgstr ""
 "Le dossier {folder} n’a pas été lu via la session USB propre à openExpress."
 
@@ -12145,7 +12318,7 @@ msgstr ""
 "localiser le dossier contenant ses fichiers sur l’appareil."
 
 #. TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
-#. ordinary USB connection, e.g. .System
+#. file manager, e.g. .System
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
@@ -12353,22 +12526,10 @@ msgstr "répondue"
 msgid "no connection {at}"
 msgstr "Aucune connexion {at}"
 
-#. TRANSLATORS: a part of Garmin's servers could not be reached: the word beside its time
-#. in the popover of the server state button
-#: openexpress/netstatus.py
-#, python-brace-format
-msgid "no connection"
-msgstr "Pas de connexion"
-
 #: openexpress/netstatus.py
 #, python-brace-format
 msgid "server error (HTTP {status}) {at}"
 msgstr "erreur serveur (HTTP {status}) {at}"
-
-#: openexpress/netstatus.py
-#, python-brace-format
-msgid "server error (HTTP {status})"
-msgstr "erreur serveur (HTTP {status})"
 
 #: openexpress/netstatus.py
 #, python-brace-format
@@ -12722,15 +12883,23 @@ msgstr ""
 "({error}). Rien n’a été synchronisé."
 
 #: openexpress/service.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "This device is not registered to your Garmin account. To use it with "
+#| "Garmin Connect here, sign in to the account it belongs to, or add the "
+#| "device to your account: here (Add to Account in the window, openexpress "
+#| "register on the command line; experimental) or in Garmin Connect (the "
+#| "phone app, or connect.garmin.com); registering the product on garmin.com "
+#| "is not enough. If it is added already, check that the Garmin Connect app "
+#| "on your phone and openExpress are signed in to the same account."
 msgid ""
 "This device is not registered to your Garmin account. To use it with Garmin "
-"Connect here, sign in to the account it belongs to, or add the device to "
-"your account: here (Add to Account in the window, openexpress register on "
-"the command line; experimental) or in Garmin Connect (the phone app, or "
-"connect.garmin.com); registering the product on garmin.com is not enough. If "
-"it is added already, check that the Garmin Connect app on your phone and "
-"openExpress are signed in to the same account."
+"Connect here, sign in to the account it belongs to, or add it to your "
+"account. You can add it here (Add to Account in the window, openexpress "
+"register on the command line; experimental) or in Garmin Connect (the phone "
+"app or connect.garmin.com). Registering the product on garmin.com is not "
+"enough. If it is added already, check that the Garmin Connect app on your "
+"phone and openExpress are signed in to the same account."
 msgstr ""
 "Cet appareil n’est pas enregistré à votre compte Garmin. Pour l’utiliser "
 "avec Garmin Connect ici, connectez-vous au compte auquel il appartient, ou "
@@ -13800,7 +13969,7 @@ msgstr ""
 #| "openExpress cannot see on the device."
 msgid ""
 "Not installed: {name} {version} goes to the folder {folder}, which the "
-"device hides from the USB connection; openExpress cannot install it yet. The "
+"device hides from the file manager; openExpress cannot install it yet. The "
 "other updates install as usual."
 msgstr ""
 "Non installé : {name} {version} est destiné au dossier {folder}, "
@@ -13814,7 +13983,7 @@ msgstr ""
 #| "This device takes GPX files in its own folder {folder}, where openExpress "
 #| "does not copy them"
 msgid ""
-"the device keeps it in the folder {folder}, hidden from the USB connection; "
+"the device keeps it in the folder {folder}, hidden from the file manager; "
 "openExpress cannot install it yet"
 msgstr ""
 "Cet appareil prend en charge les fichiers GPX situés dans son propre dossier "
@@ -13841,11 +14010,15 @@ msgstr "{name} {version}"
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress
 #. cannot see over MTP; {folder}: e.g. .System
 #: openexpress/updates.py
-#, python-brace-format
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "openExpress cannot see the folder {folder}, where this device keeps its "
+#| "software, so it installs nothing there. Some devices, such as car "
+#| "navigators, hide it from the ordinary USB connection."
 msgid ""
 "openExpress cannot see the folder {folder}, where this device keeps its "
 "software, so it installs nothing there. Some devices, such as car "
-"navigators, hide it from the ordinary USB connection."
+"navigators, hide it from the file manager."
 msgstr ""
 "openExpress ne parvient pas à détecter le dossier {folder} — dans lequel cet "
 "appareil conserve ses logiciels — et n’y installe donc rien. Certains "
@@ -14044,6 +14217,20 @@ msgstr ""
 "jour qu’il n’a pas installées"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+msgid ""
+"Keep the GPS satellite data of some devices current without the phone "
+"(experimental)"
+msgstr ""
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+#, fuzzy
+#| msgid "{model} is on the Garmin account {account} already."
+msgid ""
+"See the batteries of the sensors on your Garmin Connect account and the "
+"solar charging of a device"
+msgstr "{model} est déjà sur le compte Garmin {account}."
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Make backups of the device"
 msgstr "Effectuer des sauvegardes de l’appareil"
 
@@ -14091,7 +14278,7 @@ msgstr ""
 #, fuzzy
 #| msgid "Software updates, with a beta system update offered for the device"
 msgid ""
-"Software updates: a system update and two more updates offered for the device"
+"Software updates: the device software and two more updates offered for it"
 msgstr ""
 "Mises à jour logicielles, avec une mise à jour bêta du système proposée pour "
 "l’appareil"

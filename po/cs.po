@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 08:05+0100\n"
-"PO-Revision-Date: 2026-11-19 06:43+0000\n"
+"POT-Creation-Date: 2026-11-19 23:17+0100\n"
+"PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/cs/>\n"
@@ -2770,6 +2770,22 @@ msgstr "Dostupné aktualizace: {count}"
 msgid "Install: {command}"
 msgstr "Instalace: {command}"
 
+#. TRANSLATORS: `openexpress updates --install all --hidden-folder-trial`
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"--hidden-folder-trial takes the part numbers of the updates to try, not "
+"“all”."
+msgstr ""
+
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Not tried: {name} {version} does not go to a folder the device hides inside "
+"GARMIN."
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Skipped {count} file that is already on the device."
@@ -2800,6 +2816,18 @@ msgstr ""
 msgid "To install:"
 msgstr "K instalaci:"
 
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`, under
+#. the update; {folder}: the folder the device hides; {copies}: a folder on this
+#. computer
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"a trial: written into {folder}, which the device hides, through "
+"openExpress's own USB session; the file there now is copied to {copies} "
+"first and put back if the new one is not written whole; the first refusal "
+"stops the trial"
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Space: {needed} needed, {free} free"
@@ -2826,6 +2854,13 @@ msgid_plural "Copied {count} files."
 msgstr[0] "Zkopírován {count} soubor."
 msgstr[1] "Zkopírovány {count} soubory."
 msgstr[2] "Zkopírováno {count} souborů."
+
+#. TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial --apply`, after
+#. the copy; {path}: the copy on this computer of the file the update replaced
+#: openexpress/cli.py
+#, python-brace-format
+msgid "The file {name} replaced is kept at {path} (SHA-256 {sha256})."
+msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3627,48 +3662,43 @@ msgstr ""
 "primary set --wearable --apply`, případně ho změňte v Garmin Connect."
 
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "a whole number from 1, not {value}"
+#, python-brace-format
 msgid "a whole number from {least} to {most}, not {value}"
-msgstr "celé číslo od 1, nikoli {value}"
+msgstr "celé číslo od {least} do {most}, nikoli {value}"
 
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "No primary wearable is set for this Garmin account."
+#, python-brace-format
 msgid "No sensors on this Garmin account."
-msgstr "Pro tento účet Garmin není nastaveno hlavní nositelné zařízení."
+msgstr "K tomuto účtu Garmin nejsou přiřazeny žádné senzory."
 
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "{count} not on the device"
+#, python-brace-format
 msgid "{count} sensor on the Garmin account"
 msgid_plural "{count} sensors on the Garmin account"
-msgstr[0] "{count} není v zařízení"
-msgstr[1] "{count} není v zařízení"
-msgstr[2] "{count} není v zařízení"
+msgstr[0] "na účtu Garmin je {count} senzor"
+msgstr[1] "na účtu Garmin jsou {count} senzory"
+msgstr[2] "na účtu Garmin je {count} senzorů"
 
 #. TRANSLATORS: after "3 sensors on the Garmin account · "
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "{count} new activity"
-#| msgid_plural "{count} new activities"
+#, python-brace-format
 msgid "{count} with a low battery"
 msgid_plural "{count} with a low battery"
-msgstr[0] "{count} nová aktivita"
-msgstr[1] "{count} nové aktivity"
-msgstr[2] "{count} nových aktivit"
+msgstr[0] "{count} s nízkým stavem baterie"
+msgstr[1] "{count} s nízkým stavem baterie"
+msgstr[2] "{count} s nízkým stavem baterie"
 
 #. TRANSLATORS: one sensor in the command line: its name, then its battery and when it
 #. was last connected ("HRM-Pro Plus: Battery 80% · last connected 2 days ago")
 #: openexpress/cli.py
 #, python-brace-format
 msgid "{sensor}: {state}"
-msgstr ""
+msgstr "{sensor}: {state}"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "No device on this Garmin account charges from the sun."
-msgstr ""
+msgstr "Žádné zařízení na tomto účtu Garmin nepodporuje solární dobíjení."
 
 #. TRANSLATORS: the activity time the sun gained a device in the last {days} days,
 #. today among them, when it is less than a minute in all (a winter week)
@@ -3676,9 +3706,9 @@ msgstr ""
 #, python-brace-format
 msgid "Activity time gained: under a minute in the last {days} day"
 msgid_plural "Activity time gained: under a minute in the last {days} days"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Získaná doba aktivity: méně než minuta za poslední {days} den"
+msgstr[1] "Získaná doba aktivity: méně než minuta za poslední {days} den"
+msgstr[2] "Získaná doba aktivity: méně než minuta za posledních {days} dní"
 
 #. TRANSLATORS: the activity time the sun gained a device: today, and in the last
 #. {days} days, today among them ("today 35 min · last 7 days 4 h 10 min")
@@ -3687,8 +3717,11 @@ msgstr[2] ""
 msgid "Activity time gained: today {today} · last {days} day {total}"
 msgid_plural "Activity time gained: today {today} · last {days} days {total}"
 msgstr[0] ""
+"Získaná doba aktivity: dnes {today} · za poslední {days} den {total}"
 msgstr[1] ""
+"Získaná doba aktivity: dnes {today} · za poslední {days} dny {total}"
 msgstr[2] ""
+"Získaná doba aktivity: dnes {today} · za posledních {days} dní {total}"
 
 #. TRANSLATORS: `openexpress courses`: the points of a track of a GPX file (not its
 #. waypoints)
@@ -4523,6 +4556,14 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
+msgid ""
+"a trial: install the updates named with --install into a folder a watch "
+"hides inside GARMIN (e.g. Prompts), through openExpress's own USB session, "
+"the file there copied to this computer first"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
 msgid "maps on the device (TopoActive, base maps, CourseView…)"
 msgstr "mapy v zařízení (TopoActive, základní mapy, CourseView…)"
 
@@ -4636,10 +4677,9 @@ msgid "change it in your Garmin account"
 msgstr "změnit to ve vašem účtu Garmin"
 
 #: openexpress/cli.py
-#, fuzzy, python-brace-format
-#| msgid "{model} is on the Garmin account {account} already."
+#, python-brace-format
 msgid "the sensors on the Garmin account and their batteries"
-msgstr "Zařízení {model} už je přiřazeno k účtu Garmin {account}."
+msgstr "senzory na účtu Garmin a stav jejich baterií"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4647,11 +4687,14 @@ msgid ""
 "the activity time the sun gained the devices of the Garmin account that "
 "charge from the sun"
 msgstr ""
+"doba aktivity získaná díky solárnímu dobíjení zařízení přiřazených k účtu "
+"Garmin"
 
 #: openexpress/cli.py
 #, python-brace-format
 msgid "how many days, today among them ({least}–{most}, {default} by default)"
 msgstr ""
+"počet dní včetně dneška (od {least} do {most}, výchozí hodnota {default})"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5104,7 +5147,7 @@ msgstr "Seznam zařízení v účtu"
 #, python-brace-format
 msgctxt "server request"
 msgid "Account sensors"
-msgstr ""
+msgstr "Senzory účtu Garmin"
 
 #. TRANSLATORS: the name of a request to Garmin's server (the activity time the sun
 #. gained a device), shown before its error
@@ -5112,7 +5155,7 @@ msgstr ""
 #, python-brace-format
 msgctxt "server request"
 msgid "Solar charging"
-msgstr ""
+msgstr "Solární dobíjení"
 
 #. TRANSLATORS: name of a server request (the account's consent to uploads to Garmin
 #. Connect), shown before an error
@@ -6128,7 +6171,7 @@ msgstr ""
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Account Sensors"
-msgstr ""
+msgstr "Senzory účtu Garmin"
 
 #. TRANSLATORS: subtitle of "Primary Training Device" while not logged in
 #: openexpress/gui/account_readings.py openexpress/gui/device_page.py
@@ -6152,53 +6195,49 @@ msgstr "Nepodařilo se ověřit"
 
 #. TRANSLATORS: subtitle of the row Account Sensors: how many sensors the account has
 #: openexpress/gui/account_readings.py
-#, fuzzy, python-brace-format
-#| msgid "{count} step"
-#| msgid_plural "{count} steps"
+#, python-brace-format
 msgctxt "account sensors"
 msgid "{count} sensor"
 msgid_plural "{count} sensors"
-msgstr[0] "{count} krok"
-msgstr[1] "{count} kroky"
-msgstr[2] "{count} kroků"
+msgstr[0] "{count} senzor"
+msgstr[1] "{count} senzory"
+msgstr[2] "{count} senzorů"
 
 #. TRANSLATORS: subtitle of the row Account Sensors, after "3 sensors · "
 #: openexpress/gui/account_readings.py
-#, fuzzy, python-brace-format
-#| msgid "{count} new activity"
-#| msgid_plural "{count} new activities"
+#, python-brace-format
 msgctxt "account sensors"
 msgid "{count} with a low battery"
 msgid_plural "{count} with a low battery"
-msgstr[0] "{count} nová aktivita"
-msgstr[1] "{count} nové aktivity"
-msgstr[2] "{count} nových aktivit"
+msgstr[0] "{count} s nízkým stavem baterie"
+msgstr[1] "{count} s nízkým stavem baterie"
+msgstr[2] "{count} s nízkým stavem baterie"
 
 #. TRANSLATORS: row in the group of the Garmin account on the device page: the activity time
 #. the sun gained a device that charges from the sun
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Solar Charging"
-msgstr ""
+msgstr "Solární dobíjení"
 
 #. TRANSLATORS: subtitle of the row Solar Charging when the sun gained the device less
 #. than a minute of activity time in the last 7 days, today among them
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Activity time gained: under a minute in the last 7 days"
-msgstr ""
+msgstr "Získaná doba aktivity: méně než minuta za posledních 7 dní"
 
 #. TRANSLATORS: subtitle of the row Solar Charging, before "last 7 days …"
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "Activity time gained: today {today}"
-msgstr ""
+msgstr "Získaná doba aktivity: dnes {today}"
 
 #. TRANSLATORS: subtitle of the row Solar Charging, after "Activity time gained: today …"
 #: openexpress/gui/account_readings.py
 #, python-brace-format
 msgid "last 7 days {week}"
-msgstr ""
+msgstr "za posledních 7 dní {week}"
 
 #: openexpress/gui/activities_page.py
 #, python-brace-format
@@ -10092,11 +10131,35 @@ msgstr[2] ""
 msgid "License Agreement (EULA)"
 msgstr "Licenční smlouva s koncovým uživatelem (EULA)"
 
+#. TRANSLATORS: heading of the message after some of the updates were copied and
+#. others were not (the list says which and why)
+#: openexpress/gui/updates_page.py
+#, fuzzy, python-brace-format
+#| msgid "Update Not Installed"
+msgid "Not All Updates Installed"
+msgstr "Aktualizace nebyla nainstalována"
+
 #. TRANSLATORS: heading of the error message when installing an update failed
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgid "Update Not Installed"
 msgstr "Aktualizace nebyla nainstalována"
+
+#. TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
+#. from the ordinary USB connection, which openExpress cannot write there (or the device
+#. refuses)
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgid ""
+"{count} of these cannot be installed with openExpress yet: the device keeps "
+"it in a folder it hides from the USB connection. The others install as usual."
+msgid_plural ""
+"{count} of these cannot be installed with openExpress yet: the device keeps "
+"them in folders it hides from the USB connection. The others install as "
+"usual."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
 
 #. TRANSLATORS: heading of the message after an update was copied to the device or its
 #. drive was ejected (not a button)
@@ -10224,6 +10287,13 @@ msgstr[2] "Aktualizace nebyly zařízením nainstalovány"
 #, python-brace-format
 msgid "Install All"
 msgstr "Nainstalovat vše"
+
+#. TRANSLATORS: a line of the row of an update that openExpress cannot install
+#. yet (its group says why), without a full stop
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgid "Cannot be installed with openExpress yet"
+msgstr ""
 
 #: openexpress/gui/updates_page.py
 #, python-brace-format
@@ -11390,6 +11460,15 @@ msgstr "Nebyly zjištěny žádné problémy"
 msgid "No Problems Found"
 msgstr "Nebyly nalezeny žádné problémy"
 
+#. TRANSLATORS: a step: the device was connected a moment ago and is not ready yet for the
+#. USB session openExpress opens of its own
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgctxt "courses"
+#| msgid "Waiting for the Device"
+msgid "Waiting for the device to get ready…"
+msgstr "Čekání na zařízení"
+
 #. TRANSLATORS: a step: openExpress reads a folder the device hides from the ordinary USB
 #. connection; {folder}: e.g. .System
 #: openexpress/hidden_folders.py
@@ -11478,6 +11557,86 @@ msgid ""
 msgstr ""
 "Složka {folder} se v zařízení nenachází a aplikace openExpress ji v tomto "
 "umístění nevytváří."
+
+#. TRANSLATORS: {name} is an update; openExpress copies the file on the device to this
+#. computer before it writes the new one, and that copy failed
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "{name} was not installed: Garmin's activation did not say where on the "
+#| "device its unlock file goes. Nothing on the device was changed."
+msgid ""
+"{name} was not written: the file there now could not be copied whole to this "
+"computer first. Nothing on the device was changed."
+msgstr ""
+"Mapu „{name}“ se nepodařilo nainstalovat: Garmin při aktivaci neuvedl, kam "
+"se má v zařízení uložit odemykací soubor. V zařízení nebyly provedeny žádné "
+"změny."
+
+#. TRANSLATORS: a step of the trial on the command line: a small file written into a folder
+#. the device hides, read back and deleted, before anything there is replaced
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Reading the folder {folder}…"
+msgid "Trying a small test file in {folder}…"
+msgstr "Načítá se složka {folder}…"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update, whose file now on
+#. the device is copied to this computer before it is replaced
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Copying {name} to the device"
+msgid "Copying the old {name} to this computer"
+msgstr "Kopírování {name} do zařízení"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "remove the map from the device"
+msgid "Removing the old {name} from the device"
+msgstr "odebrat mapu ze zařízení"
+
+#. TRANSLATORS: a step of the trial on the command line; {name}: an update whose new file was
+#. not written whole, so its old one is written back from the copy on this computer
+#: openexpress/hidden_folders.py
+#, fuzzy, python-brace-format
+#| msgid "Writing {name} to the device"
+msgid "Putting the old {name} back on the device"
+msgstr "Zápis {name} do zařízení"
+
+#. TRANSLATORS: {name} is an update; before it replaces anything, openExpress writes a small
+#. test file into the folder the device hides, reads it back and deletes it
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"{name} was not written: the device did not take a small test file into that "
+"folder, so the file there now was left as it is."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides, the file that
+#. was there before was written back from its copy on this computer
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid "The file that was there before was put back and read back the same."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides; {path}:
+#. the copy on this computer of the file that was there before; {sha256}: its checksum
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"The file that was there before was put back and read back the same as its "
+"copy ({path}, SHA-256 {sha256})."
+msgstr ""
+
+#. TRANSLATORS: after an update was not written into a folder the device hides; {path}: the
+#. copy on this computer of the file that was there before; {sha256}: its checksum
+#: openexpress/hidden_folders.py
+#, python-brace-format
+msgid ""
+"The file that was there before could not be put back; its copy is at {path} "
+"(SHA-256 {sha256})."
+msgstr ""
 
 #. TRANSLATORS: {name} is a map; it was being written into a folder the device hides and
 #. stopped: {done} of its {count} files are on the device (the verb agrees with {done})
@@ -11592,7 +11751,7 @@ msgstr ","
 #: openexpress/i18n.py
 #, python-brace-format
 msgid "{hours} h"
-msgstr ""
+msgstr "{hours} h"
 
 #. TRANSLATORS: a length of time in minutes and seconds
 #: openexpress/i18n.py
@@ -12391,68 +12550,65 @@ msgstr "Nepodporovaný typ přenosu {type}"
 
 #. TRANSLATORS: a sensor's battery, in per cent ("Battery 80%")
 #: openexpress/readings.py
-#, fuzzy, python-brace-format
-#| msgid "{time} · {percent}%"
+#, python-brace-format
 msgid "Battery {percent}%"
-msgstr "{time} · {percent}%"
+msgstr "Baterie: {percent} %"
 
 #. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery good"
-msgstr ""
+msgstr "Stav baterie: dobrý"
 
 #. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery new"
-msgstr ""
+msgstr "Stav baterie: nová"
 
 #. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery OK"
-msgstr ""
+msgstr "Stav baterie: v pořádku"
 
 #. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery low"
-msgstr ""
+msgstr "Stav baterie: nízký"
 
 #. TRANSLATORS: a sensor's battery as the account tells it, without a percentage
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery critical"
-msgstr ""
+msgstr "Stav baterie: kritický"
 
 #. TRANSLATORS: a sensor's battery being charged
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Charging"
-msgstr ""
+msgstr "Nabíjení"
 
 #. TRANSLATORS: a sensor's battery in a word of Garmin's that openExpress does not know,
 #. shown as it comes ("Battery DEPLETED")
 #: openexpress/readings.py
 #, python-brace-format
 msgid "Battery {status}"
-msgstr ""
+msgstr "Baterie: {status}"
 
 #. TRANSLATORS: a sensor whose battery the account does not tell
 #: openexpress/readings.py
-#, fuzzy, python-brace-format
-#| msgid "Status unknown"
+#, python-brace-format
 msgid "Battery status unknown"
-msgstr "Neznámý stav"
+msgstr "Neznámý stav baterie"
 
 #. TRANSLATORS: when a sensor was last connected, after its battery ("Battery 80% · last
 #. connected 2 days ago"); {when}: "2 days ago", "yesterday, 23:41"…
 #: openexpress/readings.py
-#, fuzzy, python-brace-format
-#| msgid "Last one {when}"
+#, python-brace-format
 msgid "last connected {when}"
-msgstr "Poslední pád: {when}"
+msgstr "naposledy připojeno: {when}"
 
 #: openexpress/service.py
 #, python-brace-format
@@ -13493,6 +13649,15 @@ msgstr "Volitelné"
 msgid "Unspecified"
 msgstr "Neurčeno"
 
+#. TRANSLATORS: a step of the Updates page: a file on the device of the size Garmin offers is
+#. read whole to compare it with the server's ("… · 12.3 MB of 61.8 MB"); short, so that the
+#. numbers fit the bar of the narrowest window
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Checking the File…"
+msgid "Checking the update file"
+msgstr "Kontrola souboru…"
+
 #. TRANSLATORS: `openexpress updates --reinstalls`, under a component whose version on
 #. the device ({on_device}) is higher than the one Garmin offers ({offered}), while the
 #. file on the device is the very file offered
@@ -13592,6 +13757,54 @@ msgstr ""
 "Nenainstalováno: aktualizace {name} verze {version} se ukládá do složky "
 "{folder}, kterou openExpress v zařízení nevidí."
 
+#. TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
+#. the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Not installed: {name} {version} goes to the folder {folder}, which "
+#| "openExpress cannot see on the device."
+msgid ""
+"Not installed: {name} {version} goes to the folder {folder}, which the "
+"device hides from the USB connection; openExpress cannot install it yet. The "
+"other updates install as usual."
+msgstr ""
+"Nenainstalováno: aktualizace {name} verze {version} se ukládá do složky "
+"{folder}, kterou openExpress v zařízení nevidí."
+
+#. TRANSLATORS: why an update was not installed, after its name in the list of those not
+#. installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "This device takes GPX files in its own folder {folder}, where openExpress "
+#| "does not copy them"
+msgid ""
+"the device keeps it in the folder {folder}, hidden from the USB connection; "
+"openExpress cannot install it yet"
+msgstr ""
+"Toto zařízení ukládá soubory GPX do vlastní složky {folder}, do které je "
+"openExpress nekopíruje"
+
+#. TRANSLATORS: after updates were copied: the head of the list of those that were not
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "{count} update available"
+#| msgid_plural "{count} updates available"
+msgid "{count} update was not installed:"
+msgid_plural "{count} updates were not installed:"
+msgstr[0] "K dispozici je {count} aktualizace"
+msgstr[1] "K dispozici jsou {count} aktualizace"
+msgstr[2] "K dispozici je {count} aktualizací"
+
+#. TRANSLATORS: an update not installed and why ({why}: the error's words)
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "{name} {version}"
+msgctxt "update not installed"
+msgid "{name} {version}: {why}"
+msgstr "{name} {version}"
+
 #. TRANSLATORS: `openexpress updates`: the device keeps its software in a folder openExpress
 #. cannot see over MTP; {folder}: e.g. .System
 #: openexpress/updates.py
@@ -13660,6 +13873,30 @@ msgstr "{part}: server neposkytl URL ke stažení"
 #, python-brace-format
 msgid "{part}: the RGN format is not supported by openExpress"
 msgstr "{part}: openExpress nepodporuje formát RGN"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is
+#. downloaded ("… · 1.2 MB of 3.4 MB")
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Downloading a file from Garmin Connect"
+msgid "Downloading the update information of {name}"
+msgstr "Stahování souboru z Garmin Connect"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is
+#. copied to the device
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Copying {name} to the device"
+msgid "Copying the update information of {name} to the device"
+msgstr "Kopírování {name} do zařízení"
+
+#. TRANSLATORS: a step: the small file of information about an update ({name}) is read
+#. back from the device and compared
+#: openexpress/updates.py
+#, fuzzy, python-brace-format
+#| msgid "Checking {name} on the device"
+msgid "Checking the update information of {name} on the device"
+msgstr "Kontrola {name} v zařízení"
 
 #. TRANSLATORS: title of a notification of the background sync:
 #. the first sync of a device waits for the user's choice
@@ -13815,9 +14052,20 @@ msgstr ""
 "Dostupná aktualizace"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
-msgid "Software updates, with a beta system update offered for the device"
+#, fuzzy
+#| msgid "Software updates, with a beta system update offered for the device"
+msgid ""
+"Software updates: a system update and two more updates offered for the device"
 msgstr ""
 "Aktualizace softwaru včetně beta aktualizace systému nabízené pro zařízení"
+
+#: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
+#, fuzzy
+#| msgid "the sensors on the Garmin account and their batteries"
+msgid ""
+"The device page: the sensors on the Garmin Connect account with their "
+"batteries, and solar charging"
+msgstr "senzory na účtu Garmin a stav jejich baterií"
 
 #: openexpress/data/io.github.tomaszbojanowski.OpenExpress.metainfo.xml.in
 msgid "Maps on the device and free maps to install"

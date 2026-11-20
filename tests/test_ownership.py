@@ -277,7 +277,7 @@ def account_calls(client, device):
         "store_updates": lambda: api.updates(device, [], "en-US"),
         "store_queue_install": lambda: api.queue_install(device, []),
         "store_forget": lambda: api.forget(device, []),
-        "store_icon_urls": lambda: api.icon_urls([ciq.uuid.uuid4()]),
+        "store_icon_urls": lambda: api.icon_urls([ciq.uuid.UUID(int=1)]),
     }
 
 

@@ -2098,7 +2098,7 @@ def test_a_removal_that_removed_nothing_says_so(clock, in_the_window):
     s = device_session(device=None, storage=None)
     win = window(session=s, toast=toasts.append, sections={})
     status_page._freed(win, s, freeing.Freed(), "Update file removed, 0 B freed", None)
-    assert told or toasts, "nothing told after the removal"
+    assert told == [] and toasts == ["Nothing removed: the files were no longer on the device"]
 
 
 @pytest.mark.needs_display
@@ -2155,9 +2155,6 @@ def test_removing_an_update_file_has_the_updates_page_read_again(clock, in_the_w
 
 
 # --- a task after a write waits for the count, a closed session let go, a refused task -------
-
-
-NOW = datetime(2026, 10, 21, 12, 0)
 
 
 @pytest.mark.needs_display
@@ -2230,13 +2227,13 @@ def test_with_real_threads_the_page_task_waits_for_the_count(monkeypatch, in_the
         while not done.is_set() and time.monotonic() < end:
             ctx.iteration(False)
             time.sleep(0.001)
-        # let the count finish
-        end = time.monotonic() + 1
-        while time.monotonic() < end:
+        # the count of this write ends before the next write
+        end = time.monotonic() + 5
+        while len(finished) == before and time.monotonic() < end:
             ctx.iteration(False)
             time.sleep(0.005)
-    print("asked the device during the count:", sum(overlapped), "of", len(overlapped))
     assert not any(overlapped), overlapped
+    assert len(finished) == len(overlapped)  # each write counted before the next one
 
 
 @pytest.mark.needs_display

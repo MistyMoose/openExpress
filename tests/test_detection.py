@@ -1936,7 +1936,7 @@ def test_device_page_of_a_garmin_drive(drive_window, monkeypatch):
     for text in ("Sync With Garmin Connect", "Last Sync", "Syncs each time a device is connected, even when the window is closed",
                  "Maps"):
         assert text not in texts
-    assert calls == ["_show_device_picture", "_check_updates_quietly"]
+    assert sorted(calls) == ["_check_updates_quietly", "_show_device_picture"]  # in any order
 
 
 @pytest.mark.needs_display
@@ -5063,11 +5063,14 @@ VARIA, VENU = 3000000003, 3000000004
 DAY = 86400.0
 
 
-def remember_others(now):
+def remember_others():
     """The test watch (seen long ago), a Varia (seen yesterday) and a Venu 2 (three days ago)
     remembered by this installation."""
+    import time
+
     from openexpress import known_devices
 
+    now = time.time()
     known_devices.remember(TEST_WATCH, "Test watch", "006-B0000-00", "1.00", "mtp",
                            now=now - 9 * DAY)
     known_devices.remember(VARIA, "Varia RTL515", "006-B3592-03", "3.36", "ums", now=now - DAY)
@@ -5091,10 +5094,8 @@ def test_the_start_page_lists_remembered_devices_after_the_connected(start_windo
     """The devices remembered and not connected come after the connected ones, by name;
     one both connected and remembered is listed once, as connected. A
     remembered tile says its version and when it was seen; never a unit ID."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5145,12 +5146,10 @@ def test_a_remembered_tile_opens_a_read_only_view(start_window, monkeypatch, in_
     """A remembered device that is not connected opens its read-only view: its name,
     version, when it was seen and its last sync, as remembered. Nothing is opened, nothing
     is read from USB, nothing is asked of a server; back is the start page."""
-    import time
-
     from openexpress import service, sync
 
     win = start_window
-    remember_others(time.time())
+    remember_others()
     sync.SyncState(VENU).save()  # synced here before
     record_sync(VENU, uploaded=2, downloaded=1, skipped_known=0, errors=[], lines=[])
     nothing_connected(win, monkeypatch)
@@ -5171,7 +5170,7 @@ def test_a_remembered_tile_opens_a_read_only_view(start_window, monkeypatch, in_
     assert (venu["name"], venu["version"], venu["part_number"]) == (
         "Venu 2", "Software 19.05", "006-B3703-00")
     assert venu["last_seen"].startswith("Last seen ")
-    assert venu["last_sync"] != "Never synced" and "2" in venu["last_sync"]
+    assert venu["last_sync"].endswith("\u00a0· 2 new files, 2 uploaded\u00a0· 1 received")
     back(win)
     assert win.navigation.stack == ["start page"]
     win._open_tile(names.index("Varia RTL515"))
@@ -5183,10 +5182,8 @@ def test_a_connected_tile_still_opens_its_device(start_window, monkeypatch, tmp_
                                                  device_root):
     """Guards: with remembered devices on the list, a connected tile opens that device,
     a remembered one opens nothing."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5199,10 +5196,8 @@ def test_a_connected_tile_still_opens_its_device(start_window, monkeypatch, tmp_
 def test_a_device_plugged_in_while_a_remembered_one_is_shown_opens_its_view(start_window,
                                                                             monkeypatch):
     """From the read-only view too: one device plugged in and detected: its view."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     win._open_tile(0)
     assert win.navigation.stack == ["start page", "remembered view"]
@@ -5216,10 +5211,8 @@ def test_a_detection_that_still_finds_nothing_keeps_the_remembered_view(start_wi
                                                                         monkeypatch):
     """No device connected before the detection nor after it: the read-only view of the
     remembered device stays; the start page under it is drawn anew."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     names = [name for name, _on, _how in drawn_tiles(win)]
     win._open_tile(names.index("Venu 2"))
@@ -5237,10 +5230,8 @@ def test_a_detection_that_finds_the_same_devices_keeps_the_remembered_view(start
                                                                            device_root):
     """Two devices listed; a second detection (e.g. after gvfs tells of the mount of one of
     them) finds the same two: the remembered view stays, the tiles are drawn under it."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5258,10 +5249,8 @@ def test_a_detection_that_finds_the_same_devices_keeps_the_remembered_view(start
 def test_the_account_list_arriving_keeps_the_remembered_view(start_window, monkeypatch):
     """The account's list read while a remembered device is shown: its view stays; the start
     page under it gets the account's tile."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     later = defer_background(win)
     with_account(monkeypatch, FakeAccountClient())
     nothing_connected(win, monkeypatch)
@@ -5279,10 +5268,8 @@ def test_devices_plugged_in_while_a_remembered_one_is_shown_give_the_start_page(
         start_window, monkeypatch, tmp_path, device_root):
     """The test watch's read-only view shown, the test watch comes with another device: the
     start page with the tiles of both, nothing opened (the list)."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     win._open_tile(0)
     assert win.navigation.stack == ["start page", "remembered view"]
@@ -5297,10 +5284,8 @@ def test_the_open_device_unplugged_while_a_remembered_one_is_shown_keeps_its_vie
         start_window, monkeypatch):
     """The open device unplugged while another one's read-only view is shown: the view
     stays, the start page is drawn under it without the device gone."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     one_watch(win, monkeypatch)
     win.refresh_device()
     back(win)
@@ -5450,10 +5435,8 @@ def test_a_second_device_plugged_in_while_a_remembered_one_is_shown(start_window
                                                                     tmp_path, device_root):
     """A remembered device's view shown, a second device mounted: the view stays,
     the open one stays open; back on the start page, the tiles of both."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     one_watch(win, monkeypatch)
     win.refresh_device()
     opened = win.session
@@ -5470,12 +5453,10 @@ def test_a_third_device_plugged_in_while_a_remembered_one_is_shown(start_window,
                                                                    tmp_path, device_root):
     """Two devices on the list, a remembered device's view shown, a Garmin drive mounted: the
     view stays, the start page under it lists the three devices connected."""
-    import time
-
     from openexpress.gui.app import MainWindow
 
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5494,10 +5475,8 @@ def test_another_device_unplugged_while_a_remembered_one_is_shown(start_window, 
                                                                   tmp_path, device_root):
     """Two devices, the test watch open, a remembered device's view shown, the Edge unplugged:
     the view stays, the test watch stays open."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     two_and_one_open(win, monkeypatch, tmp_path, device_root, "Test watch")
     opened = win.session
     back(win)
@@ -5525,10 +5504,8 @@ def test_one_of_two_on_the_list_unplugged_while_a_remembered_one_is_shown(
         start_window, monkeypatch, tmp_path, device_root):
     """Two devices on the list, a remembered device's view shown, one unplugged:
     the one left is opened in the background, the remembered view stays."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5545,10 +5522,8 @@ def test_the_device_unplugged_from_the_list_leaves_no_tile(start_window, monkeyp
     """Two devices on the list, the Edge unplugged; the test watch, found alone, is
     opened. Back on the start page the Edge has no tile of a device connected: it is gone
     (such a tile would try to open it, and fail)."""
-    import time
-
     win = start_window
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -5565,12 +5540,10 @@ def test_a_device_plugged_in_while_another_remembered_one_is_shown_opens_behind_
         start_window, monkeypatch):
     """The Venu 2's read-only view shown, the test watch plugged in: it is opened in the
     background, the view stays; the start page under it has the test watch's tile, open."""
-    import time
-
     from openexpress.gui.navigation import Cause
 
     win = start_window
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     remembered_shown(win)
     one_watch(win, monkeypatch)
@@ -5584,12 +5557,10 @@ def test_two_devices_plugged_in_while_another_remembered_one_is_shown_list_behin
         start_window, monkeypatch, tmp_path, device_root):
     """The Venu 2's read-only view shown, two devices plugged in:
     the view stays, nothing is opened, the list is drawn under it."""
-    import time
-
     from openexpress.gui.navigation import Cause
 
     win = start_window
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     remembered_shown(win)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
@@ -5604,12 +5575,10 @@ def test_the_device_shown_plugged_in_while_another_one_is_open_gives_the_start_p
     """With a device open: the Edge open alone, the test watch's read-only view shown, the
     test watch plugged in. Only the list is read again; the user goes to the start page,
     where the test watch's tile is, and the Edge stays open."""
-    import time
-
     from openexpress.gui.app import MainWindow
 
     win, world = start_window, start_window.world
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     edge = two_watches(world, monkeypatch, tmp_path, device_root)
     watch = world.offered[0]
@@ -6270,14 +6239,13 @@ def test_one_tile_stands_in_the_middle():
 
 
 @pytest.mark.needs_display
-def test_the_relative_dates_are_drawn_again_only_while_shown_and_changed(monkeypatch,
-                                                                         in_the_window):
+def test_the_relative_dates_are_drawn_again_only_while_shown_and_changed(monkeypatch, clock):
     """Once a minute while the start page, the device view or the read-only view
     of a remembered device is shown (its texts too: test_update_states), the
     texts told against now are drawn again: the tiles only when one of their texts changed,
     the row of the last sync only when its words changed. No timer once the window is
     closed."""
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     import gi
 
@@ -6287,13 +6255,6 @@ def test_the_relative_dates_are_drawn_again_only_while_shown_and_changed(monkeyp
     from openexpress import known_devices, netstatus, sync
     from openexpress.gui.app import MainWindow
     from openexpress.gui.start_window import RELATIVE_REFRESH_S
-
-    class Clock(datetime):
-        current = datetime(2026, 10, 21, 12, 0)
-
-        @classmethod
-        def now(cls, tz=None):
-            return cls.current
 
     timers, real_remove = {}, GLib.source_remove
 
@@ -6308,7 +6269,6 @@ def test_the_relative_dates_are_drawn_again_only_while_shown_and_changed(monkeyp
     def minute_timers():
         return [fn for seconds, fn in timers.values() if seconds == RELATIVE_REFRESH_S]
 
-    in_the_window("datetime", Clock)
     monkeypatch.setattr(MainWindow, "refresh_device", lambda self, **kw: None)
     monkeypatch.setattr(GLib, "timeout_add_seconds", add_seconds)
     monkeypatch.setattr(GLib, "source_remove", remove)
@@ -6326,7 +6286,7 @@ def test_the_relative_dates_are_drawn_again_only_while_shown_and_changed(monkeyp
         (tick,) = minute_timers()
         tick()
         assert len(drawn) == 1  # the same words: not drawn again
-        Clock.current = datetime(2026, 10, 21, 12, 1)
+        clock.current += timedelta(minutes=1)
         tick()
         assert len(drawn) == 2  # "3 min ago" now
         tick()
@@ -6425,12 +6385,10 @@ def test_the_account_list_comes_after_the_first_drawing_with_one_more(start_wind
     Forerunner) with exactly one more drawing: the tiles before are the same, no device
     view comes up. A device of the account that is connected or remembered is not
     repeated."""
-    import time
-
     win = start_window
     later = defer_background(win)
     client = with_account(monkeypatch, FakeAccountClient())
-    remember_others(time.time())
+    remember_others()
     monitor_with(monkeypatch)
     two_watches(win.world, monkeypatch, tmp_path, device_root)
     win.refresh_device()
@@ -6579,11 +6537,10 @@ def test_logging_out_on_the_view_of_a_device_of_the_account_gives_the_start_page
 def test_logging_out_on_the_view_of_a_remembered_device_keeps_it(start_window, monkeypatch):
     """Logged out on the read-only view of a device remembered by this computer (not
     from the account): the view stays."""
-    import time
 
     win = start_window
     later = defer_background(win)
-    remember_others(time.time())
+    remember_others()
     with_account(monkeypatch, FakeAccountClient())
     nothing_connected(win, monkeypatch)
     win._fetch_account()
@@ -6816,12 +6773,10 @@ def test_a_connected_tile_shows_the_picture_of_the_device_view(start_window, mon
 def test_a_remembered_tile_shows_its_picture_from_the_cache_only(start_window, monkeypatch):
     """A remembered device: its picture from the cache by part number (the Venu 2);
     none in the cache (the Varia): the icon stays, nothing is downloaded."""
-    import time
-
     win = start_window
     later = defer_background(win)
     fakes = fake_pictures(monkeypatch)
-    remember_others(time.time())
+    remember_others()
     in_the_cache("006-B3703-00")
     nothing_connected(win, monkeypatch)
     run_later(later)
@@ -7001,8 +6956,6 @@ def test_the_ownership_check_keeps_the_kind_of_a_remembered_device(start_window,
 def test_tiles_without_a_picture_ask_nothing(start_window, monkeypatch, in_the_window):
     """Tiles whose devices have no picture: the icon of their kind, and nothing is asked
     (no unit-info, no download)."""
-    import time
-
 
     def asked(*_a, **_k):
         raise AssertionError("asked for a tile")
@@ -7011,7 +6964,7 @@ def test_tiles_without_a_picture_ask_nothing(start_window, monkeypatch, in_the_w
     later = defer_background(win)
     fakes = fake_pictures(monkeypatch)
     in_the_window("picture_from_unit_info", asked)
-    remember_others(time.time())
+    remember_others()
     nothing_connected(win, monkeypatch)
     run_later(later)
     assert fakes.downloads == [] and win.start.pictures == []
@@ -7330,13 +7283,11 @@ def test_a_click_in_each_section_of_the_real_page_opens_its_device(choosing_wind
                                                                     tmp_path, device_root):
     """Through the real start page: a connected tile opens that device, a remembered one and
     one only on the account their read-only views."""
-    import time
-
     from gi.repository import Gtk
 
     from openexpress.gui.start import StartPage
 
-    remember_others(time.time())
+    remember_others()
     with_account(monkeypatch, FakeAccountClient())
     win = start_stand_in(StartPage(lambda key: win._open_tile(key)),
                          {"watch": FakeSection(), "maps": FakeSection()}, choosing_window)

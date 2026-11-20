@@ -420,13 +420,11 @@ def test_cli_remove_message(xdg, monkeypatch, capsys, tmp_path):
 # --- GUI logic without a display ---------------------------------------------------------
 
 
-def test_gui_helpers():
+def test_removed_files_are_counted_in_the_plural():
     from openexpress.gui.app import MainWindow
 
     assert MainWindow._removed_files(1) == "Removed 1 file"
     assert MainWindow._removed_files(3) == "Removed 3 files"
-    state = types.SimpleNamespace(available_slots=2, available_space=2048)
-    assert MainWindow._apps_space(state) == "2 free slots\u00a0· 2.0\u00a0kB free"
 
 
 class _Sec:

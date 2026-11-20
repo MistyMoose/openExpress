@@ -524,7 +524,7 @@ def test_the_wix_layout_still_gives_both(monkeypatch, tmp_path):
     assert found
 
 
-def test_the_two_new_texts_in_polish(tmp_path):
+def test_the_refusals_of_an_installer_in_polish(tmp_path):
     from openexpress import i18n
 
     other = tmp_path / "inny.exe"

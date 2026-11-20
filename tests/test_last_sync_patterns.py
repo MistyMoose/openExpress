@@ -359,11 +359,11 @@ def _put(record, when):
 
 @pytest.mark.needs_display
 @pytest.mark.parametrize("language", ["en", "pl"], indirect=True)
-def test_from_the_file_to_the_screen(xdg, language):
+def test_from_the_file_to_the_screen(xdg, language, clock):
     """The device page shows the sync before (its words "Brak nowych danych do wysłania"),
     then the Edge's sync is written and shown again by the device page and by the change of
     the file: the row shows that sync alone, once."""
-    now = datetime.now()
+    now = clock.current
     before = _record("real-source-edge-1050-0.6.3.json")
     today = _record("real-flatpak-edge-1050-0.6.13.json")
     assert before["unit_id"] == today["unit_id"]  # the same device

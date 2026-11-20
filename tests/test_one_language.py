@@ -139,6 +139,7 @@ def test_the_music_page_says_the_space_in_the_same_words(free, said):
 
 @pytest.mark.parametrize("slots, space, said", [
     (3, 1_200_000, f"3 free slots{NB}· 1.2{NB}MB free"),
+    (2, 2048, f"2 free slots{NB}· 2.0{NB}kB free"),
     (None, 1_200_000, f"1.2{NB}MB free"),
     (2, None, f"2 free slots{NB}· Not known"),
 ])

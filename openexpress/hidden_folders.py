@@ -28,6 +28,7 @@ from openexpress.device.storage import (
     Entry,
     RemountFailed,
     Storage,
+    UmsStorage,
     connection,
     named_in_any_case,
 )
@@ -99,7 +100,11 @@ def _key(folder: str) -> str:
 
 def top_folders(storage: Storage) -> set[str] | None:
     """The names of the folders of the device's top level that the ordinary listing shows,
-    in lower case; None when they cannot be listed (then no folder is taken for unseen)."""
+    in lower case; None when they cannot be listed, and for a device seen as a USB drive, which
+    hides nothing from its listing (a folder not there is only not there yet): then no folder is
+    taken for unseen."""
+    if isinstance(storage, UmsStorage):
+        return None
     try:
         return {e.name.casefold() for e in storage.listdir("") if e.is_dir}
     except DeviceNotResponding:
@@ -433,7 +438,8 @@ def session_possible(storage: Storage) -> bool:
     USB the program can reach (not the Flatpak without the permission). A device still starting
     counts (session_for waits for it); whether the device then takes a file is known only as it
     is written."""
-    return bool(getattr(storage, "device_uri", None)) and not storage.usb_blocked()
+    return (bool(getattr(storage, "device_uri", None)) and not storage.usb_blocked()
+            and not isinstance(storage, UmsStorage))  # a USB drive: no MTP, no session
 
 
 def put_back_text(kept: KeptCopy, put_back: bool) -> str:

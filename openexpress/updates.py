@@ -1269,7 +1269,7 @@ def _install(
             except (UpdateError, DeviceError) as e:
                 # One file refused: the others are written all the same (the device's own
                 # software does not depend on an add-on), unless the device is gone.
-                if hidden_folders.top_folders(storage) is None:
+                if _gone(storage):
                     raise
                 log.info("software update: %s %s not installed (%s), the others go on",
                          u.part_number, u.version, type(e).__name__)
@@ -1281,6 +1281,18 @@ def _install(
             raise refused[0]  # nothing written: the copy failed with this, its own advice too
         raise UpdateError(failed_text(report))
     return report
+
+
+def _gone(storage: Storage) -> bool:
+    """Whether the device's top level can no longer be listed: it is gone (DeviceNotResponding
+    goes on as it is)."""
+    try:
+        storage.listdir("")
+    except DeviceNotResponding:
+        raise
+    except DeviceError:
+        return True
+    return False
 
 
 def downloading_step(u: SoftwareUpdate) -> str:

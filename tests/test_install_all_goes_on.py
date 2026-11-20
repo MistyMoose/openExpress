@@ -11,7 +11,7 @@ import pytest
 from fakes import Section, window_methods
 from fakes import window as stand_in
 
-from openexpress import download, hidden_folders, updates
+from openexpress import download, updates
 from openexpress.cli import main
 from openexpress.connect import GarminClient, lower_keys
 from openexpress.device.storage import DeviceError, DeviceNotResponding, LocalStorage
@@ -168,7 +168,7 @@ def test_a_device_that_stopped_answering_stops_the_install(watch, downloads, mon
 def test_a_device_gone_stops_the_install(watch, downloads, monkeypatch):
     storage, by = _offered(watch)
     _refusing(monkeypatch, "D0000300.sid", DeviceError("made-up: the device is gone"))
-    monkeypatch.setattr(hidden_folders, "top_folders", lambda storage: None)
+    monkeypatch.setattr(updates, "_gone", lambda storage: True)
     with pytest.raises(DeviceError):
         updates.install([by["006-D0003-00"], by["006-B0000-00"]], storage)
     assert not (watch / "GARMIN" / "GUPDATE.GSP").exists()

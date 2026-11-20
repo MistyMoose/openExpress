@@ -5,6 +5,7 @@ install-desktop: only its own menu entries (their Exec= runs "-m openexpress") a
 the program's own, byte for byte; an entry that runs the Flatpak and any other icon stay."""
 
 import logging
+import os
 import types
 from pathlib import Path
 
@@ -253,6 +254,86 @@ def test_the_watcher_tidies_up_before_it_starts(from_source, monkeypatch):
     monkeypatch.setattr(watch.Watcher, "run", lambda self, argv: order.append("watcher") or 0)
     assert watch.main() == 0
     assert order == ["tidy up", "watcher"]
+
+
+# --- the icon folder: a cache made before must not hide a new icon ----------------------------
+#
+# An icon-theme.cache in the home folder's hicolor (made by gtk-update-icon-cache, not by
+# openExpress) counts for GTK and GNOME Shell as long as the hicolor folder is not newer than
+# it; an icon written into scalable/apps changes only that folder's time, so the cache, which
+# does not have it, hides it (the desktop shows its default icon). The time of hicolor is set to
+# now whenever an icon is written or removed there; the cache itself is never touched.
+
+OLD = 1_767_225_600  # a time well before the test
+
+
+def _hicolor() -> Path:
+    return _data() / "icons" / "hicolor"
+
+
+def _old_cache() -> tuple[Path, bytes]:
+    """A cache of other apps' icons made before, and the hicolor folder as old as it, with the
+    folders of its icons there already (so that writing an icon makes no new one in it)."""
+    for size in ("scalable", "symbolic"):
+        (_hicolor() / size / "apps").mkdir(parents=True, exist_ok=True)
+    cache = _put(_hicolor() / "icon-theme.cache", b"made-up cache of other apps' icons")
+    for path in (cache, _hicolor()):
+        os.utime(path, (OLD, OLD))
+    return cache, cache.read_bytes()
+
+
+def _newer(icon: Path) -> bool:
+    return _hicolor().stat().st_mtime_ns >= icon.stat().st_mtime_ns > OLD * 10**9
+
+
+def test_the_icon_folder_is_newer_than_an_icon_written(from_source):
+    cache, before = _old_cache()
+    written = desktop.install(dry_run=False)
+    icon = next(p for p in written if p.name == f"{SOURCE_ID}.svg")
+    assert _newer(icon)
+    assert cache.read_bytes() == before and cache.stat().st_mtime == OLD  # never ours to touch
+
+
+def test_the_icon_folder_is_newer_after_icons_are_removed(from_source, monkeypatch):
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda name: None)  # no systemctl to ask
+    desktop.install(dry_run=False)
+    _old_cache()
+    removed = desktop.uninstall(dry_run=False)
+    assert any(p.suffix == ".svg" for p in removed)
+    assert _hicolor().stat().st_mtime > OLD
+
+
+def test_the_icon_folder_is_newer_after_the_start_tidies_up_icons(from_source):
+    left = _left_before()
+    left["entry"].unlink()
+    left["watch"].unlink()  # the old icons alone: removed, nothing written
+    _old_cache()
+    desktop.tidy_up()
+    assert not left["icon"].exists() and _hicolor().stat().st_mtime > OLD
+
+
+def test_the_icon_folder_keeps_its_time_when_no_icon_changes(from_source, monkeypatch):
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    left = _left_before(entry=FLATPAK_RUN, icon=b"<svg xmlns='http://www.w3.org/2000/svg'/>")
+    left["watch"].unlink()
+    left["symbolic"].unlink()  # left: an entry that runs the Flatpak and an icon not ours
+    _old_cache()
+    desktop.tidy_up()  # nothing of ours under the Flatpak's ID
+    desktop.uninstall(dry_run=False)  # nothing of its own written
+    assert _hicolor().stat().st_mtime == OLD
+
+
+def test_a_dry_run_touches_nothing_not_even_the_icon_folder(from_source, capsys):
+    _left_before()
+    _old_cache()
+    assert cli.main(["install-desktop"]) == 0
+    assert cli.main(["install-desktop", "--remove"]) == 0
+    assert _hicolor().stat().st_mtime == OLD
+    assert not (_data() / "applications" / f"{SOURCE_ID}.desktop").exists()
 
 
 # --- install-desktop --------------------------------------------------------------------------

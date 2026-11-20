@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import gettext
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -162,7 +163,21 @@ def install(dry_run: bool) -> list[Path]:
         if not dry_run:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
+    if not dry_run:
+        _icons_changed(written)
     return written
+
+
+def _icons_changed(changed: list[Path]) -> None:
+    """After an icon was written or removed below the home folder's hicolor: the time of hicolor
+    set to now. An icon-theme.cache there (made by gtk-update-icon-cache, never by openExpress,
+    and never touched) counts for GTK and GNOME Shell only while hicolor is not newer than it;
+    an icon written into scalable/apps changes the time of that folder alone, so a cache made
+    before would hide the new icon (the desktop shows its default one), and the desktop would
+    not look at the theme again either."""
+    hicolor = paths.xdg("XDG_DATA_HOME", ".local/share") / "icons" / "hicolor"
+    if hicolor.is_dir() and any(p.is_relative_to(hicolor) for p in changed):
+        os.utime(hicolor)
 
 
 def leftovers() -> list[Path]:
@@ -203,6 +218,7 @@ def remove_leftovers(dry_run: bool) -> list[Path]:
     if not dry_run:
         for path in found:
             path.unlink(missing_ok=True)
+        _icons_changed(found)
     return found
 
 
@@ -250,4 +266,5 @@ def uninstall(dry_run: bool) -> list[Path]:
                 pass
         for p in paths_:
             p.unlink(missing_ok=True)
+        _icons_changed(paths_)
     return paths_

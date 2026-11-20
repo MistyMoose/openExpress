@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.10.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 09:10+0100\n"
+"POT-Creation-Date: 2026-11-20 21:01+0100\n"
 "PO-Revision-Date: 2026-11-19 20:54+0000\n"
 "Last-Translator: Alex Giroux <alexgiroux1@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/openexpress/"
@@ -4112,18 +4112,6 @@ msgid "The background sync service was stopped and disabled."
 msgstr ""
 "Le service de synchronisation en arrière-plan a été arrêté et désactivé."
 
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"The Flatpak of openExpress is installed and already provides the menu entry. "
-"A second entry with the same name would hide it. Use --force to install "
-"anyway, or turn on background sync in the Flatpak window."
-msgstr ""
-"Le Flatpak d’openExpress est installé et fournit déjà l’entrée de menu. Une "
-"deuxième entrée portant le même nom le masquerait. Utilisez --force pour "
-"installer de toute façon, ou activez la synchronisation en arrière-plan dans "
-"la fenêtre Flatpak."
-
 #. TRANSLATORS: CLI install-desktop: a file of the launcher, icon or service that was
 #. written ({path})
 #: openexpress/cli.py
@@ -5094,11 +5082,6 @@ msgstr "supprimez plutôt l’entrée de menu, l’icône et le service"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "install even if the Flatpak of openExpress is installed"
-msgstr "installer même si le Flatpak d’openExpress est installé"
-
-#: openexpress/cli.py
-#, python-brace-format
 msgid "a folder with a copy of a device's files, instead of a connected device"
 msgstr ""
 "un dossier contenant une copie des fichiers d’un appareil, au lieu d’un "
@@ -5610,6 +5593,15 @@ msgstr ""
 #, python-brace-format
 msgid "{path} is still on the device."
 msgstr "{path} est toujours sur l’appareil."
+
+#. TRANSLATORS: the name in the application menu of openExpress installed from its source code
+#. (not the Flatpak), so that it can be told apart from the Flatpak's "openExpress"; keep the
+#. name openExpress as it is
+#: openexpress/desktop.py
+#, fuzzy, python-brace-format
+#| msgid "openExpress (background)"
+msgid "openExpress (source)"
+msgstr "openExpress (en arrière-plan)"
 
 #. TRANSLATORS: name of the hidden desktop entry that syncs in the background when the device is
 #. connected

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 09:10+0100\n"
+"POT-Creation-Date: 2026-11-20 21:01+0100\n"
 "PO-Revision-Date: 2026-11-20 19:35+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -4106,18 +4106,6 @@ msgstr "Není co odstranit."
 msgid "The background sync service was stopped and disabled."
 msgstr "Služba synchronizace na pozadí byla zastavena a zakázána."
 
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"The Flatpak of openExpress is installed and already provides the menu entry. "
-"A second entry with the same name would hide it. Use --force to install "
-"anyway, or turn on background sync in the Flatpak window."
-msgstr ""
-"openExpress je nainstalován jako Flatpak a položku nabídky již obsahuje. "
-"Druhá položka se stejným názvem by ji skryla. Chcete-li ji přesto "
-"nainstalovat, použijte --force, nebo zapněte synchronizaci na pozadí v okně "
-"Flatpaku."
-
 #. TRANSLATORS: CLI install-desktop: a file of the launcher, icon or service that was
 #. written ({path})
 #: openexpress/cli.py
@@ -5049,13 +5037,6 @@ msgstr "místo toho odebrat položku nabídky, ikonu a službu"
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "install even if the Flatpak of openExpress is installed"
-msgstr ""
-"nainstalovat i v případě, že je již nainstalována verze openExpress přes "
-"Flatpak"
-
-#: openexpress/cli.py
-#, python-brace-format
 msgid "a folder with a copy of a device's files, instead of a connected device"
 msgstr "složka s kopií souborů zařízení namísto připojeného zařízení"
 
@@ -5556,6 +5537,15 @@ msgstr ""
 #, python-brace-format
 msgid "{path} is still on the device."
 msgstr "{path} je stále v zařízení."
+
+#. TRANSLATORS: the name in the application menu of openExpress installed from its source code
+#. (not the Flatpak), so that it can be told apart from the Flatpak's "openExpress"; keep the
+#. name openExpress as it is
+#: openexpress/desktop.py
+#, fuzzy, python-brace-format
+#| msgid "openExpress (background)"
+msgid "openExpress (source)"
+msgstr "openExpress (na pozadí)"
 
 #. TRANSLATORS: name of the hidden desktop entry that syncs in the background when the device is
 #. connected
@@ -10563,8 +10553,8 @@ msgid ""
 "Copied {when}. Since then the device has been unplugged and still reports "
 "version {old}; the file is still on it, unchanged."
 msgstr ""
-"Zkopírováno {when}. Zařízení bylo mezitím odpojeno a stále hlásí verzi {old}"
-". Soubor v zařízení zůstal beze změny."
+"Zkopírováno {when}. Zařízení bylo mezitím odpojeno a stále hlásí verzi "
+"{old}. Soubor v zařízení zůstal beze změny."
 
 #: openexpress/gui/words.py
 #, python-brace-format

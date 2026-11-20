@@ -3729,7 +3729,37 @@ def test_refresh_unmounts_and_mounts_again_without_a_session(exclusive, monkeypa
     assert gio_storage.own_remount(FakeMount(NUMERIC))  # its signals arrive a moment later
     said = [r.getMessage() for r in caplog.records if r.getMessage().startswith("refresh:")]
     assert said[0] == "refresh: unmounting the device from gvfs"
-    assert said[1].startswith("refresh: device mounted again after ") and len(said) == 2
+    assert said[1].startswith("refresh: device mounted again in ") and len(said) == 2
+
+
+@pytest.mark.parametrize("block, line", [
+    ("session", "PTP: session closed, device mounted again in 0.3 s (the session took 29.9 s)"),
+    ("refresh", "refresh: device mounted again in 0.3 s (the refresh took 0.8 s)"),
+])
+def test_the_mount_is_timed_apart_from_the_whole_block(exclusive, monkeypatch, caplog, block,
+                                                       line):
+    """The time since the unmount covers the unmount, the whole session and the mount; the
+    mount is said apart, so that a long session is not read as a slow mount."""
+    st, fake, events = exclusive
+    now = [1000.0]
+
+    def passes(seconds):
+        now[0] += seconds
+
+    monkeypatch.setattr(gio_storage.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(gio_storage, "_unmount",
+                        lambda uri: (events.append(("unmount", uri)), passes(0.5)))
+    monkeypatch.setattr(gio_storage, "_remount",
+                        lambda uri, storage: (events.append(("mount", uri, fake.session_open)),
+                                              passes(0.3)))
+    with caplog.at_level(logging.INFO, logger="openexpress"):
+        if block == "session":
+            with st.exclusive_ptp():
+                passes(29.1)
+        else:
+            assert st.refresh() is True
+    said = [r.getMessage() for r in caplog.records]
+    assert said[-1] == line
 
 
 def test_no_refresh_without_the_place_on_usb(exclusive):

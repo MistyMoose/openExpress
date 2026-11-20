@@ -220,7 +220,7 @@ def own_session(device, monkeypatch):
     from openexpress.device import gio_storage
 
     @contextlib.contextmanager
-    def unmounted(storage, what, closed):
+    def unmounted(storage, what, closed, whole):
         yield time.monotonic()
 
     def opened(cls, bus, address):

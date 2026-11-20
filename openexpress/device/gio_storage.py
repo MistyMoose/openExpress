@@ -676,7 +676,7 @@ class GioStorage(Storage):
             return False
         say_to(progress)(refreshing_text())
         try:
-            with _unmounted(self, "refresh", "device mounted again"):
+            with _unmounted(self, "refresh", "device mounted again", "the refresh"):
                 pass
         except (RemountFailed, DeviceNotResponding):
             raise  # the callers say to unplug the device and plug it in again
@@ -2673,12 +2673,14 @@ def _mount_back(uri: str, storage: Storage) -> None:
 
 
 @contextmanager
-def _unmounted(storage: Storage, what: str, closed: str):
+def _unmounted(storage: Storage, what: str, closed: str, whole: str):
     """The device of `storage` (its device_uri, and its usb with its place on USB) unmounted
     from gvfs for the block and mounted again after it, also after an error; our own unmount
     and mount are not taken for an unplug (own_remount) meanwhile and for REMOUNT_QUIET_S
     after. Gives the time it started. `what` begins its lines of the log; `closed` is the last
-    one, said with the time once the device is mounted again."""
+    one, said once the device is mounted again with the time of the mount alone and, after
+    `whole` (what the block was), the time since the unmount began: that one covers the
+    unmount, the block and the mount, so it is not the time the mount took."""
     uri = storage.device_uri
     _quiet_until[_key(uri)] = float("inf")
     _quiet_usb[_key(uri)] = storage.usb
@@ -2701,8 +2703,11 @@ def _unmounted(storage: Storage, what: str, closed: str):
         try:
             yield started
         finally:
+            mounting = time.monotonic()
             _remount(uri, storage)
-            log.info("%s: %s after %.1f s", what, closed, time.monotonic() - started)
+            mounted = time.monotonic()
+            log.info("%s: %s in %.1f s (%s took %.1f s)", what, closed, mounted - mounting,
+                     whole, mounted - started)
     finally:
         # The signals of the last mount arrive a moment later.
         _quiet_until[_key(uri)] = time.monotonic() + REMOUNT_QUIET_S
@@ -2712,7 +2717,8 @@ def _unmounted(storage: Storage, what: str, closed: str):
 def _exclusive(storage: Storage, node: Path | None = None):
     """A PTP session to the device of `storage` while it is unmounted (_unmounted): opened
     through its `node` in /dev/bus/usb when given, else by its place on USB."""
-    with _unmounted(storage, "PTP", "session closed, device mounted again") as started:
+    with _unmounted(storage, "PTP", "session closed, device mounted again",
+                    "the session") as started:
         try:
             transport = (ptp.LibusbTransport.open_node(node) if node is not None
                          else ptp.LibusbTransport.open(storage.usb.bus, storage.usb.address))

@@ -387,7 +387,7 @@ def test_an_unexpected_error_is_told_briefly_and_redacted(log_file, monkeypatch,
     # The user gets the error in one line, filtered, and how to report it; no traceback
     # without -v.
     assert err == ("Error: cannot read mtp://<device>/GARMIN/Activity/x.fit of unit <number>\n"
-                   "This is a fault of openExpress. To report it, run openexpress report and "
+                   "This is a bug in openExpress. To report it, run openexpress report and "
                    "attach the output of openexpress report --log.\n")
     # The log file has it all, filtered.
     text = "\n".join(lines(log_file))

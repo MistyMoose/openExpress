@@ -118,9 +118,9 @@ def test_apps_queued_in_garmin_connect_are_information_not_an_error():
     assert "Queued in Garmin Connect" not in errors and "Queued in Garmin Connect" in told
 
 
-# An error nobody foresaw says that it is a fault of openExpress and how to report it
+# An error nobody foresaw says that it is a bug in openExpress and how to report it
 
-FAULT = ("This is a fault of openExpress. To report it, choose “Report a Device or Problem…” "
+FAULT = ("This is a bug in openExpress. To report it, choose “Report a Device or Problem…” "
          "in the main menu and attach the last log.")
 
 
@@ -142,7 +142,7 @@ def _failed(monkeypatch, error):
     return text
 
 
-def test_an_error_nobody_foresaw_says_it_is_a_fault_of_openexpress(monkeypatch):
+def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress(monkeypatch):
     assert _failed(monkeypatch, RuntimeError("made-up failure")) == (
         f"made-up failure\n\n{FAULT}")
 

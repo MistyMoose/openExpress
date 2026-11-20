@@ -61,7 +61,7 @@ def test_a_failed_task_writes_its_traceback_to_the_log_filtered(monkeypatch, log
     assert ADDRESS not in text and EMAIL not in text and "Garmin_Edge" not in text
     # Its own words filtered as the log is, as the command line tells them, and how to report
     # it.
-    assert told == [("could not read mtp://<device>/ for <email>\n\nThis is a fault of "
+    assert told == [("could not read mtp://<device>/ for <email>\n\nThis is a bug in "
                      "openExpress. To report it, choose “Report a Device or Problem…” in the "
                      "main menu and attach the last log.")]
 

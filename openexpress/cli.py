@@ -3689,8 +3689,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--environment", choices=sorted(ENVIRONMENTS),
                    help=_("Garmin servers to use: production (default) or china"))
     # TRANSLATORS: CLI help of "setup --locale" ({example}: a locale code such as pl_PL)
-    s.add_argument("--locale", help=_("the language asked of Garmin's servers (by default the "
-                                      "program's), e.g. {example}").format(example="pl_PL"))
+    s.add_argument("--locale", help=_("the language to request from Garmin's servers (by "
+                                      "default the program's), e.g. {example}").format(
+        example="pl_PL"))
     s.add_argument("--ui-language", choices=i18n.available_languages() + ["system"],
                    help=_("language of this program (\"system\": follow the system locale)"))
     s.add_argument("--diagnostics-copy", choices=("on", "off"),
@@ -3755,9 +3756,10 @@ def build_parser() -> argparse.ArgumentParser:
                           "manager for a moment)"))
     s.add_argument("--dumps", action="store_true", help=_("also copy the memory dumps"))
     s.add_argument("--free-space", action="store_true",
-                   help=_("free space on the device: older memory dumps (copied here first "
-                          "where they fit) and files of updates it did not install; with --apply "
-                          "they are removed (not with --dumps or --crash-logs)"))
+                   help=_("free space on the device: older memory dumps (copied to this "
+                          "computer first where they fit) and files of updates it did not "
+                          "install; with --apply they are removed (not with --dumps or "
+                          "--crash-logs)"))
     s.set_defaults(func=cmd_diagnostics, _parser=s)
 
     s = sub.add_parser("login", help=_("sign in to Garmin Connect"))
@@ -4222,6 +4224,6 @@ def _run(args) -> int:
         if applog.is_fault(e):
             # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
             # and "openexpress report --log" are commands, not to be translated
-            _error(_("This is a fault of openExpress. To report it, run openexpress report and "
+            _error(_("This is a bug in openExpress. To report it, run openexpress report and "
                      "attach the output of openexpress report --log."))
         return 1

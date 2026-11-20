@@ -467,7 +467,7 @@ def failed_text(e: BaseException) -> str:
     # TRANSLATORS: under the words of an error nobody foresaw, in the window; {item}: the item
     # of the main menu, "Report a Device or Problem…" in your language (put your language's
     # quotation marks around it); "Attach the last log" is the check box of that dialog
-    note = _("This is a fault of openExpress. To report it, choose “{item}” in the main menu "
+    note = _("This is a bug in openExpress. To report it, choose “{item}” in the main menu "
              "and attach the last log.").format(item=_("Report a Device or Problem…"))
     return f"{error_text(e)}\n\n{note}"
 

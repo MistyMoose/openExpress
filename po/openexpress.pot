@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 08:55+0100\n"
+"POT-Creation-Date: 2026-11-20 09:10+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3851,8 +3851,8 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"the language asked of Garmin's servers (by default the program's), e.g. "
-"{example}"
+"the language to request from Garmin's servers (by default the program's), "
+"e.g. {example}"
 msgstr ""
 
 #: openexpress/cli.py
@@ -3986,9 +3986,9 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"free space on the device: older memory dumps (copied here first where they "
-"fit) and files of updates it did not install; with --apply they are removed "
-"(not with --dumps or --crash-logs)"
+"free space on the device: older memory dumps (copied to this computer first "
+"where they fit) and files of updates it did not install; with --apply they "
+"are removed (not with --dumps or --crash-logs)"
 msgstr ""
 
 #: openexpress/cli.py
@@ -4622,7 +4622,7 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"This is a fault of openExpress. To report it, run openexpress report and "
+"This is a bug in openExpress. To report it, run openexpress report and "
 "attach the output of openexpress report --log."
 msgstr ""
 
@@ -9585,8 +9585,8 @@ msgstr ""
 #: openexpress/gui/window_tasks.py
 #, python-brace-format
 msgid ""
-"This is a fault of openExpress. To report it, choose “{item}” in the main "
-"menu and attach the last log."
+"This is a bug in openExpress. To report it, choose “{item}” in the main menu "
+"and attach the last log."
 msgstr ""
 
 #. TRANSLATORS: heading of the error when a switch of a setting could not be saved (in

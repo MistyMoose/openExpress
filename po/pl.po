@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 08:55+0100\n"
+"POT-Creation-Date: 2026-11-20 09:10+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -2855,7 +2855,11 @@ msgid ""
 "a trial: written into {folder}, which the device hides, over a direct USB "
 "connection; the file there now is copied to {copies} first and put back if "
 "the new one is not written whole; the first refusal stops the trial"
-msgstr "próba: zapis do {folder}, który urządzenie ukrywa, przez bezpośrednie połączenie USB; obecny plik jest najpierw kopiowany do {copies} i przywracany, jeśli nowy nie zapisze się w całości; pierwsza odmowa kończy próbę"
+msgstr ""
+"próba: zapis do {folder}, który urządzenie ukrywa, przez bezpośrednie "
+"połączenie USB; obecny plik jest najpierw kopiowany do {copies} "
+"i przywracany, jeśli nowy nie zapisze się w całości; pierwsza odmowa kończy "
+"próbę"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3266,7 +3270,9 @@ msgid ""
 "This file is hidden from the file manager. openExpress will delete it over a "
 "direct USB connection; the device disappears from the file manager for a "
 "moment."
-msgstr "Ten plik jest ukryty przed menedżerem plików. openExpress usunie go przez bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
+msgstr ""
+"Ten plik jest ukryty przed menedżerem plików. openExpress usunie go przez "
+"bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3466,7 +3472,10 @@ msgid ""
 "{name}: the app folder {path} is hidden from the file manager. openExpress "
 "will write the app over a direct USB connection; the device disappears from "
 "the file manager for a moment."
-msgstr "{name}: folder aplikacji {path} jest ukryty przed menedżerem plików. openExpress zapisze aplikację przez bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
+msgstr ""
+"{name}: folder aplikacji {path} jest ukryty przed menedżerem plików. "
+"openExpress zapisze aplikację przez bezpośrednie połączenie USB; urządzenie "
+"na chwilę zniknie z menedżera plików."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4269,10 +4278,10 @@ msgstr "których serwerów Garmina używać: production (domyślnie) albo china"
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"the language asked of Garmin's servers (by default the program's), e.g. "
-"{example}"
+"the language to request from Garmin's servers (by default the program's), "
+"e.g. {example}"
 msgstr ""
-"język, w którym pytać serwery Garmina (domyślnie język programu), np. "
+"język, o który prosić serwery Garmina (domyślnie język programu), np. "
 "{example}"
 
 #: openexpress/cli.py
@@ -4414,13 +4423,13 @@ msgstr "skopiuj też zrzuty pamięci"
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"free space on the device: older memory dumps (copied here first where they "
-"fit) and files of updates it did not install; with --apply they are removed "
-"(not with --dumps or --crash-logs)"
+"free space on the device: older memory dumps (copied to this computer first "
+"where they fit) and files of updates it did not install; with --apply they "
+"are removed (not with --dumps or --crash-logs)"
 msgstr ""
 "zwolnij miejsce na urządzeniu: starsze zrzuty pamięci (najpierw skopiowane "
-"tutaj, jeśli się mieszczą) i pliki aktualizacji, których nie zainstalowało; "
-"z --apply są usuwane (nie z --dumps ani --crash-logs)"
+"na ten komputer, jeśli się mieszczą) i pliki aktualizacji, których nie "
+"zainstalowało; z --apply są usuwane (nie z --dumps ani --crash-logs)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5104,7 +5113,7 @@ msgstr "Przerwano."
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"This is a fault of openExpress. To report it, run openexpress report and "
+"This is a bug in openExpress. To report it, run openexpress report and "
 "attach the output of openexpress report --log."
 msgstr ""
 "To błąd openExpressu. Aby go zgłosić, uruchom openexpress report i dołącz "
@@ -6022,7 +6031,7 @@ msgstr "Nie można wysłać pliku: jest za duży."
 #: openexpress/device/ptp.py
 #, python-brace-format
 msgid "The device's answer does not match the request."
-msgstr "Odpowiedź urządzenia nie pasuje do wysłanego polecenia."
+msgstr "Odpowiedź urządzenia nie pasuje do żądania."
 
 #: openexpress/device/ptp.py
 #, python-brace-format
@@ -10464,8 +10473,8 @@ msgstr "Wysuwanie urządzenia…"
 #: openexpress/gui/window_tasks.py
 #, python-brace-format
 msgid ""
-"This is a fault of openExpress. To report it, choose “{item}” in the main "
-"menu and attach the last log."
+"This is a bug in openExpress. To report it, choose “{item}” in the main menu "
+"and attach the last log."
 msgstr ""
 "To błąd openExpressu. Aby go zgłosić, wybierz „{item}” w menu głównym "
 "i dołącz ostatni log."
@@ -12088,7 +12097,8 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid "The folder {folder} was not read over a direct USB connection."
-msgstr "Folder {folder} nie został odczytany przez bezpośrednie połączenie USB."
+msgstr ""
+"Folder {folder} nie został odczytany przez bezpośrednie połączenie USB."
 
 #. TRANSLATORS: {path}: a file of a map on the device; {size}: its size
 #: openexpress/maps.py

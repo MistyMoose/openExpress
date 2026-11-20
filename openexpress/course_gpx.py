@@ -243,7 +243,7 @@ def parse(data: bytes, path: Path) -> GpxFile:
         # TRANSLATORS: a GPX file declares a document type (<!DOCTYPE …>) or entities, which
         # could make a parser expand them or read other files: it is not read at all
         raise CourseFileError(_("{file} is not read: it declares a document type, which a GPX "
-                                "file never needs.").format(file=path.name)) from None
+                                "file has no need of.").format(file=path.name)) from None
     except _OffTheEarth:
         # TRANSLATORS: a point of a GPX file has a latitude or longitude out of range, or none
         raise CourseFileError(_("{file} has a point with an impossible position.").format(

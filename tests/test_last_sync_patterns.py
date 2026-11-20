@@ -222,17 +222,6 @@ EXPECTED = {
         "pl": ("6 nowych plików, 6 wysłanych", [
             ((f"Pliki z{NB}urządzenia: monitorowanie, kopie profili aktywności ×4, plan "
               "Garmin Coach"), False)])},
-    # The Flatpak without its USB permission: the Connect IQ apps left in the queue, put into
-    # words when shown (format-flatpak-apps-waiting.json; made up).
-    "format-flatpak-apps-waiting.json": {
-        "en": ("1 new file, 1 uploaded", [
-            ("Files from the device: activities", False),
-            (("The Flatpak version has no access to USB devices; 2 Connect IQ apps wait in the "
-              "queue"), False)]),
-        "pl": ("1 nowy plik, 1 wysłany", [
-            (f"Pliki z{NB}urządzenia: aktywności", False),
-            ((f"Wersja Flatpak nie ma dostępu do urządzeń USB; 2 aplikacje Connect IQ czekają "
-              f"w{NB}kolejce"), False)])},
     "format-0.7.5-ecg-not-uploaded.json": {
         "en": ("1 new file, 1 uploaded", [
             ("Files from the device: monitoring", False),

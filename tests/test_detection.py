@@ -714,10 +714,10 @@ def test_watcher_reacts_to_garmin_devices_only(sysfs, monkeypatch):
 # do not apply to it.
 DRIVE_NOT_MOUNTED_TEXT = ("The Garmin device is connected, but its drive is not mounted. Open "
                           "it in the file manager, or unplug the cable and plug it in again.")
-FLATPAK_DRIVE_TEXT = ("The Garmin device is connected as a USB drive, but the Flatpak version "
-                      "has no access to /run/media, where the system mounted it.")
-MASS_STORAGE_TEXT = ("The device is connected as a USB drive: apps, maps and music are not "
-                     "supported that way.")
+FLATPAK_DRIVE_TEXT = ("The Garmin device is connected as a USB drive, but this version "
+                      "(Flatpak) has no access to /run/media, where the system mounted it.")
+MASS_STORAGE_TEXT = ("The device is connected in mass storage mode (as a USB drive): apps, "
+                     "maps and music are not supported in this mode.")
 # The same on the pages of the window, without its full stop.
 MASS_STORAGE_PAGE = MASS_STORAGE_TEXT.removesuffix(".")
 # Made by hand after the Varia RTL515; the unit ID is made up.
@@ -865,7 +865,7 @@ def test_the_drive_text_says_what_is_not_supported_not_that_it_does_not_apply():
         polish = mass_storage_text()
     finally:
         i18n.setup("en")
-    assert polish.endswith("nie są w\u00a0ten sposób obsługiwane.")
+    assert polish.endswith("nie są w\u00a0tym trybie obsługiwane.")
     assert "dotycz" not in polish
 
 

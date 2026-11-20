@@ -191,7 +191,7 @@ class UniversalMap:
         if self.unseen:
             # TRANSLATORS: map status (`openexpress maps`): the device hides the folder of the
             # map's files from MTP
-            return _("cannot be read: openExpress cannot see the folder its files are in")
+            return _("cannot be read: openExpress cannot see the folder of its files")
         if self.waiting == WAIT_INSTALL:
             # TRANSLATORS: map status
             return _("will be loaded after the device is unplugged")
@@ -1249,8 +1249,8 @@ def removal_refused(m: UniversalMap) -> str | None:
     device hides; None when nothing keeps it."""
     if m.unseen:
         # TRANSLATORS: error of a map removal: the device hides the folder of the map's files
-        return _("Map “{name}” cannot be read: openExpress cannot see the folder its files are "
-                 "in on the device.").format(name=m.name)
+        return _("Map “{name}” cannot be read: openExpress cannot see the folder of its files "
+                 "on the device.").format(name=m.name)
     if m.hidden_folder is not None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
         # file manager, e.g. .System

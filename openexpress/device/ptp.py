@@ -118,7 +118,7 @@ class PtpRefused(PtpError):
 
     def __init__(self, operation: int, code: int):
         self.operation, self.code = operation, code
-        super().__init__(_("The device refused the request ({operation}: {reason}).").format(
+        super().__init__(_("The device refused {operation} ({reason}).").format(
             operation=operation_name(operation), reason=response_name(code)))
 
 
@@ -786,7 +786,7 @@ class Session:
         with this name and size. A freshly written file shows in the ordinary listing even
         in a hidden folder. `verify_content` also reads it back (plain files only)."""
         if parent == ROOT:
-            raise PtpWriteError(_("openExpress does not write into the top folder of the device."))
+            raise PtpWriteError(_("Refusing to write into the top folder of the device."))
         if named_in_any_case(self.all_children(storage, parent), name) is not None:
             raise PtpWriteError(_("“{name}” already exists on the device.").format(name=name))
         handle = self.send_object(storage, parent, name, data)

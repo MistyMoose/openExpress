@@ -1208,10 +1208,10 @@ def _describe_step(line) -> list[tuple[str, bool]]:
     if kind == "apps_waiting" and (n := _count(line)) is not None:
         if line.get("flatpak") is True:
             return [(ngettext(
-                "The Flatpak version has no access to USB devices; {count} Connect IQ app waits "
-                "in the queue",
-                "The Flatpak version has no access to USB devices; {count} Connect IQ apps wait "
-                "in the queue", n).format(count=n), False)]
+                "The Flatpak has no access to USB devices; {count} Connect IQ app waits in the "
+                "queue",
+                "The Flatpak has no access to USB devices; {count} Connect IQ apps wait in the "
+                "queue", n).format(count=n), False)]
         return [(ngettext(
             "{count} Connect IQ app waits in the queue: openExpress cannot install apps on "
             "this device over USB yet",

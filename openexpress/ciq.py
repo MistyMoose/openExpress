@@ -1106,15 +1106,15 @@ def sandbox_text(update: bool = False, queued: bool = False) -> str:
     False) or after it was queued."""
     if update:
         return " ".join((
-            _("The Flatpak version has no access to USB devices, so it cannot update apps on "
-              "this device."),
+            _("The Flatpak has no access to USB devices, so it cannot update apps on this "
+              "device."),
             _("The update waits in the queue in Garmin Connect and will be installed by the "
               "phone or Garmin Express.") if queued else
             _("The update will be queued in Garmin Connect and installed by the phone or "
               "Garmin Express.")))
     return " ".join((
-        _("The Flatpak version has no access to USB devices, so it cannot install apps on "
-          "this device."),
+        _("The Flatpak has no access to USB devices, so it cannot install apps on this "
+          "device."),
         _("The app waits in the queue in Garmin Connect and will be installed by the phone "
           "or Garmin Express.") if queued else
         _("The app will be queued in Garmin Connect and installed by the phone or Garmin "
@@ -1123,8 +1123,8 @@ def sandbox_text(update: bool = False, queued: bool = False) -> str:
 
 def sandbox_removal_text() -> str:
     return " ".join((
-        _("The Flatpak version has no access to USB devices, so it cannot remove apps from "
-          "this device."),
+        _("The Flatpak has no access to USB devices, so it cannot remove apps from this "
+          "device."),
         _("Remove it on the phone, in the Connect IQ or Garmin Connect app.")))
 
 

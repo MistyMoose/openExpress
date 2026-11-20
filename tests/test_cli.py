@@ -75,7 +75,7 @@ def test_backup_names_no_folder_named_after_the_unit_id(device_root, xdg, tmp_pa
     shown_unit_id = "1234567890" in out
     assert not shown_unit_id
     assert "files" in out and "to 2026-01-01 (10.00.01)" in out
-    assert f"in this device's folder inside {dest}" in out
+    assert f"in the folder of the device under {dest}" in out
     assert "Removed old backup 2026-01-01 (10.00.00)" in out
     assert [p.name for p in (dest / "1234567890").iterdir()] == ["2026-01-01 (10.00.01)"]
 

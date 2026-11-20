@@ -1927,8 +1927,8 @@ def mass_storage_text() -> str:
     """What an open Garmin device in mass storage mode has not got: the refusal of the
     commands that do not apply to it (the window's pages say it in their own words). Its sync,
     backup and updates work, and the device page says why a drive is not synced."""
-    return _("The device is connected as a USB drive: apps, maps and music are not supported "
-             "that way.")
+    return _("The device is connected in mass storage mode (as a USB drive): apps, maps and "
+             "music are not supported in this mode.")
 
 
 def drive_off_text(update_waits: bool = False) -> str:
@@ -1952,7 +1952,7 @@ def drive_not_mounted_text() -> str:
 def flatpak_drive_text() -> str:
     """A Garmin drive mounted by the system in a folder the Flatpak cannot see (its access to
     /run/media and /media turned off)."""
-    return _("The Garmin device is connected as a USB drive, but the Flatpak version has no "
+    return _("The Garmin device is connected as a USB drive, but this version (Flatpak) has no "
              "access to /run/media, where the system mounted it.")
 
 

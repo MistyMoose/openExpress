@@ -324,7 +324,7 @@ def cmd_diagnostics(args) -> int:
     print(_("Copies on this computer: {copies}").format(
         copies=diagnostics.copies_text(dev.unit_id, test_drive)))
     # Not the folder itself: it is named after the unit ID, and this is pasted into reports.
-    print("  " + _("in this device's folder inside {folder}").format(
+    print("  " + _("in the folder of the device under {folder}").format(
         folder=paths.data_dir() / "devices"))
     for line in history_lines(dev.unit_id, test_drive):
         print(line)
@@ -1558,7 +1558,7 @@ def cmd_sync(args) -> int:
                      "  openexpress baseline --apply   marks current files as uploaded "
                      "(recommended)\n"
                      "  openexpress sync --apply --all uploads everything "
-                     "(Garmin Connect skips duplicates)"),
+                     "(Garmin Connect rejects duplicates)"),
             file=sys.stderr,
         )
         return FIRST_SYNC_CHOICE
@@ -1765,7 +1765,7 @@ def cmd_backup(args) -> int:
     print(ngettext("Copied {count} file ({size}) to {path}",
                    "Copied {count} files ({size}) to {path}", res.files).format(
         count=res.files, size=human_size(res.bytes), path=res.path.name))
-    print("  " + _("in this device's folder inside {folder}").format(folder=dest))
+    print("  " + _("in the folder of the device under {folder}").format(folder=dest))
     for p in res.removed:
         print(_("Removed old backup {path}").format(path=p.name))
     if res.incomplete:
@@ -3751,8 +3751,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("copy the diagnostic files the device shows now; with --free-space, "
                           "remove the files it lists"))
     s.add_argument("--crash-logs", action="store_true",
-                   help=_("also read the hidden crash logs (the device disappears from the "
-                          "file manager for a moment)"))
+                   help=_("also read the hidden crash logs (the device leaves the file "
+                          "manager for a moment)"))
     s.add_argument("--dumps", action="store_true", help=_("also copy the memory dumps"))
     s.add_argument("--free-space", action="store_true",
                    help=_("free space on the device: older memory dumps (copied here first "
@@ -3764,8 +3764,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--manual", action="store_true", help=_("sign in using a regular browser"))
     s.set_defaults(func=cmd_login)
 
-    s = sub.add_parser("logout", help=_("sign out of Garmin Connect (the saved sign-in is "
-                                        "deleted)"))
+    s = sub.add_parser("logout", help=_("remove the local token"))
     s.set_defaults(func=cmd_logout)
 
     from openexpress.cache import CATEGORIES
@@ -3777,7 +3776,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--only", action="append", metavar="PARTS",
                    help=_("only these parts of the cache, separated by commas: {parts}")
                    .format(parts=", ".join(CATEGORIES)))
-    s.add_argument("--apply", action="store_true", help=_("delete (with --clear)"))
+    s.add_argument("--apply", action="store_true", help=_("really delete (with --clear)"))
     s.set_defaults(func=cmd_cache)
 
     s = sub.add_parser("devices", help=_("the devices this installation has seen"))
@@ -3789,7 +3788,7 @@ def build_parser() -> argparse.ArgumentParser:
                           "(they are lost)"))
     s.add_argument("--backups", action="store_true",
                    help=_("with --forget: delete its backups too"))
-    s.add_argument("--apply", action="store_true", help=_("forget (with --forget)"))
+    s.add_argument("--apply", action="store_true", help=_("really forget (with --forget)"))
     s.set_defaults(func=cmd_devices)
 
     s = sub.add_parser("status", help=_("the sign-in, the devices connected, their last sync and "
@@ -3800,7 +3799,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # TRANSLATORS: CLI help of the whoami command, which shows the signed-in Garmin Connect account
     s = sub.add_parser("whoami", help=_("signed-in account"))
-    s.add_argument("--check", action="store_true", help=_("check the sign-in with Garmin Connect"))
+    s.add_argument("--check", action="store_true", help=_("verify the token with the server"))
     s.set_defaults(func=cmd_whoami)
 
     s = sub.add_parser("upload-config",
@@ -3832,7 +3831,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("backup", help=_("local backup of device data"))
     s.add_argument("--dest", metavar="DIR",
-                   help=_("destination folder (default: {path})").format(
+                   help=_("destination directory (default: {path})").format(
                        path=paths.shown_path(paths.default_backup_dir())))
     keep = 3
     s.add_argument("--keep", type=int, default=keep, metavar="N",
@@ -3935,8 +3934,7 @@ def build_parser() -> argparse.ArgumentParser:
     asub = s.add_subparsers(dest="apps_cmd", action=_Commands)
     change_help = _("write the change to the device (it takes effect once unplugged)")
     apply_help = {
-        "install": _("install the app, or queue it in Garmin Connect when it cannot be "
-                     "installed over USB"),
+        "install": _("install the app, or queue it in Garmin Connect where USB cannot"),
         "remove": _("remove it from the device (with --forget: also from the app list of "
                     "your Garmin account)"),
         "enable": change_help,
@@ -3963,8 +3961,7 @@ def build_parser() -> argparse.ArgumentParser:
                            + f" ({', '.join(types)})")
     a = asub.add_parser("update", help=_("update installed apps"))
     a.add_argument("--apply", action="store_true",
-                   help=_("install the updates, or queue them in Garmin Connect when they "
-                          "cannot be installed over USB"))
+                   help=_("install the updates, or queue them in Garmin Connect where USB cannot"))
     a.add_argument("--allow-permissions", action="store_true",
                    help=_("also allow the new permissions an app asks for"))
     a = asub.add_parser("order", help=_("put the apps back in the order of a saved app list"))

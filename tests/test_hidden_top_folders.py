@@ -279,7 +279,7 @@ def test_a_map_whose_folder_is_not_seen_cannot_be_read_not_removed(navigator):
     maps.mark_waiting(LocalStorage(navigator), found)
     hidden, gone = found
     assert hidden.unseen and hidden.waiting is None and not hidden.update_available
-    assert hidden.status == "cannot be read: openExpress cannot see the folder its files are in"
+    assert hidden.status == "cannot be read: openExpress cannot see the folder of its files"
     # Its folder is seen, its file is not there: removed.
     assert not gone.unseen and gone.waiting == maps.WAIT_REMOVE
 
@@ -289,7 +289,7 @@ def test_a_map_that_cannot_be_read_is_not_removed(navigator):
         _map("Made-up City Navigator", ".System/Map/D0000001A.img")]})
     storage = LocalStorage(navigator)
     maps.mark_waiting(storage, found)
-    with pytest.raises(maps.MapError, match="cannot see the folder its files are in"):
+    with pytest.raises(maps.MapError, match="cannot see the folder of its files"):
         maps.uninstall(found[0], found, storage)
 
 
@@ -309,7 +309,7 @@ def test_the_maps_page_shows_a_map_that_cannot_be_read_without_buttons(navigator
     (on_device,) = win.sections["maps"].groups
     (row,) = [r for r in on_device.rows if r.get_title() == "Made-up City Navigator"]
     assert row.get_subtitle().endswith(
-        "\nCannot be read: openExpress cannot see the folder its files are in on this device")
+        "\nCannot be read: openExpress cannot see the folder of its files on this device")
     assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
 
 

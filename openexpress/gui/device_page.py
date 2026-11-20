@@ -683,8 +683,8 @@ def show_not_for_mass_storage(sec) -> None:
     and says why."""
     sec.show_info(
         # TRANSLATORS: the pages Maps, Apps and Music of a device connected as a USB drive
-        _("The device is connected as a USB drive: apps, maps and music are not supported "
-          "that way"))
+        _("The device is connected in mass storage mode (as a USB drive): apps, maps and "
+          "music are not supported in this mode"))
 
 
 class Section:

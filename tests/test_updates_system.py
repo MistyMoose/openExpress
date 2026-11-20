@@ -181,7 +181,7 @@ def test_cli_lists_the_system_update_first_and_marks_it(offered, no_download, ca
 def test_cli_warns_before_a_system_update(offered, no_download, capsys):
     assert main(["--path", str(offered), "updates", "--install", "006-V0000-00"]) == 0
     out = capsys.readouterr().out
-    assert ("Warning: this updates the device's own software. Charge the device and do not unplug "
+    assert ("Warning: this is a device system update. Charge the device and do not unplug "
             "it while copying.") in out
     assert "Dry run: nothing was downloaded or written." in out
     assert not (offered / "GARMIN/GUPDATE.GSP").exists()
@@ -190,7 +190,7 @@ def test_cli_warns_before_a_system_update(offered, no_download, capsys):
 def test_cli_does_not_warn_before_a_plain_file(offered, no_download, capsys):
     assert main(["--path", str(offered), "updates", "--install", "006-D0000-00"]) == 0
     out = capsys.readouterr().out
-    assert "Warning: this updates the device's own software" not in out
+    assert "Warning: this is a device system update" not in out
     assert "Dry run: nothing was downloaded or written." in out
 
 
@@ -784,7 +784,7 @@ def test_a_part_in_the_top_folder_is_never_shown_against_the_device_software():
 
 @pytest.mark.needs_display
 @pytest.mark.parametrize(("changed", "note"), [
-    (False, f"Copied {COPIED_WHEN}: check on the device that it is installed"),
+    (False, f"Copied {COPIED_WHEN}, check on the device that it is installed"),
     (True, f"The device changed or refused the file copied {COPIED_WHEN}"),
 ])
 def test_the_window_tells_an_update_copied_before_and_offered_again(changed, note):
@@ -804,18 +804,18 @@ def test_the_device_software_copied_before_and_offered_again_is_told_at_the_top(
     (bundle,) = _items(BUNDLE_ENTRY)
     bundle.copied_at = COPIED_AT
     _win, status, _groups, _buttons = _updates_page([bundle])
-    assert (f"Copied {COPIED_WHEN}: check on the device that it is installed",
+    assert (f"Copied {COPIED_WHEN}, check on the device that it is installed",
             ["caption", "dim-label"]) in status["texts"]
     assert status["buttons"] == [("Reinstall", False), ("Check Again", False)]
 
 
 # --- the window asks before it installs ---------------------------------------------------------
 
-WARNING_EN = ("Warning: this updates the device's own software. Charge the device and do not unplug "
+WARNING_EN = ("Warning: this is a device system update. Charge the device and do not unplug "
               "it while copying.")
 PART_WARNING_EN = ("Warning: this updates the software of a part of the device. Charge the device "
                    "and do not unplug it while copying.")
-WARNING_PL = ("Ostrzeżenie: to aktualizacja oprogramowania urządzenia. Naładuj urządzenie i\u00a0nie odłączaj "
+WARNING_PL = ("Ostrzeżenie: to aktualizacja systemu urządzenia. Naładuj urządzenie i\u00a0nie odłączaj "
               "go podczas kopiowania.")
 
 

@@ -119,8 +119,8 @@ def finish_steps(written: list, window: bool = False) -> str:
 
 # Said before an update the device installs once disconnected (installs_when_disconnected),
 # on the command line and in the window.
-SYSTEM_UPDATE_WARNING = N_("Warning: this updates the device's own software. Charge the device "
-                           "and do not unplug it while copying.")
+SYSTEM_UPDATE_WARNING = N_("Warning: this is a device system update. Charge the device and do "
+                           "not unplug it while copying.")
 # The same for the software of a part of the device (its GPS chip), copied with the same care.
 PART_UPDATE_WARNING = N_("Warning: this updates the software of a part of the device. Charge the "
                          "device and do not unplug it while copying.")

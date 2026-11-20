@@ -279,7 +279,7 @@ class Storage(ABC):
         real_parent = self._ensure_dir(parent)
         existing = named_in_any_case(self._list(real_parent), name)
         if existing is not None and existing.is_dir:
-            raise DeviceError(_("Cannot write {path}: it is a folder").format(path=path))
+            raise DeviceError(_("Cannot write {path}: it is a directory").format(path=path))
         target_name = existing.name if existing else name
         return posixpath.join(real_parent, target_name) if real_parent else target_name
 
@@ -441,7 +441,7 @@ class Storage(ABC):
         a folder on the way that cannot be listed raises its DeviceError (resolve)."""
         real = self.resolve(path, strict=True) if strict else self.resolve(path)
         if real == "":
-            raise DeviceError(_("openExpress does not delete the top folder of the device."))
+            raise DeviceError(_("Refusing to delete the root of the device storage"))
         if real is None:
             return False
         self._delete(real)
@@ -546,7 +546,7 @@ class LocalStorage(Storage):
         self.root = Path(root)
         self.label = str(self.root)
         if not self.root.is_dir():
-            raise DeviceError(_("Not a folder: {path}").format(path=root))
+            raise DeviceError(_("Not a directory: {path}").format(path=root))
 
     def _p(self, real: str) -> Path:
         return self.root / real if real else self.root
@@ -562,7 +562,7 @@ class LocalStorage(Storage):
     def _list(self, real_path: str) -> list[Entry]:
         p = self._p(real_path)
         if not p.is_dir():
-            raise DeviceError(_("Not a folder: {path}").format(path=real_path))
+            raise DeviceError(_("Not a directory: {path}").format(path=real_path))
         out = []
         with _os_errors(_("Cannot list {path}").format(path=real_path or "/")):
             for child in p.iterdir():

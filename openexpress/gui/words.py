@@ -53,7 +53,7 @@ def copied_update_text(u) -> str | None:
         return _("The device changed or refused the file copied {when}").format(when=when)
     # TRANSLATORS: below an update copied to the device before that Garmin's server offers
     # again: the device has not reported it installed
-    return _("Copied {when}: check on the device that it is installed").format(when=when)
+    return _("Copied {when}, check on the device that it is installed").format(when=when)
 
 
 def not_installed_text(u) -> str:

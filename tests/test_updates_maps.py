@@ -820,7 +820,7 @@ def _row_maps(server, updates=0, **state):
 
 @pytest.mark.parametrize("state,shown", [
     ({"partly_written": True}, "incomplete on the device"),
-    ({"unseen": True}, "cannot be read: openExpress cannot see the folder its files are in"),
+    ({"unseen": True}, "cannot be read: openExpress cannot see the folder of its files"),
     ({"waiting": maps.WAIT_INSTALL}, "will be loaded after the device is unplugged"),
     ({"waiting": maps.WAIT_REMOVE}, "will be removed after the device is unplugged"),
 ])

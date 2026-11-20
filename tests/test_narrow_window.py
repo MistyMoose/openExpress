@@ -1629,9 +1629,8 @@ NAVIGATOR_WORDS = {
               "oprogramowanie, więc niczego tam nie instaluje. Niektóre urządzenia, np. "
               "nawigacje samochodowe, ukrywają go przed menedżerem plików."},
     "maps-navigator": {
-        "en": "Cannot be read: openExpress cannot see the folder its files are in on this device",
-        "pl": ("Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu, "
-               "w\u00a0którym są jej pliki")},
+        "en": "Cannot be read: openExpress cannot see the folder of its files on this device",
+        "pl": "Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu jej plików"},
     # Its folder read: installed there as on a watch.
     "updates-read-navigator": {"en": "2 updates available", "pl": "Dostępne są 2 aktualizacje"},
     "maps-read-navigator": {

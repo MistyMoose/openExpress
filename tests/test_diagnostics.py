@@ -849,6 +849,31 @@ def test_a_switch_not_saved_says_why_in_the_systems_words(monkeypatch):
     assert not switch.get_active()
 
 
+@pytest.mark.needs_display
+def test_a_switch_never_saved_goes_back_once_and_asks_no_more(monkeypatch):
+    """The settings file cannot be written at all (no permission, a full disk): the switch goes
+    back once and the window says it once; putting it back is no change to save (libadwaita
+    may tell it again despite the handler being blocked)."""
+    from gi.repository import Adw
+
+    from openexpress.gui.preferences import diagnostics_group
+
+    saves = []
+
+    def refused(self):
+        saves.append(self.diagnostics_copy)
+        if len(saves) < 10:  # a fuse: the test ends even where the switch would go on forever
+            raise PermissionError(13, "Permission denied", "/made-up/openexpress/settings.json.tmp")
+
+    monkeypatch.setattr(Settings, "save", refused)
+    said = []
+    group = diagnostics_group(stand_in(error=lambda title, text: said.append((title, text))))
+    switch = next(w for w in descendants(group) if isinstance(w, Adw.SwitchRow))
+    switch.set_active(True)
+    assert (saves, said, switch.get_active()) == (
+        [True], [("Setting Not Saved", "Permission denied")], False)
+
+
 # --- the command line -----------------------------------------------------------------------
 
 

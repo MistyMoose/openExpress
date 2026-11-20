@@ -72,6 +72,10 @@ def diagnostics_switch(win) -> Adw.SwitchRow:
 
     def toggled(row, _pspec):
         wanted = row.get_active()
+        if wanted == diagnostics.copy_on():
+            # The switch put back after a change that was not saved: nothing to save (the row
+            # may tell it again though its handler is blocked).
+            return
         try:
             settings = Settings.load()
             settings.diagnostics_copy = wanted

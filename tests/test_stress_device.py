@@ -112,8 +112,9 @@ def device(monkeypatch):
 # --- it refuses -------------------------------------------------------------------------------
 
 
-def test_it_refuses_while_the_window_or_the_service_runs(stress, monkeypatch, capsys):
-    monkeypatch.setattr(stress, "_bus_has_owner", lambda name: name in (APP_ID, APP_ID + ".Watch"))
+@pytest.mark.parametrize("app_id", [APP_ID, APP_ID + ".Devel"])  # the Flatpak, from source
+def test_it_refuses_while_the_window_or_the_service_runs(stress, monkeypatch, capsys, app_id):
+    monkeypatch.setattr(stress, "_bus_has_owner", lambda name: name in (app_id, app_id + ".Watch"))
     monkeypatch.setattr(gio_storage, "find_devices", lambda: pytest.fail("a device looked for"))
     assert stress.main(["--cycles", "1"]) == 2
     said = capsys.readouterr().err

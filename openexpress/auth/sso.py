@@ -345,7 +345,7 @@ def login_with_webview(settings: Settings) -> ServiceTicket:
     from gi.repository import Gtk
 
     result: list[ServiceTicket | None] = []
-    app = Gtk.Application(application_id="io.github.tomaszbojanowski.OpenExpress.Login")
+    app = Gtk.Application(application_id=paths.app_id() + ".Login")
 
     def on_activate(application):
         create_login_window(settings, result.append, application=application).present()

@@ -52,7 +52,7 @@ the two are separate installations, see
 | `openexpress music playlist FILE.m3u [--name NAME] [--apply]`, `music remove TEXT… [--apply]` | write a playlist as `.m3u8`; remove files whose name, artist or album folder matches TEXT (at least 3 characters) |
 | `openexpress gui` | application window (GTK 4 + libadwaita): device, sync, updates, maps, apps, music, activities |
 | `openexpress watch` | background service: sync when a device is connected, with a notification |
-| `openexpress install-desktop [--remove] [--force] [--apply]` | application menu entry and systemd user service (version from source; in the Flatpak it does nothing); `--remove` removes them, `--force` installs them also when the Flatpak is installed |
+| `openexpress install-desktop [--remove] [--apply]` | the menu entry **openExpress (source)** and the systemd user service of the version from source (in the Flatpak it does nothing); first it removes what an older version from source wrote under the Flatpak's ID (only its own menu entries and the program's own icons); `--remove` removes them all |
 
 The NAME of an app is its name in the store or the one the device gives it (they can differ, as
 "My Bike Radar Traffic" and "MyBikeTraffic"), a part of either that only one app has, or its ID.

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 09:10+0100\n"
+"POT-Creation-Date: 2026-11-20 21:01+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3695,14 +3695,6 @@ msgstr ""
 msgid "The background sync service was stopped and disabled."
 msgstr ""
 
-#: openexpress/cli.py
-#, python-brace-format
-msgid ""
-"The Flatpak of openExpress is installed and already provides the menu entry. "
-"A second entry with the same name would hide it. Use --force to install "
-"anyway, or turn on background sync in the Flatpak window."
-msgstr ""
-
 #. TRANSLATORS: CLI install-desktop: a file of the launcher, icon or service that was
 #. written ({path})
 #: openexpress/cli.py
@@ -4561,11 +4553,6 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "install even if the Flatpak of openExpress is installed"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
 msgid "a folder with a copy of a device's files, instead of a connected device"
 msgstr ""
 
@@ -5021,6 +5008,14 @@ msgstr ""
 #: openexpress/courses.py openexpress/ownmaps.py
 #, python-brace-format
 msgid "{path} is still on the device."
+msgstr ""
+
+#. TRANSLATORS: the name in the application menu of openExpress installed from its source code
+#. (not the Flatpak), so that it can be told apart from the Flatpak's "openExpress"; keep the
+#. name openExpress as it is
+#: openexpress/desktop.py
+#, python-brace-format
+msgid "openExpress (source)"
 msgstr ""
 
 #. TRANSLATORS: name of the hidden desktop entry that syncs in the background when the device is

@@ -17,7 +17,7 @@ gi.require_version("Gio", "2.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402 - imports must follow gi.require_version
 
-from openexpress import netstatus, service  # noqa: E402
+from openexpress import desktop, netstatus, service  # noqa: E402
 from openexpress.connect import NotAccountDevice  # noqa: E402
 from openexpress.console import error as print_error  # noqa: E402
 from openexpress.device.gio_storage import ABSENT  # noqa: E402
@@ -66,7 +66,7 @@ from openexpress.gui.window_tasks import (  # noqa: E402
 )
 from openexpress.i18n import _, pgettext  # noqa: E402
 from openexpress.known_devices import KnownDevice  # noqa: E402
-from openexpress.paths import APP_ID  # noqa: E402
+from openexpress.paths import APP_ID, app_id  # noqa: E402
 
 USB_POLL_S = 2
 log = logging.getLogger(__name__)
@@ -600,7 +600,7 @@ def collect_garbage_on_the_gtk_thread() -> None:
 
 class App(Adw.Application):
     def __init__(self):
-        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        super().__init__(application_id=app_id(), flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
 
     def do_startup(self):
         Adw.Application.do_startup(self)
@@ -680,4 +680,5 @@ def main(argv=None) -> int:
                .format(details=told))
         return 1
     install_excepthook()
+    desktop.tidy_up()  # the version from source: what it left under the Flatpak's ID
     return App().run(argv or [])

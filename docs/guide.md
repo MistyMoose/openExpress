@@ -108,7 +108,7 @@ from source:
 
 ```bash
 openexpress gui                       # application window
-openexpress install-desktop --apply   # "openExpress" menu entry and background service
+openexpress install-desktop --apply   # "openExpress (source)" menu entry and background service
 systemctl --user daemon-reload
 systemctl --user enable --now openexpress-watch.service
 ```

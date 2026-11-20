@@ -22,14 +22,17 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.require_version
 
-from openexpress import desktop  # noqa: E402
+from openexpress import desktop, paths  # noqa: E402
 from openexpress.i18n import _  # noqa: E402
 from openexpress.paths import in_flatpak  # noqa: E402
 
 log = logging.getLogger(__name__)
 
-WATCH_ID = desktop.DESKTOP_ID + ".Watch"
-WATCH_PATH = "/" + WATCH_ID.replace(".", "/")
+
+def watch_id() -> str:
+    """The ID of the background service of this install (paths.app_id with ".Watch"): the
+    Flatpak and the version from source each stop only their own."""
+    return paths.app_id() + ".Watch"
 
 
 def watcher_command() -> list[str]:
@@ -46,10 +49,15 @@ def start_watcher() -> None:
                      stderr=subprocess.DEVNULL)
 
 
+def _watcher_actions(name: str, path: str):
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    return Gio.DBusActionGroup.get(bus, name, path)
+
+
 def stop_watcher() -> None:
+    name = watch_id()
     try:
-        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        Gio.DBusActionGroup.get(bus, WATCH_ID, WATCH_PATH).activate_action("quit", None)
+        _watcher_actions(name, "/" + name.replace(".", "/")).activate_action("quit", None)
     except GLib.Error:
         pass
 

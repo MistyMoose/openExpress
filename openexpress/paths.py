@@ -12,7 +12,11 @@ import tempfile
 from pathlib import Path
 
 APP_NAME = "openexpress"
+# The Flatpak's ID; the icons in openexpress/data and the Flatpak's folders are named after it.
 APP_ID = "io.github.tomaszbojanowski.OpenExpress"
+# The version from source has an ID of its own (app_id), so that its window, its background
+# service and its menu entries neither take the Flatpak's nor hide them.
+SOURCE_APP_ID = APP_ID + ".Devel"
 FLATPAK_INFO = Path("/.flatpak-info")
 
 
@@ -48,6 +52,12 @@ def cache_dir() -> Path:
 
 def in_flatpak() -> bool:
     return FLATPAK_INFO.exists()
+
+
+def app_id() -> str:
+    """The ID of this install: the Flatpak's (APP_ID), or the one of the version from source
+    (SOURCE_APP_ID)."""
+    return APP_ID if in_flatpak() else SOURCE_APP_ID
 
 
 def flatpak_data_dir() -> Path:

@@ -133,8 +133,8 @@ flatpak install --user bojanowski io.github.tomaszbojanowski.OpenExpress
 Updates then come with `flatpak update`. The GNOME runtime comes from Flathub, hence the
 first line. If you added this repository earlier under the name `openexpress`, keep it: it is
 the same repository and keeps updating. Not using Flatpak, or installing offline:
-[Other ways to install](docs/install.md). The Flatpak and the version from source keep their own
-setup, sign-in and records:
+[Other ways to install](docs/install.md). The Flatpak and the version from source can be installed
+side by side and keep their own menu entry, setup, sign-in and records:
 [The Flatpak and the version from source](docs/install.md#the-flatpak-and-the-version-from-source).
 
 ### System requirements

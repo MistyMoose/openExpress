@@ -45,7 +45,7 @@ from openexpress import applog  # noqa: E402
 from openexpress.device import gio_storage  # noqa: E402
 from openexpress.device.storage import DeviceError, RemountFailed  # noqa: E402
 from openexpress.device.xmldevice import parse  # noqa: E402
-from openexpress.paths import APP_ID  # noqa: E402
+from openexpress.paths import APP_ID, SOURCE_APP_ID  # noqa: E402
 
 Gio, GLib = gio_storage.Gio, gio_storage.GLib
 
@@ -58,7 +58,9 @@ SHOWN_S = 5.0  # how long the volume monitor may take to show a mount or an unmo
 XML = "GARMIN/GarminDevice.xml"
 PROC = Path("/proc")
 NAMES = ((APP_ID, "the window of openExpress"),
-         (APP_ID + ".Watch", "the background service of openExpress"))
+         (APP_ID + ".Watch", "the background service of openExpress"),
+         (SOURCE_APP_ID, "the window of openExpress (source)"),
+         (SOURCE_APP_ID + ".Watch", "the background service of openExpress (source)"))
 READING = frozenset({"storages", "free_space", "info", "children", "lookup"})
 WRITES = ("_write", "_write_file", "_delete", "_mkdir")
 STEPS = ("unmount", "PTP session open", "PTP reads", "mount again", "mount", "open", "cycle")

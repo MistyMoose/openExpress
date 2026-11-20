@@ -3555,15 +3555,18 @@ def cmd_install_desktop(args) -> int:
                 "background sync in the window: main menu, Preferences, Background Sync."))
         return 0
 
+    def removed_line(path) -> str:
+        # TRANSLATORS: CLI install-desktop --remove: a file of the launcher, icon or service
+        # that was removed ({path})
+        return (_("Removed {path}") if args.apply
+                # TRANSLATORS: CLI install-desktop --remove, dry run: a file of the launcher,
+                # icon or service that would be removed ({path})
+                else _("Would remove {path}")).format(path=path)
+
     if args.remove:
         removed = desktop.uninstall(dry_run=not args.apply)
         for p in removed:
-            # TRANSLATORS: CLI install-desktop --remove: a file of the launcher, icon or service
-            # that was removed ({path})
-            print((_("Removed {path}") if args.apply
-                   # TRANSLATORS: CLI install-desktop --remove, dry run: a file of the launcher,
-                   # icon or service that would be removed ({path})
-                   else _("Would remove {path}")).format(path=p))
+            print(removed_line(p))
         if not removed:
             # TRANSLATORS: CLI install-desktop --remove: no launcher, icon or service file was found
             print(_("Nothing to remove."))
@@ -3572,13 +3575,12 @@ def cmd_install_desktop(args) -> int:
         elif any(p.name == desktop.SERVICE for p in removed):
             print(_("The background sync service was stopped and disabled."))
         return 0
-    if desktop.flatpak_installed() and not args.force:
-        print(_("The Flatpak of openExpress is installed and already provides the menu entry. "
-                "A second entry with the same name would hide it. Use --force to install "
-                "anyway, or turn on background sync in the Flatpak window."), file=sys.stderr)
-        return 1
     if args.apply:
         _build_translations()
+    # What an older version from source wrote under the Flatpak's ID goes first: its own entries
+    # and icons only (desktop.leftovers).
+    for p in desktop.remove_leftovers(dry_run=not args.apply):
+        print(removed_line(p))
     written = desktop.install(dry_run=not args.apply)
     for p in written:
         # TRANSLATORS: CLI install-desktop: a file of the launcher, icon or service that was
@@ -4016,8 +4018,6 @@ def build_parser() -> argparse.ArgumentParser:
                    help=_("write the files (with --remove: delete them)"))
     s.add_argument("--remove", action="store_true",
                    help=_("remove the menu entry, icon and service instead"))
-    s.add_argument("--force", action="store_true",
-                   help=_("install even if the Flatpak of openExpress is installed"))
     s.set_defaults(func=cmd_install_desktop)
     for name in DEVICE_COMMANDS:
         for parser in _with_its_commands(sub.choices[name]):

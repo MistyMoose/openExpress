@@ -348,7 +348,7 @@ def test_files_quote_paths_with_spaces_and_percent(xdg, monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "executable", "/opt/my py%/bin/python3")
     monkeypatch.setattr(desktop, "_source_root", lambda: Path("/home/u/My Code/100%"))
     out = {p.name: text for p, text in desktop.files().items()}
-    entry = out[f"{desktop.DESKTOP_ID}.desktop"]
+    entry = out[f"{desktop.SOURCE_ID}.desktop"]
     exec_line = next(line for line in entry.splitlines() if line.startswith("Exec="))
     assert exec_line == ('Exec=env "PYTHONPATH=/home/u/My Code/100%%" '
                          '"/opt/my py%%/bin/python3" -m openexpress gui')

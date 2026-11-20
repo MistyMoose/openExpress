@@ -2109,9 +2109,9 @@ def cmd_updates(args) -> int:
             # TRANSLATORS: `openexpress updates --install PART --hidden-folder-trial`, under
             # the update; {folder}: the folder the device hides; {copies}: a folder on this
             # computer
-            print("      " + _("a trial: written into {folder}, which the device hides, through "
-                               "openExpress's own USB session; the file there now is copied "
-                               "to {copies} first and put back if the new one is not written "
+            print("      " + _("a trial: written into {folder}, which the device hides, over a "
+                               "direct USB connection; the file there now is copied to "
+                               "{copies} first and put back if the new one is not written "
                                "whole; the first refusal stops the trial").format(
                 folder=u.folder_hidden, copies=_hidden_trial_folder()))
     print(_("Space: {needed} needed, {free} free").format(needed=human_size(need),
@@ -2635,9 +2635,9 @@ def _remove_app_directly(args, dev, st, state, app, api) -> int:
     if settings:
         print("  " + _("and its settings file, if the device has one: {path}").format(
             path=settings))
-    print("  " + _("The device does not show this file to ordinary file access. openExpress "
-                   "will delete it over a direct USB connection; the device disappears from "
-                   "the file manager for a moment."))
+    print("  " + _("This file is hidden from the file manager. openExpress will delete it "
+                   "over a direct USB connection; the device disappears from the file "
+                   "manager for a moment."))
     preview = ciq.preview_removal(state, app)
     _print_app_list_size(preview.entries, preview.on_device)
     if preview.pending or not preview.kept:
@@ -2825,10 +2825,10 @@ def cmd_apps(args) -> int:
                                "yet. The app will be queued in Garmin Connect and installed by "
                                "the phone or Garmin Express.").format(name=a.name))
             elif dirs[a.app_id] == ciq.DIRECT:
-                print("  " + _("{name}: the device does not show the app folder {path} to "
-                               "ordinary file access. openExpress will write the app over a "
-                               "direct USB connection; the device disappears from the file "
-                               "manager for a moment.").format(name=a.name, path=folder))
+                print("  " + _("{name}: the app folder {path} is hidden from the file manager. "
+                               "openExpress will write the app over a direct USB connection; "
+                               "the device disappears from the file manager for a "
+                               "moment.").format(name=a.name, path=folder))
             elif dirs[a.app_id] == ciq.MISSING:
                 print("  " + _("{name}: the app folder {path} does not exist on the device. "
                                "openExpress will try to create it; if the device refuses, the "

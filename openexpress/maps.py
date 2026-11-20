@@ -786,7 +786,7 @@ def no_complete_map_text() -> str:
 
 def folder_not_read_text(folder: str) -> str:
     # TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
-    return _("The folder {folder} was not read through openExpress's own USB session.").format(
+    return _("The folder {folder} was not read over a direct USB connection.").format(
         folder=folder)
 
 

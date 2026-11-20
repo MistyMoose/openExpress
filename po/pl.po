@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 06:42+0100\n"
+"POT-Creation-Date: 2026-11-20 08:55+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -750,7 +750,9 @@ msgstr "urządzenie nie przyjmuje {datatype}"
 msgid ""
 "The Flatpak has no access to USB devices, so it cannot update apps on this "
 "device."
-msgstr "Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może aktualizować aplikacji na tym urządzeniu."
+msgstr ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może aktualizować "
+"aplikacji na tym urządzeniu."
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -775,7 +777,9 @@ msgstr ""
 msgid ""
 "The Flatpak has no access to USB devices, so it cannot install apps on this "
 "device."
-msgstr "Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może instalować aplikacji na tym urządzeniu."
+msgstr ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może instalować "
+"aplikacji na tym urządzeniu."
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -800,7 +804,9 @@ msgstr ""
 msgid ""
 "The Flatpak has no access to USB devices, so it cannot remove apps from this "
 "device."
-msgstr "Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może usuwać aplikacji z tego urządzenia."
+msgstr ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może usuwać "
+"aplikacji z tego urządzenia."
 
 #: openexpress/ciq.py
 #, python-brace-format
@@ -2477,7 +2483,13 @@ msgid ""
 "(recommended)\n"
 "  openexpress sync --apply --all uploads everything (Garmin Connect rejects "
 "duplicates)"
-msgstr "To pierwsza synchronizacja w tym programie. Jeśli urządzenie synchronizuje się także przez telefon, większość plików jest już w Garmin Connect.\n  openexpress baseline --apply   oznacza bieżące pliki jako wysłane (zalecane)\n  openexpress sync --apply --all wysyła wszystko (Garmin Connect odrzuca duplikaty)"
+msgstr ""
+"To pierwsza synchronizacja w tym programie. Jeśli urządzenie synchronizuje "
+"się także przez telefon, większość plików jest już w Garmin Connect.\n"
+"  openexpress baseline --apply   oznacza bieżące pliki jako wysłane "
+"(zalecane)\n"
+"  openexpress sync --apply --all wysyła wszystko (Garmin Connect odrzuca "
+"duplikaty)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -2840,14 +2852,10 @@ msgstr "Do zainstalowania:"
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"a trial: written into {folder}, which the device hides, through "
-"openExpress's own USB session; the file there now is copied to {copies} "
-"first and put back if the new one is not written whole; the first refusal "
-"stops the trial"
-msgstr ""
-"próba: zapis do {folder}, który urządzenie ukrywa, przez własną sesję USB "
-"openExpressu; obecny plik jest najpierw kopiowany do {copies} i przywracany, "
-"jeśli nowy nie zapisze się w całości; pierwsza odmowa kończy próbę"
+"a trial: written into {folder}, which the device hides, over a direct USB "
+"connection; the file there now is copied to {copies} first and put back if "
+"the new one is not written whole; the first refusal stops the trial"
+msgstr "próba: zapis do {folder}, który urządzenie ukrywa, przez bezpośrednie połączenie USB; obecny plik jest najpierw kopiowany do {copies} i przywracany, jeśli nowy nie zapisze się w całości; pierwsza odmowa kończy próbę"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3255,13 +3263,10 @@ msgstr "oraz jej plik ustawień, jeśli urządzenie go ma: {path}"
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"The device does not show this file to ordinary file access. openExpress will "
-"delete it over a direct USB connection; the device disappears from the file "
-"manager for a moment."
-msgstr ""
-"Urządzenie nie pokazuje tego pliku przy zwykłym dostępie do plików. "
-"openExpress usunie go przez bezpośrednie połączenie USB; urządzenie na "
-"chwilę zniknie z menedżera plików."
+"This file is hidden from the file manager. openExpress will delete it over a "
+"direct USB connection; the device disappears from the file manager for a "
+"moment."
+msgstr "Ten plik jest ukryty przed menedżerem plików. openExpress usunie go przez bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3458,13 +3463,10 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"{name}: the device does not show the app folder {path} to ordinary file "
-"access. openExpress will write the app over a direct USB connection; the "
-"device disappears from the file manager for a moment."
-msgstr ""
-"{name}: urządzenie nie pokazuje folderu aplikacji {path} przy zwykłym "
-"dostępie do plików. openExpress zapisze aplikację przez bezpośrednie "
-"połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
+"{name}: the app folder {path} is hidden from the file manager. openExpress "
+"will write the app over a direct USB connection; the device disappears from "
+"the file manager for a moment."
+msgstr "{name}: folder aplikacji {path} jest ukryty przed menedżerem plików. openExpress zapisze aplikację przez bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4400,7 +4402,9 @@ msgstr ""
 msgid ""
 "also read the hidden crash logs (the device leaves the file manager for a "
 "moment)"
-msgstr "odczytaj też ukryte dzienniki awarii (urządzenie na chwilę zniknie z menedżera plików)"
+msgstr ""
+"odczytaj też ukryte dzienniki awarii (urządzenie na chwilę zniknie "
+"z menedżera plików)"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4844,7 +4848,9 @@ msgstr "zapisz zmianę na urządzeniu (zadziała po odłączeniu)"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "install the app, or queue it in Garmin Connect where USB cannot"
-msgstr "zainstaluj aplikację albo, gdy nie da się przez USB, dodaj ją do kolejki w Garmin Connect"
+msgstr ""
+"zainstaluj aplikację albo, gdy nie da się przez USB, dodaj ją do kolejki "
+"w Garmin Connect"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4902,7 +4908,9 @@ msgstr "zaktualizuj zainstalowane aplikacje"
 #: openexpress/cli.py
 #, python-brace-format
 msgid "install the updates, or queue them in Garmin Connect where USB cannot"
-msgstr "zainstaluj aktualizacje albo, gdy nie da się przez USB, dodaj je do kolejki w Garmin Connect"
+msgstr ""
+"zainstaluj aktualizacje albo, gdy nie da się przez USB, dodaj je do kolejki "
+"w Garmin Connect"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -5370,7 +5378,9 @@ msgstr "{file} jest za duży na kurs: {size}, najwyżej {limit}."
 msgid ""
 "{file} is not read: it declares a document type, which a GPX file has no "
 "need of."
-msgstr "{file} nie zostanie odczytany: deklaruje typ dokumentu, którego plik GPX nie potrzebuje."
+msgstr ""
+"{file} nie zostanie odczytany: deklaruje typ dokumentu, którego plik GPX nie "
+"potrzebuje."
 
 #. TRANSLATORS: a point of a GPX file has a latitude or longitude out of range, or none
 #: openexpress/course_gpx.py
@@ -5751,7 +5761,9 @@ msgstr ""
 msgid ""
 "The device is connected in mass storage mode (as a USB drive): apps, maps "
 "and music are not supported in this mode."
-msgstr "Urządzenie jest podłączone w trybie pamięci masowej (jako dysk USB): aplikacje, mapy i muzyka nie są w tym trybie obsługiwane."
+msgstr ""
+"Urządzenie jest podłączone w trybie pamięci masowej (jako dysk USB): "
+"aplikacje, mapy i muzyka nie są w tym trybie obsługiwane."
 
 #: openexpress/device/gio_storage.py
 #, python-brace-format
@@ -5785,7 +5797,9 @@ msgstr ""
 msgid ""
 "The Garmin device is connected as a USB drive, but this version (Flatpak) "
 "has no access to /run/media, where the system mounted it."
-msgstr "Urządzenie Garmin jest podłączone jako dysk USB, ale ta wersja (Flatpak) nie ma dostępu do /run/media, gdzie system je zamontował."
+msgstr ""
+"Urządzenie Garmin jest podłączone jako dysk USB, ale ta wersja (Flatpak) nie "
+"ma dostępu do /run/media, gdzie system je zamontował."
 
 #. TRANSLATORS: added once the wait for a device on USB ran out: this user may not open
 #. it (over SSH, another user's session, or no udev rule gives access to it)
@@ -7773,7 +7787,9 @@ msgstr "Niedostępne"
 msgid ""
 "The device is connected in mass storage mode (as a USB drive): apps, maps "
 "and music are not supported in this mode"
-msgstr "Urządzenie jest podłączone w trybie pamięci masowej (jako dysk USB): aplikacje, mapy i muzyka nie są w tym trybie obsługiwane"
+msgstr ""
+"Urządzenie jest podłączone w trybie pamięci masowej (jako dysk USB): "
+"aplikacje, mapy i muzyka nie są w tym trybie obsługiwane"
 
 #. TRANSLATORS: heading of an error of a task that has no heading of its own
 #: openexpress/gui/device_page.py openexpress/gui/window_tasks.py
@@ -8153,7 +8169,9 @@ msgstr "Sprawdź ponownie"
 #, python-brace-format
 msgid ""
 "Cannot be read: openExpress cannot see the folder of its files on this device"
-msgstr "Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu jej plików"
+msgstr ""
+"Nie można odczytać: openExpress nie widzi na tym urządzeniu folderu jej "
+"plików"
 
 #. TRANSLATORS: title of the Maps page when map updates of the device are not
 #. supported
@@ -8698,13 +8716,6 @@ msgstr ""
 "Kopia plików diagnostycznych urządzenia zostaje na tym komputerze; "
 "openExpress nigdy jej nie wysyła"
 
-#. TRANSLATORS: heading of the error when a switch of the preferences could not be
-#. saved
-#: openexpress/gui/preferences.py
-#, python-brace-format
-msgid "Setting Not Saved"
-msgstr "Nie zapisano ustawienia"
-
 #. TRANSLATORS: group in the preferences: the street map from OpenStreetMap under the track of an
 #. activity
 #: openexpress/gui/preferences.py
@@ -9028,7 +9039,11 @@ msgid ""
 "Express, which it reads from the Garmin Express installer for Windows "
 "(GarminExpress.exe, a free download from garmin.com); the installer is only "
 "read, nothing is installed. No key needs to be created in Garmin Connect."
-msgstr "openExpress loguje się do Garmin Connect kluczem aplikacji Garmin Express, który odczytuje z instalatora Garmin Express dla Windows (GarminExpress.exe, do pobrania za darmo z garmin.com); instalator jest tylko odczytywany, nic nie jest instalowane. W Garmin Connect nie trzeba tworzyć żadnego klucza."
+msgstr ""
+"openExpress loguje się do Garmin Connect kluczem aplikacji Garmin Express, "
+"który odczytuje z instalatora Garmin Express dla Windows (GarminExpress.exe, "
+"do pobrania za darmo z garmin.com); instalator jest tylko odczytywany, nic "
+"nie jest instalowane. W Garmin Connect nie trzeba tworzyć żadnego klucza."
 
 #: openexpress/gui/preferences.py
 #, python-brace-format
@@ -10454,6 +10469,13 @@ msgid ""
 msgstr ""
 "To błąd openExpressu. Aby go zgłosić, wybierz „{item}” w menu głównym "
 "i dołącz ostatni log."
+
+#. TRANSLATORS: heading of the error when a switch of a setting could not be saved (in
+#. the preferences, on the device page, under the map of an activity)
+#: openexpress/gui/window_tasks.py
+#, python-brace-format
+msgid "Setting Not Saved"
+msgstr "Nie zapisano ustawienia"
 
 #: openexpress/gui/window_tasks.py
 #, python-brace-format
@@ -12065,9 +12087,8 @@ msgstr ""
 #. TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
 #: openexpress/maps.py
 #, python-brace-format
-msgid "The folder {folder} was not read through openExpress's own USB session."
-msgstr ""
-"Folder {folder} nie został odczytany przez własną sesję USB openExpressu."
+msgid "The folder {folder} was not read over a direct USB connection."
+msgstr "Folder {folder} nie został odczytany przez bezpośrednie połączenie USB."
 
 #. TRANSLATORS: {path}: a file of a map on the device; {size}: its size
 #: openexpress/maps.py
@@ -12181,7 +12202,9 @@ msgstr "Nie można usunąć mapy „{name}”"
 msgid ""
 "Map “{name}” cannot be read: openExpress cannot see the folder of its files "
 "on the device."
-msgstr "Nie można odczytać mapy „{name}”: openExpress nie widzi na urządzeniu folderu jej plików."
+msgstr ""
+"Nie można odczytać mapy „{name}”: openExpress nie widzi na urządzeniu "
+"folderu jej plików."
 
 #. TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
 #. file manager, e.g. .System
@@ -13150,9 +13173,15 @@ msgid ""
 msgid_plural ""
 "The Flatpak has no access to USB devices; {count} Connect IQ apps wait in "
 "the queue"
-msgstr[0] "Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacja Connect IQ czeka w kolejce"
-msgstr[1] "Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacje Connect IQ czekają w kolejce"
-msgstr[2] "Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacji Connect IQ czeka w kolejce"
+msgstr[0] ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacja Connect IQ "
+"czeka w kolejce"
+msgstr[1] ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacje Connect IQ "
+"czekają w kolejce"
+msgstr[2] ""
+"Wersja Flatpak nie ma dostępu do urządzeń USB; {count} aplikacji Connect IQ "
+"czeka w kolejce"
 
 #: openexpress/service.py
 #, python-brace-format
@@ -13400,7 +13429,12 @@ msgid ""
 "it: it takes Garmin Express's application key from it, so no key needs to be "
 "created in Garmin Connect. First run: openexpress setup --from-installer /"
 "path/to/GarminExpress.exe"
-msgstr "openExpress nie jest jeszcze skonfigurowany. Potrzebuje instalatora Garmin Express dla Windows (GarminExpress.exe, do pobrania za darmo z garmin.com) i tylko go odczytuje: bierze z niego klucz aplikacji Garmin Express, więc w Garmin Connect nie trzeba tworzyć żadnego klucza. Najpierw uruchom: openexpress setup --from-installer /ścieżka/do/GarminExpress.exe"
+msgstr ""
+"openExpress nie jest jeszcze skonfigurowany. Potrzebuje instalatora Garmin "
+"Express dla Windows (GarminExpress.exe, do pobrania za darmo z garmin.com) "
+"i tylko go odczytuje: bierze z niego klucz aplikacji Garmin Express, więc "
+"w Garmin Connect nie trzeba tworzyć żadnego klucza. Najpierw uruchom: "
+"openexpress setup --from-installer /ścieżka/do/GarminExpress.exe"
 
 #: openexpress/settings.py
 #, python-brace-format
@@ -13607,7 +13641,9 @@ msgstr ""
 msgid ""
 "Warning: this is a device system update. Charge the device and do not unplug "
 "it while copying."
-msgstr "Ostrzeżenie: to aktualizacja systemu urządzenia. Naładuj urządzenie i nie odłączaj go podczas kopiowania."
+msgstr ""
+"Ostrzeżenie: to aktualizacja systemu urządzenia. Naładuj urządzenie i nie "
+"odłączaj go podczas kopiowania."
 
 #: openexpress/updates.py
 #, python-brace-format

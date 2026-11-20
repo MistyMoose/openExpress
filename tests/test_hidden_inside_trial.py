@@ -295,8 +295,8 @@ def test_the_dry_run_says_the_plan_and_touches_nothing(on_the_line, downloads, c
                                                        tmp_path):
     assert main(["updates", "--install", "006-D0002-00", "--hidden-folder-trial"]) == 0
     out = capsys.readouterr().out
-    assert ("a trial: written into Garmin/Prompts, which the device hides, through openExpress's "
-            "own USB session; the file there now is copied to "
+    assert ("a trial: written into Garmin/Prompts, which the device hides, over a direct USB "
+            "connection; the file there now is copied to "
             f"{tmp_path / 'data' / 'hidden-folder-trial'} first") in " ".join(out.split())
     assert on_the_line.steps == [] and downloads == []
 

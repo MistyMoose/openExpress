@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 06:42+0100\n"
+"POT-Creation-Date: 2026-11-20 08:55+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2599,10 +2599,9 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"a trial: written into {folder}, which the device hides, through "
-"openExpress's own USB session; the file there now is copied to {copies} "
-"first and put back if the new one is not written whole; the first refusal "
-"stops the trial"
+"a trial: written into {folder}, which the device hides, over a direct USB "
+"connection; the file there now is copied to {copies} first and put back if "
+"the new one is not written whole; the first refusal stops the trial"
 msgstr ""
 
 #: openexpress/cli.py
@@ -2963,9 +2962,9 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"The device does not show this file to ordinary file access. openExpress will "
-"delete it over a direct USB connection; the device disappears from the file "
-"manager for a moment."
+"This file is hidden from the file manager. openExpress will delete it over a "
+"direct USB connection; the device disappears from the file manager for a "
+"moment."
 msgstr ""
 
 #: openexpress/cli.py
@@ -3130,9 +3129,9 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"{name}: the device does not show the app folder {path} to ordinary file "
-"access. openExpress will write the app over a direct USB connection; the "
-"device disappears from the file manager for a moment."
+"{name}: the app folder {path} is hidden from the file manager. openExpress "
+"will write the app over a direct USB connection; the device disappears from "
+"the file manager for a moment."
 msgstr ""
 
 #: openexpress/cli.py
@@ -7971,13 +7970,6 @@ msgid ""
 "never sends them"
 msgstr ""
 
-#. TRANSLATORS: heading of the error when a switch of the preferences could not be
-#. saved
-#: openexpress/gui/preferences.py
-#, python-brace-format
-msgid "Setting Not Saved"
-msgstr ""
-
 #. TRANSLATORS: group in the preferences: the street map from OpenStreetMap under the track of an
 #. activity
 #: openexpress/gui/preferences.py
@@ -9597,6 +9589,13 @@ msgid ""
 "menu and attach the last log."
 msgstr ""
 
+#. TRANSLATORS: heading of the error when a switch of a setting could not be saved (in
+#. the preferences, on the device page, under the map of an activity)
+#: openexpress/gui/window_tasks.py
+#, python-brace-format
+msgid "Setting Not Saved"
+msgstr ""
+
 #: openexpress/gui/window_tasks.py
 #, python-brace-format
 msgid "Cancel"
@@ -11118,7 +11117,7 @@ msgstr ""
 #. TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
 #: openexpress/maps.py
 #, python-brace-format
-msgid "The folder {folder} was not read through openExpress's own USB session."
+msgid "The folder {folder} was not read over a direct USB connection."
 msgstr ""
 
 #. TRANSLATORS: {path}: a file of a map on the device; {size}: its size

@@ -1563,7 +1563,7 @@ def test_cli_dry_run_announces_the_direct_connection(hidden_apps, apps_cli, monk
     monkeypatch.setattr(cli, "open_device", lambda args: (st, _dev))
     assert main(["--path", str(st.root), "apps", "install", "Face It"]) == 0
     out = capsys.readouterr().out
-    assert "does not show the app folder GARMIN/APPS/MEDIA" in out
+    assert "the app folder GARMIN/APPS/MEDIA is hidden from the file manager" in out
     assert "direct USB connection" in out and "Dry run" in out
     assert fake.operations == [] and st.sessions == 0 and FakeStore.queued == []
 

@@ -9,9 +9,9 @@ DEVICE_FOLDERS = [
     'the app list folder was not found',
     'the GARMIN folder was not found on the device',
     'the app folder was not found on the device',
-    ('{name}: the device does not show the app folder {path} to ordinary file access. '
-     'openExpress will write the app over a direct USB connection; the device disappears '
-     'from the file manager for a moment.'),
+    ('{name}: the app folder {path} is hidden from the file manager. openExpress will write '
+     'the app over a direct USB connection; the device disappears from the file manager for '
+     'a moment.'),
     ('{name}: the app folder {path} does not exist on the device. openExpress will try to '
      'create it; if the device refuses, the app is only queued in Garmin Connect and '
      'installed by the phone or Garmin Express.'),

@@ -191,7 +191,7 @@ class UniversalMap:
         if self.unseen:
             # TRANSLATORS: map status (`openexpress maps`): the device hides the folder of the
             # map's files from MTP
-            return _("cannot be read: openExpress cannot see the folder of its files")
+            return _("cannot be read: openExpress cannot see the folder its files are in")
         if self.waiting == WAIT_INSTALL:
             # TRANSLATORS: map status
             return _("will be loaded after the device is unplugged")
@@ -555,8 +555,8 @@ def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
     `hidden_trial`: the reasons of the server and the account only (the trial installs into a
     folder the device hides)."""
     if m.hidden_folder is not None and not hidden_trial:
-        # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-        # e.g. .System
+        # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+        # .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     if m.restricted is True:
@@ -1249,11 +1249,11 @@ def removal_refused(m: UniversalMap) -> str | None:
     device hides; None when nothing keeps it."""
     if m.unseen:
         # TRANSLATORS: error of a map removal: the device hides the folder of the map's files
-        return _("Map “{name}” cannot be read: openExpress cannot see the folder of its files "
-                 "on the device.").format(name=m.name)
+        return _("Map “{name}” cannot be read: openExpress cannot see the folder its files are "
+                 "in on the device.").format(name=m.name)
     if m.hidden_folder is not None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
-        # ordinary USB connection, e.g. .System
+        # file manager, e.g. .System
         return _("Map “{name}” cannot be removed: openExpress does not remove maps from "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     return None

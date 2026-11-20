@@ -457,6 +457,19 @@ def error_heading(failed_title: str | None) -> str:
     return failed_title or _("Something Went Wrong")
 
 
+def failed_text(e: BaseException) -> str:
+    """The words of the error dialog of a task: those of the error, and for a fault of
+    openExpress (applog.is_fault) how to report it."""
+    if not applog.is_fault(e):
+        return error_text(e)
+    # TRANSLATORS: under the words of an error nobody foresaw, in the window; {item}: the item
+    # of the main menu, "Report a Device or Problem…" in your language (put your language's
+    # quotation marks around it); "Attach the last log" is the check box of that dialog
+    note = _("This is a fault of openExpress. To report it, choose “{item}” in the main menu "
+             "and attach the last log.").format(item=_("Report a Device or Problem…"))
+    return f"{error_text(e)}\n\n{note}"
+
+
 def wait_for_the_diagnostics(session, fn) -> None:
     """A work that writes to the device (writes_to_device) waits, in its thread, until the
     device's diagnostics are read (device_page.read_diagnostics, in the background after its
@@ -960,7 +973,7 @@ class TaskRunner:
             try:
                 with stalled.telling(self, e):  # a stall: the banner, no error dialog
                     if not (on_error and on_error(e)):
-                        self.error(error_heading(failed_title), error_text(e))
+                        self.error(error_heading(failed_title), failed_text(e))
             finally:
                 self._run_pending_refresh()
             return False

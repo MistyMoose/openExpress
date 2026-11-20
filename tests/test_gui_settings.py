@@ -7,6 +7,7 @@ import json
 import logging
 import types
 
+import pytest
 from fakes import window as stand_in
 
 
@@ -41,11 +42,14 @@ def test_the_background_switch_keeps_the_view_chosen_since_the_window_opened(mon
 
 
 NOT_CHANGED = ("Background Sync Not Changed", "Background sync could not be turned on or off.")
+NO_BACKGROUND = ("This desktop does not let Flatpak apps run in the background (its portal has "
+                 "no Background service). Use the version from source to sync in the "
+                 "background.")
 
 
-def test_a_portal_without_background_is_said_in_the_programs_words(monkeypatch, caplog):
-    """A desktop whose portal has no Background service: the window says the program's words,
-    the words of D-Bus go to the log."""
+def _portal_refusing(monkeypatch, code, words):
+    """The Flatpak's portal answers the request for the background with the D-Bus error
+    `code`; the window's words of it, and the log."""
     from gi.repository import Gio, GLib
 
     from openexpress import background
@@ -62,18 +66,43 @@ def test_a_portal_without_background_is_said_in_the_programs_words(monkeypatch, 
             pass
 
         def call_sync(self, *args):
-            raise GLib.Error.new_literal(
-                Gio.dbus_error_quark(), "GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: "
-                "No such interface “org.freedesktop.portal.Background”",
-                Gio.DBusError.UNKNOWN_METHOD)
+            raise GLib.Error.new_literal(Gio.dbus_error_quark(), words, code)
 
     monkeypatch.setattr(background, "in_flatpak", lambda: True)
     monkeypatch.setattr(background.Gio, "bus_get_sync", lambda *args: Bus())
     win, shown = _window()
+    app.MainWindow.set_background(win, True)
+    return shown
+
+
+def test_a_portal_that_refuses_is_said_in_the_programs_words(monkeypatch, caplog):
+    """The words of D-Bus go to the log; the window says the program's."""
+    from gi.repository import Gio
+
     with caplog.at_level(logging.INFO, logger="openexpress"):
-        app.MainWindow.set_background(win, True)
+        shown = _portal_refusing(
+            monkeypatch, Gio.DBusError.ACCESS_DENIED,
+            "GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: made-up refusal")
     assert shown == [NOT_CHANGED]
-    assert any("UnknownMethod" in r.getMessage() for r in caplog.records)
+    assert any("AccessDenied" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize("code, words", [
+    ("UNKNOWN_METHOD", ("GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: No such "
+                        "interface “org.freedesktop.portal.Background” on object at path "
+                        "/org/freedesktop/portal/desktop")),
+    ("SERVICE_UNKNOWN", ("GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name is "
+                         "not activatable"))])
+def test_a_desktop_without_background_for_flatpak_apps_says_so_and_what_helps(
+        monkeypatch, caplog, code, words):
+    """A desktop whose portal has no Background service (or no portal at all): the window says
+    why and what to use instead; the words of D-Bus go to the log."""
+    from gi.repository import Gio
+
+    with caplog.at_level(logging.INFO, logger="openexpress"):
+        shown = _portal_refusing(monkeypatch, getattr(Gio.DBusError, code), words)
+    assert shown == [(NOT_CHANGED[0], NO_BACKGROUND)]
+    assert any(words.split(":")[1] in r.getMessage() for r in caplog.records)
 
 
 def test_a_background_switch_that_fails_is_said_in_the_programs_words(monkeypatch, caplog):

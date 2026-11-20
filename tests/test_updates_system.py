@@ -181,7 +181,7 @@ def test_cli_lists_the_system_update_first_and_marks_it(offered, no_download, ca
 def test_cli_warns_before_a_system_update(offered, no_download, capsys):
     assert main(["--path", str(offered), "updates", "--install", "006-V0000-00"]) == 0
     out = capsys.readouterr().out
-    assert ("Warning: this is a device system update. Charge the device and do not unplug "
+    assert ("Warning: this updates the device's own software. Charge the device and do not unplug "
             "it while copying.") in out
     assert "Dry run: nothing was downloaded or written." in out
     assert not (offered / "GARMIN/GUPDATE.GSP").exists()
@@ -190,7 +190,7 @@ def test_cli_warns_before_a_system_update(offered, no_download, capsys):
 def test_cli_does_not_warn_before_a_plain_file(offered, no_download, capsys):
     assert main(["--path", str(offered), "updates", "--install", "006-D0000-00"]) == 0
     out = capsys.readouterr().out
-    assert "Warning: this is a device system update" not in out
+    assert "Warning: this updates the device's own software" not in out
     assert "Dry run: nothing was downloaded or written." in out
 
 
@@ -535,10 +535,10 @@ NOT_INSTALLED_TITLE = "Update Not Installed by the Device"
 NOT_INSTALLED_ROW = "Update copied, not installed by the device"
 NOT_INSTALLED_ADVICE = ("Check the version on the device (Settings \u2192 System \u2192 About). "
                         "Ejecting it again does not help; a device report helps find out why.")
-AS_COPIED_LINE = (f"Copied {COPIED_WHEN}. The device was unplugged since and has not installed "
-                  "it; the file is still on it, unchanged.")
-CHANGED_LINE = (f"Copied {COPIED_WHEN}. The device was unplugged since, changed or refused the "
-                "file and has not installed it.")
+AS_COPIED_LINE = (f"Copied {COPIED_WHEN}. Since then the device has been unplugged and has not "
+                  "installed it; the file is still on it, unchanged.")
+CHANGED_LINE = (f"Copied {COPIED_WHEN}. Since then the device has been unplugged, has changed "
+                "or refused the file, and has not installed it.")
 
 
 def _gps_on_the_device(root, data=GPS):
@@ -663,8 +663,8 @@ def test_cli_says_the_device_did_not_install_it(device_root, monkeypatch, capsys
     assert out[1:4] == [
         "Copied, not installed by the device:",
         "  006-B0001-00          6.70  Recommended       12 B  Test GPS Software",
-        (f"      Copied {COPIED_WHEN}; the device was unplugged since and has not installed it "
-         "(the file is still on it).")]
+        (f"      Copied {COPIED_WHEN}; since then the device has been unplugged and has not "
+         "installed it (the file is still on it).")]
     assert not any("to install it" in line.lower() for line in out)
     assert main(["--path", str(device_root), "updates", "--install", "all"]) == 0
     assert "To install:" not in capsys.readouterr().out
@@ -784,7 +784,7 @@ def test_a_part_in_the_top_folder_is_never_shown_against_the_device_software():
 
 @pytest.mark.needs_display
 @pytest.mark.parametrize(("changed", "note"), [
-    (False, f"Copied {COPIED_WHEN}, check on the device that it is installed"),
+    (False, f"Copied {COPIED_WHEN}: check on the device that it is installed"),
     (True, f"The device changed or refused the file copied {COPIED_WHEN}"),
 ])
 def test_the_window_tells_an_update_copied_before_and_offered_again(changed, note):
@@ -804,18 +804,18 @@ def test_the_device_software_copied_before_and_offered_again_is_told_at_the_top(
     (bundle,) = _items(BUNDLE_ENTRY)
     bundle.copied_at = COPIED_AT
     _win, status, _groups, _buttons = _updates_page([bundle])
-    assert (f"Copied {COPIED_WHEN}, check on the device that it is installed",
+    assert (f"Copied {COPIED_WHEN}: check on the device that it is installed",
             ["caption", "dim-label"]) in status["texts"]
     assert status["buttons"] == [("Reinstall", False), ("Check Again", False)]
 
 
 # --- the window asks before it installs ---------------------------------------------------------
 
-WARNING_EN = ("Warning: this is a device system update. Charge the device and do not unplug "
+WARNING_EN = ("Warning: this updates the device's own software. Charge the device and do not unplug "
               "it while copying.")
 PART_WARNING_EN = ("Warning: this updates the software of a part of the device. Charge the device "
                    "and do not unplug it while copying.")
-WARNING_PL = ("Ostrzeżenie: to aktualizacja systemu urządzenia. Naładuj urządzenie i\u00a0nie odłączaj "
+WARNING_PL = ("Ostrzeżenie: to aktualizacja oprogramowania urządzenia. Naładuj urządzenie i\u00a0nie odłączaj "
               "go podczas kopiowania.")
 
 

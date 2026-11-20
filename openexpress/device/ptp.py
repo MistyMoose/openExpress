@@ -118,7 +118,7 @@ class PtpRefused(PtpError):
 
     def __init__(self, operation: int, code: int):
         self.operation, self.code = operation, code
-        super().__init__(_("The device refused {operation} ({reason}).").format(
+        super().__init__(_("The device refused the request ({operation}: {reason}).").format(
             operation=operation_name(operation), reason=response_name(code)))
 
 
@@ -593,7 +593,8 @@ class Session:
                   data_in: Callable[[bytes], None] | None,
                   answer_ms: int | None = None) -> tuple[int, bytes, list[int]]:
         if self._broken:
-            raise PtpError(_("The connection to the device is out of step."))
+            raise PtpError(_("An earlier exchange with the device failed, so nothing more is "
+                             "sent to it."))
         if data_out is not None and data_out.size > MAX_OBJECT_SIZE:
             raise PtpError(_("The file is too large to send."))
         transaction, self._transaction = self._transaction, self._transaction + 1
@@ -621,7 +622,7 @@ class Session:
         while True:
             kind, code, answered, length = self._header()
             if answered != transaction or kind not in (DATA, RESPONSE):
-                raise PtpError(_("The device answered out of step."))
+                raise PtpError(_("The device's answer does not match the request."))
             if kind == DATA and data_in is not None:
                 self._stream(length - HEADER.size, data_in)
                 continue
@@ -650,7 +651,7 @@ class Session:
         self._fill(HEADER.size)
         length, kind, code, transaction = HEADER.unpack_from(self._buffer)
         if length < HEADER.size or length == 0xFFFFFFFF:
-            raise PtpError(_("The device answered out of step."))
+            raise PtpError(_("The device's answer does not match the request."))
         self._buffer = self._buffer[HEADER.size:]
         return kind, code, transaction, length
 
@@ -785,7 +786,7 @@ class Session:
         with this name and size. A freshly written file shows in the ordinary listing even
         in a hidden folder. `verify_content` also reads it back (plain files only)."""
         if parent == ROOT:
-            raise PtpWriteError(_("Refusing to write into the top folder of the device."))
+            raise PtpWriteError(_("openExpress does not write into the top folder of the device."))
         if named_in_any_case(self.all_children(storage, parent), name) is not None:
             raise PtpWriteError(_("“{name}” already exists on the device.").format(name=name))
         handle = self.send_object(storage, parent, name, data)

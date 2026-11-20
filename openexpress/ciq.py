@@ -1106,15 +1106,15 @@ def sandbox_text(update: bool = False, queued: bool = False) -> str:
     False) or after it was queued."""
     if update:
         return " ".join((
-            _("The Flatpak has no access to USB devices, so it cannot update apps on this "
-              "device."),
+            _("The Flatpak version has no access to USB devices, so it cannot update apps on "
+              "this device."),
             _("The update waits in the queue in Garmin Connect and will be installed by the "
               "phone or Garmin Express.") if queued else
             _("The update will be queued in Garmin Connect and installed by the phone or "
               "Garmin Express.")))
     return " ".join((
-        _("The Flatpak has no access to USB devices, so it cannot install apps on this "
-          "device."),
+        _("The Flatpak version has no access to USB devices, so it cannot install apps on "
+          "this device."),
         _("The app waits in the queue in Garmin Connect and will be installed by the phone "
           "or Garmin Express.") if queued else
         _("The app will be queued in Garmin Connect and installed by the phone or Garmin "
@@ -1123,8 +1123,8 @@ def sandbox_text(update: bool = False, queued: bool = False) -> str:
 
 def sandbox_removal_text() -> str:
     return " ".join((
-        _("The Flatpak has no access to USB devices, so it cannot remove apps from this "
-          "device."),
+        _("The Flatpak version has no access to USB devices, so it cannot remove apps from "
+          "this device."),
         _("Remove it on the phone, in the Connect IQ or Garmin Connect app.")))
 
 
@@ -1564,9 +1564,10 @@ def write_app_list(device: GarminDevice, storage: Storage, data: bytes) -> str:
     log.warning("apps: writing the app list failed; what was written of it is deleted")
     if before is not None:
         raise CiqError(_(
-            "The app list for the device could not be written ({error}), nor the one that "
-            "waited written back: it was deleted, so the changes of the apps that waited for "
-            "the device are lost. Make them again.").format(error=failure)) from failure
+            "The app list for the device could not be written ({error}), and the list that was "
+            "waiting for the device could not be put back either: it was deleted, so the app "
+            "changes that were waiting for the device are lost. Make them again.").format(
+            error=failure)) from failure
     raise failure
 
 

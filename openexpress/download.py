@@ -60,7 +60,7 @@ def secure_url(url: str) -> str:
         return url
     if parts.scheme == "http":
         return urlunsplit(("https", *parts[1:]))
-    raise DownloadError(_("Refusing to download {url}: files are downloaded only over HTTPS")
+    raise DownloadError(_("{url} was not downloaded: files are downloaded only over HTTPS")
                         .format(url=_short(url)))
 
 

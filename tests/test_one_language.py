@@ -180,17 +180,16 @@ def test_the_question_before_a_map_says_the_space_in_the_same_words(monkeypatch)
 # --- the USB mode -------------------------------------------------------------------------
 
 
-def test_mass_storage_mode_is_named_only_in_the_sentence_that_explains_it():
-    """Every text for the user that names the mode: "USB Drive" (and "MTP"); "mass storage
-    mode" only in the explanation of what such a device has not got, the window's and the
-    command line's."""
+def test_mass_storage_mode_is_never_named_to_the_user():
+    """Every text for the user that names the mode: "USB Drive" (and "MTP"), also the
+    explanation of what such a device has not got ("connected as a USB drive"); never "mass
+    storage mode"."""
     pot = (Path(__file__).resolve().parents[1] / "po" / "openexpress.pot").read_text(
         encoding="utf-8")
     msgids = ["".join(re.findall(r'"(.*)"', block)) for block in
               re.findall(r'^msgid ((?:".*"\n)+)', pot, re.MULTILINE)]
-    named = [m for m in msgids if "mass storage" in m.casefold()]
-    assert len(named) == 2
-    assert all(m.startswith("The device is connected in mass storage mode") for m in named)
+    assert [m for m in msgids if "mass storage" in m.casefold()] == []
+    assert len([m for m in msgids if m.startswith("The device is connected as a USB drive: ")]) == 2
 
 
 def test_devices_names_the_usb_mode_with_the_same_pair(capsys, monkeypatch, tmp_path):

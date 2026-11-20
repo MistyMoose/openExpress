@@ -188,6 +188,15 @@ def error_text(error: BaseException) -> str:
     return text if isinstance(error, UserFacingError) else redact(text)
 
 
+def is_fault(error: BaseException) -> bool:
+    """Whether `error` is a fault of openExpress: nobody foresaw it, and its words are neither
+    a message for the user (UserFacingError) nor those of the system (a file it could not
+    write: OSError) or of the network."""
+    import requests
+
+    return not isinstance(error, (UserFacingError, OSError, requests.RequestException))
+
+
 def redact(text: str) -> str:
     """`text` without anything that identifies the user, the account or a device."""
     for value, label in sorted(_hidden.items(), key=lambda item: -len(item[0])):

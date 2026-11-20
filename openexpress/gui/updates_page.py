@@ -90,7 +90,7 @@ def hidden_software_text(folder: str) -> str:
     # install; {folder}: the folder of the device's top level, e.g. .System
     text = pgettext("updates page", "openExpress cannot see the folder {folder}, where this "
                     "device keeps its software, so it installs nothing there. Some devices, such "
-                    "as car navigators, hide it from the ordinary USB connection.")
+                    "as car navigators, hide it from the file manager.")
     return text.format(folder=folder)
 
 
@@ -117,15 +117,15 @@ def not_read_text(u) -> str | None:
         return None
     if u.hidden_session == hidden_folders.NO_USB:
         # TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
-        # ordinary USB connection, e.g. .System
+        # file manager, e.g. .System
         text = pgettext("updates page", "The Flatpak version has no access to USB devices, so "
                         "it cannot read the folder {folder}. Give it the permission (see the "
                         "README) or use the version from source.")
     else:
-        # TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the
-        # ordinary USB connection, e.g. .System
-        text = pgettext("updates page", "openExpress cannot open its own USB session with this "
-                        "device, so it cannot read the folder {folder}.")
+        # TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
+        # manager, e.g. .System
+        text = pgettext("updates page", "openExpress cannot open a direct USB connection to "
+                        "this device, so it cannot read the folder {folder}.")
     return text.format(folder=u.hidden_folder)
 
 
@@ -236,13 +236,12 @@ def folders_hidden_text(updates) -> str:
     if not count:
         return ""
     # TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
-    # from the ordinary USB connection, which openExpress cannot write there (or the device
-    # refuses)
+    # from the file manager, which openExpress cannot write there (or the device refuses)
     return ngettext("{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "it in a folder it hides from the USB connection. The others install as "
+                    "it in a folder it hides from the file manager. The others install as "
                     "usual.",
                     "{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "them in folders it hides from the USB connection. The others install as "
+                    "them in folders it hides from the file manager. The others install as "
                     "usual.", count).format(count=count)
 
 

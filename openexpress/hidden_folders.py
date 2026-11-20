@@ -177,14 +177,13 @@ def reading_text(folders: Iterable[str]) -> str:
 def no_session_text(folder: str, state: str) -> str:
     """Why the folder could not be read (Listing.state NO_USB, else NO_SESSION or FAILED)."""
     if state == NO_USB:
-        # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-        # e.g. .System
+        # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+        # .System
         return _("The Flatpak version has no access to USB devices, so it cannot read the "
                  "folder {folder}. Give it the permission (see the README) or use the version "
                  "from source.").format(folder=folder)
-    # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection, e.g.
-    # .System
-    return _("openExpress cannot open its own USB session with this device, so it cannot read "
+    # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g. .System
+    return _("openExpress cannot open a direct USB connection to this device, so it cannot read "
              "the folder {folder}.").format(folder=folder)
 
 

@@ -64,8 +64,9 @@ def _no_maps(win, sec, text: str, detail: str | None = None) -> None:
 
 def unseen_map_text() -> str:
     # TRANSLATORS: on the Maps page, under a map whose files are in a folder the device hides
-    # from the ordinary USB connection (a car navigator's .System), without a full stop
-    return _("Cannot be read: openExpress cannot see the folder of its files on this device")
+    # from the file manager (a car navigator's .System), without a full stop
+    return _("Cannot be read: openExpress cannot see the folder its files are in on this "
+             "device")
 
 
 def _kind(m) -> str:

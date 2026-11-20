@@ -44,3 +44,6 @@ format-test-drive.json: a sync of a test drive (a USB drive taken for a Garmin d
   it stands in for (made up).
 format-activity-profile-backups.json: a sync of a bike computer that uploaded the backups of its
   activity profiles (FIT file type 57), named by their type (made up).
+format-flatpak-apps-waiting.json: a sync of the Flatpak without its USB permission that uploaded
+  an activity, with two Connect IQ apps left in Garmin Connect's queue: the line apps_waiting
+  of the Flatpak, put into words when shown (made up).

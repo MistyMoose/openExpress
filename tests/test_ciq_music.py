@@ -571,7 +571,7 @@ def test_cli_install_dry_run_shows_the_app_list(iq_device, device_root, apps_cli
     out = capsys.readouterr().out.splitlines()
     assert out[1:] == [
         "App list to be written (IN.BIN): 3 entries; the device lists 2 (OUT.BIN)",
-        "  every app on the device is kept, in the same order and with the same flags",
+        "  every app on the device is kept, in the same order and with the same settings",
         "  new: Face It (watch face), added as inactive",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply.",
@@ -1312,7 +1312,7 @@ def test_refused_app_file_writes_no_app_list(hidden_apps):
     client = CountingClient()
     rep = ciq.install_queued(dev, st, client, [FACE_MESSAGE], known={}, direct=True)
     assert rep.installed == [] and rep.failed == [
-        ("Face It", "The device refused SendObjectInfo (AccessDenied).")]
+        ("Face It", "The device refused the request (SendObjectInfo: AccessDenied).")]
     assert fake_in_bin(fake) is None and client.acks == []
     assert fake.names("GARMIN/Apps/Media") == ["DADE7E4.PRG"]
     assert not fake.session_open and not st.unmounted
@@ -1703,7 +1703,7 @@ def test_hidden_app_is_removed_like_express_does(hidden_spot):
     assert ciq.files_on_device(dev, st, app) == [] and ciq.removal_way(dev, st, app) == ciq.DIRECT
     assert ciq.remove(dev, st, app) == ["GARMIN/APPS/MEDIA/0A1B2C3D.PRG"]
     assert fake.names("GARMIN/Apps/Media") == ["DADE7E4.PRG"]
-    # The app list: the same entries in the same order with the same flags, minus the app.
+    # The app list: the same entries in the same order with the same settings, minus the app.
     assert [(p[0], p[1], p[2]) for p in fake_in_bin(fake)] == [
         (STORE_ID, 1, False), (PRELOADED, 8, True)]
     # The file is deleted first, the list written after it; then the device is mounted again.
@@ -1838,7 +1838,8 @@ def test_deleted_file_but_refused_app_list_is_explained(hidden_spot):
         ciq.remove(dev, st, app)
     text = str(error.value)
     assert text.startswith("The file of Face It was deleted, but the app list on the device "
-                           "could not be updated: The device refused SendObjectInfo")
+                           "could not be updated: The device refused the request "
+                           "(SendObjectInfo")
     assert "remove the app again to update the list" in text
     assert fake.names("GARMIN/Apps/Media") == ["DADE7E4.PRG"] and not st.unmounted
 
@@ -2112,7 +2113,7 @@ def test_cli_removes_a_hidden_app(hidden_spot, apps_cli, monkeypatch, capsys):
                       "GARMIN/APPS/SETTINGS/0A1B2C3D.SET")
     assert out[3:] == [
         "App list to be written (IN.BIN): 2 entries; the device lists 3 (OUT.BIN)",
-        "  every other app on the device is kept, in the same order and with the same flags",
+        "  every other app on the device is kept, in the same order and with the same settings",
         "  to be removed: Face It (watch face)",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply.",
@@ -2503,7 +2504,7 @@ def test_cli_apps_order(order_device, apps_cli, monkeypatch, capsys):
     assert out[0] == "Order of the apps from the copy GARMIN-APPS 2026-01-02 (03.04.05)"
     assert out[-4:] == [
         "App list to be written (IN.BIN): 7 entries; the device lists 7 (OUT.BIN)",
-        "  the same apps with the same flags; only the order changes",
+        "  the same apps with the same settings; only the order changes",
         "Before any change, a copy of the app list of the device is made.",
         "Dry run: nothing was changed. Add --apply."]
     assert not (st.root / "GARMIN/APPS/IN.BIN").exists()
@@ -2907,7 +2908,7 @@ def test_order_summary_shows_the_first_ten_changes(order_device):
         "  3: Calendar (now: Music)", "  4: Maps (now: Calendar)", "  5: Music (now: Maps)",
         "  6: Tides (now: Moon)", "  7: Moon (now: Tides)",
         "",
-        "The same apps with the same flags; only the order changes.",
+        "The same apps with the same settings; only the order changes.",
         "Before any change, a copy of the app list of the device is made."]
     many = ciq.OrderPlan(entries=plan.entries, moved=plan.moved * 5, only_in_copy=[],
                          only_on_device=[plan.entries[0]])
@@ -3180,7 +3181,7 @@ def test_cli_update_of_a_hidden_app(hidden_update, apps_cli, monkeypatch, capsys
     assert out.splitlines()[0].startswith("Update Face It")
     assert "direct USB connection" in out and "cannot update" not in out
     assert "App list to be written (IN.BIN): 3 entries; the device lists 3 (OUT.BIN)" in out
-    assert "every app on the device is kept, in the same order and with the same flags" in out
+    assert "every app on the device is kept, in the same order and with the same settings" in out
     assert "Before any change, a copy of the app list of the device is made." in out
     assert fake.operations == [] and st.sessions == 0
 
@@ -3356,7 +3357,7 @@ def test_flatpak_cli_install_only_queues_and_says_why(flatpak_spot, apps_cli, mo
     assert main(["--path", str(st.root), "apps", "install", "New Face"]) == 0
     assert capsys.readouterr().out.splitlines() == [
         "Install New Face 1.0 (1.0 kB)",
-        ("  New Face: The Flatpak has no access to USB devices, so it cannot install apps on "
+        ("  New Face: The Flatpak version has no access to USB devices, so it cannot install apps on "
          "this device. The app will be queued in Garmin Connect and installed by the phone or "
          "Garmin Express."),
         "Dry run: nothing was changed. Add --apply.",
@@ -3365,7 +3366,7 @@ def test_flatpak_cli_install_only_queues_and_says_why(flatpak_spot, apps_cli, mo
 
     assert main(["--path", str(st.root), "apps", "install", "New Face", "--apply"]) == 0
     assert capsys.readouterr().out.splitlines()[2:] == [
-        ("New Face: The Flatpak has no access to USB devices, so it cannot install apps on "
+        ("New Face: The Flatpak version has no access to USB devices, so it cannot install apps on "
          "this device. The app waits in the queue in Garmin Connect and will be installed by "
          "the phone or Garmin Express."),
     ]
@@ -3387,14 +3388,14 @@ def test_flatpak_cli_update_only_queues_and_says_why(flatpak_spot, apps_cli, mon
     assert main(["--path", str(st.root), "apps", "update"]) == 0
     assert capsys.readouterr().out.splitlines() == [
         "Update Face It 1.0 (1.0 kB)",
-        ("  Face It: The Flatpak has no access to USB devices, so it cannot update apps on "
+        ("  Face It: The Flatpak version has no access to USB devices, so it cannot update apps on "
          "this device. The update will be queued in Garmin Connect and installed by the "
          "phone or Garmin Express."),
         "Dry run: nothing was changed. Add --apply.",
     ]
     assert main(["--path", str(st.root), "apps", "update", "--apply"]) == 0
     assert capsys.readouterr().out.splitlines()[2:] == [
-        ("Face It: The Flatpak has no access to USB devices, so it cannot update apps on "
+        ("Face It: The Flatpak version has no access to USB devices, so it cannot update apps on "
          "this device. The update waits in the queue in Garmin Connect and will be installed "
          "by the phone or Garmin Express."),
     ]
@@ -3410,7 +3411,7 @@ def test_flatpak_cli_remove_changes_nothing_and_says_why(flatpak_spot, apps_cli,
     st, dev, fake, _app, attempts = flatpak_spot
     monkeypatch.setattr(cli, "open_device", lambda args: (st, dev))
     before, tree = apps_files(st), fake_tree(fake)
-    told = ("Face It: The Flatpak has no access to USB devices, so it cannot remove apps "
+    told = ("Face It: The Flatpak version has no access to USB devices, so it cannot remove apps "
             "from this device. Remove it on the phone, in the Connect IQ or Garmin Connect "
             "app.")
 
@@ -3432,17 +3433,17 @@ def test_flatpak_window_texts(flatpak_spot):
     assert ciq.removal_way(dev, st, app) == ciq.SANDBOXED
     app.sandboxed = True
     assert MainWindow._forget_text(app) == (
-        "The Flatpak has no access to USB devices, so it cannot remove apps from this "
+        "The Flatpak version has no access to USB devices, so it cannot remove apps from this "
         "device. Remove it on the phone, in the Connect IQ or Garmin Connect app.\n\n"
         "Here you can only remove it from the app list of your Garmin account.")
     app.sandboxed = False
     assert MainWindow._forget_text(app).startswith("Face It cannot be removed over USB: ")
     text = MainWindow._for_phone_text(["Face It"], ["Face It"], ["Face It"])
-    assert text == ("Face It: The Flatpak has no access to USB devices, so it cannot update "
+    assert text == ("Face It: The Flatpak version has no access to USB devices, so it cannot update "
                     "apps on this device. The update waits in the queue in Garmin Connect and "
                     "will be installed by the phone or Garmin Express.")
     assert MainWindow._for_phone_text(["Face It"], ["Face It"]).startswith(
-        "Face It: The Flatpak has no access to USB devices, so it cannot install apps on this "
+        "Face It: The Flatpak version has no access to USB devices, so it cannot install apps on this "
         "device. The app waits in the queue")
     # Outside the sandbox the wording is the old one.
     assert MainWindow._for_phone_text(["Face It"]).startswith("Face It: openExpress cannot")
@@ -3466,7 +3467,7 @@ def test_flatpak_sync_says_why_the_app_stays_in_the_queue(flatpak_spot, backups)
     lines = step_words(
         service._install_queued_apps(s, [FACE_MESSAGE], lambda m: None, errors, []))
     assert errors == [] and lines == [
-        "The Flatpak has no access to USB devices; 1 Connect IQ app waits in the queue"]
+        "The Flatpak version has no access to USB devices; 1 Connect IQ app waits in the queue"]
     assert untouched(st, dev, fake, attempts, backups, before)
 
 

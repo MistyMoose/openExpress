@@ -583,11 +583,10 @@ class Preferences:
                      "installer asked for first")
             confirm(self, "login-needs-installer",
                     _("Choose the Garmin Express Installer First"),
-                    _("openExpress signs in to Garmin Connect with the application key of "
-                      "Garmin Express, which it reads from the Garmin Express installer for "
-                      "Windows (GarminExpress.exe, a free download from garmin.com); the "
-                      "installer is only read, nothing is installed. No key needs to be "
-                      "created in Garmin Connect."),
+                    _("openExpress signs in to Garmin Connect with Garmin Express's "
+                      "application key. It reads the key from the Garmin Express installer "
+                      "for Windows (GarminExpress.exe, a free download from garmin.com) and "
+                      "installs nothing. No key needs to be created in Garmin Connect."),
                     Answer("installer", _("Choose Installer…"), self.choose_dll,
                            look="suggested"),
                     default="installer")

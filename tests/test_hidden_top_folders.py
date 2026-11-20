@@ -183,7 +183,7 @@ NOT_INSTALLED_TZ = ("      Not installed: Time zone map 9.00 goes to the folder 
                     "openExpress cannot see on the device.")
 NOTICE = ("openExpress cannot see the folder .System, where this device keeps its software, so it "
           "installs nothing there. Some devices, such as car navigators, hide it from the "
-          "ordinary USB connection.")
+          "file manager.")
 ADD_ONS = ("2 add-ons that are not on the device are not listed: openExpress does not install "
            "add-ons yet.")
 
@@ -279,7 +279,7 @@ def test_a_map_whose_folder_is_not_seen_cannot_be_read_not_removed(navigator):
     maps.mark_waiting(LocalStorage(navigator), found)
     hidden, gone = found
     assert hidden.unseen and hidden.waiting is None and not hidden.update_available
-    assert hidden.status == "cannot be read: openExpress cannot see the folder of its files"
+    assert hidden.status == "cannot be read: openExpress cannot see the folder its files are in"
     # Its folder is seen, its file is not there: removed.
     assert not gone.unseen and gone.waiting == maps.WAIT_REMOVE
 
@@ -289,7 +289,7 @@ def test_a_map_that_cannot_be_read_is_not_removed(navigator):
         _map("Made-up City Navigator", ".System/Map/D0000001A.img")]})
     storage = LocalStorage(navigator)
     maps.mark_waiting(storage, found)
-    with pytest.raises(maps.MapError, match="cannot see the folder of its files"):
+    with pytest.raises(maps.MapError, match="cannot see the folder its files are in"):
         maps.uninstall(found[0], found, storage)
 
 
@@ -309,7 +309,7 @@ def test_the_maps_page_shows_a_map_that_cannot_be_read_without_buttons(navigator
     (on_device,) = win.sections["maps"].groups
     (row,) = [r for r in on_device.rows if r.get_title() == "Made-up City Navigator"]
     assert row.get_subtitle().endswith(
-        "\nCannot be read: openExpress cannot see the folder of its files on this device")
+        "\nCannot be read: openExpress cannot see the folder its files are in on this device")
     assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
 
 
@@ -767,7 +767,7 @@ def test_the_words_of_a_folder_not_seen_in_both_languages(language):
                 "openExpress nie widzi na urządzeniu."),
                ("openExpress nie widzi folderu .System, w\u00a0którym to urządzenie trzyma swoje "
                 "oprogramowanie, więc niczego tam nie instaluje. Niektóre urządzenia, np. "
-                "nawigacje samochodowe, ukrywają go przed zwykłym połączeniem USB."),
+                "nawigacje samochodowe, ukrywają go przed menedżerem plików."),
                ("Pominięto 2 dodatki, których nie ma na urządzeniu: openExpress jeszcze nie "
                 "instaluje dodatków.")]}
     assert texts == expected[language]
@@ -775,7 +775,7 @@ def test_the_words_of_a_folder_not_seen_in_both_languages(language):
 
 # --- what the pages and the command line say of a folder read -------------------------------------
 
-NO_SESSION_LINE = ("openExpress cannot open its own USB session with this device, so it cannot "
+NO_SESSION_LINE = ("openExpress cannot open a direct USB connection to this device, so it cannot "
                    "read the folder .System.")
 
 
@@ -887,7 +887,7 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
                ("Map “Made-up City Navigator” cannot be removed: openExpress does not remove maps "
                 "from the folder .System yet.")],
         "pl": ["Odczytywanie folderu .System…",
-               ("openExpress nie może otworzyć własnej sesji USB z\u00a0tym urządzeniem, więc nie "
+               ("openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym urządzeniem, więc nie "
                 "odczyta folderu .System."),
                "openExpress jeszcze nie instaluje map w\u00a0folderze .System",
                ("Nie można usunąć mapy „Made-up City Navigator”: openExpress jeszcze nie usuwa map "

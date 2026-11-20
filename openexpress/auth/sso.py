@@ -277,7 +277,7 @@ def create_login_window(settings: Settings, on_ticket, application=None, parent=
     from gi.repository import Gtk, WebKit
 
     done: list[bool] = []
-    win = Gtk.Window(title=_("Sign in to Garmin"), default_width=520, default_height=760)
+    win = Gtk.Window(title=_("Sign In to Garmin"), default_width=520, default_height=760)
     if application is not None:
         win.set_application(application)
     if parent is not None:

@@ -574,12 +574,13 @@ def require_account_device(client: GarminClient, unit_id: int,
                                  client.settings.environment))
             refused = NotAccountDevice(
                 _("This device is not registered to your Garmin account. To use it with "
-                  "Garmin Connect here, sign in to the account it belongs to, or add the "
-                  "device to your account: here (Add to Account in the window, openexpress "
-                  "register on the command line; experimental) or in Garmin Connect (the "
-                  "phone app, or connect.garmin.com); registering the product on garmin.com "
-                  "is not enough. If it is added already, check that the Garmin Connect app "
-                  "on your phone and openExpress are signed in to the same account."))
+                  "Garmin Connect here, sign in to the account it belongs to, or add it to "
+                  "your account. You can add it here (Add to Account in the window, "
+                  "openexpress register on the command line; experimental) or in Garmin "
+                  "Connect (the phone app or connect.garmin.com). Registering the product on "
+                  "garmin.com is not enough. If it is added already, check that the Garmin "
+                  "Connect app on your phone and openExpress are signed in to the same "
+                  "account."))
             refused.devices = devices  # the account's list all the same (the start page)
             raise refused
         verified = unit_id
@@ -1207,10 +1208,10 @@ def _describe_step(line) -> list[tuple[str, bool]]:
     if kind == "apps_waiting" and (n := _count(line)) is not None:
         if line.get("flatpak") is True:
             return [(ngettext(
-                "The Flatpak has no access to USB devices; {count} Connect IQ app waits in the "
-                "queue",
-                "The Flatpak has no access to USB devices; {count} Connect IQ apps wait in the "
-                "queue", n).format(count=n), False)]
+                "The Flatpak version has no access to USB devices; {count} Connect IQ app waits "
+                "in the queue",
+                "The Flatpak version has no access to USB devices; {count} Connect IQ apps wait "
+                "in the queue", n).format(count=n), False)]
         return [(ngettext(
             "{count} Connect IQ app waits in the queue: openExpress cannot install apps on "
             "this device over USB yet",

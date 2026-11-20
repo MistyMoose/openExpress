@@ -1,0 +1,32 @@
+{
+  "synthetic": "made up: a sync of the Flatpak without its USB permission that uploaded an activity, with two Connect IQ apps left in Garmin Connect's queue",
+  "time": 1793003200.0,
+  "unit_id": 3000000131,
+  "uploaded": 1,
+  "downloaded": 0,
+  "skipped_known": 0,
+  "rejected": 0,
+  "errors": [],
+  "lines": [
+    {
+      "kind": "new_files",
+      "types": {
+        "FIT_TYPE_4": 1
+      }
+    },
+    {
+      "kind": "uploads",
+      "uploaded": 1,
+      "known": 0,
+      "known_checked": 0,
+      "known_server": 0,
+      "rejected": 0,
+      "errors": 0
+    },
+    {
+      "kind": "apps_waiting",
+      "count": 2,
+      "flatpak": true
+    }
+  ]
+}

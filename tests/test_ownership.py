@@ -139,8 +139,8 @@ def test_the_refusal_says_that_registering_the_product_is_not_enough():
     with pytest.raises(NotAccountDevice) as refused:
         service.require_account_device(client, UNIT)
     said = str(refused.value)
-    assert "in Garmin Connect (the phone app, or connect.garmin.com)" in said
-    assert "registering the product on garmin.com is not enough" in said
+    assert "in Garmin Connect (the phone app or connect.garmin.com)" in said
+    assert "Registering the product on garmin.com is not enough" in said
     # and that openExpress can add it itself
     assert "here (Add to Account in the window, openexpress register on the command line" in said
 

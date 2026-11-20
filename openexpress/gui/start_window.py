@@ -218,7 +218,7 @@ def choice_subtitle(summary) -> str:
     if summary.reason == NOT_MOUNTED:
         return _("Not mounted; choose it to open it")
     if summary.reason == NO_DEVICE_FILE:
-        return _("No GarminDevice.xml found")
+        return _("Its device description (GarminDevice.xml) was not found")
     return _("Could not be read")
 
 

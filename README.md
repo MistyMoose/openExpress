@@ -188,15 +188,15 @@ changes anything only shows its plan until you add `--apply`. Every command:
   service; the window and `openexpress maps` say so, and the Maps page names the map update type
   Garmin gives the device, for a report. Maps go only to the device's internal memory, not to a
   memory card.
-- A car navigator that hides its `.System` folder, such as the Drive 53 EX
+- A car navigator that hides its `.System` folder from the file manager, such as the Drive 53 EX
   ([#42](https://github.com/TomaszBojanowski/openExpress/issues/42)), gets its software updates
-  and its time zone map there through openExpress's own USB session. Its maps there are only
+  and its time zone map there over a direct USB connection. Its maps there are only
   shown in the window; the command line installs one only as a trial
   ([details](docs/guide.md#maps-on-a-car-navigator-a-trial)). Voices and vehicles Garmin offers
   to add are not installed.
-- On a watch that hides a folder inside `GARMIN` from the ordinary USB connection (on a fēnix 8:
-  voice prompts, speech and keyboard models, fonts), updates for that folder need openExpress's
-  own USB session, in the Flatpak its USB permission; without it the Updates page says so, and
+- On a watch that hides a folder inside `GARMIN` from the file manager (on a fēnix 8: voice
+  prompts, speech and keyboard models, fonts), updates for that folder need a direct USB
+  connection, in the Flatpak its USB permission; without it the Updates page says so, and
   **Install All** installs the others ([Software updates](docs/guide.md#software-updates)).
 - GPS satellite data is written only to a device that already keeps it in a format openExpress
   knows (the Forerunner 45, the fēnix 8 and the Edge 1050), and only with **Satellite Data**
@@ -227,11 +227,11 @@ More: [Privacy and security](docs/privacy.md).
 ### Flatpak permissions
 
 Besides a window and the network, the Flatpak may run `gio copy` on the host (gvfs lets no
-sandboxed app write to MTP devices), open USB devices (`--device=usb`: openExpress's own USB
-session, for Connect IQ apps and updates in folders a watch hides, satellite data, hidden crash
-logs and the folder a car navigator hides) and use the drives mounted under `/run/media` and `/media`
-(devices in mass storage mode). What each is for and how to turn it off:
-[Flatpak permissions](docs/privacy.md#flatpak-permissions).
+sandboxed app write to MTP devices), open USB devices (`--device=usb`: a direct USB connection,
+for Connect IQ apps and updates in folders hidden from the file manager, satellite data, hidden
+crash logs and a car navigator's hidden `.System` folder) and use the drives mounted under
+`/run/media` and `/media` (devices in mass storage mode). What each is for and how to turn it
+off: [Flatpak permissions](docs/privacy.md#flatpak-permissions).
 
 ## Support
 

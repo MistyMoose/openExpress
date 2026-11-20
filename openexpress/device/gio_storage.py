@@ -64,6 +64,18 @@ def _err(e: GLib.Error, what: str) -> DeviceError:
     return DeviceError(f"{what}: {e.message}")
 
 
+def _refused(e: GLib.Error, what: str) -> DeviceError:
+    """A new folder or a copy that failed: gvfs passes on a refusal of the device as a plain
+    failure, in libmtp's words ("Could not send object info"), which do not say that the
+    device refused it; said after them. Any other answer as _err says it."""
+    if not e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.FAILED):
+        return _err(e, what)
+    # TRANSLATORS: after the words of a write or a new folder that failed on the device (e.g.
+    # "Cannot write GARMIN/x.fit: Could not send object info.")
+    said = _("The device refused it; a device report helps find out why.")
+    return DeviceError(f"{what}: {e.message.rstrip('.')}. {said}")
+
+
 def _os_said(what: str, e: OSError) -> str:
     """`what` with the system's words for `e`: not its number, nor the path of a file the user
     does not know of (the temporary file on its way to the device)."""
@@ -586,7 +598,7 @@ class GioStorage(Storage):
             Gio.File.new_for_path(str(local)).copy(target, Gio.FileCopyFlags.OVERWRITE,
                                                    None, cb, None)
         except GLib.Error as e:
-            raise _err(e, what) from e
+            raise _refused(e, what) from e
 
     def _delete(self, real_path: str) -> None:
         self._responding()
@@ -601,7 +613,7 @@ class GioStorage(Storage):
         try:
             self._f(real_path).make_directory(None)
         except GLib.Error as e:
-            raise _err(e, _("Cannot create directory {path}").format(path=real_path)) from e
+            raise _refused(e, _("Cannot create the folder {path}").format(path=real_path)) from e
 
     def _fs_attr(self, attr: str) -> int | None:
         found: list = []
@@ -1915,8 +1927,8 @@ def mass_storage_text() -> str:
     """What an open Garmin device in mass storage mode has not got: the refusal of the
     commands that do not apply to it (the window's pages say it in their own words). Its sync,
     backup and updates work, and the device page says why a drive is not synced."""
-    return _("The device is connected in mass storage mode (as a USB drive): apps, maps and "
-             "music are not supported in this mode.")
+    return _("The device is connected as a USB drive: apps, maps and music are not supported "
+             "that way.")
 
 
 def drive_off_text(update_waits: bool = False) -> str:
@@ -1940,7 +1952,7 @@ def drive_not_mounted_text() -> str:
 def flatpak_drive_text() -> str:
     """A Garmin drive mounted by the system in a folder the Flatpak cannot see (its access to
     /run/media and /media turned off)."""
-    return _("The Garmin device is connected as a USB drive, but this version (Flatpak) has no "
+    return _("The Garmin device is connected as a USB drive, but the Flatpak version has no "
              "access to /run/media, where the system mounted it.")
 
 

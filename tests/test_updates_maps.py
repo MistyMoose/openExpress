@@ -2081,9 +2081,9 @@ def test_up_to_date_in_polish_fits_the_software_and_a_map(server):
 @pytest.mark.parametrize(("language", "written", "unlocks", "said"), [
     ("en", 1, 2, ["Wrote 1 map file.", "Unlock files written: 2"]),
     ("en", 5, 1, ["Wrote 5 map files.", "Unlock files written: 1"]),
-    ("pl", 1, 1, ["Zapisano 1 plik mapy.", "Zapisane pliki odblokowujące: 1"]),
-    ("pl", 3, 1, ["Zapisano 3 pliki map.", "Zapisane pliki odblokowujące: 1"]),
-    ("pl", 5, 2, ["Zapisano 5 plików map.", "Zapisane pliki odblokowujące: 2"]),
+    ("pl", 1, 1, ["Zapisano 1 plik mapy.", "Zapisane pliki odblokowania: 1"]),
+    ("pl", 3, 1, ["Zapisano 3 pliki map.", "Zapisane pliki odblokowania: 1"]),
+    ("pl", 5, 2, ["Zapisano 5 plików map.", "Zapisane pliki odblokowania: 2"]),
 ])
 def test_the_files_written_each_count_in_its_own_words(server, device_root, xdg, monkeypatch,
                                                        capsys, language, written, unlocks, said):

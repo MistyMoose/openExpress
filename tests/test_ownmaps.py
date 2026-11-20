@@ -796,7 +796,7 @@ def test_remove_own_in_polish(added, capsys):
         i18n.setup("en")
     assert out[0] == "Usuwanie własnej mapy: Sometown cyclemap/latin1 Example.org"
     assert out[1] == "  - GARMIN/osm-test.img  (2,0 kB)"
-    assert err == ("Błąd: Plik by-hand.img nie został skopiowany przez tę instalację openExpress "
+    assert err == ("Błąd: Plik by-hand.img nie został skopiowany przez tę instalację openExpressu "
                    "(mógł zostać skopiowany ręcznie albo przez inną instalację), więc nie "
                    "zostanie usunięty. Jeśli chcesz go usunąć, zrób to w menedżerze plików.")
 
@@ -1652,7 +1652,7 @@ def test_foreign_maps_in_the_window_in_polish(window_device):
     assert ("broken.img", f"broken.img\u00a0· 9\u00a0B\u00a0· {unknown}", False) in rows
     asked = win.shown[-1]
     assert asked[0] == "ask" and asked[2].startswith(
-        "Tej mapy nie wgrał openExpress.\n\n")
+        "openExpress nie skopiował tej mapy na urządzenie.\n\n")
     assert "?" not in asked[2]  # one question only, in the heading
     assert asked[3:] == ("Usuń mimo to", True)
 

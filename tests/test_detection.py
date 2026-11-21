@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from fakes import (
     RTL515_XML,
+    OtherProcessSession,
     RunNow,
     UpdateServer,
     record_sync,
@@ -3711,6 +3712,92 @@ def test_an_unplug_right_after_our_own_session_is_an_unplug(exclusive, monkeypat
     MainWindow._on_mount_added(win, None, FakeMount(NUMERIC))
     watch.Watcher().on_mount(None, FakeMount(NUMERIC))
     assert timers == [1500] and len(started) == 1
+
+
+# --- a session of another openExpress process: its mark (device.session_mark) -------------
+
+
+@pytest.fixture
+def placed(monkeypatch):
+    """The MTP volume of NUMERIC says where the device is on USB (/dev/bus/usb/003/014), as
+    gvfs's volume does for a mount that has none of its own."""
+    from gi.repository import Gio
+
+    monitor = FakeMonitor(volumes=[FakeVolume(NUMERIC, "/dev/bus/usb/003/014")])
+    monkeypatch.setattr(Gio.VolumeMonitor, "get", staticmethod(lambda: monitor))
+    return monitor
+
+
+def test_the_window_and_the_watcher_ignore_a_session_of_another_process(exclusive, placed,
+                                                                        tmp_path, monkeypatch):
+    """The background watcher, or the other install's window, has the device unmounted for its
+    own session: this process takes neither its unmount nor its mount again for an unplug or a
+    plug-in, through own_remount alone."""
+    from openexpress import watch
+    from openexpress.gui.app import MainWindow
+
+    shown, started = [], []
+    session = types.SimpleNamespace(storage=types.SimpleNamespace(label=NUMERIC + "Internal"))
+    win = stand_in(session=session, show_device=lambda: shown.append(1),
+                   show_no_device=lambda: shown.append(1),
+                   refresh_device=lambda: shown.append(2))
+    monkeypatch.setattr(watch.GLib, "timeout_add_seconds", lambda delay, fn: started.append(fn))
+    w = watch.Watcher()
+    other = OtherProcessSession(tmp_path, tmp_path / "runtime")
+    assert gio_storage._quiet_until == {}  # nothing of this process's own
+    MainWindow._on_mount_removed(win, None, FakeMount(NUMERIC))  # its unmount
+    other.finish()
+    MainWindow._on_mount_added(win, None, FakeMount(NUMERIC))  # its mount again, in its quiet
+    w.on_mount(None, FakeMount(NUMERIC))
+    assert win.session is session and shown == [] and started == []
+
+
+def test_a_device_at_another_place_on_usb_is_not_taken_for_that_session(exclusive, placed,
+                                                                       tmp_path):
+    other = OtherProcessSession(tmp_path, tmp_path / "runtime")  # at 3-14
+    assert gio_storage.own_remount(FakeMount(NUMERIC))
+    sysfs = gio_storage.SYSFS_USB
+    shutil.rmtree(sysfs / "3-1")  # unplugged and plugged in again: a new device number
+    usb_device(sysfs, "3-1", 3, 15, "091e", "51b4")
+    placed.volumes = [FakeVolume(NUMERIC, "/dev/bus/usb/003/015")]
+    assert not gio_storage.own_remount(FakeMount(NUMERIC))
+    shutil.rmtree(sysfs / "3-1")  # gone from USB while the other process still marks it
+    placed.volumes = [FakeVolume(NUMERIC, "/dev/bus/usb/003/014")]
+    assert not gio_storage.own_remount(FakeMount(NUMERIC))
+    other.finish()
+
+
+def test_a_session_of_its_own_marks_itself_for_the_other_processes(exclusive, tmp_path):
+    import json
+    import time
+
+    from openexpress.device import session_mark
+
+    st, _fake, _events = exclusive
+    mark = tmp_path / "runtime" / "openexpress" / "ptp-3-14.json"
+    with st.exclusive_ptp():
+        assert session_mark.active((3, 14))  # its lock is taken
+        during = json.loads(mark.read_text())["until"]
+    after = json.loads(mark.read_text())["until"]
+    assert during is None
+    assert time.time() < after <= time.time() + gio_storage.REMOUNT_QUIET_S
+    assert session_mark.active((3, 14))  # the quiet after it, for the others too
+
+
+def test_without_a_place_for_the_mark_a_session_goes_on_known_to_its_process(exclusive,
+                                                                            monkeypatch,
+                                                                            caplog):
+    from openexpress import paths
+    from openexpress.device import session_mark
+
+    st, fake, events = exclusive
+    monkeypatch.setattr(paths, "session_mark_dirs", list)
+    monkeypatch.setattr(session_mark, "_said", set())
+    with caplog.at_level(logging.INFO), st.exclusive_ptp() as session:
+        assert session.storages()
+    assert [e[0] for e in events] == ["unmount", "usb", "mount"]
+    assert gio_storage.own_remount(FakeMount(NUMERIC))  # this process still knows its own
+    assert "session mark: not kept" in caplog.text
 
 
 # --- refreshing the device's files: unmounted and mounted again, no PTP session ------------

@@ -1287,3 +1287,51 @@ def satellite_server(monkeypatch, *answers) -> SatelliteServer:
     server = SatelliteServer(*answers)
     monkeypatch.setattr(useragent, "session", lambda *a, **kw: server)
     return server
+
+
+# --- another openExpress process with a USB session of its own (device.session_mark) -------
+
+_OTHER_SESSION = """
+import os, sys, time
+sys.path.insert(0, sys.argv[1])
+from openexpress.device import session_mark
+bus, address, ready, stop, how, quiet = sys.argv[2:8]
+mark = session_mark.begin((int(bus), int(address)))
+open(ready, "w").write("marked")
+end = time.monotonic() + 30
+while not os.path.exists(stop) and time.monotonic() < end:
+    time.sleep(0.05)
+if how == "crash":
+    os._exit(1)  # ended in its session: no until, and the kernel lets go of the lock
+mark.end(float(quiet))
+"""
+
+
+class OtherProcessSession:
+    """Another openExpress process, a real one, marking a session of its own on the device at
+    `place` (bus, device number) with the program's session_mark, in the runtime folder
+    `runtime` (its XDG_RUNTIME_DIR): marked once it is made; `finish()` ends its session, with a
+    quiet of `quiet` seconds after it, or as a process that died in it (`how="crash"`)."""
+
+    def __init__(self, folder, runtime, place=(3, 14), how="end", quiet=15.0):
+        import sys
+        import time
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parent.parent
+        self.ready = Path(folder) / f"marked-{place[0]}-{place[1]}"
+        self.stop = Path(folder) / f"stop-{place[0]}-{place[1]}"
+        self.process = subprocess.Popen(
+            [sys.executable, "-I", "-c", _OTHER_SESSION, str(repo), str(place[0]),
+             str(place[1]), str(self.ready), str(self.stop), how, str(quiet)],
+            env={**os.environ, "XDG_RUNTIME_DIR": str(runtime)})
+        end = time.monotonic() + 20
+        while not self.ready.exists() and self.process.poll() is None and time.monotonic() < end:
+            time.sleep(0.02)
+        if not self.ready.exists():
+            self.process.kill()
+            raise AssertionError("the other process did not mark its session")
+
+    def finish(self) -> None:
+        self.stop.touch()
+        self.process.wait(timeout=20)

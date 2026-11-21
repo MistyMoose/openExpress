@@ -30,7 +30,7 @@ gi.require_version("GLib", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import applog  # noqa: E402
-from openexpress.device import ptp  # noqa: E402
+from openexpress.device import ptp, session_mark  # noqa: E402
 from openexpress.device.storage import (  # noqa: E402
     CopyNotStarted,
     DeviceError,
@@ -2411,12 +2411,13 @@ def usb_node(usb: GarminUsb | None) -> Path | None:
 
 def own_remount(mount) -> bool:
     """Whether this mount appearing or disappearing is our own doing: during our PTP session
-    and a moment after it, while the device is still at its place on USB."""
+    and a moment after it, while the device is still at its place on USB; or the doing of
+    another openExpress process of this computer, which marks its sessions (session_mark)."""
     root = mount.get_root()
     key = _key(root.get_uri()) if root is not None else None
     until = _quiet_until.get(key) if key is not None else None
     if until is None or time.monotonic() >= until:
-        return False
+        return _marked_by_another(mount)
     usb = _quiet_usb.get(key)
     if usb is None or usb_still_there(usb):
         return True
@@ -2426,6 +2427,21 @@ def own_remount(mount) -> bool:
     _quiet_until.pop(key, None)
     _quiet_usb.pop(key, None)
     return False
+
+
+def _marked_by_another(mount) -> bool:
+    """Whether another openExpress process (the background watcher, the other install's window)
+    has this device unmounted for a session of its own, or did a moment ago, and the device is
+    still at that place on USB. The device is asked where it is only when a mark is there."""
+    if not session_mark.any_marked():
+        return False
+    usb = garmin_usb(mount)
+    place = usb_place(usb)
+    if place is None or not session_mark.active(place) or not usb_still_there(usb):
+        return False
+    log.info("device: mount at %d-%d left alone: a session of another openExpress process",
+             *place)
+    return True
 
 
 # --- one asynchronous Gio operation, waited for ------------------------------------------
@@ -2677,13 +2693,15 @@ def _unmounted(storage: Storage, what: str, closed: str, whole: str):
     """The device of `storage` (its device_uri, and its usb with its place on USB) unmounted
     from gvfs for the block and mounted again after it, also after an error; our own unmount
     and mount are not taken for an unplug (own_remount) meanwhile and for REMOUNT_QUIET_S
-    after. Gives the time it started. `what` begins its lines of the log; `closed` is the last
-    one, said once the device is mounted again with the time of the mount alone and, after
+    after, by this process and by the other openExpress processes (session_mark). Gives the
+    time it started. `what` begins its lines of the log; `closed` is the last one, said once
+    the device is mounted again with the time of the mount alone and, after
     `whole` (what the block was), the time since the unmount began: that one covers the
     unmount, the block and the mount, so it is not the time the mount took."""
     uri = storage.device_uri
     _quiet_until[_key(uri)] = float("inf")
     _quiet_usb[_key(uri)] = storage.usb
+    mark = session_mark.begin(usb_place(storage.usb))  # for the other openExpress processes
     started = time.monotonic()
     try:
         log.info("%s: unmounting the device from gvfs", what)
@@ -2711,6 +2729,7 @@ def _unmounted(storage: Storage, what: str, closed: str, whole: str):
     finally:
         # The signals of the last mount arrive a moment later.
         _quiet_until[_key(uri)] = time.monotonic() + REMOUNT_QUIET_S
+        mark.end(REMOUNT_QUIET_S)
 
 
 @contextmanager

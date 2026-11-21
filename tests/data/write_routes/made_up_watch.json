@@ -101,5 +101,46 @@
   "Garmin/SQL/MadeUpGrouping.db": "ordinary",
   "Garmin/SQL/D0000005A.db": "ordinary",
   "Garmin/SID/D0000004A.sid": "ordinary"
+ },
+ "xml_targets": {
+  "FIT_TYPE_39": [
+   "Garmin/NewFiles"
+  ],
+  "FIT_TYPE_5": [
+   "Garmin/Workouts"
+  ],
+  "GPSData": [
+   "Garmin/NewFiles"
+  ],
+  "IQAudioContentApps": [
+   "GARMIN/ASR"
+  ],
+  "IQWatchApps": [
+   "GARMIN/APPS",
+   "GARMIN/APPS/MEDIA"
+  ],
+  "MEDIA_TRACK": [
+   "Music"
+  ]
+ },
+ "expected_xml": {
+  "GARMIN/APPS": {
+   "Connect IQ": "ordinary"
+  },
+  "GARMIN/ASR": {
+   "Connect IQ": "own session"
+  },
+  "Music": {
+   "music": "ordinary",
+   "Garmin Connect's queue": "ordinary"
+  },
+  "Garmin/NewFiles": {
+   "courses": "ordinary",
+   "TrueUp": "ordinary",
+   "Garmin Connect's queue": "ordinary"
+  },
+  "Garmin/Workouts": {
+   "Garmin Connect's queue": "ordinary"
+  }
  }
 }

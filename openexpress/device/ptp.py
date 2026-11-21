@@ -18,7 +18,7 @@ import logging
 import os
 import struct
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import BinaryIO, Protocol
 
 from openexpress import applog
@@ -254,6 +254,47 @@ def parse_object_info(handle: int, data: bytes, hidden: bool = False) -> ObjectI
     parent = struct.unpack_from("<I", data, 38)[0]
     name, _end = read_string(data, 52)
     return ObjectInfo(handle, name, size, fmt, protection, parent, storage, hidden)
+
+
+def in_folder(item: ObjectInfo, parent: int) -> bool:
+    """Whether a listed object names `parent` as its folder. At the top level a device names 0
+    or ROOT: the fēnix 8 and the Edge 1050 name 0 in both listings, though the listings are
+    asked with ROOT."""
+    return item.parent in (0, ROOT) if parent == ROOT else item.parent == parent
+
+
+def joined(ordinary: list[ObjectInfo], garmins: list[ObjectInfo],
+           parent: int) -> tuple[list[ObjectInfo], int]:
+    """A folder's ordinary listing and Garmin's together, and how many objects of Garmin's
+    were left out because they name another folder than `parent`. An object of Garmin's that
+    the ordinary listing has too (the same handle, else the same name, else the same name in
+    another letter case) takes that ordinary object's place with its own handle and
+    description, but not hidden: the ordinary listing shows it. The rest of Garmin's follow
+    the ordinary objects, hidden. What one listing holds twice stays twice (a car navigator
+    may have two folders whose names differ only in letter case)."""
+    out = list(ordinary)
+    places: tuple[dict, dict, dict] = ({}, {}, {})  # by handle, by name, by name in any case
+    for i, item in enumerate(ordinary):
+        for place, key in zip(places, _keys(item), strict=True):
+            place.setdefault(key, []).append(i)
+    taken: set[int] = set()  # the ordinary objects an object of Garmin's already replaced
+    left_out = 0
+    for item in garmins:
+        if not in_folder(item, parent):
+            left_out += 1
+            continue
+        same = next((i for place, key in zip(places, _keys(item), strict=True)
+                     for i in place.get(key, ()) if i not in taken), None)
+        if same is None:
+            out.append(item)
+        else:
+            out[same] = replace(item, hidden=False)
+            taken.add(same)
+    return out, left_out
+
+
+def _keys(item: ObjectInfo) -> tuple:
+    return item.handle, item.name, item.name.casefold()
 
 
 # --- transport ---------------------------------------------------------------------------
@@ -520,6 +561,7 @@ class Session:
         self._open = False
         self._broken = False  # the conversation is out of step; send nothing more
         self._empty = 0  # reads in a row that brought nothing
+        self.other_parent = 0  # objects Garmin's listing named in another folder, left out
 
     @property
     def broken(self) -> bool:
@@ -725,7 +767,9 @@ class Session:
                      at_root: bool = False) -> list[ObjectInfo]:
         """Ordinary and hidden objects of a folder; just the ordinary ones on a device
         without Garmin's listing, and in the root unless `at_root` (a car navigator keeps its
-        hidden folder there; a watch was never seen using Garmin's listing in the root)."""
+        hidden folder there; a watch was never seen using Garmin's listing in the root). The
+        two listings are put together by `joined`; what Garmin's names in another folder is
+        left out and counted in `other_parent`."""
         found = self.children(storage, parent)
         if parent == ROOT and not at_root:
             return found
@@ -735,8 +779,9 @@ class Session:
             if e.code != OPERATION_NOT_SUPPORTED:
                 raise
             return found
-        known = {item.handle for item in found}
-        return found + [item for item in extra if item.handle not in known]
+        listed, left_out = joined(found, extra, parent)
+        self.other_parent += left_out
+        return listed
 
     def lookup(self, storage: int, path: str) -> ObjectInfo | None:
         """The object at a `/` path, matched case-insensitively like the rest of the

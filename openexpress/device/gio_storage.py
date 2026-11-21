@@ -2730,7 +2730,19 @@ def _exclusive(storage: Storage, node: Path | None = None):
                     log.info("PTP: the device lists the same operations as before")
                 else:
                     log.info("PTP: %s", operations)
-                yield session
+                try:
+                    yield session
+                finally:
+                    _say_other_folder(storage, session)
         except Exception as e:
             log.warning("PTP: session ended with %s: %s", type(e).__name__, e)
             raise
+
+
+def _say_other_folder(storage: Storage, session: ptp.Session) -> None:
+    """Once a connection: how many objects Garmin's listing named in another folder than the
+    one asked, left out of this session's listings (by their count, never their names)."""
+    if session.other_parent and not applog.unchanged("PTP other folder", connection(storage),
+                                                     True):
+        log.info("PTP: Garmin's listing named %d object(s) of another folder; left out",
+                 session.other_parent)

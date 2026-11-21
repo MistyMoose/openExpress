@@ -103,8 +103,10 @@ def whole_file(storage: Storage, real_path: str, size: int | None, stream: Calla
                 return target.read_bytes()
             except CopyNotStarted as e:
                 if not getattr(e, "said", False):  # said once a process where it is said
-                    log.info("whole reads: the copy was refused before it began (%s); read as "
-                             "a stream", applog.redact(str(e)))
+                    # What happens first, why last: the log's filter takes all after a path
+                    # for it, and the reason may end in one.
+                    log.info("whole reads: read as a stream, the copy was refused before it "
+                             "began: %s", applog.redact(str(e)))
             except OSError as e:  # the copy on this computer: the system's words for it
                 raise DeviceError(f"{real_path}: {e.strerror or e}") from e
             finally:

@@ -333,6 +333,36 @@ def test_in_the_flatpak_the_hosts_gio_copy_copies_it(flatpak, caplog):
     assert any("copied whole by the host's gio copy" in r.getMessage() for r in caplog.records)
 
 
+def test_in_the_flatpak_a_cache_the_host_does_not_see_is_read_as_a_stream_saying_why(
+        mtp, monkeypatch, tmp_path, caplog):
+    """The host's gio copy writes where the host sees the same path as the sandbox (the
+    Flatpak's cache in the home folder). A cache outside it is refused before the first byte
+    (the real check), read as a stream, and the line of the log still says why once the log's
+    filter has hidden the path."""
+    from openexpress import applog
+
+    caplog.set_level(logging.INFO, logger="openexpress.device.whole_reads")
+    outside = tmp_path / "outside-the-home-folder"
+    monkeypatch.setattr(whole_reads.paths, "cache_dir", lambda: outside)
+    assert not gio_storage._host_visible(outside / whole_reads.FOLDER)
+    monkeypatch.setattr(gio_storage, "in_flatpak", lambda: True)
+    monkeypatch.setattr(gio_storage.shutil, "which", lambda name: f"/usr/bin/{name}")
+
+    def never(*args, **kwargs):
+        raise AssertionError("a command was run on the host")
+
+    monkeypatch.setattr(gio_storage, "host_command", never)
+    files, st, data = mtp()
+    assert whole_reads.whole_file(st, PATH, len(data), stream_of(st)) == data
+    assert files.calls.count("open") == 1 and not list((outside / whole_reads.FOLDER).iterdir())
+    (said,) = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+    filtered = applog.redact(said)
+    assert filtered.startswith("whole reads: read as a stream, the copy was refused before it "
+                               "began: Cannot read GARMIN/ASR/Updates/xx_XX.srd: the host does "
+                               "not see ")
+    assert str(outside) not in filtered
+
+
 def test_in_the_flatpak_a_refusal_before_the_first_byte_is_read_once_as_a_stream(flatpak):
     w = flatpak("refused")
     assert whole_reads.whole_file(w.st, PATH, len(w.data), stream_of(w.st)) == w.data

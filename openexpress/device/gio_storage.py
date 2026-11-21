@@ -654,7 +654,8 @@ class GioStorage(Storage):
         `told` that raises, or an error ends the command (flatpak-spawn passes it on, and
         --watch-bus ends the copy on the host when flatpak-spawn ends)."""
         if not _host_visible(dest.parent):
-            raise CopyNotStarted(f"{what}: {dest.parent} is not seen by the host")
+            # The reason before the path: the log's filter takes all after a path for it.
+            raise CopyNotStarted(f"{what}: the host does not see {dest.parent}")
         if not shutil.which("flatpak-spawn"):
             raise CopyNotStarted(f"{what}: " + _("flatpak-spawn is not available"))
         command = host_command("gio", "copy", "-p", self._f(real_path).get_uri(),

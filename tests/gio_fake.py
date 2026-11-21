@@ -28,12 +28,15 @@ def answer_as_gio(callback, delay_s: float = 0.0, context=None):
 
 GIO_ERRORS = {"cancelled": (Gio.IOErrorEnum.CANCELLED, "Operation was cancelled"),
               "already mounted": (Gio.IOErrorEnum.ALREADY_MOUNTED, "Location is already mounted"),
-              "not found": (Gio.IOErrorEnum.NOT_FOUND, "No such file or directory")}
+              "not found": (Gio.IOErrorEnum.NOT_FOUND, "No such file or directory"),
+              "busy": (Gio.IOErrorEnum.BUSY, "File system is busy"),
+              "not mounted": (Gio.IOErrorEnum.NOT_MOUNTED,
+                              "The specified location is not mounted")}
 
 
 def gio_error(word: str, message: str = "made-up refusal") -> GLib.Error:
-    """The GLib.Error of an answer: "cancelled", "already mounted", "not found", or any other
-    word: a refusal with `message`."""
+    """The GLib.Error of an answer: "cancelled", "already mounted", "not found", "busy", "not
+    mounted", or any other word: a refusal with `message`."""
     code, text = GIO_ERRORS.get(word, (Gio.IOErrorEnum.FAILED, message))
     return GLib.Error.new_literal(Gio.io_error_quark(), text, code)
 
@@ -159,13 +162,20 @@ class GvfsDevice:
     ("cancelled"), but gvfs goes on: the unmount takes effect `unmount_takes_s` after it began,
     unless `cancel_stops`. The volume monitor (`get_mounts`) shows a change once the main
     thread has had its signal; `exists` follows gvfs at once. `comes_back=False`: mounted
-    again, its files stay unseen. Leaves `events`."""
+    again, its files stay unseen.
+
+    As gvfs, it refuses an unmount at once as busy while a file of it is open (`open_files`,
+    counted by MtpFiles made with this device), but not during a copy; `busy_refusals`: the
+    first unmounts refused so all the same (another program holding a file). Leaves `events`
+    and `unmounts_asked`."""
 
     usb = None  # its place on USB not known
 
-    def __init__(self, uri, unmount_takes_s=0.2, cancel_stops=False, comes_back=True):
+    def __init__(self, uri, unmount_takes_s=0.2, cancel_stops=False, comes_back=True,
+                 busy_refusals=0):
         self.uri, self.unmount_takes_s = uri, unmount_takes_s
         self.cancel_stops, self.comes_back = cancel_stops, comes_back
+        self.busy_refusals, self.open_files, self.unmounts_asked = busy_refusals, 0, 0
         self.mounted = self.shown = self.files_seen = True
         self.events: list[str] = []
         self.timers: list[threading.Timer] = []
@@ -206,6 +216,14 @@ class _GvfsMount:
 
     def unmount_with_operation(self, flags, operation, cancellable, callback):
         device, context = self.device, GLib.MainContext.ref_thread_default()
+        with device._lock:
+            device.unmounts_asked += 1
+            busy = device.open_files > 0 or device.busy_refusals > 0
+            if busy and not device.open_files:
+                device.busy_refusals -= 1
+        if busy:
+            answer_as_gio(lambda: callback(self, "busy"), context=context)
+            return
         said = {"answered": False, "cancelled": False}
         lock = threading.Lock()
 
@@ -285,9 +303,15 @@ class MtpFiles:
     attributes of the storage. `plan`: (kind, n) -> the GioOp the n-th call of a kind (from 1)
     answers as, instead of at the next turn; kinds: "list" (opening a listing), "portion",
     "close", "query", "space", "open" (opening a file), "chunk", "close file". Leaves `calls`,
-    the kinds in the order called, and `asked`, the bytes asked for by each chunk."""
+    the kinds in the order called, and `asked`, the bytes asked for by each chunk.
 
-    def __init__(self, tree, space=None, plan=None, most=None):
+    `device`: the GvfsDevice the files are on. While it is unmounted every call not planned is
+    refused as not mounted, and a file open for reading counts for its unmount (busy).
+    Leaves `mounted_at`: whether it was mounted at each call, in the order called."""
+
+    def __init__(self, tree, space=None, plan=None, most=None, device=None):
+        self.device = device
+        self.mounted_at: list[bool] = []
         self.tree = dict(tree)
         self.space = dict(space or {})
         self.plan = dict(plan or {})
@@ -325,11 +349,15 @@ class MtpFiles:
                         if key.startswith(prefix) and key != path})
         return [self.info(prefix + name) for name in names]
 
+    def mounted(self):
+        return self.device is None or self.device.mounted
+
     def answer(self, kind, missing=False):
         """The made-up operation of the next call of `kind`."""
         self.calls.append(kind)
+        self.mounted_at.append(self.mounted())
         op = self.plan.get((kind, self.calls.count(kind))) or GioOp(
-            says="not found" if missing else "done")
+            says="not mounted" if not self.mounted() else "not found" if missing else "done")
         self._ops.append(op)
         return op
 
@@ -375,8 +403,13 @@ class _MtpFile:
     def read_async(self, priority, cancellable, callback):
         files = self.files
         a_file = files.there(self.path) and not files.is_folder(self.path)
+        mounted = files.mounted()
         op = files.answer("open", missing=not a_file)
         stream = _MtpStream(files, files.contents(self.path) if a_file else b"")
+        if a_file and mounted and files.device is not None:
+            with files.device._lock:
+                files.device.open_files += 1  # gvfs keeps the file open until it is closed
+            stream.counted = True
         op.start(lambda finish: callback(self, (finish, stream)), cancellable)
 
     def query_filesystem_info_async(self, attributes, priority, cancellable, callback):
@@ -393,6 +426,8 @@ class _MtpFile:
 
 class _MtpStream:
     """A file opened for reading (a Gio.FileInputStream of gvfs)."""
+
+    counted = False  # open for the unmount of its device (MtpFiles.device)
 
     def __init__(self, files, data):
         self.files, self.data, self.at = files, data, 0
@@ -411,6 +446,10 @@ class _MtpStream:
         return GLib.Bytes.new(chunk)
 
     def close_async(self, priority, cancellable, callback):
+        if self.counted:
+            self.counted = False
+            with self.files.device._lock:
+                self.files.device.open_files -= 1
         op = self.files.answer("close file")
         op.start(lambda finish: callback(self, (finish, True)), cancellable)
 

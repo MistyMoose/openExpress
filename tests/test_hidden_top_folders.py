@@ -35,7 +35,7 @@ from openexpress import download, hidden_folders, maps, updates
 from openexpress.cli import main
 from openexpress.connect import GarminClient, lower_keys
 from openexpress.device import ptp
-from openexpress.device.storage import LocalStorage
+from openexpress.device.storage import DeviceBusy, LocalStorage
 
 SYSTEM = b"made-up navigator software"
 NEW_PART = b"made-up new part"
@@ -401,13 +401,16 @@ def navigator_session(software=OLDER_SYSTEM):
 
 class OverUsb(LocalStorage):
     """The made-up device over MTP: ordinary MTP shows its folder; `fake` answers a session of
-    its own (None: none can be opened here); `sessions` counts them."""
+    its own (None: none can be opened here); `sessions` counts them. `busy`: how many sessions
+    are refused as busy first (gio_storage: gvfs, or this process's own operations still
+    under way), counted in `refused`."""
 
     def __init__(self, root, fake=None):
         super().__init__(root)
         self.device_uri = "mtp://made-up-navigator/"
         self.usb = types.SimpleNamespace(bus=1, address=7, usb_id="091e:0000")
         self.fake, self.sessions, self.blocked = fake, 0, False
+        self.busy = self.refused = 0
 
     def usb_blocked(self):
         return self.blocked
@@ -418,6 +421,10 @@ class OverUsb(LocalStorage):
 
         @contextlib.contextmanager
         def opened():
+            if self.busy:
+                self.busy -= 1
+                self.refused += 1
+                raise DeviceBusy("Cannot unmount the device: File system is busy")
             self.sessions += 1
             self.fake.reconnect()
             with ptp.Session(self.fake) as session:
@@ -655,6 +662,73 @@ def test_check_again_reads_the_folders_anew(navigator, monkeypatch, in_the_windo
     win.sections["maps"].loaded = True
     check_maps_again(win)
     assert storage.sessions == 3 and shown["loaded"][-2:] == ["updates", "maps"]
+
+
+def test_a_reading_refused_as_busy_is_not_kept_and_what_was_read_stays(navigator, caplog):
+    caplog.set_level(logging.WARNING, logger="openexpress.hidden_folders")
+    storage = OverUsb(navigator, navigator_session())
+    storage.busy = 1
+    refused = hidden_folders.read(storage, [".System"], "test")
+    assert refused.state == hidden_folders.FAILED and hidden_folders.kept(storage) is None
+    assert hidden_folders.busy_failures(storage) == 1
+    assert [r.getMessage() for r in caplog.records] == [
+        ("hidden folders: not read, the device was busy (Cannot unmount the device: File system "
+         "is busy); not kept, 1 such reading(s) this connection")]
+    # The next reading of the connection reads; one refused after it leaves what it read.
+    assert hidden_folders.read(storage, [".System"], "test").state == hidden_folders.READ
+    storage.busy = 1
+    hidden_folders.read(storage, [".System/Diag"], "test")
+    kept = hidden_folders.kept(storage)
+    assert kept.state == hidden_folders.READ and kept.knows(".System")
+    assert storage.sessions == 1 and storage.refused == 2
+    # Check Again forgets them as it forgets what was read.
+    hidden_folders.forget(storage)
+    assert hidden_folders.busy_failures(storage) == 0
+
+
+def test_the_command_line_does_not_ask_a_busy_device_again_within_a_command(navigator):
+    from openexpress import cli, service
+
+    storage = OverUsb(navigator, navigator_session())
+    storage.busy = 1
+    device = service.read_device(storage, found_now=False)
+    assert cli._read_hidden(storage, device, [".System"], "updates go there") is True
+    assert cli._read_hidden(storage, device, [".System"], "the maps' files are there") is False
+    assert storage.refused == 1 and storage.sessions == 0
+
+
+@pytest.mark.parametrize(("busy", "readings"), [(1, 2), (3, 3)],
+                         ids=["free at the second try", "busy at every try"])
+def test_the_window_tries_a_busy_reading_again_at_the_next_check(navigator, monkeypatch,
+                                                                 in_the_window, caplog, busy,
+                                                                 readings):
+    """A reading refused as busy is tried again as the checks after it end (at most
+    BUSY_TRIES times a connection), then only when asked (Check Again)."""
+    from openexpress.gui.updates_page import check_updates_again
+
+    caplog.set_level(logging.INFO, logger="openexpress.gui.hidden_reading")
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    storage.busy = busy
+    in_the_window("count_again", lambda win, s: None)
+    win, _s, shown = _window(monkeypatch, storage, server_answer(),
+                             [_map("Made-up City Navigator", CITY_NAVIGATOR)])
+    _first_checks(win)
+    assert len(win.run_task.calls) == readings and storage.refused == busy
+    stopped = ("hidden folders: refused as busy 3 times this connection; read again only "
+               "when asked (Check Again, Refresh)")
+    said = [r.getMessage() for r in caplog.records]
+    if busy < hidden_folders.BUSY_TRIES:
+        assert storage.sessions == 1 and stopped not in said
+        assert shown["updates"] == ["006-B0000-00", "006-D9004-00"]  # what the reading found
+        return
+    assert storage.sessions == 0 and said.count(stopped) == 1
+    win._check_updates_quietly()  # a later check of the connection: not tried again
+    said = [r.getMessage() for r in caplog.records]
+    assert len(win.run_task.calls) == readings and said.count(stopped) == 1
+    win.sections["updates"].loaded = True
+    check_updates_again(win)
+    assert storage.sessions == 1 and shown["updates"] == ["006-B0000-00", "006-D9004-00"]
 
 
 def test_the_window_shows_nothing_of_a_reading_ended_by_an_unplug(navigator, monkeypatch,

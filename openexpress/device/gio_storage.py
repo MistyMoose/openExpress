@@ -9,6 +9,8 @@ from __future__ import annotations
 import codecs
 import contextlib
 import dataclasses
+import errno
+import functools
 import logging
 import os
 import re
@@ -33,6 +35,7 @@ from openexpress import applog  # noqa: E402
 from openexpress.device import ptp, session_mark  # noqa: E402
 from openexpress.device.storage import (  # noqa: E402
     CopyNotStarted,
+    DeviceBusy,
     DeviceError,
     DeviceNotResponding,
     Entry,
@@ -61,7 +64,10 @@ _ATTRS = "standard::name,standard::type,standard::size,time::modified"
 
 
 def _err(e: GLib.Error, what: str) -> DeviceError:
-    return DeviceError(f"{what}: {e.message}")
+    """What a failure of gvfs is, in its words after `what`: DeviceBusy for a refusal as busy
+    (an unmount while something has a file of the device open), else DeviceError."""
+    busy = e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.BUSY)
+    return (DeviceBusy if busy else DeviceError)(f"{what}: {e.message}")
 
 
 def _refused(e: GLib.Error, what: str) -> DeviceError:
@@ -272,6 +278,18 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
 # The size of a file that could not be told.
 _UNKNOWN = object()
 
+
+def _on_the_device(method):
+    """A GioStorage operation through gvfs, under way on the device for its whole time (the
+    file open for a read, the listing with its enumerator, the copy of a write): a session of
+    our own waits until it ends (_InUse)."""
+    @functools.wraps(method)
+    def held(self, *args, **kwargs):
+        with self._in_use():
+            return method(self, *args, **kwargs)
+
+    return held
+
 # A step of a read (one answer of gvfs: opening a listing or a file, a portion of the listing,
 # a chunk of the file, a query) with no answer this long: the device stopped responding.
 STALL_S = 30.0
@@ -327,6 +345,11 @@ class GioStorage(Storage):
 
     def _f(self, real: str) -> Gio.File:
         return self.root.resolve_relative_path(real) if real else self.root
+
+    def _in_use(self):
+        if not self.device_uri:
+            return contextlib.nullcontext()  # no session of our own can take it
+        return _in_use_of(self.device_uri).operation(self.usb)
 
     @property
     def stalled(self) -> bool:
@@ -405,6 +428,7 @@ class GioStorage(Storage):
         except DeviceError:
             pass
 
+    @_on_the_device
     def _list(self, real_path: str) -> list[Entry]:
         # TRANSLATORS: error: the contents of a folder on the device cannot be read ({path}: the
         # folder)
@@ -429,6 +453,7 @@ class GioStorage(Storage):
         self._close(enum, what, "listing", context)
         return out
 
+    @_on_the_device
     def _query(self, real_path: str, attributes: str, flags):
         """The information of a file, None when it is not there."""
         target = self._f(real_path)
@@ -461,6 +486,7 @@ class GioStorage(Storage):
     def _read_told(self, real_path: str, told) -> bytes:
         return self._read_stream(real_path, told=told)
 
+    @_on_the_device
     def _read_stream(self, real_path: str, count: int | None = None, told=None) -> bytes:
         """The file, or its first `count` bytes (fewer when it is shorter), read as a stream
         in chunks of at most READ_CHUNK: gvfs fetches only what is asked for; the bytes read
@@ -494,6 +520,7 @@ class GioStorage(Storage):
         self._close(stream, what, "read", context)
         return b"".join(chunks)
 
+    @_on_the_device
     def _write(self, real_path: str, data: bytes) -> None:
         """gvfs-mtp cannot write streams, only copy a whole local file: the bytes go to a
         temporary file, copied as any file is (_write_file, so that what a copy cut short
@@ -508,6 +535,7 @@ class GioStorage(Storage):
                 raise CopyNotStarted(_os_said(what, e)) from e
             self._write_file(real_path, tmp)
 
+    @_on_the_device
     def _write_file(self, real_path: str, local, progress=None) -> None:
         """Everything that can fail before the device is touched (the file to send, its
         staging in the Flatpak, starting the copy) raises CopyNotStarted: the old file stays.
@@ -553,6 +581,7 @@ class GioStorage(Storage):
             return _UNKNOWN
         return None if info is None else info.get_size()
 
+    @_on_the_device
     def _discard_partial(self, real_path: str) -> None:
         """After a copy that failed once it ran, deletes the file under the name only on
         evidence that the copy touched it: gio copy reported progress, or a file is there now
@@ -600,6 +629,7 @@ class GioStorage(Storage):
         except GLib.Error as e:
             raise _refused(e, what) from e
 
+    @_on_the_device
     def _delete(self, real_path: str) -> None:
         self._responding()
         try:
@@ -608,6 +638,7 @@ class GioStorage(Storage):
             # TRANSLATORS: error: a file on the device cannot be deleted ({path}: the file)
             raise _err(e, _("Cannot delete {path}").format(path=real_path)) from e
 
+    @_on_the_device
     def _mkdir(self, real_path: str) -> None:
         self._responding()
         try:
@@ -615,6 +646,7 @@ class GioStorage(Storage):
         except GLib.Error as e:
             raise _refused(e, _("Cannot create the folder {path}").format(path=real_path)) from e
 
+    @_on_the_device
     def _fs_attr(self, attr: str) -> int | None:
         found: list = []
         try:
@@ -2391,6 +2423,159 @@ def _key(uri: str) -> str:
     return uri.rstrip("/").lower()
 
 
+# Before a session of our own unmounts the device, this process's own operations on it through
+# gvfs (a read, a listing, a copy, a deletion) end first, at most this long: with one still under
+# way after it (a large file read or written) the session is not had (DeviceBusy) and nothing is
+# cut short. gvfs itself refuses an unmount only while a file is open, not during a copy.
+OWN_USE_WAIT_S = 10.0
+# gvfs refuses an unmount as busy while something has a file of the device open (another
+# program, another openExpress): asked this many times in all, this far apart.
+UNMOUNT_TRIES = 5
+UNMOUNT_BUSY_PAUSE_S = 0.5
+# An operation of a worker thread that meets a session of our own waits for the device to be
+# mounted again at most this long: as long as a step may take before the device counts as
+# stopped (STALL_S). That is more than the session's wait for the operations under way, its
+# tries and a session that reads folders, crash logs or satellite data, with the mount after
+# it (a second or two); after a longer one (a map written in a session) the operation goes on
+# and fails as it would without the wait. An unplug and the window's closing end the wait at
+# once; it looks for the unplug this often.
+MOUNT_WAIT_S = 30.0
+UNPLUG_POLL_S = 0.25
+
+
+class _InUse:
+    """Who uses one device through gvfs in this process: the operations under way, per thread
+    (one within another counts once), and the thread that has the device for a session of our
+    own (_unmounted).
+
+    A session waits until the operations of the other threads end (OWN_USE_WAIT_S, else
+    DeviceBusy). While it waits or runs, a new operation of another worker thread waits for the
+    device to be mounted again (MOUNT_WAIT_S; an unplug or the window's closing, stop_waiting,
+    end the wait at once), then goes on whatever it finds. The main thread (the window's loop,
+    the command line) and the session's own thread never wait: what they ask goes on at once,
+    as it would without a session."""
+
+    def __init__(self) -> None:
+        self.changed = threading.Condition()
+        self.users: dict[int, int] = {}  # thread -> operations under way in it
+        self.session: int | None = None  # the thread that has the device for a session
+        self.depth = 0  # sessions within that thread's session
+        self.wanted = 0  # sessions waiting for the operations under way
+        self.waits_said = False  # once a session: an operation waits for it
+
+    @contextmanager
+    def operation(self, usb: GarminUsb | None):
+        me = threading.get_ident()
+        with self.changed:
+            if (me not in self.users and me != self.session
+                    and threading.current_thread() is not threading.main_thread()):
+                self._wait_for_the_mount(usb)
+            self.users[me] = self.users.get(me, 0) + 1
+        try:
+            yield
+        finally:
+            with self.changed:
+                if self.users[me] == 1:
+                    del self.users[me]
+                else:
+                    self.users[me] -= 1
+                self.changed.notify_all()
+
+    def _wait_for_the_mount(self, usb: GarminUsb | None) -> None:
+        """With `changed` held: until no session is wanted or held, at most MOUNT_WAIT_S."""
+        if self.session is None and not self.wanted:
+            return
+        if not self.waits_said:
+            self.waits_said = True
+            log.info("gio: an operation on the device waits until openExpress's own session "
+                     "ends")
+        started = time.monotonic()
+        while self.session is not None or self.wanted:
+            if _stop_waiting.is_set():
+                log.info("gio: the window closes, an operation on the device waits no more")
+                return
+            if usb_place(usb) is not None and not usb_still_there(usb):
+                log.info("gio: the device was unplugged while an operation waited for it")
+                return
+            left = MOUNT_WAIT_S - (time.monotonic() - started)
+            if left <= 0:
+                log.info("gio: an operation waited %g s for the device to be mounted again; it "
+                         "goes on", MOUNT_WAIT_S)
+                return
+            self.changed.wait(min(left, UNPLUG_POLL_S))
+
+    @contextmanager
+    def taken(self, what: str):
+        """The device for a session of the thread that asks: once the operations of the other
+        threads (and another session) have ended; DeviceBusy when they still run after
+        OWN_USE_WAIT_S, the device untouched. `what` begins the lines of the log."""
+        me = threading.get_ident()
+        with self.changed:
+            if self.session == me:
+                self.depth += 1
+            else:
+                self._wait_until_free(me, what)
+                self.session, self.depth, self.waits_said = me, 1, False
+        try:
+            yield
+        finally:
+            with self.changed:
+                self.depth -= 1
+                if not self.depth:
+                    self.session = None
+                self.changed.notify_all()
+
+    def _others(self, me: int) -> int:
+        """The operations under way in the other threads (one within another counts once),
+        and another thread's session."""
+        return (sum(1 for thread in self.users if thread != me)
+                + (self.session not in (None, me)))
+
+    def _wait_until_free(self, me: int, what: str) -> None:
+        """With `changed` held."""
+        if not self._others(me):
+            return
+        self.wanted += 1
+        started = time.monotonic()
+        try:
+            log.info("%s: waits until %d operation(s) of openExpress on the device end", what,
+                     self._others(me))
+            while self._others(me):
+                left = OWN_USE_WAIT_S - (time.monotonic() - started)
+                if left <= 0:
+                    log.info("%s: %d operation(s) of openExpress on the device still under way "
+                             "after %g s; the device is not unmounted", what, self._others(me),
+                             OWN_USE_WAIT_S)
+                    raise DeviceBusy(_still_in_use_text())
+                self.changed.wait(left)
+            log.info("%s: they ended after %.1f s", what, time.monotonic() - started)
+        finally:
+            self.wanted -= 1
+            self.changed.notify_all()
+
+
+_in_use_by_device: dict[str, _InUse] = {}
+_in_use_lock = threading.Lock()
+_stop_waiting = threading.Event()
+
+
+def _in_use_of(uri: str) -> _InUse:
+    """The one _InUse of the device at `uri`, whichever storage of it asks."""
+    with _in_use_lock:
+        return _in_use_by_device.setdefault(_key(uri), _InUse())
+
+
+def stop_waiting() -> None:
+    """The window closes: an operation that waits for a session of our own goes on at once
+    (and meets the device as it is, as it would without the wait)."""
+    _stop_waiting.set()
+    with _in_use_lock:
+        every = list(_in_use_by_device.values())
+    for in_use in every:
+        with in_use.changed:
+            in_use.changed.notify_all()
+
+
 def _mount_of(uri: str):
     """The mount the volume monitor shows whose root is at `uri` (_key: any letter case, with
     or without the final "/"); None when there is none. A mount without a root is passed
@@ -2578,6 +2763,30 @@ def _unmount(uri: str) -> None:
         UNMOUNT_TIMEOUT_S, _("Cannot unmount the device"), "unmount")
 
 
+def _still_in_use_text() -> str:
+    """The error of a session not had as this process's own operations on the device still
+    run: the words of an unmount refused, with the system's words for a busy device (as
+    _os_said gives them)."""
+    return f"{_('Cannot unmount the device')}: {os.strerror(errno.EBUSY)}"
+
+
+def _unmount_when_free(uri: str, what: str) -> None:
+    """_unmount, asked again while gvfs refuses it as busy: UNMOUNT_TRIES times in all,
+    UNMOUNT_BUSY_PAUSE_S apart; then DeviceBusy as gvfs said it, the device left mounted."""
+    for tried in range(1, UNMOUNT_TRIES + 1):
+        try:
+            _unmount(uri)
+            return
+        except DeviceBusy:
+            if tried == UNMOUNT_TRIES:
+                log.info("%s: gvfs said the device is busy %d times; not unmounted", what,
+                         tried)
+                raise
+            log.info("%s: gvfs says the device is busy, tried again in %.1f s (%d of %d)",
+                     what, UNMOUNT_BUSY_PAUSE_S, tried + 1, UNMOUNT_TRIES)
+            time.sleep(UNMOUNT_BUSY_PAUSE_S)
+
+
 def _mounted_again(location, res) -> None:
     """The answer of mounting the device again. "Mounted already" counts as mounted: after a
     session the unmount has finished, so something else has mounted the device; after an
@@ -2697,8 +2906,21 @@ def _unmounted(storage: Storage, what: str, closed: str, whole: str):
     time it started. `what` begins its lines of the log; `closed` is the last one, said once
     the device is mounted again with the time of the mount alone and, after
     `whole` (what the block was), the time since the unmount began: that one covers the
-    unmount, the block and the mount, so it is not the time the mount took."""
+    unmount, the block and the mount, so it is not the time the mount took.
+
+    Before it, this process's own operations on the device end (_InUse; DeviceBusy when they
+    still run after OWN_USE_WAIT_S, nothing unmounted), and an unmount gvfs refuses as busy is
+    asked again (_unmount_when_free)."""
     uri = storage.device_uri
+    # This process's operations on the device end first.
+    with _in_use_of(uri).taken(what), _unmounted_now(uri, storage, what, closed,
+                                                       whole) as started:
+        yield started
+
+
+@contextmanager
+def _unmounted_now(uri: str, storage: Storage, what: str, closed: str, whole: str):
+    """_unmounted, once nothing else of this process uses the device."""
     _quiet_until[_key(uri)] = float("inf")
     _quiet_usb[_key(uri)] = storage.usb
     mark = session_mark.begin(usb_place(storage.usb))  # for the other openExpress processes
@@ -2706,7 +2928,7 @@ def _unmounted(storage: Storage, what: str, closed: str, whole: str):
     try:
         log.info("%s: unmounting the device from gvfs", what)
         try:
-            _unmount(uri)
+            _unmount_when_free(uri, what)
         except (GioTimedOut, KeyboardInterrupt) as stopped:
             # Cancelled, gvfs may unmount it all the same, now or a moment later: seen as it
             # settles, mounted again if it is unmounted, so that it is not left without a

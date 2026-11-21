@@ -2,9 +2,11 @@
 (a car navigator's .System) through openExpress's own USB session (hidden_folders): once a
 connection, right after the device was opened, when what its first checks found (its updates,
 its maps) goes to such a folder or the device is known to hide one; again only when the user
-asks (Check Again, Refresh). It reads what the command line reads (folders_to_read), so that
-both count the same. The device leaves the file manager for a moment, so the reading is a
-task: never during another one, and after the diagnostics of the opening are read.
+asks (Check Again, Refresh), or after a reading refused as busy, at the next first check (at
+most hidden_folders.BUSY_TRIES times a connection). It reads what the command line reads
+(folders_to_read), so that both count the same. The device leaves the file manager for a
+moment, so the reading is a task: never during another one, and after the diagnostics of the
+opening are read.
 
 Has: nothing; the device's session keeps the folders wanted and whether they are being read
 (DeviceSession.hidden_wanted, hidden_reading)."""
@@ -13,7 +15,8 @@ import logging
 
 from gi.repository import GLib
 
-from openexpress import hidden_folders
+from openexpress import applog, hidden_folders
+from openexpress.device.storage import connection
 from openexpress.gui.window_tasks import count_again
 
 log = logging.getLogger(__name__)
@@ -63,6 +66,11 @@ def _start(win, s) -> None:
     if (win.session is not s or not hasattr(s, "hidden_wanted") or s.hidden_reading
             or (kept is not None and kept.state != hidden_folders.READ)):
         return  # a reading that failed, or no session to be had, is said once a connection
+    if hidden_folders.busy_failures(s.storage) >= hidden_folders.BUSY_TRIES:
+        if not applog.unchanged("hidden folders busy", connection(s.storage), True):
+            log.info("hidden folders: refused as busy %d times this connection; read again "
+                     "only when asked (Check Again, Refresh)", hidden_folders.BUSY_TRIES)
+        return
     if win._update_check_session is s or win._map_check_session is s:
         return  # the other first check may need a folder too: it ends with note_needed
     # Only what this connection has not read: a reading is added to what it read before.

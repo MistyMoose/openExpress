@@ -23,6 +23,7 @@ from pathlib import Path
 from openexpress import applog, awake
 from openexpress.device import ptp
 from openexpress.device.storage import (
+    DeviceBusy,
     DeviceError,
     DeviceNotResponding,
     Entry,
@@ -133,6 +134,11 @@ def top_not_seen(folder: str, tops: set[str] | None) -> str | None:
 
 # What each connection read, by the connection (storage.connection).
 _kept: dict[tuple, Listing] = {}
+# A reading refused as busy (gvfs, or this process's own operations still under way) is not
+# kept: counted per connection instead, so that the window may try again (at most BUSY_TRIES
+# times a connection) and the command line does not within one command.
+_busy: dict[tuple, int] = {}
+BUSY_TRIES = 3
 
 
 def kept(storage: Storage) -> Listing | None:
@@ -141,8 +147,16 @@ def kept(storage: Storage) -> Listing | None:
 
 
 def forget(storage: Storage) -> None:
-    """The next look at the device reads its hidden folders anew ("Check Again")."""
+    """The next look at the device reads its hidden folders anew ("Check Again"), also after
+    readings refused as busy."""
     _kept.pop(connection(storage), None)
+    _busy.pop(connection(storage), None)
+
+
+def busy_failures(storage: Storage) -> int:
+    """How many readings of this connection were refused as busy since it was opened or
+    forgotten (forget)."""
+    return _busy.get(connection(storage), 0)
 
 
 # A device opened while it was still starting may have no place on USB yet: a session of its own
@@ -236,9 +250,10 @@ def read(storage: Storage, folders: Iterable[str], why: str,
     _added), and return what the connection knows now: each folder by the ordinary listing and
     Garmin's together, as they were read. `why`: for the log, what needs them. A session that
     cannot be opened or fails leaves a listing that says why (Listing.state), in place of what
-    was read before; only a device not mounted again after it raises (RemountFailed: unplug it
-    and plug it in). `unit_id`: the device's, which then keeps the folders of its top level
-    found hidden (known_devices.hidden_tops)."""
+    was read before; one refused as busy is not kept: it returns such a listing and leaves
+    what was read before (busy_failures). Only a device not mounted again after it raises
+    (RemountFailed: unplug it and plug it in). `unit_id`: the device's, which then keeps the
+    folders of its top level found hidden (known_devices.hidden_tops)."""
     wanted = sorted({f.strip("/") for f in folders if f.strip("/")}, key=str.casefold)
     listing = Listing()
     opener = session_for(storage, progress) if wanted else None
@@ -259,6 +274,12 @@ def read(storage: Storage, folders: Iterable[str], why: str,
         raise
     except DeviceNotResponding:
         raise
+    except DeviceBusy as e:
+        # What the connection read before stays: a later reading may find the device free.
+        tries = _busy[connection(storage)] = busy_failures(storage) + 1
+        log.warning("hidden folders: not read, the device was busy (%s); not kept, %d such "
+                    "reading(s) this connection", e, tries)
+        return Listing(state=FAILED)
     except DeviceError as e:
         log.warning("hidden folders: not read, %s (%s: %s)", FAILED, type(e).__name__, e)
         listing = Listing(state=FAILED)

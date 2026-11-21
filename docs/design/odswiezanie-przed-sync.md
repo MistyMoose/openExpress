@@ -79,6 +79,16 @@ It existed already, for the PTP sessions that reach files gvfs does not show:
 
 - The unmount: `Gio.Mount.unmount_with_operation`. gvfs closes its libmtp session; the device
   stays on USB.
+- Before it, the process's own operations on the device through gvfs end (`gio_storage._InUse`):
+  reads, listings, copies and deletions, a write with its check counted as one, at most 10 s.
+  With one still under way (a large file) the session or the refresh is not had (`DeviceBusy`)
+  and nothing is cut short. gvfs itself refuses an unmount while a file of the device is open,
+  but not during a copy, which would otherwise lose the device in its middle.
+- An unmount gvfs refuses as busy (another program has a file of the device open) is asked
+  again, 5 times in all, 0.5 s apart; then the device stays mounted (`DeviceBusy`).
+- While a session waits or runs, a new operation of a worker thread waits until the device is
+  mounted again, at most 30 s (an unplug or the window's closing end the wait at once), then goes
+  on whatever it finds. The main thread and the session's own thread never wait.
 - The mount again: `mount_enclosing_volume` on the same `mtp://` address, then a wait until
   `GARMIN/GarminDevice.xml` can be seen (up to 20 s, once a second).
 - Time limits: 30 s for each. An unmount cancelled at its limit is followed by watching how the
@@ -223,4 +233,5 @@ there for its MD5, so its count may include a cut-short file.
    (GIO documents it for the main thread; it has worked so far).
 8. **Other tasks of the window** that read the device during a sync or a backup could meet the
    moment it is unmounted. The window runs one task at a time: another task asked meanwhile
-   gets only a toast.
+   gets only a toast. What the window reads in the background (its pages, checks and counts) is
+   no task: it waits for the device to be mounted again (section 3, "Mounting again").

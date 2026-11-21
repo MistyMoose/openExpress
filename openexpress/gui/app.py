@@ -20,6 +20,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402 - imports must 
 from openexpress import desktop, netstatus, service  # noqa: E402
 from openexpress.connect import NotAccountDevice  # noqa: E402
 from openexpress.console import error as print_error  # noqa: E402
+from openexpress.device import gio_storage  # noqa: E402
 from openexpress.device.gio_storage import ABSENT  # noqa: E402
 from openexpress.gui import pictures, start  # noqa: E402
 from openexpress.gui.activities_page import PAGE_ICON as ACTIVITIES_ICON  # noqa: E402
@@ -555,6 +556,7 @@ class MainWindow(TaskRunner, DeviceDetection, StartWindow, DevicePage, MapsPage,
             netstatus.STATUS.remove_listener(self._net_listener)
             stop_watching_network(self)
             self._closed = True
+            gio_storage.stop_waiting()  # a reading waiting for a session of ours goes on
             self._update_relative_timer()  # no timer left once the window is closed
             if self._usb_poll is not None:
                 GLib.source_remove(self._usb_poll)

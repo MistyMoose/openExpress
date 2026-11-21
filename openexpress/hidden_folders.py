@@ -221,12 +221,14 @@ def folders_to_read(device, needed: Iterable[str]) -> list[str]:
 
 def read(storage: Storage, folders: Iterable[str], why: str,
          progress: Callable[[str], None] | None = None, unit_id: int | None = None) -> Listing:
-    """Read `folders` (paths from the top level) through a session of our own, keep what it
-    read for the connection, and return it: each folder by the ordinary listing and Garmin's
-    together, as they are now. `why`: for the log, what needs them. A session that cannot be
-    opened or fails leaves a listing that says why (Listing.state); only a device not mounted
-    again after it raises (RemountFailed: unplug it and plug it in). `unit_id`: the device's,
-    which then keeps the folders of its top level found hidden (known_devices.hidden_tops)."""
+    """Read `folders` (paths from the top level) through a session of our own, add what it
+    read to what the connection read before (each folder read again replaces only itself,
+    _added), and return what the connection knows now: each folder by the ordinary listing and
+    Garmin's together, as they were read. `why`: for the log, what needs them. A session that
+    cannot be opened or fails leaves a listing that says why (Listing.state), in place of what
+    was read before; only a device not mounted again after it raises (RemountFailed: unplug it
+    and plug it in). `unit_id`: the device's, which then keeps the folders of its top level
+    found hidden (known_devices.hidden_tops)."""
     wanted = sorted({f.strip("/") for f in folders if f.strip("/")}, key=str.casefold)
     listing = Listing()
     opener = session_for(storage, progress) if wanted else None
@@ -260,8 +262,25 @@ def read(storage: Storage, folders: Iterable[str], why: str,
             f"{real}: {len(entries)} entries" for real, entries in listing.folders.values())
             + "".join(f"; {m}: not on the device"
                       for m in sorted(listing.missing.values(), key=str.casefold)))
+        listing = _added(_kept.get(connection(storage)), listing)
     _kept[connection(storage)] = listing
     return listing
+
+
+def _added(before: Listing | None, now: Listing) -> Listing:
+    """What the connection knows after the reading `now`: what was read before, each folder
+    `now` read (or found not there) in place of what was known of it; `now` alone when nothing
+    was read before, or the reading before told nothing (it failed or had no session)."""
+    if before is None or before.state != READ:
+        return now
+    added = Listing(dict(before.folders), dict(before.missing))
+    for key, found in now.folders.items():
+        added.folders[key] = found
+        added.missing.pop(key, None)
+    for key, asked in now.missing.items():
+        added.missing[key] = asked
+        added.folders.pop(key, None)
+    return added
 
 
 def _children(session, store: int, parent: int) -> list:
@@ -487,7 +506,9 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
     against `local` and `md5`; SAMPLED, blocks of it against `local`, see FULL_CHECK_UP_TO). A
     file not written whole, or read back otherwise, is deleted at once (NotWritten, which says
     what is on the device); one the device does not give back stays (ContentsNotRead). No folder
-    is ever made; nothing else is touched. The time of the copy and of the check are logged
+    is ever made; nothing else is touched. A file written whole is added to what this
+    connection read (_note_written); after a file not written or not read back the folders
+    are read anew (forget). The time of the copy and of the check are logged
     apart. `name`: of the update, for the words; `copying` and `checking`: the heads of the
     steps told to `progress` (in bytes) while it is sent and read back. `keep_copy`: a trial
     that changes nothing the device refuses first: a small file (PROBE) written into the
@@ -549,13 +570,37 @@ def write(storage: Storage, path: str, local: Path, md5: str | None, name: str, 
                     said += " " + put_back_text(kept, back)
             forget(storage)
             raise NotWritten(said) from e
+        except ContentsNotRead:
+            forget(storage)  # written at its size, not read back: the folders read anew
+            raise
     log.info("hidden folders: %s written into %s (%s), read back %s", filename, real,
              applog.size(size), how)
-    forget(storage)  # what was read of the folder is not what is there now
+    _note_written(storage, real, filename, size)
     if kept is not None and drop_copy:
         kept.path.unlink(missing_ok=True)
         kept = None
     return Written(f"{real}/{filename}", size, kept)
+
+
+def _note_written(storage: Storage, folder: str, filename: str, size: int) -> None:
+    """The file just written whole into `folder`, at the size the device gave, in what this
+    connection read: in place of the file of that name in any letter case (the old one, which
+    was deleted), else after the rest. A folder not read stays unread; one found not there is
+    no longer taken for missing (it is there, what else it holds not known)."""
+    listing = _kept.get(connection(storage))
+    if listing is None or listing.state != READ:
+        return
+    key = _key(folder)
+    listing.missing.pop(key, None)
+    found = listing.folders.get(key)
+    if found is None:
+        return
+    real, entries = found
+    new = Entry(filename, False, size)
+    old = next((i for i, e in enumerate(entries)
+                if not e.is_dir and e.name.casefold() == filename.casefold()), None)
+    entries = [*entries, new] if old is None else [*entries[:old], new, *entries[old + 1:]]
+    listing.folders[key] = (real, entries)
 
 
 def _probe(session, store: int, parent: int, name: str) -> None:

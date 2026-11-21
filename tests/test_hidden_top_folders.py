@@ -2602,3 +2602,151 @@ def test_a_map_file_right_in_the_hidden_folder_is_read_as_the_others(navigator):
     assert m.hidden_folder == ".System"
     assert m.device_sizes[right_in.casefold()] == len(files[right_in])
     assert m.waiting == maps.WAIT_INSTALL
+
+
+# --- what a connection keeps of its readings and its writes -------------------------------
+
+def _names(listing, folder):
+    entries = listing.entries(folder)
+    return None if entries is None else sorted(e.name for e in entries)
+
+
+def test_a_second_reading_is_added_to_what_the_connection_read(navigator):
+    """The folders of an update read after .System: .System stays known to the connection."""
+    fake = navigator_session()
+    fake.add("GARMIN/RemoteSW/OLD.GCD", b"old part", hidden=True)
+    storage = OverUsb(navigator, fake)
+    hidden_folders.read(storage, [".System"], "test")
+    listing = hidden_folders.read(storage, ["GARMIN/RemoteSW"], "updates go there")
+    kept = hidden_folders.kept(storage)
+    assert listing is kept and kept.state == hidden_folders.READ and storage.sessions == 2
+    assert _names(kept, ".System") == ["B000000.update", "Diag", "Map", "gmaptz.img"]
+    assert _names(kept, "GARMIN/RemoteSW") == ["OLD.GCD"]
+
+
+def test_reading_a_folder_again_replaces_that_folder_alone(navigator):
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    hidden_folders.read(storage, [".System", ".System/Map"], "test")
+    fake.add(".System/Map/D0000002A.img", b"another map", hidden=True)
+    del fake.objects[fake.handle(".System/gmaptz.img")]  # gone, but .System is not read again
+    hidden_folders.read(storage, [".System/Map"], "test")
+    kept = hidden_folders.kept(storage)
+    assert _names(kept, ".System/Map") == ["D0000001A.img", "D0000002A.img"]
+    assert "gmaptz.img" in _names(kept, ".System")  # as the first reading found it
+
+
+def test_a_folder_is_known_as_the_last_reading_found_it(navigator):
+    """Not there, then there, then gone again: each reading of it says which."""
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    hidden_folders.read(storage, [".System", ".System/Extra"], "test")
+    assert hidden_folders.kept(storage).knows(".System/Extra")
+    assert _names(hidden_folders.kept(storage), ".System/Extra") is None
+    fake.add(".System/Extra/new.bin", b"new", hidden=True)
+    hidden_folders.read(storage, [".System/Extra"], "test")
+    assert _names(hidden_folders.kept(storage), ".System/Extra") == ["new.bin"]
+    for handle in (fake.handle(".System/Extra/new.bin"), fake.handle(".System/Extra")):
+        del fake.objects[handle]
+    hidden_folders.read(storage, [".System/Extra"], "test")
+    kept = hidden_folders.kept(storage)
+    assert kept.knows(".System/Extra") and _names(kept, ".System/Extra") is None
+    assert _names(kept, ".System") is not None
+
+
+def test_a_reading_that_fails_says_why_in_place_of_what_was_read(navigator):
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    hidden_folders.read(storage, [".System"], "test")
+    fake.fail_at = ".System/Map"
+    listing = hidden_folders.read(storage, [".System/Map"], "test")
+    assert listing.state == hidden_folders.FAILED and hidden_folders.kept(storage) is listing
+
+
+def test_a_new_connection_starts_with_nothing_read(navigator):
+    storage = OverUsb(navigator, navigator_session())
+    hidden_folders.read(storage, [".System"], "test")
+    storage.usb = types.SimpleNamespace(bus=1, address=8, usb_id="091e:0000")  # plugged in again
+    assert hidden_folders.kept(storage) is None
+    listing = hidden_folders.read(storage, [".System/Map"], "test")
+    assert listing.entries(".System") is None and _names(listing, ".System/Map")
+
+
+def _write_at(storage, path, data, tmp_path):
+    local = tmp_path / "local.bin"
+    local.write_bytes(data)
+    return hidden_folders.write(storage, path, local, hashlib.md5(data).hexdigest(),
+                                "Made-up part", 0)
+
+
+def test_a_file_written_is_added_to_what_the_connection_read(navigator, tmp_path):
+    from openexpress.device.storage import Entry
+
+    storage = OverUsb(navigator, navigator_session())
+    hidden_folders.read(storage, [".System", ".System/Map"], "test")
+    _write_at(storage, ".System/NEW.BIN", b"a new made-up part", tmp_path)
+    kept = hidden_folders.kept(storage)
+    assert kept is not None and kept.state == hidden_folders.READ
+    assert kept.file(".System/new.bin") == Entry("NEW.BIN", False, len(b"a new made-up part"))
+    assert _names(kept, ".System/Map") == ["D0000001A.img"]  # the rest as read
+
+
+def test_a_file_written_in_place_of_another_replaces_its_entry(navigator, tmp_path):
+    """The old file, of another letter case, is deleted and its entry with it."""
+    from openexpress.device.storage import Entry
+
+    storage = OverUsb(navigator, navigator_session())
+    hidden_folders.read(storage, [".System"], "test")
+    _write_at(storage, ".System/b000000.UPDATE", SYSTEM, tmp_path)
+    kept = hidden_folders.kept(storage)
+    system = [e for e in kept.entries(".System") if e.name.casefold() == "b000000.update"]
+    assert system == [Entry("b000000.UPDATE", False, len(SYSTEM))]
+
+
+def test_a_write_into_a_folder_not_read_leaves_it_unread(navigator, tmp_path):
+    storage = OverUsb(navigator, navigator_session())
+    hidden_folders.read(storage, [".System"], "test")
+    _write_at(storage, ".System/Map/D0000003A.img", b"a made-up map", tmp_path)
+    kept = hidden_folders.kept(storage)
+    assert kept is not None and not kept.knows(".System/Map")
+    assert "gmaptz.img" in _names(kept, ".System")
+
+
+@pytest.mark.parametrize("failure", ["not written", "not read back"])
+def test_after_a_write_that_fails_the_folders_are_read_anew(navigator, tmp_path, failure):
+    fake = navigator_session()
+    storage = OverUsb(navigator, fake)
+    hidden_folders.read(storage, [".System"], "test")
+    if failure == "not written":
+        fake.refuse[ptp.SEND_OBJECT] = ptp.GENERAL_ERROR
+        error = hidden_folders.NotWritten
+    else:
+        fake.refuse[ptp.GET_OBJECT] = ptp.ACCESS_DENIED
+        error = hidden_folders.ContentsNotRead
+    with pytest.raises(error):
+        _write_at(storage, ".System/NEW.BIN", b"a new made-up part", tmp_path)
+    assert hidden_folders.kept(storage) is None
+
+
+def test_device_status_counts_the_same_after_readings_added_and_a_write(navigator, tmp_path):
+    """What Device Status and the device log count from the connection's listing: the same
+    after one reading, after two added together, and after a write, as a fresh reading of the
+    device counts."""
+    from openexpress import history, service
+
+    storage = OverUsb(_with_types(navigator), navigator_session())
+    device = service.read_device(storage, found_now=False)
+    folders = hidden_folders.folders_to_read(device, [".System"])
+    hidden_folders.read(storage, folders, "test")
+    once = history.count(device, storage)
+    hidden_folders.forget(storage)
+    hidden_folders.read(storage, [".System"], "test")
+    hidden_folders.read(storage, folders, "test")
+    assert history.count(device, storage) == once
+    assert (once["maps"], once["updates"]) == (len(MAP_FILE), len(OLDER_SYSTEM))
+    _write_at(storage, ".System/B000000.update", SYSTEM, tmp_path)
+    after_write = history.count(device, storage)
+    hidden_folders.forget(storage)
+    hidden_folders.read(storage, folders, "test")
+    assert after_write == history.count(device, storage)
+    assert after_write["updates"] == len(SYSTEM)

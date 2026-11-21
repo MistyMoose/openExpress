@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-21 07:09+0100\n"
+"POT-Creation-Date: 2026-11-21 18:00+0100\n"
 "PO-Revision-Date: 2026-11-20 19:35+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -10151,8 +10151,9 @@ msgstr ""
 "software, a proto do ní nemůže instalovat aktualizace. Některá zařízení, "
 "například automobilové navigace, tuto složku ve správci souborů skrývají."
 
-#. TRANSLATORS: in the question before an update into a folder the device hides: the file of
-#. its name on the device is deleted before the new one is written; {file}: e.g. gmaptz.img
+#. TRANSLATORS: in the question before an update whose file is on the device where the file
+#. manager does not see it (in a folder or as a file the device hides): the new file takes the
+#. place of the one of its name; {file}: e.g. gmaptz.img
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgid "The update replaces the file {file} on the device."
@@ -11580,8 +11581,9 @@ msgstr "Nebyly nalezeny žádné problémy"
 msgid "Waiting for the device to get ready…"
 msgstr "Čekání na připravenost zařízení…"
 
-#. TRANSLATORS: a step: openExpress reads a folder the device hides from the ordinary USB
-#. connection; {folder}: e.g. .System
+#. TRANSLATORS: a step: openExpress reads folders of the device through a direct USB
+#. connection, also those the device hides from the file manager; {folder}: the folders of the
+#. top level they are in, e.g. .System or GARMIN
 #: openexpress/hidden_folders.py
 #, python-brace-format
 msgid "Reading the folder {folder}…"

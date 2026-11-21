@@ -1413,8 +1413,9 @@ class DevicePage:
             if self.session is not s:
                 return
             self._set_update_state(*result)
-            # What goes to a folder of the top level ordinary MTP does not show: read once.
-            note_needed(self, s, upd.hidden_needed(result[0]))
+            # What goes to a folder of the top level ordinary MTP does not show, and the files
+            # the file manager does not show on a device that hides something: read once.
+            note_needed(self, s, *upd.session_folders(s.storage, result[0]))
 
         def failed(_e):
             if self._update_check_session is s:

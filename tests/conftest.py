@@ -470,7 +470,9 @@ def private_dirs(tmp_path, monkeypatch):
     """No test reads or writes the real data, settings or cache of openExpress: every test
     has its own (the log: `log_file`). The same folders as `xdg` gives by name. The folder of
     the other install of this computer (the Flatpak's, which the version from source reads)
-    is the test's own too, empty."""
+    is the test's own too, empty. The marks of a USB session of its own go to the test's
+    runtime folder (tmp_path/runtime), never to the session's: XDG_RUNTIME_DIR itself stays,
+    as the documents portal and the display need it."""
     from openexpress import paths
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
@@ -478,6 +480,9 @@ def private_dirs(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setattr(paths, "flatpak_data_dir",
                         lambda: tmp_path / "flatpak-data" / "openexpress")
+    (tmp_path / "runtime").mkdir()  # there, as a session's XDG_RUNTIME_DIR always is
+    monkeypatch.setattr(paths, "session_mark_dirs",
+                        lambda: paths.session_mark_dirs_in(str(tmp_path / "runtime")))
 
 
 @pytest.fixture(autouse=True)

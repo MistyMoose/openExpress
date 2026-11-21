@@ -95,8 +95,9 @@ def hidden_software_text(folder: str) -> str:
 
 
 def replaces_text(u) -> str:
-    # TRANSLATORS: in the question before an update into a folder the device hides: the file of
-    # its name on the device is deleted before the new one is written; {file}: e.g. gmaptz.img
+    # TRANSLATORS: in the question before an update whose file is on the device where the file
+    # manager does not see it (in a folder or as a file the device hides): the new file takes the
+    # place of the one of its name; {file}: e.g. gmaptz.img
     return _("The update replaces the file {file} on the device.").format(file=u.filename)
 
 
@@ -684,7 +685,8 @@ class UpdatesPage:
                 # A file of its name in a folder the device hides goes first, as Garmin Express
                 # writes there.
                 + ("\n\n" + replaces_text(u)
-                   if u.hidden_folder is not None and u.hidden_size_same is not None else ""))
+                   if (u.hidden_folder is not None or u.file_hidden)
+                   and u.hidden_size_same is not None else ""))
 
         def install() -> None:
             work, done, failed = _install_task(self, s, chosen)

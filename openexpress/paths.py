@@ -60,6 +60,24 @@ def app_id() -> str:
     return APP_ID if in_flatpak() else SOURCE_APP_ID
 
 
+def session_mark_dirs() -> list[Path]:
+    """Where a USB session of openExpress's own is marked for its other processes
+    (device.session_mark), from this session's XDG_RUNTIME_DIR: session_mark_dirs_in."""
+    return session_mark_dirs_in(os.environ.get("XDG_RUNTIME_DIR"))
+
+
+def session_mark_dirs_in(runtime: str | None) -> list[Path]:
+    """The folder the Flatpak shares with the host and its other instances,
+    `runtime`/app/APP_ID/, when it is there (Flatpak makes it as it starts the app: the version
+    from source sees it once the Flatpak has run since the system started), then always
+    `runtime`/openexpress/ (the version from source's own; in the Flatpak, a folder of its
+    sandbox). None without a runtime folder."""
+    if not runtime:
+        return []
+    shared = Path(runtime) / "app" / APP_ID
+    return [*([shared] if shared.is_dir() else []), Path(runtime) / "openexpress"]
+
+
 def flatpak_data_dir() -> Path:
     """The data folder of the Flatpak of openExpress, as the rest of this user's files see it
     (outside the sandbox)."""

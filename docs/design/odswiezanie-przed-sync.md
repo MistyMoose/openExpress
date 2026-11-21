@@ -85,7 +85,10 @@ It existed already, for the PTP sessions that reach files gvfs does not show:
   device settles (the same state for 2 s, at most 15 s) and mounting it again if it is
   unmounted, up to 3 tries.
 - `own_remount`: for 15 s after our own unmount and mount, the window and the background service
-  do not take them for a device unplugged and plugged in; only within the process that did them.
+  do not take them for a device unplugged and plugged in: the process that did them knows them,
+  and the other openExpress processes, of either install, know them from the mark of the
+  session (`device.session_mark`: a file held with flock in the runtime folder the Flatpak shares
+  with the host, while the device stays at its place on USB).
 - The address stays the same, so the `GioStorage` goes on working afterwards.
 
 Measured on a fēnix 8 over the PTP sessions in ordinary use: the unmount, the session and the
@@ -201,8 +204,10 @@ there for its MD5, so its count may include a cut-short file.
 2. **A mount that fails.** The sync or the backup stops with the message to unplug the device
    and plug it in again. What the sync uploaded before is kept; a backup stopped this way leaves
    no partial folder, as any stopped backup. In ordinary use no mount has failed (section 3).
-3. **Other processes.** `own_remount` knows only its own process's mounts, a risk known before
-   this design and the same as for the PTP sessions.
+3. **Other processes.** A refresh is marked for the other openExpress processes as a PTP session
+   is (`device.session_mark`). Without a place for the mark (no runtime folder, or one that
+   cannot be written, said once in the log) only the process that did it knows it, the same as
+   for the PTP sessions:
    - The background service, run by another process, takes the refresh for a device plugged in
      and tries a sync 5 s later: `SyncBusy` while the first sync runs, or a second sync
      (harmless, with its notification) when the first has ended.

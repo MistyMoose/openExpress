@@ -112,21 +112,20 @@ NOTED_AFTER_READING = ("diagnostics", "report")
 READS_HIDDEN_ITSELF = ("maps", "updates")
 
 
-def _read_hidden(st, dev, needed=(), why: str = "") -> bool:
+def _read_hidden(st, dev, needed=(), why: str = "", inside=()) -> bool:
     """Read once a command, through a session of its own, the folders of the device's top level
     that ordinary MTP does not show which `needed` names (updates, maps) or the device is known
-    to hide, with what its GarminDevice.xml names under them (hidden_folders.folders_to_read):
-    what the window reads, so that both count and compare the same; once read, the line of
-    this connection in the device's log counted again, as the window counts it. Whether it read
-    now."""
+    to hide, with what its GarminDevice.xml names under them, and the folders `inside` folders
+    that are seen whose files the file manager does not show (updates.session_folders;
+    hidden_folders.folders_to_read): what the window reads, so that both count and compare the
+    same; once read, the line of this connection in the device's log counted again, as the
+    window counts it. Whether it read now."""
     kept = hidden_folders.kept(st)
-    needed = list(needed)
-    # Read once; again only for folders this command needs that the first reading (of the
-    # folders the device is known to hide, as it was opened) did not ask for.
-    if kept is not None and (kept.state != hidden_folders.READ
-                             or all(kept.knows(f) for f in needed)):
-        return False
-    folders = hidden_folders.folders_to_read(dev, [*needed, *(kept.asked() if kept else [])])
+    if kept is not None and kept.state != hidden_folders.READ:
+        return False  # it failed, or no session can be had: said once
+    # Only what this connection has not read: a reading is added to what it read before.
+    folders = [f for f in hidden_folders.folders_to_read(dev, needed, inside=inside)
+               if kept is None or not kept.knows(f)]
     if not folders:
         return False
     with _progress() as progress:
@@ -1334,7 +1333,8 @@ def _status_updates_online(client, s) -> str:
             device = parse(storage.read("GARMIN/GarminDevice.xml"))
         answer = client.software_updates(device.raw)
         items = upd.offered(storage, answer, device, forget_installed=False)  # keeps nothing
-        if _read_hidden(storage, device, upd.hidden_needed(items), "updates go there"):
+        hidden, inside = upd.session_folders(storage, items)
+        if _read_hidden(storage, device, hidden, "updates go there", inside=inside):
             # As the window says it once it has read them.
             items = upd.offered(storage, answer, device, forget_installed=False)
     except DeviceNotResponding:
@@ -1962,7 +1962,8 @@ def cmd_updates(args) -> int:
     resp = client.software_updates(dev.raw, include_reinstalls=args.reinstalls)
     # Only reads the device.
     items = upd.offered(st, resp, dev)
-    if _read_hidden(st, dev, upd.hidden_needed(items), "updates go there"):
+    hidden, inside = upd.session_folders(st, items)
+    if _read_hidden(st, dev, hidden, "updates go there", inside=inside):
         items = upd.offered(st, resp, dev)  # compared again with what was read
     if not args.reinstalls:
         items = [u for u in items if not u.is_reinstall]

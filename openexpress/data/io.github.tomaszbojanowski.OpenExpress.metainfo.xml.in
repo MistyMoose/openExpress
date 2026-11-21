@@ -105,6 +105,24 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.12.3" date="2026-11-21">
+      <description translate="no">
+        <p>A maintenance release for watches that hide some of their folders from the file manager.</p>
+        <ul>
+          <li>On watches that hide some of their folders (fēnix 8, epix, Venu 2), an update whose file
+          is already on the watch in a place the file manager does not show is listed as already
+          on the device, not as one to install.</li>
+          <li>An update installed into a hidden folder is not offered again while the watch stays
+          connected.</li>
+          <li>When one openExpress window or command reads a watch over a direct USB connection,
+          another one no longer takes that for the watch being unplugged.</li>
+          <li>Opening a direct USB connection now waits until the watch is no longer in use and tries
+          again, instead of giving up at once.</li>
+          <li>On these watches, checking for updates may take the watch out of the file manager for
+          about a second.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.2" date="2026-11-21">
       <description translate="no">
         <p>A maintenance release with fixes.</p>

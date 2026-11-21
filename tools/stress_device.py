@@ -283,15 +283,17 @@ def instrumented(summary: Summary, answers: list, short_timeout: float | None):
                 summary.time(step, time.monotonic() - started)
         return call
 
-    def noting_wait(start, timeout_s, what, name="operation", context=None, quiet=False):
+    def noting_wait(start, timeout_s, what, name="operation", context=None, quiet=False,
+                    renewable=False):
         waiting = threading.current_thread().name
 
-        def begin(done, cancellable):
+        def begin(done, cancellable, *alive):
             def noted(finish):
                 answers.append((name, waiting, threading.current_thread().name))
                 done(finish)
-            start(noted, cancellable)
-        return saved["_wait"](begin, timeout_s, what, name, context=context, quiet=quiet)
+            start(noted, cancellable, *alive)
+        return saved["_wait"](begin, timeout_s, what, name, context=context, quiet=quiet,
+                              renewable=renewable)
 
     gio_storage._unmount = timed("_unmount", "unmount")
     gio_storage._remount = timed("_remount", "mount again")

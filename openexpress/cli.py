@@ -4129,6 +4129,9 @@ def _main(argv: list[str] | None) -> int:
     from openexpress.auth import sso
 
     sso.note_unfinished_sign_in()  # the last run ended with the sign-in window open
+    from openexpress.device import whole_reads
+
+    whole_reads.remove_leftovers()  # copies of a device's files a run left as it ended
     code: int | str = "error"
     try:
         code = _run(args)

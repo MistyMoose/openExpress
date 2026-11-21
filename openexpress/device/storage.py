@@ -35,8 +35,10 @@ class DeviceError(UserFacingError):
 
 
 class CopyNotStarted(DeviceError):
-    """A write that failed before anything on the device was touched (e.g. the copy command
-    could not be started): the file under the name, if any, is as it was."""
+    """A copy that failed before it began. A write before anything on the device was touched
+    (e.g. the copy command could not be started): the file under the name, if any, is as it
+    was. A copy from the device before its first byte: the file is read as a stream instead
+    (whole_reads)."""
 
 
 class RemountFailed(DeviceError):

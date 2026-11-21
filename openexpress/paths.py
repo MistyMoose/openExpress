@@ -105,13 +105,15 @@ def flatpak_build() -> tuple[str | None, str | None] | None:
         return None
 
 
-def host_command(*args: str) -> list[str]:
+def host_command(*args: str, watch_bus: bool = False) -> list[str]:
     """A command for the host, run from the Flatpak (flatpak-spawn --host); every one is made
     here. GIO_USE_VFS=gvfs: the session helper of flatpak before 1.14.5 (1.12 on Ubuntu 22.04)
     passes on its own GIO_USE_VFS=local, and the host's gio then sees mtp:// as no file of gvfs,
     so every copy to the device fails with "Operation not supported". Where gvfs is not
-    installed, GIO says so on stderr and keeps the local VFS."""
-    return ["flatpak-spawn", "--host", "--env=GIO_USE_VFS=gvfs", *args]
+    installed, GIO says so on stderr and keeps the local VFS. `watch_bus`: the command on the
+    host ends when flatpak-spawn does (a copy stopped here stops there too)."""
+    return ["flatpak-spawn", "--host", *(["--watch-bus"] if watch_bus else []),
+            "--env=GIO_USE_VFS=gvfs", *args]
 
 
 def flatpak_origin() -> str | None:

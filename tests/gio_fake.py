@@ -279,7 +279,9 @@ class GioOf:
 
     def __init__(self, gio, device):
         self._gio, self._device = gio, device
-        self.File = type("File", (), {"new_for_uri": staticmethod(lambda uri: device.location)})
+        # A file of this computer (where a copy from the device goes) is Gio's own.
+        self.File = type("File", (), {"new_for_uri": staticmethod(lambda uri: device.location),
+                                      "new_for_path": staticmethod(gio.File.new_for_path)})
         self.VolumeMonitor = type("VolumeMonitor", (), {"get": staticmethod(lambda: device)})
 
     def __getattr__(self, name):
@@ -323,6 +325,12 @@ class MtpFiles:
         self.calls: list[str] = []
         self.asked: list[int] = []
         self._ops: list[GioOp] = []
+        # A copy to this computer (copy_async): its pieces (of `most` bytes, else 1 MiB) come
+        # `copy_piece_delay_s` apart, each told to its progress; with a planned answer other
+        # than "done" it stops with that answer after `copy_fails_after` bytes (0: before the
+        # first byte). A planned "never" gives neither progress nor an answer.
+        self.copy_piece_delay_s = 0.0
+        self.copy_fails_after: int | None = None
 
     def file(self, path=""):
         return _MtpFile(self, path)
@@ -424,8 +432,51 @@ class _MtpFile:
                 info.set_attribute_uint64(name, value)
         op.start(lambda finish: callback(self, (finish, info)), cancellable)
 
+    def copy_async(self, destination, flags, priority, cancellable, progress, callback):
+        """Gio.File.copy_async of this file to a file of this computer, as PyGObject gives it
+        (its progress and its answer as two callbacks); see MtpFiles for its pieces."""
+        files = self.files
+        a_file = files.there(self.path) and not files.is_folder(self.path)
+        op = files.answer("copy", missing=not a_file)
+        if op.when == "never" or (op.says != "done" and not files.copy_fails_after):
+            op.start(lambda finish: callback(self, (finish, True)), cancellable)
+            return
+        data = files.contents(self.path)
+        stop_at = len(data) if files.copy_fails_after is None else min(files.copy_fails_after,
+                                                                        len(data))
+        piece = files.most or 1024 * 1024
+        context = GLib.MainContext.ref_thread_default()
+        out = open(destination.get_path(), "wb")  # noqa: SIM115 - closed at its last piece
+        written = [0]
+
+        def answer(word):
+            out.close()
+
+            def finish():
+                if word != "done":
+                    raise gio_error(word, op.message)
+                return True
+
+            callback(self, (finish, True))
+
+        def step():
+            if cancellable is not None and cancellable.is_cancelled():
+                answer("cancelled")
+            elif written[0] >= stop_at:
+                answer("done" if stop_at == len(data) else op.says)
+            else:
+                chunk = data[written[0]:written[0] + piece]
+                out.write(chunk)
+                out.flush()
+                written[0] += len(chunk)
+                progress(written[0], len(data))
+                answer_as_gio(step, files.copy_piece_delay_s, context)
+            return False
+
+        answer_as_gio(step, files.copy_piece_delay_s, context)
+
     enumerate_children_finish = query_info_finish = query_filesystem_info_finish = (
-        read_finish) = staticmethod(_finished)
+        read_finish) = copy_finish = staticmethod(_finished)
 
 
 class _MtpStream:

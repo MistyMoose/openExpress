@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from openexpress import applog, diagnostics, paths
+from openexpress.device import whole_reads
 from openexpress.device.storage import MAIN_FOLDERS, DeviceError, DeviceNotResponding, Storage
 from openexpress.errors import UserFacingError
 from openexpress.i18n import _
@@ -203,7 +204,7 @@ def _copy(storage: Storage, dumps: list[Dump], where: Path, freed: Freed, progre
         names.add(name.casefold())
         target = where / name
         try:
-            data = storage.read(path)
+            data = whole_reads.whole_file(storage, path, size, lambda path=path: storage.read(path))
             paths.write_private(target, data)
             whole = target.read_bytes()
         except DeviceNotResponding:

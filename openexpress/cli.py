@@ -2203,9 +2203,9 @@ def _load_maps(args, client, own: bool = False):
             # A command on maps of your own does not depend on it: Garmin's maps are none,
             # so their names alone are kept apart (ownmaps.is_garmin_name).
             all_maps, listed = [], 0
-    mp.mark_waiting(st, all_maps)
+    mp.mark_waiting(st, all_maps, dev)
     if _read_hidden(st, dev, mp.hidden_needed(all_maps), "the maps' files are there"):
-        mp.mark_waiting(st, all_maps)  # marked again with what was read
+        mp.mark_waiting(st, all_maps, dev)  # marked again with what was read
     return st, dev, all_maps, listed
 
 
@@ -2351,9 +2351,10 @@ def cmd_maps(args) -> int:
         return 0
 
     if args.maps_cmd == "update":
-        targets = [m for m in all_maps if m.update_available and m.hidden_folder is None]
+        targets = [m for m in all_maps if m.update_available and m.hidden_folder is None
+                   and m.folder_hidden is None]
         for m in all_maps:
-            if m.update_available and m.hidden_folder is not None:
+            if m.update_available and (m.hidden_folder or m.folder_hidden) is not None:
                 print(mp.cannot_install_message(m))
         incomplete = sum(1 for m in all_maps if m.incomplete)
         for m in all_maps:

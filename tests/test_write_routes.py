@@ -6,8 +6,9 @@ of a folder the device has and hides: that write fails ("Cannot create directory
 
 Each target is routed by the rule of what writes it: a file of an update by the rule of the
 updates (updates.place, the folders hidden inside a seen one, updates.installable), a file of a
-map by the rule of the maps (maps.mark_waiting, maps.can_install: only a folder of the top level
-the listing does not show, and a map there is refused outside the command line's trial). Both
+map by the rule of the maps (maps.mark_waiting, maps.can_install: a folder of the top level the
+listing does not show, where a map is refused outside the command line's trial, and a folder
+hidden inside a seen one by the rule of the updates, where a map is always refused). Both
 are asked twice: with openExpress's own session to be had, and without it (the Flatpak without
 USB, a device not over MTP), where every hidden target is refused, never written the ordinary way.
 
@@ -76,11 +77,11 @@ def _map(folder: str) -> dict:
     }
 
 
-def _device(root: Path, data: dict) -> tuple[LocalStorage, dict[str, str]]:
+def _device(root: Path, data: dict) -> tuple[LocalStorage, dict[str, str], types.SimpleNamespace]:
     """The device as the ordinary listing shows it (GARMIN and every target folder not hidden),
-    and the folders it hides inside a seen one (updates.hidden_inside). A device without saved
-    answers: the hidden folders its GarminDevice.xml names, where the server would write its
-    components."""
+    the folders it hides inside a seen one (updates.hidden_inside), and what its GarminDevice.xml
+    names for its components. A device without saved answers: the hidden folders its
+    GarminDevice.xml names, where the server would write its components."""
     hidden = [h["folder"] for h in data["hidden"]]
     named = [h["folder"] for h in data["hidden"] if h["xml"] == "names the folder"]
     (root / "GARMIN").mkdir(parents=True, exist_ok=True)
@@ -90,7 +91,7 @@ def _device(root: Path, data: dict) -> tuple[LocalStorage, dict[str, str]]:
     storage = LocalStorage(root)
     device = types.SimpleNamespace(update_files=[
         types.SimpleNamespace(path=f, filename="file") for f in named])
-    return storage, updates.hidden_inside(storage, device)
+    return storage, updates.hidden_inside(storage, device), device
 
 
 def _update_route(folder: str, tops, inside: dict[str, str], session: bool) -> str:
@@ -112,23 +113,23 @@ def _update_route(folder: str, tops, inside: dict[str, str], session: bool) -> s
     return OWN_SESSION if u.folder_hidden is not None else ORDINARY
 
 
-def _map_route(folder: str, storage: LocalStorage) -> str:
+def _map_route(folder: str, storage: LocalStorage, device) -> str:
     """As maps.mark_waiting and _install route it: written the ordinary way, or refused (a
-    folder of the top level the listing does not show)."""
+    folder of the top level the listing does not show, or one hidden inside a seen one)."""
     found, _count = maps.read_maps({"maps": [_map(folder)]})
-    maps.mark_waiting(storage, found)
+    maps.mark_waiting(storage, found, device)
     return ORDINARY if maps.can_install(found[0]) else REFUSED
 
 
 def routes(data: dict, root: Path, session: bool = True) -> dict[str, dict[str, str]]:
     """Each target folder: its route for each kind of answer that writes there."""
-    storage, inside = _device(root, data)
+    storage, inside, device = _device(root, data)
     tops = hidden_folders.top_folders(storage)
     named = [h["folder"] for h in data["hidden"] if h["xml"] == "names the folder"]
     targets = data["targets"] or {folder: {"GarminDevice.xml": 1} for folder in named}
     out = {}
     for folder, sources in targets.items():
-        out[folder] = {kind: (_map_route(folder, storage) if kind == MAPS
+        out[folder] = {kind: (_map_route(folder, storage, device) if kind == MAPS
                               else _update_route(folder, tops, inside, session))
                        for kind in _kinds(sources)}
     return out
@@ -159,16 +160,14 @@ def test_a_hidden_folder_the_device_does_not_name_is_caught(tmp_path):
         "GARMIN/Secret (updates): the ordinary write, into GARMIN/Secret, which the device hides"]
 
 
-def test_a_known_limit_of_the_maps_rule_a_map_into_a_folder_hidden_inside_a_seen_one(tmp_path):
-    """A known limit of the rule of the maps, kept on purpose: it knows only the folders of the
-    top level the listing does not show, so a map into a folder the device hides inside a seen
-    one, even one GarminDevice.xml names, would take the ordinary write. No saved answer of a
-    map server writes into such a folder; writing maps through openExpress's own session would
-    lift the limit. The test says it, as the guard of the real devices would."""
+@pytest.mark.parametrize("session", [True, False], ids=["session", "no session"])
+def test_a_map_into_a_folder_hidden_inside_a_seen_one_is_refused(tmp_path, session):
+    """A folder the device hides inside a seen one, which its GarminDevice.xml names: a map is
+    refused there, as the maps are not written through openExpress's own session."""
     data = {"hidden": [{"folder": "GARMIN/Maps", "xml": "names the folder"}],
             "targets": {"GARMIN/Maps": {"made-up maps answer": 1}}}
-    assert _wrong(data, tmp_path) == [
-        "GARMIN/Maps (maps): the ordinary write, into GARMIN/Maps, which the device hides"]
+    assert routes(data, tmp_path, session) == {"GARMIN/Maps": {MAPS: REFUSED}}
+    assert _wrong(data, tmp_path, session) == []
 
 
 @pytest.mark.skipif(not REAL, reason="no readings of real devices in testdata/write-routes/")
@@ -193,7 +192,7 @@ def test_no_folder_of_a_real_device_takes_the_ordinary_write_into_a_hidden_one(p
 def file_routes(data: dict, root: Path) -> dict[str, str]:
     """Each file an update answer writes into a folder the ordinary listing shows: its route, as
     updates.mark_present and _install take it."""
-    storage, inside = _device(root, data)
+    storage, inside, _named = _device(root, data)
     hidden = [h["folder"] for h in data["hidden"]]
     tops = hidden_folders.top_folders(storage)
     out = {}

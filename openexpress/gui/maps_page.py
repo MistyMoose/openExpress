@@ -96,7 +96,7 @@ class MapsPage:
                 # on it (Garmin's list: none, so their names alone are kept apart).
                 return (None, ownmaps.overview(s.device, s.storage, []), (None, None),
                         e.map_update_type, [], isinstance(e, mp.DeviceHasNoMaps))
-            mp.mark_waiting(s.storage, result[0])  # written or removed, not taken in yet
+            mp.mark_waiting(s.storage, result[0], s.device)  # written or removed, not taken in yet
             # The space too: asked of the device here, never as the page is drawn; and the
             # old files Garmin's cleanup rules would take (only shown in the questions).
             return (result, ownmaps.overview(s.device, s.storage, result[0]),

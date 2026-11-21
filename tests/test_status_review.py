@@ -1,7 +1,8 @@
 """The page Device Status checked through its states in the real window, before a trial on a
 device: made-up devices shaped like a watch, a bike computer and a test drive, in the narrowest
 window and a wide one, in English, Polish and German. tools/status-review.py runs it and gathers a
-picture of every state.
+picture of every state. Besides, the Maps page with a map refused (its folder hidden inside a
+seen one) and the device page after it, in English and Polish.
 
 The states: connected; every crash and update shown (Show All); after Copy Crash Logs; after
 another file written to the device; after Refresh on the page; after Free Up Space; after the file
@@ -766,3 +767,78 @@ def test_the_page_chosen_while_another_task_runs(review, shape, width, language)
         assert not r.win.status_facts.device_busy and not sec.banner.get_revealed()
         check(r, said, "after-the-task", r.win.status_facts)
         agree(r, s)
+
+
+# --- the Maps page: a map refused -------------------------------------------------------------
+
+# A component in Garmin/RegionMaps: the made-up watch names that folder for its own files and
+# its listing does not show it, so the device hides it inside Garmin.
+REGION_COMPONENT = """  <UpdateFile><PartNumber>006-D0005-00</PartNumber><Version><Major>1</Major>
+   <Minor>10</Minor></Version><Path>Garmin/RegionMaps</Path><FileName>made_up.rgn</FileName>
+  </UpdateFile>
+"""
+REFUSED_MAP = "Made-up Region"
+
+
+def _refused_map() -> dict:
+    return {
+        "displayname": REFUSED_MAP, "maptype": "CityNavigator", "installationstate": 0,
+        "isreinstall": False, "canuninstall": True,
+        "release": {"majorversion": 2026, "minorversion": 20},
+        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
+                          "failoverhosts": []},
+        "filestoremove": [],
+        "installoptions": [{"ispreferred": True,
+                            "identifier": {"regionpartnumber": REFUSED_MAP},
+                            "files": [{"filename": "Garmin/RegionMaps/D0000001A.img",
+                                       "datatype": "X", "deliverableoptions": [{
+                                           "type": 1, "url": "x.img",
+                                           "md5": "0123456789ABCDEF0123456789ABCDEF",
+                                           "sizeinbytes": 4_000_000}]}]}],
+    }
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, WIDE], ids=["360", "wide"])
+def test_the_maps_page_says_why_a_map_into_a_folder_hidden_inside_is_refused(review, width,
+                                                                             language,
+                                                                             monkeypatch):
+    """The map's row says why in place of the button, the words of the refusal; the device
+    page after it. Pictures: shape "maps" in the review."""
+    from gi.repository import Adw, Gtk
+
+    from openexpress import maps
+
+    monkeypatch.setattr(maps, "check", lambda client, device, ask=None, country=None:
+                        maps.read_maps({"maps": [_refused_map()]}))
+    with gtk_complaints(("Adwaita", "Gtk", "GLib", "GLib-GObject")) as said:
+        r = review(language, width)
+        r.shape = "maps"
+        shape = SHAPES["watch"]
+        root = r.root / "maps"
+        make_device(root, shape)
+        xml = root / "Garmin" / "GarminDevice.xml"
+        xml.write_text(xml.read_text().replace(" </MassStorageMode>",
+                                               REGION_COMPONENT + " </MassStorageMode>"))
+        s = session_of(root, shape)
+        r.plugged["now"] = s
+        r.win.refresh_device()
+        wait(lambda: r.win.session is s and not r.win.busy, "the watch opened")
+        sec = r.win.sections["maps"]
+        r.win.select_section("maps")
+        wait(lambda: sec.loaded and not r.win.busy
+             and sec.stack.get_visible_child_name() == "content", "the page Maps")
+        iterate(0.2)
+        (row,) = [w for w in descendants(sec.stack)
+                  if isinstance(w, Adw.ActionRow) and w.get_title() == REFUSED_MAP]
+        assert row.get_subtitle().endswith("\n" + maps.not_installed_into("Garmin/RegionMaps"))
+        assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
+        assert said == [], said
+        if r.width == NARROWEST:
+            narrowest = r.win.get_content().measure(Gtk.Orientation.HORIZONTAL, -1)[0]
+            assert narrowest <= NARROWEST, f"the window needs {narrowest} px"
+        shot(r, "map-refused")
+        r.win.select_section("watch")
+        wait(lambda: r.win.sections["watch"].loaded and not r.win.busy, "the device page")
+        shot(r, "device-page")
+        assert said == [], said

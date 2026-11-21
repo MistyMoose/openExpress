@@ -1543,7 +1543,7 @@ class DevicePage:
                 return NO_MAPS  # the row says so
             except mp.MapsNotSupported:
                 return None  # the row says so; nothing to read on the device
-            mp.mark_waiting(s.storage, result[0])
+            mp.mark_waiting(s.storage, result[0], s.device)
             return result
 
         self.in_background(work, done, failed)

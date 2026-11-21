@@ -268,7 +268,9 @@ On a car navigator that keeps its maps in the folder it hides from the file mana
 **Update** or **Remove**: the window does not install or remove maps in that folder; the command
 line can install one as a trial (see below). When the device's folder for maps of your own is
 hidden from the file manager too (the folder Map on a Drive 53 EX), **Add Map…**
-is off for the same reason.
+is off for the same reason. A map whose files go to a folder the device hides inside one the
+file manager shows (a folder its GarminDevice.xml names for its own components) is refused the
+same way, before anything is downloaded, the trial included.
 
 ### Maps on a car navigator (a trial)
 

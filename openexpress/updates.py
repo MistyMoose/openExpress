@@ -749,20 +749,24 @@ def place(u: SoftwareUpdate, tops: set[str] | None,
                         if u.hidden_folder is not None and listing is not None else None)
 
 
-def hidden_inside(storage: Storage, device) -> dict[str, str]:
+def hidden_inside(storage: Storage, device, among: set[str] | None = None) -> dict[str, str]:
     """The folders the device hides inside a folder the listing shows: those its GarminDevice.xml
     names for its own components (UpdateFile paths, so they hold files), whose top folder the
     listing shows, and which the listing does not show itself (a fēnix keeps its voice prompts
     so). By the folder in lower case, as the device names it. One that is not named so may only
     not be there yet: it is made for a write like any other. A device that cannot be listed:
-    none."""
+    none. `among`: only these folders (in lower case) are asked of the device, e.g. those the
+    maps write to (over MTP each listing is a round trip)."""
+    if among is not None and not among:
+        return {}
     tops = hidden_folders.top_folders(storage)
     if tops is None:
         return {}
     named: dict[str, str] = {}
     for f in getattr(device, "update_files", None) or []:
         folder = "/".join(p for p in (f.path or "").replace("\\", "/").split("/") if p)
-        if "/" in folder and hidden_folders.top_not_seen(folder, tops) is None:
+        if ("/" in folder and hidden_folders.top_not_seen(folder, tops) is None
+                and (among is None or folder.casefold() in among)):
             named.setdefault(folder.casefold(), folder)
     hidden = {}
     for key, folder in named.items():

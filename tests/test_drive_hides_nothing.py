@@ -151,6 +151,16 @@ def test_a_map_into_a_top_folder_not_on_the_drive_yet_is_not_taken_for_hidden(dr
     assert found[0].hidden_folder is None and maps.can_install(found[0])
 
 
+def test_a_map_into_a_named_folder_not_on_the_drive_yet_is_not_taken_for_hidden(drive):
+    """Garmin/Text, named for a component and not on the drive: not hidden inside GARMIN."""
+    from openexpress.device.xmldevice import parse
+
+    found, _count = maps.read_maps({"maps": [_map("Made-up Topo", "Garmin/Text/D0000001A.img")]})
+    storage = UmsStorage(drive, WHERE, PLACES["its place on USB known"])
+    maps.mark_waiting(storage, found, parse((drive / "GARMIN" / "GarminDevice.xml").read_bytes()))
+    assert found[0].folder_hidden is None and maps.can_install(found[0])
+
+
 def test_an_own_map_into_a_top_folder_not_on_the_drive_yet_is_not_refused(drive):
     device = types.SimpleNamespace(targets=lambda datatype: [types.SimpleNamespace(path="Map/")])
     storage = UmsStorage(drive, WHERE, PLACES["its place on USB known"])

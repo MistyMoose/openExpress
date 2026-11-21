@@ -1,11 +1,12 @@
 """A session of our own and the other uses of the device in the same process (gio_storage._InUse,
 _unmounted). Before it unmounts the device, the reads, listings, copies and deletions of the
 other threads end (at most OWN_USE_WAIT_S; then the session is refused as busy and nothing is
-cut short); an unmount gvfs refuses as busy (another program holds a file open) is asked
-again a few times. While a session waits or runs, a new operation of a worker thread waits for
+cut short); an unmount gvfs refuses as busy (another program reads the device) is asked again
+a few times. While a session waits or runs, a new operation of a worker thread waits for
 the device to be mounted again (at most MOUNT_WAIT_S; an unplug and the window's closing end
 the wait at once); the main thread and the session's own thread never wait. The device and
-gvfs are made up (gio_fake): gvfs refuses an unmount while a file is open, not during a copy."""
+gvfs are made up (gio_fake): its gvfs refuses an unmount while a file is open, which here is
+only while it is read (real gvfs: while an operation is under way), and not during a copy."""
 
 import errno
 import logging
@@ -99,7 +100,7 @@ def lines(caplog) -> list[str]:
 # --- the operations of this process end first ------------------------------------------------
 
 def test_a_session_waits_until_another_thread_has_closed_its_file(made, caplog):
-    """As a window opening a watch: a reading of the device still has a file open (gvfs then
+    """As a window opening a watch: a reading of the device is still under way (gvfs then
     refuses the unmount) when the reading of the folders is let go and its session begins."""
     caplog.set_level(logging.INFO, logger=LOGGER)
     device, _files, st = made(plan={("chunk", 1): GioOp(when="before", delay_s=0.3)})
@@ -113,8 +114,8 @@ def test_a_session_waits_until_another_thread_has_closed_its_file(made, caplog):
 
 
 def test_a_session_waits_until_a_write_of_another_thread_has_ended(made):
-    """gvfs does not refuse an unmount during a copy: without the wait the device would be
-    taken away in the middle of it."""
+    """The made-up gvfs does not refuse an unmount during a copy, so the test shows the
+    session's own wait: without it the device would be taken away in the middle of the write."""
     device, _files, st = made()
     sending, release, mounted_at_the_end = threading.Event(), threading.Event(), []
 
@@ -165,7 +166,7 @@ def test_a_write_longer_than_the_wait_leaves_the_device_mounted_and_is_not_cut(
             "the device is not unmounted") in lines(caplog)
 
 
-# --- gvfs refuses it as busy: another program holds a file -----------------------------------
+# --- gvfs refuses it as busy: another program reads the device -------------------------------
 
 @pytest.mark.parametrize("where", ["command line", "window"])
 def test_an_unmount_refused_as_busy_is_asked_again(made, caplog, where):

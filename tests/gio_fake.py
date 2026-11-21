@@ -164,10 +164,13 @@ class GvfsDevice:
     thread has had its signal; `exists` follows gvfs at once. `comes_back=False`: mounted
     again, its files stay unseen.
 
-    As gvfs, it refuses an unmount at once as busy while a file of it is open (`open_files`,
-    counted by MtpFiles made with this device), but not during a copy; `busy_refusals`: the
-    first unmounts refused so all the same (another program holding a file). Leaves `events`
-    and `unmounts_asked`."""
+    It refuses an unmount at once as busy while a file of it is open (`open_files`, counted by
+    MtpFiles made with this device, from the file's opening to its closing), not during a copy;
+    `busy_refusals`: the first unmounts refused so all the same (another program reading the
+    device). Real gvfs refuses while an operation is under way (a read or a write), not for a
+    file only held open. In these tests a file is open only while it is read, so both answer the
+    same; that a copy is not refused lets a test show what the session's own wait adds. Leaves
+    `events` and `unmounts_asked`."""
 
     usb = None  # its place on USB not known
 
@@ -306,7 +309,8 @@ class MtpFiles:
     the kinds in the order called, and `asked`, the bytes asked for by each chunk.
 
     `device`: the GvfsDevice the files are on. While it is unmounted every call not planned is
-    refused as not mounted, and a file open for reading counts for its unmount (busy).
+    refused as not mounted, and a file open for reading counts for its unmount (busy; see
+    GvfsDevice for how real gvfs differs).
     Leaves `mounted_at`: whether it was mounted at each call, in the order called."""
 
     def __init__(self, tree, space=None, plan=None, most=None, device=None):
@@ -408,7 +412,7 @@ class _MtpFile:
         stream = _MtpStream(files, files.contents(self.path) if a_file else b"")
         if a_file and mounted and files.device is not None:
             with files.device._lock:
-                files.device.open_files += 1  # gvfs keeps the file open until it is closed
+                files.device.open_files += 1  # from its opening to its closing (GvfsDevice)
             stream.counted = True
         op.start(lambda finish: callback(self, (finish, stream)), cancellable)
 

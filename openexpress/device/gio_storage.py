@@ -65,7 +65,7 @@ _ATTRS = "standard::name,standard::type,standard::size,time::modified"
 
 def _err(e: GLib.Error, what: str) -> DeviceError:
     """What a failure of gvfs is, in its words after `what`: DeviceBusy for a refusal as busy
-    (an unmount while something has a file of the device open), else DeviceError."""
+    (an unmount while an operation on the device is under way), else DeviceError."""
     busy = e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.BUSY)
     return (DeviceBusy if busy else DeviceError)(f"{what}: {e.message}")
 
@@ -2426,10 +2426,14 @@ def _key(uri: str) -> str:
 # Before a session of our own unmounts the device, this process's own operations on it through
 # gvfs (a read, a listing, a copy, a deletion) end first, at most this long: with one still under
 # way after it (a large file read or written) the session is not had (DeviceBusy) and nothing is
-# cut short. gvfs itself refuses an unmount only while a file is open, not during a copy.
+# cut short. gvfs itself refuses an unmount while an operation on the device is under way (a read
+# or a write), not while a file is only held open: on a fēnix 8 a file held open and not read did
+# not stop the unmount, a read going on did, at two tries in a row. Waiting here, the session
+# does not meet that refusal for this process's own operations, which may last longer than the
+# tries below.
 OWN_USE_WAIT_S = 10.0
-# gvfs refuses an unmount as busy while something has a file of the device open (another
-# program, another openExpress): asked this many times in all, this far apart.
+# gvfs refuses an unmount as busy while another program (another openExpress) reads or writes
+# the device: asked this many times in all, this far apart.
 UNMOUNT_TRIES = 5
 UNMOUNT_BUSY_PAUSE_S = 0.5
 # An operation of a worker thread that meets a session of our own waits for the device to be

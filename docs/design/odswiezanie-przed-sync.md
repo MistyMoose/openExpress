@@ -82,10 +82,13 @@ It existed already, for the PTP sessions that reach files gvfs does not show:
 - Before it, the process's own operations on the device through gvfs end (`gio_storage._InUse`):
   reads, listings, copies and deletions, a write with its check counted as one, at most 10 s.
   With one still under way (a large file) the session or the refresh is not had (`DeviceBusy`)
-  and nothing is cut short. gvfs itself refuses an unmount while a file of the device is open,
-  but not during a copy, which would otherwise lose the device in its middle.
-- An unmount gvfs refuses as busy (another program has a file of the device open) is asked
-  again, 5 times in all, 0.5 s apart; then the device stays mounted (`DeviceBusy`).
+  and nothing is cut short. gvfs itself refuses an unmount while an operation on the device is
+  under way (a read or a write), not while a file is only held open: on a fēnix 8 a file held open
+  and not read did not stop the unmount, a read going on did, at two tries in a row. The wait
+  keeps the session from meeting that refusal for the process's own operations, which may last
+  longer than the tries below.
+- An unmount gvfs refuses as busy (another program reads or writes the device) is asked again,
+  5 times in all, 0.5 s apart; then the device stays mounted (`DeviceBusy`).
 - While a session waits or runs, a new operation of a worker thread waits until the device is
   mounted again, at most 30 s (an unplug or the window's closing end the wait at once), then goes
   on whatever it finds. The main thread and the session's own thread never wait.

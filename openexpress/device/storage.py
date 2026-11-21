@@ -47,10 +47,10 @@ class RemountFailed(DeviceError):
 
 
 class DeviceBusy(DeviceError):
-    """The device was not unmounted for a session of our own: gvfs refused it as busy
-    (something has a file of the device open), or this process's own operations on it were
-    still under way. Nothing was cut short and the device stays mounted: a later session may
-    find it free."""
+    """The device was not unmounted for a session of our own: gvfs refused it as busy (an
+    operation on the device was under way, a read or a write), or this process's own
+    operations on it were still under way. Nothing was cut short and the device stays
+    mounted: a later session may find it free."""
 
 
 class DeviceNotResponding(DeviceError):

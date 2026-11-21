@@ -95,8 +95,9 @@ def hidden_software_text(folder: str) -> str:
 
 
 def replaces_text(u) -> str:
-    # TRANSLATORS: in the question before an update into a folder the device hides: the file of
-    # its name on the device is deleted before the new one is written; {file}: e.g. gmaptz.img
+    # TRANSLATORS: in the question before an update whose file is on the device where the file
+    # manager does not see it (in a folder or as a file the device hides): the new file takes the
+    # place of the one of its name; {file}: e.g. gmaptz.img
     return _("The update replaces the file {file} on the device.").format(file=u.filename)
 
 

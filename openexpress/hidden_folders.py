@@ -179,8 +179,9 @@ def session_for(storage: Storage, progress: Callable[[str], None] | None = None)
 
 
 def reading_text(folders: Iterable[str]) -> str:
-    # TRANSLATORS: a step: openExpress reads a folder the device hides from the ordinary USB
-    # connection; {folder}: e.g. .System
+    # TRANSLATORS: a step: openExpress reads folders of the device through a direct USB
+    # connection, also those the device hides from the file manager; {folder}: the folders of the
+    # top level they are in, e.g. .System or GARMIN
     return _("Reading the folder {folder}…").format(folder=", ".join(_tops(folders)))
 
 

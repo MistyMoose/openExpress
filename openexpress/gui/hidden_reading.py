@@ -22,14 +22,17 @@ log = logging.getLogger(__name__)
 RETRY_MS = 700
 
 
-def note_needed(win, s, folders: list[str]) -> None:
+def note_needed(win, s, folders: list[str], inside: list[str] = ()) -> None:
     """A first check of the open device `s` (updates, maps) found what goes to `folders`, which
-    ordinary MTP does not show: they are read once neither first check runs any more, unless
-    this connection was read already."""
+    ordinary MTP does not show, and the files in folders `inside` folders that are seen that the
+    file manager does not show (updates.session_folders): they are read once neither first check
+    runs any more, each only once a connection."""
     if win.session is not s or not hasattr(s, "hidden_wanted"):
         return  # no device, or a session made up for a page alone
     for folder in folders:
         s.hidden_wanted.setdefault(folder.casefold(), folder)
+    for folder in inside:
+        s.inside_wanted.setdefault(folder.casefold(), folder)
     _start(win, s)
 
 
@@ -51,16 +54,19 @@ def _folders(s) -> list[str]:
     alone)."""
     if not hasattr(s, "hidden_wanted"):
         return []
-    return hidden_folders.folders_to_read(s.device, s.hidden_wanted.values())
+    return hidden_folders.folders_to_read(s.device, s.hidden_wanted.values(),
+                                          inside=getattr(s, "inside_wanted", {}).values())
 
 
 def _start(win, s) -> None:
+    kept = hidden_folders.kept(s.storage) if hasattr(s, "storage") else None
     if (win.session is not s or not hasattr(s, "hidden_wanted") or s.hidden_reading
-            or hidden_folders.kept(s.storage) is not None):
-        return
+            or (kept is not None and kept.state != hidden_folders.READ)):
+        return  # a reading that failed, or no session to be had, is said once a connection
     if win._update_check_session is s or win._map_check_session is s:
         return  # the other first check may need a folder too: it ends with note_needed
-    folders = _folders(s)
+    # Only what this connection has not read: a reading is added to what it read before.
+    folders = [f for f in _folders(s) if kept is None or not kept.knows(f)]
     if not folders:
         return
     if win.busy:

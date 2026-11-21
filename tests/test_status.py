@@ -205,8 +205,8 @@ MAP_GROUPING_UPDATE = types.SimpleNamespace(
     title="Map Region Grouping file", version="2.31", is_system=False,
     installs_when_disconnected=False, is_reinstall=False, is_metadata=False, is_offer=True,
     on_device=False, copied_at=None, changed_on_device=False, unplugged_since_copy=False,
-    is_add_on=False, hidden_folder=None,
-    device_path="Garmin/SQL/MapRegionGrouping.db", key="006-D9267-00.2.31")
+    is_add_on=False, hidden_folder=None, device_hides=False, file_unseen=False,
+    file_hidden=False, device_path="Garmin/SQL/MapRegionGrouping.db", key="006-D9267-00.2.31")
 
 
 @pytest.mark.parametrize("argv", [["status", "--help"]])

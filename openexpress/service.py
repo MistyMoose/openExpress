@@ -97,6 +97,9 @@ class DeviceSession:
     # the opening found goes to (gui/hidden_reading.note_needed), by path in lower case, and
     # whether openExpress's own session reads them now.
     hidden_wanted: dict[str, str] = field(default_factory=dict, repr=False)
+    # The folders inside folders that are seen whose files the file manager does not show
+    # (updates.session_folders), read with them, each as it is.
+    inside_wanted: dict[str, str] = field(default_factory=dict, repr=False)
     hidden_reading: bool = False
     # Its satellite data (satellite.State), read in the background once its page is shown
     # (satellite.seen); None: not for this device, or not read yet.

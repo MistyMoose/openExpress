@@ -35,6 +35,7 @@ from openexpress.device.storage import (
     DeviceError,
     DeviceNotResponding,
     Storage,
+    UmsStorage,
     connection,
 )
 from openexpress.errors import UserFacingError
@@ -206,6 +207,15 @@ class SoftwareUpdate:
     # before anything is downloaded (refused_inside).
     folder_hidden: str | None = None
     folder_writable: bool = False
+    # Whether the device hides folders its GarminDevice.xml names inside folders that are seen
+    # (mark_present: hidden_inside found some): a device that hides something where updates go.
+    device_hides: bool = False
+    # An offer whose file the file manager does not show, in a folder this connection has not
+    # read through openExpress's own session (mark_present): session_folders reads it where it
+    # can. Its file found there (file_hidden): the device hides it; it is then known by name
+    # and size only (hidden_size_same), as one in a folder the device hides.
+    file_unseen: bool = False
+    file_hidden: bool = False
     # A reinstall whose version on the device (GarminDevice.xml) is higher than the one offered
     # (offers_older): whether its file is the offered one (mark_present) - OLDER_SAME_FILE,
     # OLDER_SAME_SIZE, OLDER_DIFFERS or OLDER_NOT_COMPARED; None for every other update.
@@ -677,6 +687,8 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
         u.folder_hidden = (inside or {}).get(
             posixpath.dirname(u.device_path.replace("\\", "/")).strip("/").casefold())
         u.folder_writable = u.folder_hidden is not None and writable
+        u.device_hides = bool(inside)
+        u.file_unseen = u.file_hidden = False  # compared anew below
         u.hidden_size_same = None  # compared anew below, from what this connection read
         if u.hidden_read and not u.is_offer:
             # A reinstall's file there, by name and size: the question names what it replaces.
@@ -686,7 +698,9 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
     found = []
     for u in offered:
         if u.hidden_folder is None:
-            found.append(presence(storage, u, progress))
+            seen = presence(storage, u, progress)
+            found.append(_in_session(listing, u, seen) if seen.why == NOT_ON_THE_DEVICE
+                         else seen)
         else:
             found.append(presence_by_size(listing, u) if u.hidden_read
                          else Presence(TOP_FOLDER_NOT_SEEN))
@@ -695,12 +709,28 @@ def mark_present(storage: Storage, updates: list[SoftwareUpdate],
         u.on_device = found[-1].why == MATCHES or (found[-1].why == SAME_SIZE
                                                    and not u.is_system)
         u.changed_on_device = found[-1].why == MD5_DIFFERS
-    _log_offered(storage, updates, offered, found, components)
+    _log_offered(storage, updates, offered, found, components, writable)
     return updates
 
 
+def _in_session(listing: hidden_folders.Listing | None, u: SoftwareUpdate,
+                gvfs: Presence) -> Presence:
+    """An offer whose file the file manager does not show (`gvfs`): what openExpress's own
+    session read of its folder on this connection tells, by the file's name and size
+    (file_hidden: the device hides the file); `gvfs` when its folder was read and the file is
+    not there, or when it was not read (file_unseen: session_folders asks for it)."""
+    path = u.device_path.replace("\\", "/")
+    if listing is None or listing.state_of(posixpath.dirname(path)) != hidden_folders.READ:
+        u.file_unseen = True
+        return gvfs
+    if listing.file(path) is None:
+        return gvfs
+    u.file_hidden = True
+    return presence_by_size(listing, u)
+
+
 def _log_offered(storage: Storage, updates: list[SoftwareUpdate], offered: list[SoftwareUpdate],
-                 found: list[Presence], components: int | None) -> None:
+                 found: list[Presence], components: int | None, writable: bool = False) -> None:
     """What mark_present found, in full the first time for this connection and when it
     changes, else one short line."""
     said = []
@@ -727,6 +757,18 @@ def _log_offered(storage: Storage, updates: list[SoftwareUpdate], offered: list[
                      sum(1 for u in offered if u.hidden_folder), ", ".join(hidden) or "none",
                      len(extra), ", ".join(sorted({u.severity or "no importance"
                                                    for u in extra})) or "none"))
+    unseen = sum(1 for u in offered if u.file_unseen)
+    in_session = sum(1 for u in offered if u.file_hidden)
+    # Said where the session matters: a device that hides something where updates go, or one
+    # where no session can be had (a drive, the Flatpak without USB); an offer not on a device
+    # that hides nothing is only an update.
+    hides = any(u.device_hides or u.hidden_folder is not None for u in updates)
+    if in_session or (unseen and (hides or isinstance(storage, UmsStorage)
+                                  or storage.usb_blocked())):
+        said.append((("updates: %d offered files the file manager does not show, %d of them "
+                      "found by openExpress's own session by name and size; the others: %s"),
+                     unseen + in_session, in_session,
+                     _session_word(storage, writable) if unseen else "none"))
     if applog.unchanged("updates", connection(storage), said):
         log.info("updates: %d offered as before, %d of them already on the device",
                  len(offered), present)
@@ -794,6 +836,38 @@ def hidden_needed(updates: list[SoftwareUpdate]) -> list[str]:
             folder = posixpath.dirname(u.device_path)
             out.setdefault(folder.casefold(), folder)
     return sorted(out.values(), key=str.casefold)
+
+
+def session_folders(storage: Storage,
+                    updates: list[SoftwareUpdate]) -> tuple[list[str], list[str]]:
+    """What openExpress's own session reads for the updates: the one place the window and the
+    command line ask (gui.hidden_reading.note_needed, cli._read_hidden). First the folders of
+    the top level ordinary MTP does not show (hidden_needed; read even where no session can be
+    had, which then says why). Then the folders, inside folders that are seen, of the offers
+    whose file the file manager does not show (file_unseen), each once: only where a session
+    can be had (session_possible) and the device hides something where updates go (a folder its
+    GarminDevice.xml names, or one of its top level), and only those this connection has not
+    read. Nothing is asked of the device here."""
+    hidden = hidden_needed(updates)
+    if (not hidden_folders.session_possible(storage)
+            or not any(u.device_hides or u.hidden_folder is not None for u in updates)):
+        return hidden, []
+    inside: dict[str, str] = {}
+    for u in updates:
+        if u.is_offer and u.file_unseen and u.hidden_folder is None:
+            folder = posixpath.dirname(u.device_path.replace("\\", "/")).strip("/")
+            inside.setdefault(folder.casefold(), folder)
+    return hidden, sorted(inside.values(), key=str.casefold)
+
+
+def _session_word(storage: Storage, writable: bool) -> str:
+    """For the log: what becomes of the files the file manager does not show."""
+    if isinstance(storage, UmsStorage):
+        return "no session (a USB drive hides nothing)"
+    if not writable:
+        why = hidden_folders.NO_USB if storage.usb_blocked() else hidden_folders.NO_SESSION
+        return f"no session ({why})"
+    return "openExpress's own session reads their folders"
 
 
 def not_installed_here_text(u: SoftwareUpdate) -> str:
@@ -934,7 +1008,7 @@ def offered(storage: Storage, response: dict, device,
                          writable=hidden_folders.session_possible(storage), progress=progress)
 
     started = (_connection_started(device, storage)
-               if unit and any(u.hidden_folder for u in items) else None)
+               if unit and any(u.hidden_folder or u.file_hidden for u in items) else None)
     return mark_copied(items, unit, forget_installed, connected_at=started)
 
 
@@ -983,7 +1057,7 @@ def mark_copied(updates: list[SoftwareUpdate], unit_id: int | None,
             continue
         u.copied_at = at
         u.unplugged_since_copy = unplugged is not None and unplugged > at
-        if u.hidden_folder is not None:
+        if u.hidden_folder is not None or u.file_hidden:
             # In a folder the device hides, known by name and size: openExpress's copy is there
             # at the size offered (its bytes were checked as it was written), or the device
             # changed it; a connection begun after the copy (`connected_at`) is an unplugging.

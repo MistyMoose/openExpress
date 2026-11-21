@@ -49,15 +49,20 @@ class Listing:
     """What one session read: each folder asked, by its path in lower case, with its path in
     the device's letter case and what it holds (the ordinary listing and Garmin's together); the
     folders asked that the device does not have, by their path in lower case, with the path as
-    asked; `state`: READ, or why nothing was read (NO_SESSION, NO_USB, FAILED)."""
+    asked; the folders of the top level the session found hidden (ordinary MTP does not show
+    them), in lower case; `state`: READ, or why nothing was read (NO_SESSION, NO_USB, FAILED)."""
 
     folders: dict[str, tuple[str, list[Entry]]] = field(default_factory=dict)
     missing: dict[str, str] = field(default_factory=dict)
     state: str = READ
+    hidden_tops: set[str] = field(default_factory=set)
 
     def tops(self) -> list[str]:
-        """The folders of the top level read, in the device's letter case."""
-        return _tops(real for real, _entries in self.folders.values())
+        """The folders of the top level read that ordinary MTP does not show (a car navigator's
+        .System), in the device's letter case; not one that is seen, as GARMIN, whose folders
+        a session may read too."""
+        return [top for top in _tops(real for real, _entries in self.folders.values())
+                if top.casefold() in self.hidden_tops]
 
     def entries(self, folder: str) -> list[Entry] | None:
         """What the folder holds; None when it was not read (not asked, not there, or the
@@ -202,18 +207,22 @@ def _tops(folders: Iterable[str]) -> list[str]:
     return out
 
 
-def folders_to_read(device, needed: Iterable[str]) -> list[str]:
+def folders_to_read(device, needed: Iterable[str], inside: Iterable[str] = ()) -> list[str]:
     """The folders a session reads, the same in the window and the command line: those
-    `needed` (by updates and maps), the folders of the top level they are in and those the
-    device is known to hide (known_devices.hidden_tops), and what its GarminDevice.xml names
-    under them (history.declared_under: what Device Status counts there), each once."""
+    `needed` (by updates and maps, under folders of the top level ordinary MTP does not show),
+    the folders of the top level they are in and those the device is known to hide
+    (known_devices.hidden_tops), and what its GarminDevice.xml names under them
+    (history.declared_under: what Device Status counts there); and the folders `inside` folders
+    of the top level that are seen (those of updates whose file the file manager does not
+    show), as they are: never every folder of GARMIN. Each once."""
     from openexpress import history, known_devices
 
     needed = [f.replace("\\", "/").strip("/") for f in needed]
     tops = {f.split("/")[0] for f in needed if f}
     tops |= set(known_devices.hidden_tops(getattr(device, "unit_id", None)))
     out: dict[str, str] = {}
-    for folder in [*needed, *tops, *history.declared_under(device, tops)]:
+    inside = [f.replace("\\", "/").strip("/") for f in inside]
+    for folder in [*needed, *tops, *history.declared_under(device, tops), *inside]:
         if folder:
             out.setdefault(folder.casefold(), folder)
     return sorted(out.values(), key=str.casefold)
@@ -273,7 +282,8 @@ def _added(before: Listing | None, now: Listing) -> Listing:
     was read before, or the reading before told nothing (it failed or had no session)."""
     if before is None or before.state != READ:
         return now
-    added = Listing(dict(before.folders), dict(before.missing))
+    added = Listing(dict(before.folders), dict(before.missing),
+                    hidden_tops=before.hidden_tops | now.hidden_tops)
     for key, found in now.folders.items():
         added.folders[key] = found
         added.missing.pop(key, None)
@@ -329,6 +339,8 @@ def _read_in(session, wanted: list[str], listing: Listing) -> None:
             listing.missing[folder.casefold()] = folder
             continue
         store, top = place
+        if top.hidden:
+            listing.hidden_tops.add(top.name.casefold())
         current, real = _descend(children, store, top, parts[1:])
         if current is None:
             listing.missing[folder.casefold()] = folder

@@ -684,7 +684,8 @@ class UpdatesPage:
                 # A file of its name in a folder the device hides goes first, as Garmin Express
                 # writes there.
                 + ("\n\n" + replaces_text(u)
-                   if u.hidden_folder is not None and u.hidden_size_same is not None else ""))
+                   if (u.hidden_folder is not None or u.file_hidden)
+                   and u.hidden_size_same is not None else ""))
 
         def install() -> None:
             work, done, failed = _install_task(self, s, chosen)

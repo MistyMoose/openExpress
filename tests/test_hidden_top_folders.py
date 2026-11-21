@@ -12,6 +12,7 @@ names and values are made up."""
 
 import contextlib
 import hashlib
+import logging
 import os
 import pathlib
 import posixpath
@@ -614,8 +615,11 @@ def test_the_window_reads_once_both_first_checks_are_done(navigator, monkeypatch
     assert win.run_task.calls == [] and storage.sessions == 0
     win._map_check_session = None
     win._check_maps_quietly()
-    assert win.run_task.titles == ["Reading the folder .System…"]
-    assert storage.sessions == 1 and fake.folders_listed() == {"/", ".System", ".System/Map"}
+    # In the same session the folder of the new part, which the file manager does not show
+    # (updates.session_folders: a device that hides a folder of its top level).
+    assert win.run_task.titles == ["Reading the folder .System, Garmin…"]
+    assert storage.sessions == 1
+    assert fake.folders_listed() == {"/", ".System", ".System/Map", "GARMIN"}
     # Then the checks again with what was read (the time zone map is there), the device counted
     # again for Device Status.
     assert shown["updates"] == ["006-B0000-00", "006-D9004-00"] and shown["update checks"] == 2
@@ -975,7 +979,8 @@ def test_the_window_reads_what_the_xml_names_under_the_folder_needed(navigator, 
     in_the_window("count_again", lambda win, s: None)
     win, s, _shown = _window(monkeypatch, storage, server_answer(), [])  # no map listed
     _first_checks(win)
-    assert fake.folders_listed() == {"/", ".System", ".System/Map"}
+    # GARMIN too, listed for the folder of the new part (session_folders), never read whole.
+    assert fake.folders_listed() == {"/", ".System", ".System/Map", "GARMIN"}
     assert history.count(s.device, storage)["maps"] == len(MAP_FILE)
 
 
@@ -2750,3 +2755,179 @@ def test_device_status_counts_the_same_after_readings_added_and_a_write(navigato
     hidden_folders.read(storage, folders, "test")
     assert after_write == history.count(device, storage)
     assert after_write["updates"] == len(SYSTEM)
+
+
+# --- a watch that hides folders and files inside GARMIN (as the fēnix 8): read at the check ----
+
+PROMPT = b"made-up voice prompts " * 40
+OLD_PROMPT = b"made-up older voice prompts " * 20
+REGIONS = b"made-up map region grouping " * 30
+WATCH_SYSTEM = b"made-up watch software " * 50
+INSIDE_COMPONENTS = """  <UpdateFile><PartNumber>006-D0001-00</PartNumber><Version><Major>2</Major>
+   <Minor>12</Minor></Version><Path>Garmin/Prompts</Path><FileName>prompt_bundle.hvm</FileName>
+  </UpdateFile>
+  <UpdateFile><PartNumber>006-D0002-00</PartNumber><Version><Major>2</Major>
+   <Minor>31</Minor></Version><Path>Garmin/SQL</Path><FileName>MapRegionGrouping.db</FileName>
+  </UpdateFile>
+"""
+WATCH_PART, PROMPT_PART, REGIONS_PART = "006-B0000-10", "006-D0001-00", "006-D0002-00"
+
+
+def fenix_answer():
+    """The watch's software, its voice prompts and its map region file, each where the fēnix 8
+    keeps it."""
+    return {"updates": [
+        _entry(WATCH_PART, "Made-up Watch", "GARMIN\\RemoteSW", "GUPDATE.GCD", WATCH_SYSTEM,
+               primary=True),
+        _entry(PROMPT_PART, "Made-up Voice Prompts", "GARMIN\\Prompts", "prompt_bundle.hvm",
+               PROMPT),
+        _entry(REGIONS_PART, "Map Region Grouping file", "GARMIN\\SQL", "MapRegionGrouping.db",
+               REGIONS)]}
+
+
+def fenix_session(prompt=PROMPT):
+    """The watch's own USB session: Garmin's listing gives what the file manager does not show,
+    the folder Prompts and the files of the updates, each at the size offered (`prompt`: the
+    voice prompts there now)."""
+    fake = _Session()
+    fake.add("GARMIN/GarminDevice.xml", b"<Device/>")
+    fake.add("GARMIN/SQL/Visible.db", b"seen")
+    fake.add("GARMIN/SQL/MapRegionGrouping.db", REGIONS, hidden=True)
+    fake.add("GARMIN/Prompts", hidden=True)
+    fake.add("GARMIN/Prompts/prompt_bundle.hvm", prompt, hidden=True)
+    fake.add("GARMIN/RemoteSW/GUPDATE.GCD", WATCH_SYSTEM, hidden=True)
+    return fake
+
+
+@pytest.fixture
+def fenix_like(device_root):
+    """The made-up watch as the fēnix 8 shows itself to the file manager: GARMIN/SQL and
+    GARMIN/RemoteSW there, GARMIN/Prompts not; its GarminDevice.xml names Prompts and SQL for
+    its components."""
+    _xml_with(device_root, INSIDE_COMPONENTS)
+    (device_root / "GARMIN" / "SQL").mkdir()
+    (device_root / "GARMIN" / "SQL" / "Visible.db").write_bytes(b"seen")
+    (device_root / "GARMIN" / "RemoteSW").mkdir()
+    return device_root
+
+
+def test_the_check_reads_the_folders_of_the_files_it_does_not_see_once(fenix_like):
+    from openexpress import cli, history, known_devices, service
+
+    storage = OverUsb(fenix_like, fenix_session())
+    device = service.read_device(storage, found_now=True)
+    counted = history.count(device, storage)
+    items = _offered_from(storage, fenix_answer())
+    assert all(u.file_unseen and not u.on_device for u in items)
+    hidden, inside = updates.session_folders(storage, items)
+    assert hidden == [] and [f.casefold() for f in inside] == [
+        "garmin/prompts", "garmin/remotesw", "garmin/sql"]
+    assert cli._read_hidden(storage, device, hidden, "updates go there", inside=inside)
+    assert storage.sessions == 1
+    kept = hidden_folders.kept(storage)
+    assert not kept.knows("Garmin/Activity")  # what was asked, not every folder of GARMIN
+    by = _by_part(_offered_from(storage, fenix_answer()))
+    prompt, regions, system = by[PROMPT_PART], by[REGIONS_PART], by[WATCH_PART]
+    assert (prompt.file_hidden, prompt.on_device, prompt.hidden_size_same) == (True, True, True)
+    assert (regions.file_hidden, regions.on_device) == (True, True)
+    assert system.file_hidden and not system.on_device  # never on the device by its size alone
+    # The second check of the connection: nothing to read.
+    assert updates.session_folders(storage, list(by.values())) == ([], [])
+    assert not cli._read_hidden(storage, device, [], "again", inside=[])
+    assert storage.sessions == 1
+    # GARMIN is no folder the device hides: not kept so, Device Status counts it from MTP.
+    assert known_devices.hidden_tops(device.unit_id) == ()
+    assert history.count(device, storage) == counted
+
+
+def test_a_watch_that_hides_nothing_where_updates_go_opens_no_session(device_root, caplog):
+    """As the Edge 1050: every folder its GarminDevice.xml names is seen."""
+    (device_root / "GARMIN" / "RemoteSW").mkdir()
+    storage = OverUsb(device_root, fenix_session())
+    storage.exclusive_ptp = lambda: pytest.fail("a USB session of its own was opened")
+    with caplog.at_level(logging.INFO, logger="openexpress.updates"):
+        items = _offered_from(storage, {"updates": fenix_answer()["updates"][:1]})
+    assert updates.session_folders(storage, items) == ([], [])
+    # An offer not on a device that hides nothing is only an update: no line of a session.
+    assert "offered files the file manager does not show" not in caplog.text
+
+
+@pytest.mark.parametrize("where", ["a USB drive", "the Flatpak without USB"])
+def test_no_session_where_none_can_be_had_and_the_log_says_why(fenix_like, where, caplog):
+    from openexpress.device.storage import UmsStorage
+
+    if where == "a USB drive":
+        storage = UmsStorage(fenix_like, fenix_like.as_uri() + "/", None)
+        why = "a USB drive hides nothing"
+    else:
+        storage = OverUsb(fenix_like, fenix_session())
+        storage.blocked = True
+        why = hidden_folders.NO_USB
+    with caplog.at_level(logging.INFO, logger="openexpress.updates"):
+        items = _offered_from(storage, fenix_answer())
+    assert updates.session_folders(storage, items) == ([], [])
+    assert why in caplog.text
+
+
+def test_after_a_write_into_prompts_its_update_is_not_offered_again(fenix_like, monkeypatch,
+                                                                    tmp_path):
+    from openexpress import cli, service
+
+    monkeypatch.setattr(updates, "cache_path", lambda u: tmp_path / "cache" / u.filename)
+    _fetching(monkeypatch, lambda name, md5: PROMPT)
+    fake = fenix_session(prompt=OLD_PROMPT)
+    storage = OverUsb(fenix_like, fake)
+    device = service.read_device(storage, found_now=True)
+    items = _offered_from(storage, fenix_answer())
+    hidden, inside = updates.session_folders(storage, items)
+    cli._read_hidden(storage, device, hidden, "updates go there", inside=inside)
+    prompt = _by_part(_offered_from(storage, fenix_answer()))[PROMPT_PART]
+    assert prompt.file_hidden and prompt.hidden_size_same is False and not prompt.on_device
+    report = updates.install([prompt], storage, unit_id=device.unit_id)
+    assert [w.part_number for w in report.written] == [PROMPT_PART]
+    items = _offered_from(storage, fenix_answer())
+    assert PROMPT_PART not in [u.part_number for u in updates.pending(items)]
+    assert _by_part(items)[PROMPT_PART].on_device
+    assert updates.session_folders(storage, items) == ([], [])  # no session for it again
+
+
+def test_a_session_that_fails_leaves_the_files_as_the_file_manager_tells(fenix_like):
+    from openexpress import cli, service
+
+    fake = fenix_session()
+    fake.fail_at = "GARMIN/Prompts"
+    storage = OverUsb(fenix_like, fake)
+    device = service.read_device(storage, found_now=False)
+    items = _offered_from(storage, fenix_answer())
+    hidden, inside = updates.session_folders(storage, items)
+    cli._read_hidden(storage, device, hidden, "updates go there", inside=inside)
+    assert hidden_folders.kept(storage).state == hidden_folders.FAILED
+    by = _by_part(_offered_from(storage, fenix_answer()))
+    assert not any(u.on_device or u.file_hidden for u in by.values())
+    assert not cli._read_hidden(storage, device, hidden, "again", inside=inside)  # not again
+    assert storage.sessions == 1
+
+
+def test_the_window_and_the_command_line_read_and_count_the_same(fenix_like, monkeypatch,
+                                                                 in_the_window):
+    from openexpress import cli, history, service
+
+    in_the_window("count_again", lambda win, s: None)
+    fake = fenix_session()
+    storage = OverUsb(fenix_like, fake)
+    win, s, shown = _window(monkeypatch, storage, fenix_answer(), [])
+    _first_checks(win)
+    assert storage.sessions == 1 and len(win.run_task.calls) == 1
+    assert shown["updates"] == [WATCH_PART]  # the others are on the device, by their size
+    window_read = fake.folders_listed()
+    window_counts = history.count(s.device, storage)
+    win._check_updates_quietly()  # a later check of the same connection
+    assert storage.sessions == 1
+    other = fenix_session()
+    by_cli = OverUsb(fenix_like, other)
+    by_cli.usb = types.SimpleNamespace(bus=1, address=8, usb_id="091e:0000")
+    device = service.read_device(by_cli, found_now=False)
+    hidden, inside = updates.session_folders(by_cli, _offered_from(by_cli, fenix_answer()))
+    cli._read_hidden(by_cli, device, hidden, "updates go there", inside=inside)
+    assert other.folders_listed() == window_read
+    assert history.count(device, by_cli) == window_counts

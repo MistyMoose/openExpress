@@ -842,3 +842,102 @@ def test_the_maps_page_says_why_a_map_into_a_folder_hidden_inside_is_refused(rev
         wait(lambda: r.win.sections["watch"].loaded and not r.win.busy, "the device page")
         shot(r, "device-page")
         assert said == [], said
+
+
+# The watch's voice prompts in Garmin/Prompts, a folder its GarminDevice.xml names and the file
+# manager does not show: only its own USB session sees them.
+PROMPT_COMPONENT = """  <UpdateFile><PartNumber>006-D0001-00</PartNumber><Version><Major>2</Major>
+   <Minor>18</Minor></Version><Path>Garmin/Prompts</Path><FileName>prompt_bundle.hvm</FileName>
+  </UpdateFile>
+"""
+PROMPTS = b"made-up voice prompts " * 400
+PROMPTS_NAME = "Made-up Voice Prompts"
+
+
+def _prompts_offered() -> dict:
+    import hashlib
+
+    return {"updates": [{
+        "partNumber": "006-D0001-00", "productName": PROMPTS_NAME, "dataType": "Firmware",
+        "displayVersion": "2.18", "severity": "Recommended", "isPrimaryFirmware": False,
+        "locale": None, "releaseState": "live", "releaseNotes": [], "eulaUrl": None,
+        "deliverable": {"downloadUrl": "https://example.org/prompt_bundle.hvm",
+                        "md5": hashlib.md5(PROMPTS).hexdigest().upper(),
+                        "sizeInBytes": len(PROMPTS)},
+        "installation": {"path": "Garmin\\Prompts", "fileName": "prompt_bundle.hvm",
+                         "isReinstall": False, "isProductInstalled": True,
+                         "isRestartRequired": False, "order": 0}}]}
+
+
+@pytest.mark.parametrize("language", ["en", "pl"])
+@pytest.mark.parametrize("width", [NARROWEST, WIDE], ids=["360", "wide"])
+def test_the_updates_page_lists_a_hidden_file_on_the_device_with_the_components(review, width,
+                                                                               language,
+                                                                               monkeypatch):
+    """A watch that hides its folder Prompts: read through its own session once it is opened
+    (the check of the device page, updates.session_folders), its voice prompts at the size
+    offered are on the device, so the page lists them with the components already there, with
+    Reinstall, not as an update. Pictures: shape "updates" in the review."""
+    import contextlib
+
+    from gi.repository import Adw, Gtk
+    from ptp_fake import FakeDevice
+
+    from openexpress import hidden_folders
+    from openexpress.connect import lower_keys
+    from openexpress.device import ptp
+    from openexpress.gui.app import MainWindow
+    from openexpress.gui.device_page import DevicePage
+
+    # The device page's check after the opening, which reads what the file manager does not
+    # show (the review leaves it out elsewhere).
+    monkeypatch.setattr(MainWindow, "_check_updates_quietly", DevicePage._check_updates_quietly)
+    with gtk_complaints(("Adwaita", "Gtk", "GLib", "GLib-GObject")) as said:
+        r = review(language, width)
+        r.shape = "updates"
+        shape = SHAPES["watch"]
+        root = r.root / "updates"
+        make_device(root, shape)
+        xml = root / "Garmin" / "GarminDevice.xml"
+        xml.write_text(xml.read_text().replace(" </MassStorageMode>",
+                                               PROMPT_COMPONENT + " </MassStorageMode>"))
+        fake = FakeDevice()
+        fake.add("Garmin/GarminDevice.xml", b"<Device/>")
+        fake.add("Garmin/Prompts", hidden=True)
+        fake.add("Garmin/Prompts/prompt_bundle.hvm", PROMPTS, hidden=True)
+        s = session_of(root, shape)
+
+        @contextlib.contextmanager
+        def opened():
+            fake.reconnect()
+            with ptp.Session(fake) as session:
+                yield session
+
+        s.storage.exclusive_ptp = opened
+        answer = lower_keys(_prompts_offered())
+        monkeypatch.setattr(s.client, "software_updates",
+                            lambda raw, include_reinstalls=False: answer)
+        monkeypatch.setattr(s.client, "unit_info", lambda unit_id, part_number: {})
+        r.plugged["now"] = s
+        r.win.refresh_device()
+        wait(lambda: r.win.session is s and not r.win.busy
+             and hidden_folders.kept(s.storage) is not None, "the watch opened, Prompts read")
+        sec = r.win.sections["updates"]
+        r.win.select_section("updates")
+        wait(lambda: sec.loaded and not r.win.busy
+             and sec.stack.get_visible_child_name() == "content", "the page Updates")
+        iterate(0.2)
+        (rows,) = [[w for w in descendants(e) if isinstance(w, Adw.ActionRow)
+                    and w.get_title() == PROMPTS_NAME]
+                   for e in descendants(sec.stack) if isinstance(e, Adw.ExpanderRow)]
+        (expander,) = [e for e in descendants(sec.stack) if isinstance(e, Adw.ExpanderRow)]
+        expander.set_expanded(True)
+        iterate(0.2)
+        assert len(rows) == 1
+        assert [b for b in descendants(rows[0]) if isinstance(b, Gtk.Button)]  # Reinstall
+        assert said == [], said
+        if r.width == NARROWEST:
+            narrowest = r.win.get_content().measure(Gtk.Orientation.HORIZONTAL, -1)[0]
+            assert narrowest <= NARROWEST, f"the window needs {narrowest} px"
+        shot(r, "hidden-file-on-device")
+        assert said == [], said

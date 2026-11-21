@@ -105,6 +105,21 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.12.2" date="2026-11-21">
+      <description translate="no">
+        <p>A maintenance release with fixes.</p>
+        <ul>
+          <li>openExpress run from source has a menu entry of its own, "openExpress (source)",
+          which no longer hides the Flatpak's.</li>
+          <li>Updates on a device seen as a USB drive create a missing folder again.</li>
+          <li>After the device is plugged in again, a file openExpress wrote is no longer read back
+          whole.</li>
+          <li>A map whose files would go to a folder the device hides is refused before anything is
+          copied, and the Maps page says why.</li>
+          <li>The log says how long mounting the device again took, apart from the rest.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.1" date="2026-11-20">
       <description translate="no">
         <p>A fix for Install All on watches: voice prompts, speech and keyboard updates install

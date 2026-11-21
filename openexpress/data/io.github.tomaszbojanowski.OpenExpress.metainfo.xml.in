@@ -114,8 +114,11 @@
           <li>Updates on a device seen as a USB drive create a missing folder again.</li>
           <li>After the device is plugged in again, a file openExpress wrote is no longer read back
           whole.</li>
-          <li>A map whose files would go to a folder the device hides is refused before anything is
-          copied, and the Maps page says why.</li>
+          <li>A map whose files would go to a folder the device hides from the file manager is
+          refused before anything is copied, with the reason on the Maps page, now also when that
+          folder is inside a visible one and not only at the top level.</li>
+          <li>The window no longer hangs when the Keep Diagnostic Files switch cannot save its
+          setting.</li>
           <li>The log says how long mounting the device again took, apart from the rest.</li>
         </ul>
       </description>

@@ -274,8 +274,9 @@ def test_the_wait_of_its_run_has_the_parameters_of_the_wait_of_gio_storage(stres
 def test_the_wait_of_its_run_passes_every_argument_on(stress, monkeypatch):
     got = []
 
-    def recorded(start, timeout_s, what, name="operation", context=None, quiet=False):
-        got.append((timeout_s, what, name, context, quiet))
+    def recorded(start, timeout_s, what, name="operation", context=None, quiet=False,
+                 renewable=False):
+        got.append((timeout_s, what, name, context, quiet, renewable))
         start(lambda finish: None, None)
 
     monkeypatch.setattr(gio_storage, "_wait", recorded)
@@ -283,5 +284,5 @@ def test_the_wait_of_its_run_passes_every_argument_on(stress, monkeypatch):
     with stress.instrumented(stress.Summary(), answers, None):
         gio_storage._wait(lambda done, cancellable: done(None), 5.0, "Reading", "listing",
                           context="its context", quiet=True)
-    assert got == [(5.0, "Reading", "listing", "its context", True)]
+    assert got == [(5.0, "Reading", "listing", "its context", True, False)]
     assert [name for name, _waiting, _answering in answers] == ["listing"]

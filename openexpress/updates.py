@@ -30,6 +30,7 @@ from openexpress import (
     known_devices,
     paths,
 )
+from openexpress.device import whole_reads
 from openexpress.device.storage import (
     MAIN_FOLDERS,
     DeviceError,
@@ -462,7 +463,8 @@ def _md5_of(storage: Storage, real: str, size: int, mtime: float, told=None) -> 
         if known:
             _md5_read[key] = known
             return known
-    digest = hashlib.md5(storage.read_at(real, told=told)).hexdigest()
+    digest = hashlib.md5(whole_reads.whole_file(
+        storage, real, size, lambda: storage.read_at(real, told=told), told)).hexdigest()
     if mtime:
         _md5_read[key] = digest
         _keep_md5(_md5_key(storage, real, size, mtime), digest)

@@ -23,6 +23,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from openexpress import applog, paths
+from openexpress.device import whole_reads
 from openexpress.device.storage import DeviceError, DeviceNotResponding, Entry, Storage
 from openexpress.device.xmldevice import GarminDevice
 from openexpress.errors import UserFacingError
@@ -557,7 +558,8 @@ def copy_dumps(device: GarminDevice, storage: Storage, now: datetime | None = No
     head = _("Copying memory dumps")
     for n, (path, entry) in enumerate(chosen, 1):
         say_to(progress)(Step(head, n, len(chosen)))
-        data = storage.read(path)
+        data = whole_reads.whole_file(storage, path, entry.size,
+                                      lambda path=path: storage.read(path))
         report.add(_keep_file(where, files, report, path, data, entry.mtime)[1])
     if files and files != _last(where, "dumps").get("files"):
         _save(where, "dumps", files, {}, now, device.software_version_str)

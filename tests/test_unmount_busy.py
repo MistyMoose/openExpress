@@ -166,6 +166,29 @@ def test_a_write_longer_than_the_wait_leaves_the_device_mounted_and_is_not_cut(
             "the device is not unmounted") in lines(caplog)
 
 
+def test_a_copy_longer_than_the_wait_leaves_the_device_mounted_and_is_not_cut(
+        made, monkeypatch, tmp_path):
+    """A large file copied whole (copy_to_local) is one long operation on the device: a
+    session asked meanwhile waits OWN_USE_WAIT_S, then gives up as busy, and the copy ends
+    whole."""
+    monkeypatch.setattr(gio_storage, "OWN_USE_WAIT_S", 0.2)
+    device, files, st = made()
+    size = 3 * 1024 * 1024
+    files.tree["GARMIN/BIG.BIN"] = size
+    files.copy_piece_delay_s = 0.25  # three pieces of 1 MiB: about 0.75 s
+    dest = tmp_path / "copy.bin"
+    copier, copied = in_a_worker(lambda: st.copy_to_local("GARMIN/BIG.BIN", dest, size),
+                                 "a copy")
+    until(lambda: "copy" in files.calls)
+    task, session = in_a_worker(lambda: a_session(the_session_storage(device)), "task")
+    ended(task)
+    refused = session["value"]
+    ended(copier)
+    assert isinstance(refused, gio_storage.DeviceBusy)
+    assert copied["value"] == size and dest.read_bytes() == bytes(size)
+    assert device.unmounts_asked == 0 and device.events == [] and device.mounted
+
+
 # --- gvfs refuses it as busy: another program reads the device -------------------------------
 
 @pytest.mark.parametrize("where", ["command line", "window"])

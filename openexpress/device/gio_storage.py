@@ -194,6 +194,35 @@ def _timed_out(what: str) -> DeviceError:
         seconds=HOST_COPY_TIMEOUT_S))
 
 
+HOST_PULL_LOOK_S = 1.0  # how often a copy from the device in the Flatpak is looked at for growth
+# Why this PyGObject cannot copy from the device with progress (Gio.File.copy_async with its two
+# callbacks), once found: every later large read of this process is a stream, said once.
+_copy_unavailable: str | None = None
+END_WAIT_S = 5.0  # for a command on the host to end once told to
+
+
+def _end(proc: subprocess.Popen) -> None:
+    """Ends a command run on the host: flatpak-spawn passes the signal on to it; killed when it
+    does not end in END_WAIT_S."""
+    if proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(END_WAIT_S)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        with suppress(subprocess.TimeoutExpired):
+            proc.wait(END_WAIT_S)
+
+
+def _has_bytes(path: Path) -> bool:
+    """Whether a copy put anything into `path` yet."""
+    try:
+        return path.stat().st_size > 0
+    except OSError:
+        return False
+
+
 def host_copy(local: Path, target_uri: str, what: str, progress=None, started=None) -> None:
     """Copies a local file to the watch with the host's `gio copy`, as gvfs refuses local files
     from sandboxed (Flatpak) apps and gvfs-mtp has no other way of writing (needs
@@ -371,15 +400,20 @@ class GioStorage(Storage):
         try:
             _wait(start, STALL_S, what, name, context=context, quiet=True)
         except GioTimedOut as e:
-            self._stalled = DeviceNotResponding.during(what)
-            self._stalled.usb = self.usb
-            note_stalled(self.usb)
-            self._log_stall(name, started)
-            raise self._stalled from e
+            raise self._stall(what, name, started) from e
         except Exception:
             self._answered_now(name, started)  # a refusal is an answer too
             raise
         self._answered_now(name, started)
+
+    def _stall(self, what: str, name: str, started: float) -> DeviceNotResponding:
+        """The device stopped responding during `what`: kept by the storage, noted for its
+        place on USB and in the log; the error to raise."""
+        self._stalled = DeviceNotResponding.during(what)
+        self._stalled.usb = self.usb
+        note_stalled(self.usb)
+        self._log_stall(name, started)
+        return self._stalled
 
     def _answered_now(self, name: str, started: float) -> None:
         self._answered = now = time.monotonic()
@@ -519,6 +553,172 @@ class GioStorage(Storage):
             raise
         self._close(stream, what, "read", context)
         return b"".join(chunks)
+
+    @_on_the_device
+    def copy_to_local(self, real_path: str, dest: Path, size: int, told=None) -> int:
+        """The file at this real path copied whole by one copy of gvfs into `dest` on this
+        computer: a stream asks the device for at most 256 KiB at a time, one transaction each,
+        and some watches take tens of milliseconds for each above the transfer, which one copy
+        does not. From source Gio.File.copy; in the Flatpak the host's gio copy (gvfs copies
+        for a sandboxed app no faster than a stream). `size`: the listed size, for the progress
+        and the log. `told(done, total)` as the bytes come; a `told` that raises stops the copy
+        and its error passes on. No progress for STALL_S: DeviceNotResponding, kept as for a
+        read. Refused before its first byte: CopyNotStarted (nothing to remove); any other
+        failure: DeviceError. Whatever stopped it, `dest` is removed. Returns the bytes
+        copied."""
+        self._responding()
+        what = _("Cannot read {path}").format(path=real_path)
+        way = "the host's gio copy" if in_flatpak() else "Gio.File.copy"
+        started = time.monotonic()
+        done = False
+        try:
+            if in_flatpak():
+                self._host_pull(real_path, dest, size, what, told, started)
+            else:
+                self._gio_pull(real_path, dest, size, what, told, started)
+            copied = dest.stat().st_size
+            done = True
+        except DeviceNotResponding:
+            raise  # a stall stops what meets it
+        except OSError as e:
+            raise DeviceError(_os_said(what, e)) from e
+        finally:
+            if not done:
+                dest.unlink(missing_ok=True)
+        took = time.monotonic() - started
+        self._answered = time.monotonic()
+        log.info("device: a file copied whole by %s: %s in %.1f s, %.2f MB/s%s", way,
+                 applog.size(copied), took, copied / took / 1e6 if took > 0 else 0.0,
+                 "" if copied == size else f" (listed with {applog.size(size)})")
+        return copied
+
+    def _gio_pull(self, real_path: str, dest: Path, size: int, what: str, told,
+                  started: float) -> None:
+        """copy_to_local from source: Gio.File.copy_async, waited for with its time limit
+        renewed by each progress. A PyGObject that cannot give it its two callbacks (an older
+        one): CopyNotStarted, marked `said`, the reason in the log once a process."""
+        global _copy_unavailable
+        if _copy_unavailable is not None:
+            refused = CopyNotStarted(f"{what}: {_copy_unavailable}")
+            refused.said = True
+            raise refused
+        source, target = self._f(real_path), Gio.File.new_for_path(str(dest))
+        state: dict = {"done": 0, "error": None}
+
+        def start(done, cancellable, alive):
+            def progress(current, total, *_rest):
+                if current <= state["done"]:
+                    return
+                state["done"] = current
+                alive()
+                if told is not None and state["error"] is None:
+                    try:
+                        told(current, total or size)
+                    except BaseException as e:  # noqa: BLE001 - raised after the copy stops
+                        state["error"] = e
+                        cancellable.cancel()
+
+            try:
+                source.copy_async(target, Gio.FileCopyFlags.OVERWRITE, GLib.PRIORITY_DEFAULT,
+                                  cancellable, progress,
+                                  lambda f, res: done(lambda: f.copy_finish(res)))
+            except TypeError as e:  # a PyGObject without the copy's two callbacks
+                global _copy_unavailable
+                _copy_unavailable = str(e)
+                log.info("device: this PyGObject cannot copy a file with its progress (%s); "
+                         "large files are read as a stream", e)
+                refused = CopyNotStarted(f"{what}: {e}")
+                refused.said = True
+                raise refused from e
+
+        try:
+            _wait(start, STALL_S, what, "copy", quiet=True, renewable=True)
+        except GioTimedOut as e:
+            raise self._stall(what, "copy", started) from e
+        except DeviceNotResponding:
+            raise
+        except DeviceError as e:
+            if state["error"] is not None:
+                raise state["error"] from None
+            if not state["done"] and not _has_bytes(dest) and not isinstance(e, CopyNotStarted):
+                raise CopyNotStarted(str(e)) from e
+            raise
+        if state["error"] is not None:
+            raise state["error"]
+
+    def _host_pull(self, real_path: str, dest: Path, size: int, what: str, told,
+                   started: float) -> None:
+        """copy_to_local in the Flatpak: the host's gio copy (flatpak-spawn --watch-bus), into
+        a folder the host sees under the same path. The bytes so far from what gio copy -p
+        prints and from the size of `dest`; neither growing for STALL_S is a stall. A stall, a
+        `told` that raises, or an error ends the command (flatpak-spawn passes it on, and
+        --watch-bus ends the copy on the host when flatpak-spawn ends)."""
+        if not _host_visible(dest.parent):
+            # The reason before the path: the log's filter takes all after a path for it.
+            raise CopyNotStarted(f"{what}: the host does not see {dest.parent}")
+        if not shutil.which("flatpak-spawn"):
+            raise CopyNotStarted(f"{what}: " + _("flatpak-spawn is not available"))
+        command = host_command("gio", "copy", "-p", self._f(real_path).get_uri(),
+                               str(dest.resolve()), watch_bus=True)
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except OSError as e:
+            raise CopyNotStarted(f"{what}: {e}") from e
+        errors: list[bytes] = []
+        reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
+        reader.start()  # so that a lot of error output cannot block the copy
+        state = {"last": time.monotonic(), "done": 0, "seen": -1, "stalled": False}
+        watching = threading.Event()
+
+        def watch():
+            while not watching.wait(HOST_PULL_LOOK_S):
+                with suppress(OSError):
+                    now = dest.stat().st_size
+                    if now > state["seen"]:
+                        state["seen"], state["last"] = now, time.monotonic()
+                if time.monotonic() - state["last"] > STALL_S:
+                    state["stalled"] = True
+                    _end(proc)
+                    return
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
+        failure: BaseException | None = None
+        said, pending = [], ""
+        decode = codecs.getincrementaldecoder("utf-8")("replace")
+        try:
+            while True:
+                data = os.read(proc.stdout.fileno(), 65536)
+                if not data:
+                    break
+                text = decode.decode(data)
+                said.append(text)
+                *complete, pending = re.split(r"[\r\n]", pending + text)
+                for update in (*complete, pending):
+                    fraction = copy_fraction(update)
+                    if fraction is None or int(fraction * size) <= state["done"]:
+                        continue
+                    state["done"], state["last"] = int(fraction * size), time.monotonic()
+                    if told is not None:
+                        told(state["done"], size)
+        except BaseException as e:  # noqa: BLE001 - raised after the copy ends: a `told` that
+            # raised (the window closed), Ctrl+C
+            failure = e
+            _end(proc)
+        finally:
+            watching.set()
+            watcher.join(HOST_PULL_LOOK_S + 1)
+            code = proc.wait()
+            reader.join(5)
+        if failure is not None:
+            raise failure
+        if state["stalled"]:
+            raise self._stall(what, "copy", started)
+        if code != 0:
+            detail = _detail(b"".join(errors).decode("utf-8", "replace"), "".join(said))
+            if not state["done"] and not _has_bytes(dest):
+                raise CopyNotStarted(f"{what}: {detail}")
+            raise DeviceError(f"{what}: {detail}")
 
     @_on_the_device
     def _write(self, real_path: str, data: bytes) -> None:
@@ -2665,14 +2865,16 @@ def _ms(seconds: float) -> int:
 
 
 def _wait(start, timeout_s: float, what: str, name: str = "operation", context=None,
-          quiet: bool = False) -> None:
+          quiet: bool = False, renewable: bool = False) -> None:
     """Run one asynchronous Gio operation to its end: in a worker thread on a main context of
     its own (or `context`, shared by the steps of one listing or of one file read:
     _steps_context), in the main thread on the global default one. `start(done,
     cancellable)` begins it; `done(finish)` gets a function that raises GLib.Error on failure.
     Raises DeviceError when it fails, GioTimedOut when cancelled at `timeout_s` and not done
     within CANCEL_WAIT_S. `quiet` (the many steps of reads): no DEBUG line for an answer in
-    time, and a stall at the time limit is information (the storage warns of it)."""
+    time, and a stall at the time limit is information (the storage warns of it).
+    `renewable` (a copy, which answers once at its end): `start(done, cancellable, alive)`,
+    and each call of `alive()` (its progress, in the same context) gives it `timeout_s` anew."""
     # Gio gives the answer in the main context that was the default of the thread when the
     # operation began. A worker thread's own context, pushed for the wait, needs nothing of
     # the main thread for the answer and the time limit (the window holds the global default
@@ -2709,14 +2911,26 @@ def _wait(start, timeout_s: float, what: str, name: str = "operation", context=N
             grace.attach(context)
         return False
 
-    timer = GLib.timeout_source_new(_ms(timeout_s))
-    timer.set_callback(lambda *_a: at_the_limit())
-    sources.append(timer)
+    def new_timer():
+        timer = GLib.timeout_source_new(_ms(timeout_s))
+        timer.set_callback(lambda *_a: at_the_limit())
+        sources.append(timer)
+        timer.attach(context)
+
+    def alive():
+        if cancelled or answers:
+            return  # past its limit, or done: nothing to renew
+        sources.pop().destroy()  # the timer of the limit, the last source while it runs
+        new_timer()
+
     if own:
         context.push_thread_default()
     try:
-        timer.attach(context)
-        start(done, cancellable)
+        new_timer()
+        if renewable:
+            start(done, cancellable, alive)
+        else:
+            start(done, cancellable)
         if not answers:  # an answer given within start() needs no loop
             loop.run()
     except BaseException:

@@ -31,6 +31,7 @@ from openexpress.connect import (
     Unauthorized,
     acknowledge,
 )
+from openexpress.device import whole_reads
 from openexpress.device.storage import (
     DeviceNotResponding,
     Entry,
@@ -483,7 +484,8 @@ def plan_uploads(
                     plan.already_done += 1
                     continue
             else:
-                cand.data = storage.read(path)
+                cand.data = whole_reads.whole_file(storage, path, entry.size,
+                                                   lambda path=path: storage.read(path))
                 if not state.singleton_changed(name, path, md5(cand.data)):
                     plan.already_done += 1
                     continue
@@ -562,7 +564,8 @@ def _read_candidate(c: UploadCandidate, storage: Storage, state: SyncState) -> b
         return c.data
     if c.device_path is None:
         return state.pending_path(c.datatype, c.name).read_bytes()
-    return storage.read(c.device_path)
+    return whole_reads.whole_file(storage, c.device_path, c.size,
+                                  lambda: storage.read(c.device_path))
 
 
 class _WholeReads:
@@ -583,7 +586,8 @@ class _WholeReads:
         if not why or c.device_path is None or not self._refresh():
             return data, why
         c.data = None  # the plan may have read it before the refresh
-        data = self.storage.read(c.device_path)
+        data = whole_reads.whole_file(self.storage, c.device_path, c.size,
+                                      lambda: self.storage.read(c.device_path))
         again = still_being_written(c, data)
         # The type and the sizes: never the name of the file.
         log.info("upload: a %s file read again after the device was mounted again: %s",

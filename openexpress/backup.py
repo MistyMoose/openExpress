@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 from openexpress import applog, paths
+from openexpress.device import whole_reads
 from openexpress.device.storage import DeviceError, Storage, refresh_to_read_again
 from openexpress.device.xmldevice import OUTPUT, GarminDevice
 from openexpress.fit import not_whole
@@ -155,10 +156,15 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
     total = len(device.raw)
     left_out = 0
     refreshed: bool | None = None  # at most once a backup; None: not asked yet
-    for n, (path, _entry, datatype, out) in enumerate(files, 2):
-        progress(Step(head, n, count))
+    for n, (path, entry, datatype, out) in enumerate(files, 2):
+        step = Step(head, n, count)
+        progress(step)
         log.debug("backup: copying file %d of %d (%s)", n, count, datatype)
-        data = storage.read(path)
+        # A large file copied whole tells its progress as the step of its file again, so that
+        # closing the window stops its copy too (stop_when_closed).
+        data = whole_reads.whole_file(
+            storage, path, entry.size, lambda path=path: storage.read(path),
+            lambda _done, _total, step=step: progress(step))
         found = _fit_check(path, data)
         # The type and the sizes: never the name of the file.
         if found and found[0]:
@@ -169,7 +175,8 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
                     log.info("backup: the device was not mounted again; files read cut short "
                              "are left out")
             if refreshed:
-                data = storage.read(path)
+                data = whole_reads.whole_file(storage, path, entry.size,
+                                              lambda path=path: storage.read(path))
                 found = _fit_check(path, data)
                 log.info("backup: a %s file read again after the device was mounted again: %s",
                          datatype, found[1] if found else "whole")

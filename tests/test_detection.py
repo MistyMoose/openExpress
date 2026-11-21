@@ -3222,8 +3222,8 @@ def test_the_log_says_where_an_update_goes_and_whether_it_is_on_a_drive(drive_wi
         return [line for line in lines if line.startswith(prefix)]
 
     def offered():
-        (line,) = logged("updates: ", lambda: updates.mark_present(
-            s.storage, updates.parse_updates(varia_answer()), 2))
+        (line,) = [line for line in logged("updates: ", lambda: updates.mark_present(
+            s.storage, updates.parse_updates(varia_answer()), 2)) if " offered (" in line]
         return line
 
     def said(reason, present=0):
@@ -3235,8 +3235,10 @@ def test_the_log_says_where_an_update_goes_and_whether_it_is_on_a_drive(drive_wi
         updates.parse_updates(varia_answer()), s.storage)) == [
         "software update: 006-B3592-03 3.40 (10_244 B) copied to GARMIN/GUPDATE.GCD"]
     assert offered() == said("matches", present=1)
-    target.write_bytes(VARIA_UPDATE[:-1] + b"?")  # the same size, another content
+    target.write_bytes(VARIA_UPDATE[:-1] + b"?")  # the same size, another content, later
     assert offered() == said("MD5 differs")
+    assert any(line.startswith("updates: GUPDATE.GCD written by openExpress with the time ")
+               and line.endswith(" later): read again") for line in seen)
     target.write_bytes(b"GCD")
     assert offered() == said("size differs (3 B on the device, 10_244 B offered)")
     assert seen and all(str(s.storage.root) not in line and MEDIA_USER not in line

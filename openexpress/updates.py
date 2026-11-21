@@ -358,6 +358,12 @@ _md5_read: dict[tuple, str] = {}
 # time on the device stay; the device by a hash of its address (which carries its serial).
 MD5_KEPT = "md5-on-device.json"
 MD5_KEPT_AT_MOST = 300
+# How much earlier the time the device gives a file openExpress wrote may be than the time it
+# gave right after the write, the file still taken for the one written (its size the same, its
+# MD5 the server's): a device keeps times in steps of 2 s, rounded down (a fēnix 8 gave a file
+# written at 22:56:27.87 the time 22:56:26 once plugged in again). A later time is another write
+# at that place; a file read whole is known at its very time only.
+WRITTEN_TIME_SLACK_S = 2
 
 
 def _md5_key(storage: Storage, real: str, size: int, mtime: float) -> str:
@@ -366,7 +372,16 @@ def _md5_key(storage: Storage, real: str, size: int, mtime: float) -> str:
                      repr(float(mtime))))
 
 
-def _kept_md5() -> dict[str, str]:
+def _written_key(storage: Storage, real: str) -> str:
+    """The key of what openExpress last wrote at `real` on this device: one a file."""
+    where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
+    return "|".join(("written", hashlib.sha256(where.encode()).hexdigest()[:32], real))
+
+
+def _kept_md5() -> dict:
+    """What md5-on-device.json keeps: a file read whole by its _md5_key, its MD5; a file
+    openExpress wrote by its _written_key, its size, its time right after the write and the
+    server's MD5."""
     try:
         kept = json.loads((paths.cache_dir() / MD5_KEPT).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -374,10 +389,10 @@ def _kept_md5() -> dict[str, str]:
     return kept if isinstance(kept, dict) else {}
 
 
-def _keep_md5(key: str, digest: str) -> None:
+def _keep_md5(key: str, value) -> None:
     kept = _kept_md5()
     kept.pop(key, None)
-    kept[key] = digest
+    kept[key] = value
     path = paths.cache_dir() / MD5_KEPT
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -392,8 +407,9 @@ def _keep_md5(key: str, digest: str) -> None:
 
 def remember_written(storage: Storage, real: str, md5: str | None) -> None:
     """The file openExpress has just written at `real` is the one with this MD5 (the server's,
-    checked when it was downloaded): kept by its size and its time on the device now, so that
-    the next check does not read it back (_md5_of)."""
+    checked when it was downloaded): kept with its size and its time on the device now, in the
+    place of what was kept of an earlier write there, so that the next check does not read it
+    back (_md5_of), also when the device gives its time a little apart later."""
     if not md5:
         return
     try:
@@ -407,7 +423,8 @@ def remember_written(storage: Storage, real: str, md5: str | None) -> None:
     digest = md5.casefold()
     where = getattr(storage, "device_uri", None) or str(getattr(storage, "root", ""))
     _md5_read[(where, real, entry.size, entry.mtime)] = digest
-    _keep_md5(_md5_key(storage, real, entry.size, entry.mtime), digest)
+    _keep_md5(_written_key(storage, real),
+              {"size": entry.size, "mtime": float(entry.mtime), "md5": digest})
 
 
 def checking_file_text() -> str:
@@ -423,17 +440,47 @@ def _md5_of(storage: Storage, real: str, size: int, mtime: float, told=None) -> 
     if key in _md5_read:  # never one of a file without a time (below)
         return _md5_read[key]
     if mtime:
-        kept = _kept_md5().get(_md5_key(storage, real, size, mtime))
-        if kept:
+        kept_all = _kept_md5()
+        kept = kept_all.get(_md5_key(storage, real, size, mtime))
+        if isinstance(kept, str) and kept:
             log.info("updates: %s known from before (its size and time the same), not read",
                      posixpath.basename(real))
             _md5_read[key] = kept
             return kept
+        known = _known_from_our_write(kept_all.get(_written_key(storage, real)), real, size,
+                                      mtime)
+        if known:
+            _md5_read[key] = known
+            return known
     digest = hashlib.md5(storage.read_at(real, told=told)).hexdigest()
     if mtime:
         _md5_read[key] = digest
         _keep_md5(_md5_key(storage, real, size, mtime), digest)
     return digest
+
+
+def _known_from_our_write(written, real: str, size: int, mtime: float) -> str | None:
+    """The server's MD5 of the file openExpress wrote at `real`, when it is still that file: the
+    same size, its time the time right after the write or at most WRITTEN_TIME_SLACK_S earlier.
+    Said in the log when the time is another; None when it is not that file (read whole then)."""
+    if not (isinstance(written, dict) and written.get("size") == size
+            and isinstance(written.get("md5"), str) and written.get("mtime")):
+        return None
+    name = posixpath.basename(real)
+    then = float(written["mtime"])
+    if mtime == then:
+        log.info("updates: %s known from before (its size and time the same), not read", name)
+        return written["md5"]
+    times = (f"updates: {name} written by openExpress with the time "
+             f"{datetime.fromtimestamp(then):%H:%M:%S}, the device gives "
+             f"{datetime.fromtimestamp(mtime):%H:%M:%S} now "
+             f"({abs(mtime - then):.3g} s {'earlier' if mtime < then else 'later'}")
+    if then - WRITTEN_TIME_SLACK_S <= mtime < then:
+        log.info("%s, within %g s): known from that write, not read", times,
+                 WRITTEN_TIME_SLACK_S)
+        return written["md5"]
+    log.info("%s): read again", times)
+    return None
 
 
 def presence(storage: Storage, u: SoftwareUpdate, progress=None) -> Presence:

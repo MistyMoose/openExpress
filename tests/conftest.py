@@ -8,6 +8,7 @@ import signal
 import struct
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -608,6 +609,10 @@ def usb_nodes(tmp_path, monkeypatch) -> Path:
     monkeypatch.setattr(gio_storage, "_test_drive_said", set())
     # Nor the devices that stopped responding (their places on USB).
     monkeypatch.setattr(gio_storage, "_stalled_at", {})
+    # Nor who used a device for an earlier test (its sessions and operations), nor a window
+    # closed in one (stop_waiting).
+    monkeypatch.setattr(gio_storage, "_in_use_by_device", {})
+    monkeypatch.setattr(gio_storage, "_stop_waiting", threading.Event())
     # Nor the connections whose error logs an earlier test read (diagnostics.at_open).
     from openexpress import diagnostics
 
@@ -616,6 +621,7 @@ def usb_nodes(tmp_path, monkeypatch) -> Path:
     from openexpress import hidden_folders
 
     monkeypatch.setattr(hidden_folders, "_kept", {})
+    monkeypatch.setattr(hidden_folders, "_busy", {})
     # Nor the lines an earlier test logged for a connection (applog.unchanged).
     from openexpress import applog
 

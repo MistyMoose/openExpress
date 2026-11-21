@@ -123,6 +123,8 @@ def _read_hidden(st, dev, needed=(), why: str = "", inside=()) -> bool:
     kept = hidden_folders.kept(st)
     if kept is not None and kept.state != hidden_folders.READ:
         return False  # it failed, or no session can be had: said once
+    if hidden_folders.busy_failures(st):
+        return False  # refused as busy: not asked again within a command, as any failure
     # Only what this connection has not read: a reading is added to what it read before.
     folders = [f for f in hidden_folders.folders_to_read(dev, needed, inside=inside)
                if kept is None or not kept.knows(f)]

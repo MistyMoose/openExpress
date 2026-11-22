@@ -506,8 +506,6 @@ class UpdatesPage:
         Garmin offers the device beta versions. More than one update `installable`: Install
         All, one question and one copy (a drive is ejected once after all of them; each
         Install ejects it after its own)."""
-        from openexpress import updates as upd
-
         d = self.session.device
         mass_storage = getattr(self.session, "mass_storage", False)
         installed = software_text(d.software_version_str)
@@ -588,11 +586,14 @@ class UpdatesPage:
         if system is None and not ready and not count and not untaken:
             image.add_css_class("success")  # up to date only
         box.append(image)
+        # TRANSLATORS: a line under the heading of the Updates page, without a full stop (the
+        # command line has the same sentence with one)
+        beta_line = _("Garmin offers beta software for this device") if beta else None
         for text, styles in ((title, ["title-1"]), (todo, []), (subtitle, ["dim-label"]),
                              (detail, ["caption", "dim-label"]),
                              (note, ["caption", "dim-label"]),
                              (advice, ["caption", "dim-label"]),
-                             (_(upd.BETA_OFFERED) if beta else None, ["caption", "dim-label"])):
+                             (beta_line, ["caption", "dim-label"])):
             line = _status_line(text, styles)
             if line is not None:
                 box.append(line)

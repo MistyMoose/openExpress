@@ -1151,7 +1151,8 @@ def test_status_with_a_beta_system_update():
         (f"{VERSIONS}\u00a0· Beta\u00a0· 12\u00a0B",
          [["dim-label"], ["heading", "warning"], ["dim-label"], ["dim-label"]]),
         ("Test Bundle\u00a0· Recommended", ["caption", "dim-label"]),
-        ("Garmin offers beta software for this device.", ["caption", "dim-label"])]
+        # One sentence under the heading: no full stop (the command line keeps its own).
+        ("Garmin offers beta software for this device", ["caption", "dim-label"])]
 
 
 @pytest.mark.needs_display
@@ -1161,12 +1162,12 @@ def test_status_says_beta_versions_are_offered_when_none_is_listed():
     _win, status, _groups, _buttons = _updates_page(items, beta=True)
     assert [t for t, _c in status["texts"]][1:] == [
         f"{VERSIONS}\u00a0· 12\u00a0B", "Test Bundle\u00a0· Recommended",
-        "Garmin offers beta software for this device."]
+        "Garmin offers beta software for this device"]
     # Up to date: the line is there as well.
     _win, status, _groups, _buttons = _updates_page([], beta=True)
     assert [t for t, _c in status["texts"]] == [
         "Software is up to date", "Software 23.39",
-        "Garmin offers beta software for this device."]
+        "Garmin offers beta software for this device"]
 
 
 @pytest.mark.needs_display
@@ -1221,7 +1222,7 @@ def test_beta_in_the_window_in_polish(monkeypatch):
     assert [t for t, _c in status["texts"]] == [
         "Dostępne są 2 aktualizacje", f"{VERSIONS}\u00a0· Beta\u00a0· 12\u00a0B",
         "Test Bundle\u00a0· Zalecana",
-        "Garmin oferuje dla tego urządzenia oprogramowanie w\u00a0wersji beta."]
+        "Garmin oferuje dla tego urządzenia oprogramowanie w\u00a0wersji beta"]
 
 
 def test_cli_marks_a_beta_version_in_what_will_be_installed(offered_beta, no_download, capsys):
@@ -1564,7 +1565,7 @@ def test_status_of_a_beta_that_waits_for_the_device():
     _win, status, _groups, _buttons = _updates_page(_staged_items(BETA), beta=True)
     assert status["texts"][2] == (
         f"{VERSIONS}\u00a0· Beta", [["dim-label"], ["heading", "warning"]])
-    assert status["texts"][4][0] == "Garmin offers beta software for this device."
+    assert status["texts"][4][0] == "Garmin offers beta software for this device"
 
 
 @pytest.mark.needs_display

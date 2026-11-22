@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 20:35+0100\n"
+"POT-Creation-Date: 2026-11-22 20:49+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -10408,6 +10408,13 @@ msgstr[2] "Urządzenie nie zainstalowało aktualizacji"
 #, python-brace-format
 msgid "Install All"
 msgstr "Zainstaluj wszystkie"
+
+#. TRANSLATORS: a line under the heading of the Updates page, without a full stop (the
+#. command line has the same sentence with one)
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgid "Garmin offers beta software for this device"
+msgstr "Garmin oferuje dla tego urządzenia oprogramowanie w wersji beta"
 
 #. TRANSLATORS: a line of the row of an update that openExpress cannot install
 #. yet (its group says why), without a full stop

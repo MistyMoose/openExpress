@@ -8,18 +8,16 @@ shows the folder, and a drive (which hides nothing), install it as any map. All 
 and answers here are made up."""
 
 import pytest
-from fakes import in_language
+from fakes import REGION_COMPONENT, in_language, map_entry, xml_with
 
 from openexpress import download, maps
 from openexpress.device.storage import LocalStorage
 from openexpress.device.xmldevice import parse
 
-# A component in Garmin/RegionMaps: the device names that folder for its own files.
-REGION_COMPONENT = """  <UpdateFile><PartNumber>006-D0005-00</PartNumber><Version><Major>1</Major>
-   <Minor>10</Minor></Version><Path>Garmin/RegionMaps</Path><FileName>made_up.rgn</FileName>
-  </UpdateFile>
-"""
 NAME = "Made-up Region"
+# The file of the map, in Garmin/RegionMaps: the device names that folder for its own files
+# (REGION_COMPONENT).
+REGION_MAP = "Garmin/RegionMaps/D0000001A.img"
 REFUSED = ("Map “Made-up Region” cannot be installed: the device hides the folder Garmin/RegionMaps "
            "from the file manager, and openExpress does not install maps there yet.")
 REFUSED_PL = ("Nie można zainstalować mapy „Made-up Region”: urządzenie ukrywa folder "
@@ -32,30 +30,11 @@ REASON = {"en": ("The device hides the folder Garmin/RegionMaps from the file ma
                  "jeszcze nie instaluje tam map")}
 
 
-def _map(path="Garmin/RegionMaps/D0000001A.img"):
-    return {
-        "displayname": NAME, "maptype": "CityNavigator", "installationstate": 0,
-        "isreinstall": False, "canuninstall": True,
-        "release": {"majorversion": 2026, "minorversion": 20},
-        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
-                          "failoverhosts": []},
-        "filestoremove": [],
-        "installoptions": [{"ispreferred": True, "identifier": {"regionpartnumber": NAME},
-                            "files": [{"filename": path, "datatype": "X",
-                                       "deliverableoptions": [{
-                                           "type": 1, "url": "x.img",
-                                           "md5": "0123456789ABCDEF0123456789ABCDEF",
-                                           "sizeinbytes": 4}]}]}],
-    }
-
-
 @pytest.fixture
 def watch(device_root):
     """The made-up device, its GarminDevice.xml naming Garmin/RegionMaps for a component; the
     folder is not listed: the device hides it."""
-    xml = device_root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                           REGION_COMPONENT + " </MassStorageMode>"))
+    xml_with(device_root, REGION_COMPONENT)
     assert not (device_root / "GARMIN" / "RegionMaps").exists()
     return device_root
 
@@ -65,7 +44,7 @@ def _device(root):
 
 
 def _maps(storage, root, *entries):
-    found, _count = maps.read_maps({"maps": list(entries) or [_map()]})
+    found, _count = maps.read_maps({"maps": list(entries) or [map_entry(NAME, REGION_MAP)]})
     maps.mark_waiting(storage, found, _device(root))
     return found
 
@@ -115,7 +94,7 @@ def test_the_command_line_refuses_it_before_it_lists_anything(watch, monkeypatch
 
     monkeypatch.setattr(cli, "open_storage", lambda args: LocalStorage(watch))
     monkeypatch.setattr(maps, "check", lambda client, dev, ask=None, country=None:
-                        maps.read_maps({"maps": [_map()]}))
+                        maps.read_maps({"maps": [map_entry(NAME, REGION_MAP)]}))
     monkeypatch.setattr(download, "fetch", lambda *a, **kw: pytest.fail("downloaded"))
     before = _tree(watch)
     assert main(["maps", "install", NAME, "--apply"]) == 1
@@ -133,5 +112,5 @@ def test_a_map_into_that_folder_the_device_shows_is_installable(watch):
 
 def test_a_map_into_a_folder_the_device_names_for_nothing_is_installable(watch):
     """A folder not named for a component may only not be there yet: made for the write."""
-    (m,) = _maps(LocalStorage(watch), watch, _map("Garmin/NewMaps/D0000001A.img"))
+    (m,) = _maps(LocalStorage(watch), watch, map_entry(NAME, "Garmin/NewMaps/D0000001A.img"))
     assert m.folder_hidden is None and maps.can_install(m)

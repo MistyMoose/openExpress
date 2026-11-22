@@ -62,11 +62,13 @@ def test_the_updates_page_says_the_state_in_the_words_of_the_device_row(entries,
 ])
 def test_an_update_ready_is_said_alike_on_the_row_and_the_updates_page(drive, row, line):
     """The row says it in one sentence; the Updates page in a short heading and what to do
-    under it, then the versions only (not the same words again)."""
+    under it, the same words, then the versions only (not the same words again)."""
     _win, status, _groups, _buttons = _updates_page(_staged_items(), drive=drive)
     heading, said, versions = (text for text, _styles in status["texts"][:3])
     assert (heading, said) == ("Update Ready", line)
     assert _row_text(_staged_items(), drive=drive) == row
+    # The row's sentence is the heading and the line under it, but for the letter case.
+    assert row.casefold() == f"{heading}: {said}".casefold()
     assert "install it" not in versions and "23.39" in versions
 
 

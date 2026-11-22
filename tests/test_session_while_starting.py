@@ -7,7 +7,7 @@ import contextlib
 import types
 
 import pytest
-from fakes import usb_devices
+from fakes import hidden_folder_waits, usb_devices
 
 from openexpress import hidden_folders
 from openexpress.device import gio_storage
@@ -75,9 +75,7 @@ class _Starting(LocalStorage):
 
 @pytest.fixture
 def waits(monkeypatch):
-    waited = []
-    monkeypatch.setattr(hidden_folders, "_sleep", waited.append)
-    return waited
+    return hidden_folder_waits(monkeypatch)
 
 
 def test_a_device_still_starting_is_waited_for(tmp_path, waits):

@@ -5,11 +5,11 @@ new one is not written whole. A made-up watch whose GarminDevice.xml names Garmi
 its ordinary listing does not show and its own session does. All devices, files and answers
 here are made up."""
 
-import contextlib
 import hashlib
 import types
 
 import pytest
+from fakes import offered_update, ptp_opened, xml_with
 from ptp_fake import FakeDevice
 
 from openexpress import download, updates
@@ -29,26 +29,15 @@ PROMPTS_COMPONENT = """  <UpdateFile><PartNumber>006-D0002-00</PartNumber><Versi
 """
 
 
-def _entry(part, name, path, filename, data, primary=False):
-    return {
-        "partNumber": part, "productName": name, "dataType": "Firmware",
-        "displayVersion": "2.18", "severity": "Recommended", "isPrimaryFirmware": primary,
-        "locale": None, "releaseState": "live", "releaseNotes": [], "eulaUrl": None,
-        "deliverable": {"downloadUrl": "https://example.org/" + filename,
-                        "md5": hashlib.md5(data).hexdigest().upper(), "sizeInBytes": len(data)},
-        "installation": {"path": path, "fileName": filename, "isReinstall": False,
-                         "isProductInstalled": True, "isRestartRequired": False, "order": 0},
-    }
-
-
 def server_answer():
     return {"updates": [
-        _entry("006-B0000-00", "Made-up Watch", "Garmin", "GUPDATE.GSP", SOFTWARE, primary=True),
-        _entry("006-D0002-00", "Made-up Prompt Bundle", "GARMIN\\PROMPTS", "prompt_bundle.hvm",
-               NEW_PROMPTS),
+        offered_update("006-B0000-00", "Made-up Watch", "Garmin", "GUPDATE.GSP", SOFTWARE,
+                       primary=True),
+        offered_update("006-D0002-00", "Made-up Prompt Bundle", "GARMIN\\PROMPTS",
+                       "prompt_bundle.hvm", NEW_PROMPTS),
         # Its information, named by the server as the update itself.
-        _entry("006-D0002-00-META", "Made-up Prompt Bundle", "Garmin\\UpdateMetadata",
-               "006-D0002-00.upd", META),
+        offered_update("006-D0002-00-META", "Made-up Prompt Bundle", "Garmin\\UpdateMetadata",
+                       "006-D0002-00.upd", META),
     ]}
 
 
@@ -105,20 +94,12 @@ class _OverUsb(LocalStorage):
         return False
 
     def exclusive_ptp(self):
-        @contextlib.contextmanager
-        def opened():
-            self.fake.reconnect()
-            with ptp.Session(self.fake) as session:
-                yield session
-
-        return opened()
+        return ptp_opened(self.fake)
 
 
 @pytest.fixture
 def watch(device_root):
-    xml = device_root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                           PROMPTS_COMPONENT + " </MassStorageMode>"))
+    xml_with(device_root, PROMPTS_COMPONENT)
     fake = _Watch()
     return _OverUsb(device_root, fake), fake
 

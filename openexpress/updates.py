@@ -370,8 +370,8 @@ MD5_KEPT = "md5-on-device.json"
 MD5_KEPT_AT_MOST = 300
 # How much earlier the time the device gives a file openExpress wrote may be than the time it
 # gave right after the write, the file still taken for the one written (its size the same, its
-# MD5 the server's): a device keeps times in steps of 2 s, rounded down (a fēnix 8 gave a file
-# written at 22:56:27.87 the time 22:56:26 once plugged in again). A later time is another write
+# MD5 the server's): a device keeps times in steps of 2 s, rounded down, as a fēnix 8 does (a file
+# written at 12:00:01.6 has the time 12:00:00 once plugged in again). A later time is another write
 # at that place; a file read whole is known at its very time only.
 WRITTEN_TIME_SLACK_S = 2
 

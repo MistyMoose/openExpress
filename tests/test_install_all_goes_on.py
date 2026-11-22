@@ -4,11 +4,10 @@ whose GarminDevice.xml names a folder for one of its components (Garmin/Prompts)
 listing does not show; the server offers its software, a file of that folder and a map
 support file. All devices, files and answers here are made up."""
 
-import hashlib
 import types
 
 import pytest
-from fakes import Section, window_methods
+from fakes import Section, offered_update, window_methods, xml_with
 from fakes import window as stand_in
 
 from openexpress import download, updates
@@ -27,34 +26,20 @@ PROMPTS_COMPONENT = """  <UpdateFile><PartNumber>006-D0001-00</PartNumber><Versi
 """
 
 
-def _entry(part, name, path, filename, data, primary=False):
-    """One offered item, the keys as the server sends them."""
-    return {
-        "partNumber": part, "productName": name, "dataType": "Firmware",
-        "displayVersion": "2.18", "severity": "Recommended", "isPrimaryFirmware": primary,
-        "locale": None, "releaseState": "live", "releaseNotes": [], "eulaUrl": None,
-        "deliverable": {"downloadUrl": "https://example.org/" + filename,
-                        "md5": hashlib.md5(data).hexdigest().upper(), "sizeInBytes": len(data)},
-        "installation": {"path": path, "fileName": filename, "isReinstall": False,
-                         "isProductInstalled": True, "isRestartRequired": False, "order": 0},
-    }
-
-
 def server_answer():
     return {"updates": [
-        _entry("006-B0000-00", "Made-up Watch", "Garmin", "GUPDATE.GSP", SOFTWARE, primary=True),
-        _entry("006-D0002-00", "Made-up Prompt Bundle", "GARMIN\\PROMPTS", "prompt_bundle.hvm",
-               PROMPTS),
-        _entry("006-D0003-00", "Map support file", "Garmin\\SID", "D0000300.sid", SID),
+        offered_update("006-B0000-00", "Made-up Watch", "Garmin", "GUPDATE.GSP", SOFTWARE,
+                       primary=True),
+        offered_update("006-D0002-00", "Made-up Prompt Bundle", "GARMIN\\PROMPTS",
+                       "prompt_bundle.hvm", PROMPTS),
+        offered_update("006-D0003-00", "Map support file", "Garmin\\SID", "D0000300.sid", SID),
     ]}
 
 
 @pytest.fixture
 def watch(device_root):
     """The made-up watch: its GarminDevice.xml names Garmin/Prompts, which it does not list."""
-    xml = device_root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                           PROMPTS_COMPONENT + " </MassStorageMode>"))
+    xml_with(device_root, PROMPTS_COMPONENT)
     (device_root / "GARMIN" / "SID").mkdir()
     return device_root
 

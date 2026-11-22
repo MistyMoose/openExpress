@@ -6674,7 +6674,6 @@ def test_logging_out_on_the_view_of_a_device_of_the_account_gives_the_start_page
 def test_logging_out_on_the_view_of_a_remembered_device_keeps_it(start_window, monkeypatch):
     """Logged out on the read-only view of a device remembered by this computer (not
     from the account): the view stays."""
-
     win = start_window
     later = defer_background(win)
     remember_others()

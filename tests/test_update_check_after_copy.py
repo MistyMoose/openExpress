@@ -132,7 +132,7 @@ def test_our_file_given_back_two_seconds_earlier_is_not_read_again(watch, xdg, d
     import logging
 
     written = _written(watch, device_root)
-    _moved(written, -1.6)  # 22:56:27.87 given back as 22:56:26
+    _moved(written, -1.6)  # written at 12:00:01.6, given back as 12:00:00
     _another_process(monkeypatch, watch)
     with caplog.at_level(logging.INFO, logger="openexpress"):
         (again,) = _offered(watch)

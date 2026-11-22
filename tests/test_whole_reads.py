@@ -190,6 +190,7 @@ def test_a_slow_copy_whose_bytes_keep_coming_is_not_a_stall(mtp, monkeypatch):
     """Each piece renews the time limit: the whole copy takes longer than STALL_S."""
     monkeypatch.setattr(gio_storage, "STALL_S", 0.3)
     files, st, data = mtp()
+    files.most = None  # pieces of 1 MiB: each shorter than STALL_S, all of them longer
     files.copy_piece_delay_s = 0.12
     started = time.monotonic()
     assert whole_reads.whole_file(st, PATH, len(data), stream_of(st)) == data

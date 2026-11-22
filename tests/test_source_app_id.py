@@ -89,8 +89,8 @@ def test_the_window_and_the_watcher_take_the_id_of_this_install(monkeypatch, fla
 
 @pytest.mark.parametrize("flatpak, wanted", [(True, FLATPAK_ID), (False, SOURCE_ID)])
 def test_background_sync_stops_the_watcher_of_this_install_only(monkeypatch, flatpak, wanted):
-    """Turning background sync off in the Flatpak no longer stops the watcher of the version
-    from source, nor the other way round."""
+    """Turning background sync off stops the watcher of its own install only: in the Flatpak not
+    that of the version from source, nor the other way round."""
     from openexpress import background
 
     monkeypatch.setattr(paths, "in_flatpak", lambda: flatpak)
@@ -101,13 +101,11 @@ def test_background_sync_stops_the_watcher_of_this_install_only(monkeypatch, fla
     assert asked == [(wanted + ".Watch", "/" + (wanted + ".Watch").replace(".", "/"))]
 
 
-def test_the_icons_inside_the_window_keep_the_flatpaks_names(monkeypatch):
+def test_the_icons_inside_the_window_keep_the_flatpaks_names():
     """They are the names of the files in openexpress/data, the same in both installs."""
     from openexpress.gui import start
 
-    monkeypatch.setattr(paths, "in_flatpak", lambda: False)
-    named = f"{FLATPAK_ID}-device-symbolic"
-    assert named == start.DEVICE_ICON
+    assert f"{FLATPAK_ID}-device-symbolic" == start.DEVICE_ICON
     assert (DATA / f"{start.DEVICE_ICON}.svg").is_file()
 
 
@@ -347,13 +345,13 @@ def test_install_desktop_goes_on_beside_the_flatpak(from_source, monkeypatch, ca
 
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/" + name)
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: pytest.fail(f"ran {a}"))
-    assert not hasattr(desktop, "flatpak_installed")
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: pytest.fail(f"started {a}"))
     assert cli.main(["install-desktop"]) == 0
     assert f"Would write {_data() / 'applications' / f'{SOURCE_ID}.desktop'}" in (
         capsys.readouterr().out)
 
 
-def test_install_desktop_has_no_force_any_more(from_source):
+def test_install_desktop_refuses_force(from_source):
     with pytest.raises(SystemExit) as stopped:
         cli.main(["install-desktop", "--force"])
     assert stopped.value.code == 2

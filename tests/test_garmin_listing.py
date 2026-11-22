@@ -59,7 +59,7 @@ def test_with_nothing_in_both_the_ordinary_objects_come_first_then_garmins(devic
     assert listed == expected and listed
 
 
-def test_the_fenix_like_folders_list_as_they_did(device):
+def test_a_fenix_like_watch_lists_seen_objects_then_hidden_ones(device):
     with ptp.Session(device) as session:
         sql = _listed(session, device, "GARMIN/SQL")
         prompts = _listed(session, device, "GARMIN/Prompts")

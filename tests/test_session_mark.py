@@ -64,7 +64,9 @@ def test_the_mark_says_the_place_on_usb_its_quiet_and_the_install_nothing_more(r
 
 def test_a_session_of_another_process_is_seen_while_it_lasts_and_its_quiet(tmp_path, runtime,
                                                                            monkeypatch):
+    """Without the shared folder: the own one alone carries the mark."""
     other = OtherProcessSession(tmp_path, runtime)
+    assert not (runtime / "app").exists()
     assert session_mark.active(PLACE)  # its lock is taken
     other.finish()
     assert session_mark.active(PLACE)  # the quiet after it
@@ -91,13 +93,6 @@ def test_two_devices_have_a_mark_each(tmp_path, runtime):
     assert not session_mark.active((3, 14)) and session_mark.active((3, 15))
     second.finish()
     assert not session_mark.active((1, 14))  # another bus, never marked
-
-
-def test_without_the_shared_folder_the_own_one_does(tmp_path, runtime):
-    other = OtherProcessSession(tmp_path, runtime)
-    assert not (runtime / "app").exists()
-    assert session_mark.active(PLACE)
-    other.finish()
 
 
 # --- the version from source and the Flatpak -------------------------------------------------

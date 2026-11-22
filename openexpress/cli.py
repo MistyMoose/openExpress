@@ -3473,12 +3473,20 @@ def cmd_music(args) -> int:
     if cmd == "add":
         tracks = music.scan([Path(p) for p in args.paths], dev, forced_kind=args.kind)
         plan = music.plan_copy(tracks, dev, st)
-        print(ngettext("Found {count} playable file; {to_copy} to copy ({size}), "
-                       "{already} already on the device.",
-                       "Found {count} playable files; {to_copy} to copy ({size}), "
-                       "{already} already on the device.", len(tracks)).format(
-            count=len(tracks), to_copy=len(plan.to_copy), size=human_size(plan.size),
-            already=len(plan.already)))
+        if plan.already:
+            print(ngettext("Found {count} playable file; {to_copy} to copy ({size}), "
+                           "{already} already on the device.",
+                           "Found {count} playable files; {to_copy} to copy ({size}), "
+                           "{already} already on the device.", len(tracks)).format(
+                count=len(tracks), to_copy=len(plan.to_copy), size=human_size(plan.size),
+                already=len(plan.already)))
+        else:
+            # TRANSLATORS: `openexpress music add`, when none of the files found is on the device
+            # yet ({to_copy}: how many will be copied, {size}: their size)
+            print(ngettext("Found {count} playable file; {to_copy} to copy ({size}).",
+                           "Found {count} playable files; {to_copy} to copy ({size}).",
+                           len(tracks)).format(count=len(tracks), to_copy=len(plan.to_copy),
+                                               size=human_size(plan.size)))
         for t, dest in plan.to_copy[: (None if args.verbose else 15)]:
             note = music.replaced_note(plan, t, dest)
             print(f"  ~ {dest}  {note}" if note else f"  + {dest}")

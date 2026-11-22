@@ -41,6 +41,8 @@ from openexpress.gui.words import (  # noqa: E402
     copied_update_text,
     not_installed_advice,
     not_installed_text,
+    ready_heading,
+    ready_line,
     software_text,
     update_state_text,
 )
@@ -495,20 +497,19 @@ class UpdatesPage:
     def _updates_status(self, sec, system, count: int, beta: bool = False, ready=(),
                         only=None, installable=(), untaken=()) -> None:
         """Builds the top of the Updates page in `sec`: the state of the updates as the row
-        "Device Software" says it (update_state_text), under it the `system` update or the
-        device's version. The state: `count` to install (`only`: the one of them); some
-        copied that wait for the device (`ready`), with `count` still to install; when
+        "Device Software" says it (update_state_text; copied ones that wait: a short heading
+        and what to do under it), under it the `system` update or the device's version. The
+        state: `count` to install (`only`: the one of them); some copied that wait for the
+        device (`ready`), with `count` still to install; when
         nothing else is to do, those copied and not installed by the device although it was
         unplugged since (`untaken`), without Eject or Install; else up to date. `beta`:
         Garmin offers the device beta versions. More than one update `installable`: Install
         All, one question and one copy (a drive is ejected once after all of them; each
         Install ejects it after its own)."""
-        from openexpress import updates as upd
-
         d = self.session.device
         mass_storage = getattr(self.session, "mass_storage", False)
         installed = software_text(d.software_version_str)
-        detail = note = advice = None
+        todo = detail = note = advice = None
         buttons = []
         if system is not None:
             icon = "software-update-available-symbolic"
@@ -536,12 +537,13 @@ class UpdatesPage:
                                             lambda u=system: self.confirm_update(u),
                                             "suggested-action" if note is None else None))
         elif ready:
-            # What to do is in the title (as on the row "Device Software"), with how many are
-            # still to install (listed below); under it the versions of the one copied (of
-            # several, the device's software, if it is one of them, and the names of all).
+            # A short heading; under it what to do, with how many are still to install (listed
+            # below), then the versions of the one copied (of several, the device's software,
+            # if it is one of them, and the names of all). The row "Device Software" says the
+            # heading and what to do in one sentence.
             icon = "software-update-available-symbolic"
-            title = update_state_text("ready", count, mass_storage=mass_storage,
-                                      waiting=len(ready))
+            title = ready_heading(len(ready))
+            todo = ready_line(len(ready), count, mass_storage=mass_storage)
             lead = next((u for u in ready if u.is_system), ready[0] if len(ready) == 1 else None)
             if mass_storage:
                 # A drive: the device takes the update once it is ejected.
@@ -584,11 +586,14 @@ class UpdatesPage:
         if system is None and not ready and not count and not untaken:
             image.add_css_class("success")  # up to date only
         box.append(image)
-        for text, styles in ((title, ["title-1"]), (subtitle, ["dim-label"]),
+        # TRANSLATORS: a line under the heading of the Updates page, without a full stop (the
+        # command line has the same sentence with one)
+        beta_line = _("Garmin offers beta software for this device") if beta else None
+        for text, styles in ((title, ["title-1"]), (todo, []), (subtitle, ["dim-label"]),
                              (detail, ["caption", "dim-label"]),
                              (note, ["caption", "dim-label"]),
                              (advice, ["caption", "dim-label"]),
-                             (_(upd.BETA_OFFERED) if beta else None, ["caption", "dim-label"])):
+                             (beta_line, ["caption", "dim-label"])):
             line = _status_line(text, styles)
             if line is not None:
                 box.append(line)

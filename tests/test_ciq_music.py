@@ -329,7 +329,7 @@ def test_window_playlist_summary(iq_device, library):
     text = MainWindow._playlist_summary(plan)
     assert text.splitlines() == [
         "3 tracks",
-        "2 files to copy (306\u00a0B), 0 already on the device",
+        "2 files to copy (306\u00a0B)",
         "",
         "2 tracks cannot be added:",
         "• lossless.flac (format not supported by the device)",
@@ -3719,7 +3719,7 @@ def test_music_add_dry_run_marks_the_file_it_would_replace(iq_device, device_roo
     argv = ["--path", str(device_root), "music", "add", *map(str, songs)]
     assert main(argv) == 0
     assert capsys.readouterr().out.splitlines() == [
-        "Found 2 playable files; 2 to copy (306 B), 0 already on the device.",
+        "Found 2 playable files; 2 to copy (306 B).",
         f"  + {ONE}",
         f"  ~ {TWO}  (replaces the file on the device: 150 B → 203 B)",
         "1 file on the device will be replaced.",
@@ -3760,8 +3760,27 @@ def test_music_add_without_a_replaced_file_says_nothing_of_replacing(iq_device, 
 
     assert main(["--path", str(device_root), "music", "add", *map(str, songs)]) == 0
     assert capsys.readouterr().out.splitlines() == [
-        "Found 2 playable files; 2 to copy (306 B), 0 already on the device.",
+        "Found 2 playable files; 2 to copy (306 B).",
         f"  + {ONE}", f"  + {TWO}", "Dry run: nothing was changed. Add --apply."]
+
+
+@pytest.mark.parametrize(("language", "there", "line"), [
+    ("en", 0, "Found 2 playable files; 2 to copy (306 B)."),
+    ("en", 1, "Found 2 playable files; 1 to copy (203 B), 1 already on the device."),
+    ("pl", 0, "Znaleziono 2 pliki do odtwarzania; do skopiowania: 2 (306 B)."),
+    ("pl", 1, "Znaleziono 2 pliki do odtwarzania; do skopiowania: 1 (203 B), już na urządzeniu: 1.")])
+def test_music_add_says_what_is_already_there_only_when_something_is(iq_device, device_root,
+                                                                    songs, capsys, language,
+                                                                    there, line):
+    """As the window's question: no "0 already on the device"; with some there, how many are."""
+    from openexpress.cli import main
+
+    st, _dev = iq_device
+    if there:
+        on_device(st, ONE, 103)  # the same size: already there
+    assert main(["--path", str(device_root), "--lang", language, "music", "add",
+                 *map(str, songs)]) == 0
+    assert capsys.readouterr().out.splitlines()[0] == line
 
 
 def test_replaced_files_are_counted_also_when_the_list_is_cut(iq_device, device_root, tmp_path,
@@ -3798,7 +3817,7 @@ def test_window_says_before_copying_that_files_are_replaced(iq_device, songs, li
 
     st, dev = iq_device
     tracks = music.scan(songs, dev)
-    plain = "306\u00a0B will be copied to the device (0 files already there)."
+    plain = "306\u00a0B will be copied to the device."
     assert MainWindow._copy_summary(music.plan_copy(tracks, dev, st)) == plain
     assert "replaced" not in MainWindow._playlist_summary(music.plan_playlist(library, dev, st))
 
@@ -3806,8 +3825,37 @@ def test_window_says_before_copying_that_files_are_replaced(iq_device, songs, li
     assert MainWindow._copy_summary(music.plan_copy(tracks, dev, st)) == (
         plain + "\n\n1 file on the device will be replaced.")
     lines = MainWindow._playlist_summary(music.plan_playlist(library, dev, st)).splitlines()
-    assert lines[:3] == ["3 tracks", "2 files to copy (306\u00a0B), 0 already on the device",
+    assert lines[:3] == ["3 tracks", "2 files to copy (306\u00a0B)",
                          "1 file on the device will be replaced."]
+
+
+def test_the_questions_say_what_is_already_there_only_when_something_is(iq_device, songs,
+                                                                        library):
+    """With none of the music on the device, no "(0 files already there)"; with some, as
+    before the copy."""
+    from openexpress.gui.app import MainWindow
+
+    st, dev = iq_device
+    on_device(st, ONE, 103)  # the same size: already there
+    assert MainWindow._copy_summary(music.plan_copy(music.scan(songs, dev), dev, st)) == (
+        "203\u00a0B will be copied to the device (1 file already there).")
+    assert MainWindow._playlist_summary(music.plan_playlist(library, dev, st)).splitlines()[1] == (
+        "1 file to copy (203\u00a0B), 1 already on the device")
+
+
+def test_the_questions_with_nothing_there_in_polish(iq_device, songs, library):
+    from openexpress import i18n
+    from openexpress.gui.app import MainWindow
+
+    st, dev = iq_device
+    i18n.setup("pl")
+    try:
+        copy = MainWindow._copy_summary(music.plan_copy(music.scan(songs, dev), dev, st))
+        playlist = MainWindow._playlist_summary(music.plan_playlist(library, dev, st))
+    finally:
+        i18n.setup("en")
+    assert copy == "Na urządzenie zostanie skopiowane 306\u00a0B."
+    assert playlist.splitlines()[1] == "Do skopiowania: 2 pliki (306\u00a0B)"
 
 
 def test_replaced_files_in_polish(iq_device, songs):

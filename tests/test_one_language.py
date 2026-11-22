@@ -56,16 +56,17 @@ def test_the_updates_page_says_the_state_in_the_words_of_the_device_row(entries,
 
 
 @pytest.mark.needs_display
-@pytest.mark.parametrize("drive, words", [
-    (False, "Update ready: unplug the device to install it"),
-    (True, "Update ready: eject the device to install it"),
+@pytest.mark.parametrize("drive, row, line", [
+    (False, "Update ready: unplug the device to install it", "Unplug the device to install it"),
+    (True, "Update ready: eject the device to install it", "Eject the device to install it"),
 ])
-def test_an_update_ready_is_said_alike_on_the_row_and_the_updates_page(drive, words):
-    """The title says what to do; the line under it the versions only (not the same words
-    again)."""
+def test_an_update_ready_is_said_alike_on_the_row_and_the_updates_page(drive, row, line):
+    """The row says it in one sentence; the Updates page in a short heading and what to do
+    under it, then the versions only (not the same words again)."""
     _win, status, _groups, _buttons = _updates_page(_staged_items(), drive=drive)
-    title, versions = status["texts"][0][0], status["texts"][1][0]
-    assert title == words == _row_text(_staged_items(), drive=drive)
+    heading, said, versions = (text for text, _styles in status["texts"][:3])
+    assert (heading, said) == ("Update Ready", line)
+    assert _row_text(_staged_items(), drive=drive) == row
     assert "install it" not in versions and "23.39" in versions
 
 

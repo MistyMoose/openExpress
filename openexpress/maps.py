@@ -544,8 +544,10 @@ def can_install(m: UniversalMap, hidden_trial: bool = False) -> bool:
 
 def cannot_install_reason(m: UniversalMap) -> str:
     """The same reason as cannot_install_message, short, for the line under the map's name."""
-    if (folder := m.hidden_folder or m.folder_hidden) is not None:
-        return not_installed_into(folder)
+    if m.hidden_folder is not None:
+        return not_installed_into(m.hidden_folder)
+    if m.folder_hidden is not None:
+        return not_installed_hidden_inside(m.folder_hidden)
     if m.restricted is True:
         return _("Cannot be installed: Garmin does not offer this map in your account's "
                  "country")
@@ -559,11 +561,17 @@ def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
     """Why `m` cannot be installed, the same words in the command line and the window;
     `hidden_trial`: the reasons of the server and the account only (the trial installs into a
     folder the device hides)."""
-    if (folder := (None if hidden_trial else m.hidden_folder) or m.folder_hidden) is not None:
+    if not hidden_trial and m.hidden_folder is not None:
         # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
         # .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
-                 "the folder {folder} yet.").format(name=m.name, folder=folder)
+                 "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
+    if m.folder_hidden is not None:
+        # TRANSLATORS: {folder}: a folder the device hides inside a folder the file manager
+        # shows, e.g. GARMIN/RegionMaps
+        return _("Map “{name}” cannot be installed: the device hides the folder {folder} from "
+                 "the file manager, and openExpress does not install maps there yet.").format(
+            name=m.name, folder=m.folder_hidden)
     if m.restricted is True:
         return _("Map “{name}” cannot be installed: Garmin does not offer it in your account's "
                  "country ({country}).").format(name=m.name,
@@ -908,6 +916,14 @@ def not_installed_into(folder: str) -> str:
     # openExpress installs software updates there, not maps
     return _("openExpress does not install maps into the folder {folder} yet").format(
         folder=folder)
+
+
+def not_installed_hidden_inside(folder: str) -> str:
+    # TRANSLATORS: on the Maps page, under a map whose files go to a folder ({folder}, e.g.
+    # GARMIN/RegionMaps) that the device hides inside a folder the file manager shows; without a
+    # full stop
+    return _("The device hides the folder {folder} from the file manager; openExpress does not "
+             "install maps there yet").format(folder=folder)
 
 
 def read_only_text(folder: str) -> str:

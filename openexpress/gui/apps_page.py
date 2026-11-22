@@ -209,10 +209,12 @@ class AppsPage:
         # (sports) and apps
         search = Gtk.SearchEntry(placeholder_text=_("Search activities"), margin_bottom=12)
         g.add(search)
-        # TRANSLATORS: expander row that opens the list of built-in activities and apps ({count}:
-        # how many)
-        exp = Adw.ExpanderRow(title=ngettext("Show {count} Item", "Show {count} Items",
-                                             len(builtin)).format(count=len(builtin)))
+        # TRANSLATORS: title of an expandable row in "Built-In Activities and Apps" that lists
+        # all of them
+        exp = Adw.ExpanderRow(title=_("All Activities and Apps"),
+                              # TRANSLATORS: subtitle of that row: how many it lists
+                              subtitle=ngettext("{count} item", "{count} items",
+                                                len(builtin)).format(count=len(builtin)))
         listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         listbox.add_css_class("boxed-list")
         listbox.append(exp)

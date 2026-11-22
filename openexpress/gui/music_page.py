@@ -16,7 +16,7 @@ from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.
 from openexpress.gui.tasks import read_again_after_failure, writes_to_device  # noqa: E402
 from openexpress.gui.window_tasks import Answer, choose_local_file, confirm  # noqa: E402
 from openexpress.gui.words import space_text  # noqa: E402
-from openexpress.i18n import _, caption, human_size, ngettext  # noqa: E402
+from openexpress.i18n import _, caption, human_size, ngettext, pgettext  # noqa: E402
 
 
 def note_music_count(win, count: int | None, size: int | None) -> None:
@@ -82,8 +82,9 @@ class MusicPage:
                     count=n, size=human_size(sum(f.size for f in files)))))
             if not files:
                 continue
-            exp = Adw.ExpanderRow(title=ngettext("Show {count} File", "Show {count} Files",
-                                                 n).format(count=n))
+            # TRANSLATORS: title of an expandable row that lists the music files of this kind on
+            # the device (its group says how many and their size)
+            exp = Adw.ExpanderRow(title=pgettext("music", "Files"))
             g.add(exp)
             for f in files:
                 row = Adw.ActionRow(title=GLib.markup_escape_text(f.path.split("/")[-1]),
@@ -164,10 +165,15 @@ class MusicPage:
         """Text of the confirmation before music is copied."""
         from openexpress import music
 
-        text = ngettext("{size} will be copied to the device ({count} file already there).",
-                        "{size} will be copied to the device ({count} files already there).",
-                        len(plan.already)).format(size=human_size(plan.size),
-                                                  count=len(plan.already))
+        if plan.already:
+            text = ngettext("{size} will be copied to the device ({count} file already there).",
+                            "{size} will be copied to the device ({count} files already there).",
+                            len(plan.already)).format(size=human_size(plan.size),
+                                                      count=len(plan.already))
+        else:
+            # TRANSLATORS: in the question before music is copied, when none of it is on the
+            # device yet; {size}: e.g. 1.2 GB
+            text = _("{size} will be copied to the device.").format(size=human_size(plan.size))
         replaced = music.replaced_text(plan)
         return f"{text}\n\n{replaced}" if replaced else text
 
@@ -179,10 +185,16 @@ class MusicPage:
         # has (music tracks, not GPS tracks)
         lines = [ngettext("{count} track", "{count} tracks", tracks).format(count=tracks)]
         n = len(plan.copy.to_copy)
-        lines.append(ngettext("{count} file to copy ({size}), {already} already on the device",
-                              "{count} files to copy ({size}), {already} already on the device",
-                              n).format(count=n, size=human_size(plan.copy.size),
-                                        already=len(plan.copy.already)))
+        if plan.copy.already:
+            lines.append(ngettext("{count} file to copy ({size}), {already} already on the device",
+                                  "{count} files to copy ({size}), {already} already on the device",
+                                  n).format(count=n, size=human_size(plan.copy.size),
+                                            already=len(plan.copy.already)))
+        else:
+            # TRANSLATORS: a line of the question before a playlist is added, when none of its
+            # files is on the device yet; {size}: their size, e.g. 1.2 GB
+            lines.append(ngettext("{count} file to copy ({size})", "{count} files to copy ({size})",
+                                  n).format(count=n, size=human_size(plan.copy.size)))
         if plan.copy.replaced:
             from openexpress import music
 

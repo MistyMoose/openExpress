@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-21 18:00+0100\n"
+"POT-Creation-Date: 2026-11-22 21:22+0100\n"
 "PO-Revision-Date: 2026-11-22 06:28+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -4048,6 +4048,28 @@ msgstr[2] ""
 "Nalezeno {count} přehratelných souborů; ke kopírování {to_copy} ({size}), v "
 "zařízení již {already}."
 
+#. TRANSLATORS: `openexpress music add`, when none of the files found is on the device
+#. yet ({to_copy}: how many will be copied, {size}: their size)
+#: openexpress/cli.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "Found {count} playable file; {to_copy} to copy ({size}), {already} "
+#| "already on the device."
+#| msgid_plural ""
+#| "Found {count} playable files; {to_copy} to copy ({size}), {already} "
+#| "already on the device."
+msgid "Found {count} playable file; {to_copy} to copy ({size})."
+msgid_plural "Found {count} playable files; {to_copy} to copy ({size})."
+msgstr[0] ""
+"Nalezen {count} přehratelný soubor; ke kopírování {to_copy} ({size}), v "
+"zařízení již {already}."
+msgstr[1] ""
+"Nalezeny {count} přehratelné soubory; ke kopírování {to_copy} ({size}), v "
+"zařízení již {already}."
+msgstr[2] ""
+"Nalezeno {count} přehratelných souborů; ke kopírování {to_copy} ({size}), v "
+"zařízení již {already}."
+
 #. TRANSLATORS: CLI: the playlist file written on the device after the music was copied
 #. ({path}: its path)
 #: openexpress/cli.py
@@ -6930,15 +6952,24 @@ msgstr "Změny se projeví po odpojení zařízení"
 msgid "Search activities"
 msgstr "Hledat aktivity"
 
-#. TRANSLATORS: expander row that opens the list of built-in activities and apps ({count}:
-#. how many)
+#. TRANSLATORS: title of an expandable row in "Built-In Activities and Apps" that lists
+#. all of them
 #: openexpress/gui/apps_page.py
-#, python-brace-format
-msgid "Show {count} Item"
-msgid_plural "Show {count} Items"
-msgstr[0] "Zobrazit {count} položku"
-msgstr[1] "Zobrazit {count} položky"
-msgstr[2] "Zobrazit {count} položek"
+#, fuzzy, python-brace-format
+#| msgid "Built-In Activities and Apps"
+msgid "All Activities and Apps"
+msgstr "Předinstalované aktivity a aplikace"
+
+#. TRANSLATORS: subtitle of that row: how many it lists
+#: openexpress/gui/apps_page.py
+#, fuzzy, python-brace-format
+#| msgid "{count} file"
+#| msgid_plural "{count} files"
+msgid "{count} item"
+msgid_plural "{count} items"
+msgstr[0] "{count} soubor"
+msgstr[1] "{count} soubory"
+msgstr[2] "{count} souborů"
 
 #. TRANSLATORS: how many more apps the device can hold, followed by its free space
 #: openexpress/gui/apps_page.py
@@ -8477,13 +8508,14 @@ msgstr "Podcasty v zařízení"
 msgid "Audiobooks on the Device"
 msgstr "Audioknihy v zařízení"
 
+#. TRANSLATORS: title of an expandable row that lists the music files of this kind on
+#. the device (its group says how many and their size)
 #: openexpress/gui/music_page.py
-#, python-brace-format
-msgid "Show {count} File"
-msgid_plural "Show {count} Files"
-msgstr[0] "Zobrazit {count} soubor"
-msgstr[1] "Zobrazit {count} soubory"
-msgstr[2] "Zobrazit {count} souborů"
+#, fuzzy, python-brace-format
+#| msgid "File"
+msgctxt "music"
+msgid "Files"
+msgstr "Soubor"
 
 #: openexpress/gui/music_page.py
 #, python-brace-format
@@ -8562,6 +8594,14 @@ msgstr[0] "Do zařízení se zkopíruje {size} ({count} soubor už v něm je)."
 msgstr[1] "Do zařízení se zkopíruje {size} ({count} soubory už v něm jsou)."
 msgstr[2] "Do zařízení se zkopíruje {size} ({count} souborů už v něm je)."
 
+#. TRANSLATORS: in the question before music is copied, when none of it is on the
+#. device yet; {size}: e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, fuzzy, python-brace-format
+#| msgid "Files copied to the device."
+msgid "{size} will be copied to the device."
+msgstr "Soubory byly zkopírovány do zařízení."
+
 #. TRANSLATORS: first line of the confirmation before a playlist is added: how many songs it
 #. has (music tracks, not GPS tracks)
 #: openexpress/gui/music_page.py
@@ -8579,6 +8619,18 @@ msgid_plural "{count} files to copy ({size}), {already} already on the device"
 msgstr[0] "{count} soubor ke kopírování ({size}), {already} již v zařízení"
 msgstr[1] "{count} soubory ke kopírování ({size}), {already} již v zařízení"
 msgstr[2] "{count} souborů ke kopírování ({size}), {already} již v zařízení"
+
+#. TRANSLATORS: a line of the question before a playlist is added, when none of its
+#. files is on the device yet; {size}: their size, e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, fuzzy, python-brace-format
+#| msgid "{count} file · {size}"
+#| msgid_plural "{count} files · {size}"
+msgid "{count} file to copy ({size})"
+msgid_plural "{count} files to copy ({size})"
+msgstr[0] "{count} soubor · {size}"
+msgstr[1] "{count} soubory · {size}"
+msgstr[2] "{count} souborů · {size}"
 
 #: openexpress/gui/music_page.py
 #, python-brace-format
@@ -9778,6 +9830,21 @@ msgstr[1] ""
 msgstr[2] ""
 "{count} ({size}) bez vytvoření kopií, protože by se nevešly do limitu {limit}"
 
+#. TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
+#. the crash logs that count the crashes stay
+#: openexpress/gui/status_page.py
+#, fuzzy, python-brace-format
+#| msgid "The app list on the device has entries that cannot be read"
+msgid "The crash logs stay on the device: the crashes are still counted."
+msgstr "Seznam aplikací v zařízení obsahuje nečitelné položky"
+
+#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
+#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#: openexpress/gui/status_page.py
+#, python-brace-format
+msgid "A dump removed without a copy cannot be sent to Garmin later."
+msgstr ""
+
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "The newest dump stays on the device."
@@ -10108,6 +10175,20 @@ msgstr ""
 "Zařízení není připojeno – připojte jej, abyste mohli uvolnit místo nebo "
 "zkopírovat diagnostické soubory"
 
+#. TRANSLATORS: Device Status of a device without error logs or memory dumps openExpress
+#. reads, while the storage card counts some of its files under {category} (the name of
+#. that category on the card); {size}: e.g. 210.3 kB
+#: openexpress/gui/status_page.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "This device keeps no error logs or memory dumps that openExpress can read"
+msgid ""
+"This device keeps no error logs or memory dumps that openExpress can read. "
+"Its other diagnostic files ({size}) are counted under “{category}”."
+msgstr ""
+"Toto zařízení neuchovává žádné záznamy o chybách ani výpisy paměti, které by "
+"openExpress dokázal přečíst"
+
 #. TRANSLATORS: the page Device Status of a device that keeps no diagnostic data
 #: openexpress/gui/status_page.py
 #, python-brace-format
@@ -10382,6 +10463,14 @@ msgstr[2] "Aktualizace nebyly zařízením nainstalovány"
 msgid "Install All"
 msgstr "Nainstalovat vše"
 
+#. TRANSLATORS: a line under the heading of the Updates page, without a full stop (the
+#. command line has the same sentence with one)
+#: openexpress/gui/updates_page.py
+#, fuzzy, python-brace-format
+#| msgid "Garmin offers beta software for this device."
+msgid "Garmin offers beta software for this device"
+msgstr "Garmin pro toto zařízení nabízí beta verzi softwaru."
+
 #. TRANSLATORS: a line of the row of an update that openExpress cannot install
 #. yet (its group says why), without a full stop
 #: openexpress/gui/updates_page.py
@@ -10623,8 +10712,43 @@ msgstr "Software je aktuální"
 msgid "Update copied, not installed by the device"
 msgstr "Aktualizace zkopírována, ale zařízení ji nenainstalovalo"
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it": updates
-#. still to install besides the one copied already
+#. TRANSLATORS: heading of the Updates page when updates are copied and wait for the device
+#. to be unplugged (or ejected)
+#: openexpress/gui/words.py
+#, fuzzy, python-brace-format
+#| msgid "Update ready"
+msgid "Update Ready"
+msgid_plural "Updates Ready"
+msgstr[0] "Aktualizace připravena"
+msgstr[1] "Aktualizace připravena"
+msgstr[2] "Aktualizace připravena"
+
+#. TRANSLATORS: the line under "Update Ready" on the Updates page, for a device connected
+#. as a USB drive; without a full stop
+#: openexpress/gui/words.py
+#, fuzzy, python-brace-format
+#| msgid "Unplug the device to install it."
+#| msgid_plural "Unplug the device to install them."
+msgid "Eject the device to install it"
+msgid_plural "Eject the device to install them"
+msgstr[0] "Odpojte zařízení, aby se aktualizace nainstalovala."
+msgstr[1] "Odpojte zařízení, aby se aktualizace nainstalovaly."
+msgstr[2] "Odpojte zařízení, aby se aktualizace nainstalovaly."
+
+#. TRANSLATORS: the line under "Update Ready" on the Updates page; without a full stop
+#: openexpress/gui/words.py
+#, fuzzy, python-brace-format
+#| msgid "Unplug the device to install it."
+#| msgid_plural "Unplug the device to install them."
+msgid "Unplug the device to install it"
+msgid_plural "Unplug the device to install them"
+msgstr[0] "Odpojte zařízení, aby se aktualizace nainstalovala."
+msgstr[1] "Odpojte zařízení, aby se aktualizace nainstalovaly."
+msgstr[2] "Odpojte zařízení, aby se aktualizace nainstalovaly."
+
+#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
+#. page, after "Unplug the device to install it"): updates still to install besides the one
+#. copied already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"
@@ -12054,6 +12178,20 @@ msgstr ""
 "Mapu „{name}“ nelze nainstalovat: openExpress zatím nepodporuje instalaci "
 "map do složky {folder}."
 
+#. TRANSLATORS: {folder}: a folder the device hides inside a folder the file manager
+#. shows, e.g. GARMIN/RegionMaps
+#: openexpress/maps.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "the device keeps it in the folder {folder}, hidden from the file manager; "
+#| "openExpress cannot install it yet"
+msgid ""
+"Map “{name}” cannot be installed: the device hides the folder {folder} from "
+"the file manager, and openExpress does not install maps there yet."
+msgstr ""
+"zařízení uchovává aktualizaci ve složce {folder}, která je skrytá ve správci "
+"souborů. openExpress ji proto zatím nemůže nainstalovat"
+
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
@@ -12143,6 +12281,21 @@ msgstr ""
 #, python-brace-format
 msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr "openExpress zatím nepodporuje instalaci map do složky {folder}"
+
+#. TRANSLATORS: on the Maps page, under a map whose files go to a folder ({folder}, e.g.
+#. GARMIN/RegionMaps) that the device hides inside a folder the file manager shows; without a
+#. full stop
+#: openexpress/maps.py
+#, fuzzy, python-brace-format
+#| msgid ""
+#| "the device keeps it in the folder {folder}, hidden from the file manager; "
+#| "openExpress cannot install it yet"
+msgid ""
+"The device hides the folder {folder} from the file manager; openExpress does "
+"not install maps there yet"
+msgstr ""
+"zařízení uchovává aktualizaci ve složce {folder}, která je skrytá ve správci "
+"souborů. openExpress ji proto zatím nemůže nainstalovat"
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
 #. ({folder}, e.g. .System); openExpress installs software updates there, not maps

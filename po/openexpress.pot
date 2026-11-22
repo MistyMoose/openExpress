@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 07:37+0100\n"
+"POT-Creation-Date: 2026-11-22 20:15+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -6288,12 +6288,18 @@ msgstr ""
 msgid "Search activities"
 msgstr ""
 
-#. TRANSLATORS: expander row that opens the list of built-in activities and apps ({count}:
-#. how many)
+#. TRANSLATORS: title of an expandable row in "Built-In Activities and Apps" that lists
+#. all of them
 #: openexpress/gui/apps_page.py
 #, python-brace-format
-msgid "Show {count} Item"
-msgid_plural "Show {count} Items"
+msgid "All Activities and Apps"
+msgstr ""
+
+#. TRANSLATORS: subtitle of that row: how many it lists
+#: openexpress/gui/apps_page.py
+#, python-brace-format
+msgid "{count} item"
+msgid_plural "{count} items"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -7748,12 +7754,13 @@ msgstr ""
 msgid "Audiobooks on the Device"
 msgstr ""
 
+#. TRANSLATORS: title of an expandable row that lists the music files of this kind on
+#. the device (its group says how many and their size)
 #: openexpress/gui/music_page.py
 #, python-brace-format
-msgid "Show {count} File"
-msgid_plural "Show {count} Files"
-msgstr[0] ""
-msgstr[1] ""
+msgctxt "music"
+msgid "Files"
+msgstr ""
 
 #: openexpress/gui/music_page.py
 #, python-brace-format

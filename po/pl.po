@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 07:37+0100\n"
+"POT-Creation-Date: 2026-11-22 20:15+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -6923,15 +6923,21 @@ msgstr "Zmiany zostaną zastosowane po odłączeniu urządzenia"
 msgid "Search activities"
 msgstr "Szukaj aktywności"
 
-#. TRANSLATORS: expander row that opens the list of built-in activities and apps ({count}:
-#. how many)
+#. TRANSLATORS: title of an expandable row in "Built-In Activities and Apps" that lists
+#. all of them
 #: openexpress/gui/apps_page.py
 #, python-brace-format
-msgid "Show {count} Item"
-msgid_plural "Show {count} Items"
-msgstr[0] "Pokaż {count} element"
-msgstr[1] "Pokaż {count} elementy"
-msgstr[2] "Pokaż {count} elementów"
+msgid "All Activities and Apps"
+msgstr "Wszystkie aktywności i aplikacje"
+
+#. TRANSLATORS: subtitle of that row: how many it lists
+#: openexpress/gui/apps_page.py
+#, python-brace-format
+msgid "{count} item"
+msgid_plural "{count} items"
+msgstr[0] "{count} element"
+msgstr[1] "{count} elementy"
+msgstr[2] "{count} elementów"
 
 #. TRANSLATORS: how many more apps the device can hold, followed by its free space
 #: openexpress/gui/apps_page.py
@@ -8476,13 +8482,13 @@ msgstr "Podcasty na urządzeniu"
 msgid "Audiobooks on the Device"
 msgstr "Audiobooki na urządzeniu"
 
+#. TRANSLATORS: title of an expandable row that lists the music files of this kind on
+#. the device (its group says how many and their size)
 #: openexpress/gui/music_page.py
 #, python-brace-format
-msgid "Show {count} File"
-msgid_plural "Show {count} Files"
-msgstr[0] "Pokaż {count} plik"
-msgstr[1] "Pokaż {count} pliki"
-msgstr[2] "Pokaż {count} plików"
+msgctxt "music"
+msgid "Files"
+msgstr "Pliki"
 
 #: openexpress/gui/music_page.py
 #, python-brace-format

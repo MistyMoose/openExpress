@@ -16,7 +16,7 @@ from gi.repository import Adw, GLib, Gtk  # noqa: E402 - imports must follow gi.
 from openexpress.gui.tasks import read_again_after_failure, writes_to_device  # noqa: E402
 from openexpress.gui.window_tasks import Answer, choose_local_file, confirm  # noqa: E402
 from openexpress.gui.words import space_text  # noqa: E402
-from openexpress.i18n import _, caption, human_size, ngettext  # noqa: E402
+from openexpress.i18n import _, caption, human_size, ngettext, pgettext  # noqa: E402
 
 
 def note_music_count(win, count: int | None, size: int | None) -> None:
@@ -82,8 +82,9 @@ class MusicPage:
                     count=n, size=human_size(sum(f.size for f in files)))))
             if not files:
                 continue
-            exp = Adw.ExpanderRow(title=ngettext("Show {count} File", "Show {count} Files",
-                                                 n).format(count=n))
+            # TRANSLATORS: title of an expandable row that lists the music files of this kind on
+            # the device (its group says how many and their size)
+            exp = Adw.ExpanderRow(title=pgettext("music", "Files"))
             g.add(exp)
             for f in files:
                 row = Adw.ActionRow(title=GLib.markup_escape_text(f.path.split("/")[-1]),

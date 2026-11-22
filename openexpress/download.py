@@ -153,7 +153,8 @@ def fetch(
                 elif isinstance(e, DownloadError) and e.status:
                     # The address is signed with the URL salt, not the sign-in: a refusal
                     # (4xx) is an answer of a working server.
-                    netstatus.record(netstatus.OMT, url, e.status if e.status >= 500 else 200)
+                    netstatus.record(netstatus.OMT, url,
+                                     e.status if applog.is_server_error(e.status) else 200)
                 # The text of a requests error names the signed address, query and all.
                 errors.append(f"{_short(url)}: {applog.network_error_text(e)}")
                 log.warning("Download failed (%s)", applog.network_error_detail(e))

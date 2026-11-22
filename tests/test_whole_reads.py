@@ -105,6 +105,19 @@ def test_a_small_file_a_drive_and_a_folder_are_read_as_a_stream(mtp, tmp_path):
                                   lambda: folder.read("GARMIN/BIG.BIN")) == big_bytes()
 
 
+def test_without_a_stream_of_its_own_the_file_is_read_by_its_path(mtp, tmp_path):
+    """The callers that read a file by the path they listed give no stream: storage.read."""
+    files, st, data = mtp(size=whole_reads.COPY_FROM - 1)
+    assert whole_reads.whole_file(st, PATH, len(data)) == data
+    assert "copy" not in files.calls and "chunk" in files.calls
+    files, st, data = mtp(plan={("copy", 1): GioOp(says="error", message="not supported")})
+    assert whole_reads.whole_file(st, PATH, len(data)) == data
+    assert files.calls.count("copy") == 1 and files.calls.count("open") == 1
+    (tmp_path / "GARMIN").mkdir()
+    (tmp_path / "GARMIN" / "BIG.BIN").write_bytes(big_bytes())
+    assert whole_reads.whole_file(LocalStorage(tmp_path), "GARMIN/BIG.BIN", BIG) == big_bytes()
+
+
 def test_a_copy_that_fails_after_it_began_is_not_read_again_and_leaves_nothing(mtp):
     files, st, data = mtp(plan={("copy", 1): GioOp(says="error", message="made-up failure")})
     files.copy_fails_after = 2 * MIB

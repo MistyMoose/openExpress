@@ -473,11 +473,9 @@ def failed_text(e: BaseException) -> str:
 
 
 def not_saved_text(e: Exception) -> str:
-    """Why a setting was not saved: the system's words for a file it could not write (not the
-    number of the error, nor the path of the file), else the words of applog.error_text."""
-    if isinstance(e, OSError) and e.strerror:
-        return e.strerror
-    return error_text(e)
+    """Why a setting was not saved: the system's words for a file it could not write
+    (applog.system_words), else the words of applog.error_text."""
+    return applog.system_words(e) or error_text(e)
 
 
 def switch_saved(win, row, handler, saved: bool, save) -> bool:

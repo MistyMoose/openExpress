@@ -124,7 +124,7 @@ def update_state_text(state: str | None, count: int = 0, only=None,
     return _("Checking…")
 
 
-def ready_heading(waiting: int = 1) -> str:
+def ready_heading(waiting: int) -> str:
     """The heading of the Updates page when `waiting` updates are copied and wait for the
     device; what to do is under it (ready_line). The row "Device Software" says both in one
     sentence (update_state_text)."""
@@ -133,7 +133,7 @@ def ready_heading(waiting: int = 1) -> str:
     return ngettext("Update Ready", "Updates Ready", waiting)
 
 
-def ready_line(waiting: int = 1, count: int = 0, mass_storage: bool = False) -> str:
+def ready_line(waiting: int, count: int, mass_storage: bool) -> str:
     """The line under ready_heading: unplug the device, or eject it (`mass_storage`), and how
     many more there are to install (`count`)."""
     if mass_storage:

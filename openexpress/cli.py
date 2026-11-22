@@ -117,17 +117,12 @@ def _read_hidden(st, dev, needed=(), why: str = "", inside=()) -> bool:
     that ordinary MTP does not show which `needed` names (updates, maps) or the device is known
     to hide, with what its GarminDevice.xml names under them, and the folders `inside` folders
     that are seen whose files the file manager does not show (updates.session_folders;
-    hidden_folders.folders_to_read): what the window reads, so that both count and compare the
+    hidden_folders.still_to_read): what the window reads, so that both count and compare the
     same; once read, the line of this connection in the device's log counted again, as the
     window counts it. Whether it read now."""
-    kept = hidden_folders.kept(st)
-    if kept is not None and kept.state != hidden_folders.READ:
-        return False  # it failed, or no session can be had: said once
     if hidden_folders.busy_failures(st):
         return False  # refused as busy: not asked again within a command, as any failure
-    # Only what this connection has not read: a reading is added to what it read before.
-    folders = [f for f in hidden_folders.folders_to_read(dev, needed, inside=inside)
-               if kept is None or not kept.knows(f)]
+    folders = hidden_folders.still_to_read(st, dev, needed, inside=inside)
     if not folders:
         return False
     with _progress() as progress:
@@ -4214,7 +4209,7 @@ def _run(args) -> int:
     except ApiError as e:
         log.info("server error: %s: %s", type(e).__name__, e)
         status = getattr(e, "status", None)
-        if status is not None and status >= 500:
+        if status is not None and applog.is_server_error(status):
             # Its words say "server error (HTTP 503)" already: not "Server error:" twice.
             _error(_("Error: {error}").format(error=e))
         else:

@@ -505,7 +505,7 @@ def _os_errors(what: str):
     try:
         yield
     except OSError as e:
-        raise DeviceError(f"{what}: {e.strerror or e}") from e
+        raise DeviceError(f"{what}: {applog.system_words(e) or e}") from e
 
 
 # Bytes written at a time when a large file is copied to a folder; one progress step each.
@@ -606,7 +606,7 @@ class LocalStorage(Storage):
             return None
         except OSError as e:
             raise DeviceError(f"{_('Cannot read {path}').format(path=real_path)}: "
-                              f"{e.strerror or e}") from e
+                              f"{applog.system_words(e) or e}") from e
         return Entry(p.name, p.is_dir(), st.st_size, st.st_mtime)
 
     def _read_start(self, real_path: str, count: int) -> bytes:

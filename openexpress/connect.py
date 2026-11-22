@@ -301,8 +301,8 @@ class GarminClient:
         if not resp.ok:
             # An error of the server itself (5xx: down, overloaded, a proxy that cannot reach it)
             # said as one, in the words of the state of Garmin's servers; any other by its code.
-            said = (applog.server_error_text(resp.status_code) if resp.status_code >= 500
-                    else f"HTTP {resp.status_code}")
+            said = (applog.server_error_text(resp.status_code)
+                    if applog.is_server_error(resp.status_code) else f"HTTP {resp.status_code}")
             raise ApiError(f"{what}: {said}", resp.status_code, resp.text[:500])
         return resp
 

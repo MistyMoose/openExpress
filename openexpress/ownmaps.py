@@ -307,8 +307,7 @@ def add(plan: AddPlan, device: GarminDevice, storage: Storage,
         raise
     except (DeviceError, OSError) as e:
         log.warning("own map: the copy failed (%s)", type(e).__name__)
-        # Of an OSError, the system's words: not its number, nor the path on this computer.
-        said = e.strerror or e if isinstance(e, OSError) else e
+        said = applog.system_words(e) or e
         raise MapError(f"{_failed_text(storage, plan.path)} ({said})") from e
     _record(device, {"filename": plan.name, "size": size, "title": plan.title,
                      "added": datetime.now().isoformat(timespec="seconds")})

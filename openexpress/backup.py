@@ -163,8 +163,7 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
         # A large file copied whole tells its progress as the step of its file again, so that
         # closing the window stops its copy too (stop_when_closed).
         data = whole_reads.whole_file(
-            storage, path, entry.size, lambda path=path: storage.read(path),
-            lambda _done, _total, step=step: progress(step))
+            storage, path, entry.size, told=lambda _done, _total, step=step: progress(step))
         found = _fit_check(path, data)
         # The type and the sizes: never the name of the file.
         if found and found[0]:
@@ -175,8 +174,7 @@ def _copy_files(device: GarminDevice, storage: Storage, target: Path,
                     log.info("backup: the device was not mounted again; files read cut short "
                              "are left out")
             if refreshed:
-                data = whole_reads.whole_file(storage, path, entry.size,
-                                              lambda path=path: storage.read(path))
+                data = whole_reads.whole_file(storage, path, entry.size)
                 found = _fit_check(path, data)
                 log.info("backup: a %s file read again after the device was mounted again: %s",
                          datatype, found[1] if found else "whole")

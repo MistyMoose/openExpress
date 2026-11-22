@@ -29,7 +29,6 @@ from openexpress.device.storage import (
     Entry,
     RemountFailed,
     Storage,
-    UmsStorage,
     connection,
     named_in_any_case,
 )
@@ -109,7 +108,7 @@ def top_folders(storage: Storage) -> set[str] | None:
     in lower case; None when they cannot be listed, and for a device seen as a USB drive, which
     hides nothing from its listing (a folder not there is only not there yet): then no folder is
     taken for unseen."""
-    if isinstance(storage, UmsStorage):
+    if storage.mass_storage:
         return None
     try:
         return {e.name.casefold() for e in storage.listdir("") if e.is_dir}
@@ -241,6 +240,19 @@ def folders_to_read(device, needed: Iterable[str], inside: Iterable[str] = ()) -
         if folder:
             out.setdefault(folder.casefold(), folder)
     return sorted(out.values(), key=str.casefold)
+
+
+def still_to_read(storage: Storage, device, needed: Iterable[str],
+                  inside: Iterable[str] = ()) -> list[str]:
+    """What a reading of this connection reads now, the same in the window and the command line:
+    nothing after a reading that failed, or where no session can be had (said once a
+    connection); else those of folders_to_read the connection has not read, as a reading is
+    added to what it read before."""
+    listing = kept(storage)
+    if listing is not None and listing.state != READ:
+        return []
+    return [f for f in folders_to_read(device, needed, inside=inside)
+            if listing is None or not listing.knows(f)]
 
 
 def read(storage: Storage, folders: Iterable[str], why: str,
@@ -492,7 +504,7 @@ def session_possible(storage: Storage) -> bool:
     counts (session_for waits for it); whether the device then takes a file is known only as it
     is written."""
     return (bool(getattr(storage, "device_uri", None)) and not storage.usb_blocked()
-            and not isinstance(storage, UmsStorage))  # a USB drive: no MTP, no session
+            and not storage.mass_storage)  # a USB drive: no MTP, no session
 
 
 def put_back_text(kept: KeptCopy, put_back: bool) -> str:

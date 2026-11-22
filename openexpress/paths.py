@@ -71,7 +71,7 @@ def session_mark_dirs_in(runtime: str | None) -> list[Path]:
     `runtime`/app/APP_ID/, when it is there (Flatpak makes it as it starts the app: the version
     from source sees it once the Flatpak has run since the system started), then always
     `runtime`/openexpress/ (the version from source's own; in the Flatpak, a folder of its
-    sandbox). None without a runtime folder."""
+    sandbox). An empty list without a runtime folder."""
     if not runtime:
         return []
     shared = Path(runtime) / "app" / APP_ID
@@ -204,6 +204,16 @@ def make_dir(path: Path) -> None:
             _make_private(root)
             break
     path.mkdir(parents=True, exist_ok=True)
+
+
+def make_private_dir(path: Path) -> None:
+    """Makes `path` as make_dir does, its owner's alone (PRIVATE_DIR) from the start, also one
+    made before with the usual mode: for what nobody else may list (copies of a device's files,
+    Garmin's answers about the account)."""
+    make_dir(path.parent)
+    path.mkdir(mode=PRIVATE_DIR, exist_ok=True)
+    if path.stat().st_mode & 0o777 != PRIVATE_DIR:
+        path.chmod(PRIVATE_DIR)  # made before with the usual mode, or the umask cut mkdir's
 
 
 def _make_private(root: Path) -> None:

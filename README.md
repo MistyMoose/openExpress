@@ -90,6 +90,22 @@ was checked on other devices is in the table below. Other Garmin devices that co
        alt="The Device Status page of a fēnix 8 watch: four crashes in the last 30 days, its storage by kind of file, maps the largest, and the newest crash at the top of its list">
 </p>
 
+## openPath
+
+<p align="center">
+  <img src="docs/openpath/openpath-baner.png" width="800"
+       alt="openPath: straight to the device, past the file manager">
+</p>
+
+openPath is openExpress's own direct USB connection to the device. Through it, openExpress reads and writes what
+the file manager does not show: hidden folders and files such as voice packages and fonts, hidden crash logs and
+Connect IQ apps. While it works, the device leaves the file manager for a moment.
+
+<p align="center">
+  <img src="docs/openpath/openpath-drogi.png" width="800"
+       alt="Two routes from the computer to the watch: the file manager takes a detour; openPath goes straight">
+</p>
+
 ## Supported devices
 
 | Device | Connection | Checked by |
@@ -109,6 +125,7 @@ was checked on other devices is in the table below. Other Garmin devices that co
 | Edge 540 | MTP | [#18](https://github.com/TomaszBojanowski/openExpress/issues/18), [#28](https://github.com/TomaszBojanowski/openExpress/issues/28) |
 | Drive 53 EX | MTP | a user; [#42](https://github.com/TomaszBojanowski/openExpress/issues/42) |
 | Venu 2S | MTP | [#60](https://github.com/TomaszBojanowski/openExpress/issues/60) (read-only: another account) |
+| Venu X1 | MTP | [#70](https://github.com/TomaszBojanowski/openExpress/issues/70) |
 | inReach Mini 2 | USB drive | [#11](https://github.com/TomaszBojanowski/openExpress/issues/11) |
 | Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
 | Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |

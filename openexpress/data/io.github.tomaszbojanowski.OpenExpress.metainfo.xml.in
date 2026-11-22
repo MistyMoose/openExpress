@@ -105,6 +105,26 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.13.0" date="2026-11-22">
+      <description translate="no">
+        <p>openPath, faster reading of large files, and clearer server errors.</p>
+        <ul>
+          <li><em>openPath.</em> openPath is openExpress's own direct USB connection to the device. Through it,
+          openExpress reads and writes what the file manager does not show: hidden folders and files such as voice
+          packages and fonts, hidden crash logs and Connect IQ apps. While it works, the device leaves the file
+          manager for a moment. openPath is not new in this release: it is the name for the direct USB connection
+          openExpress already uses – for Connect IQ apps since its early versions, and since 0.12.1 for software
+          updates that go into hidden folders.</li>
+          <li><em>Faster reads.</em> Large files are now read from the device in one piece instead of in small
+          parts. On a fēnix 8 (software 24.20) a 54 MB file took 4.4 s instead of 19.4 s; on devices that were
+          already fast (Edge 1050) the gain is small.</li>
+          <li><em>Server errors.</em> An error of Garmin's servers (HTTP 500 and above) is now shown as a server
+          error, for example "Connect IQ apps: server error (HTTP 526)" instead of "Connect IQ apps: HTTP 526".</li>
+          <li><em>Venu X1</em> added to the list of devices reported working by users.</li>
+        </ul>
+        <p>Thanks to runlx223 for the Venu X1 report (#70).</p>
+      </description>
+    </release>
     <release version="0.12.3" date="2026-11-21">
       <description translate="no">
         <p>A maintenance release for watches that hide some of their folders from the file manager.</p>

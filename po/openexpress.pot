@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 07:28+0100\n"
+"POT-Creation-Date: 2026-11-22 07:37+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -7829,6 +7829,13 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS: in the question before music is copied, when none of it is on the
+#. device yet; {size}: e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, python-brace-format
+msgid "{size} will be copied to the device."
+msgstr ""
+
 #. TRANSLATORS: first line of the confirmation before a playlist is added: how many songs it
 #. has (music tracks, not GPS tracks)
 #: openexpress/gui/music_page.py
@@ -7842,6 +7849,15 @@ msgstr[1] ""
 #, python-brace-format
 msgid "{count} file to copy ({size}), {already} already on the device"
 msgid_plural "{count} files to copy ({size}), {already} already on the device"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: a line of the question before a playlist is added, when none of its
+#. files is on the device yet; {size}: their size, e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, python-brace-format
+msgid "{count} file to copy ({size})"
+msgid_plural "{count} files to copy ({size})"
 msgstr[0] ""
 msgstr[1] ""
 

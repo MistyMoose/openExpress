@@ -164,10 +164,15 @@ class MusicPage:
         """Text of the confirmation before music is copied."""
         from openexpress import music
 
-        text = ngettext("{size} will be copied to the device ({count} file already there).",
-                        "{size} will be copied to the device ({count} files already there).",
-                        len(plan.already)).format(size=human_size(plan.size),
-                                                  count=len(plan.already))
+        if plan.already:
+            text = ngettext("{size} will be copied to the device ({count} file already there).",
+                            "{size} will be copied to the device ({count} files already there).",
+                            len(plan.already)).format(size=human_size(plan.size),
+                                                      count=len(plan.already))
+        else:
+            # TRANSLATORS: in the question before music is copied, when none of it is on the
+            # device yet; {size}: e.g. 1.2 GB
+            text = _("{size} will be copied to the device.").format(size=human_size(plan.size))
         replaced = music.replaced_text(plan)
         return f"{text}\n\n{replaced}" if replaced else text
 
@@ -179,10 +184,16 @@ class MusicPage:
         # has (music tracks, not GPS tracks)
         lines = [ngettext("{count} track", "{count} tracks", tracks).format(count=tracks)]
         n = len(plan.copy.to_copy)
-        lines.append(ngettext("{count} file to copy ({size}), {already} already on the device",
-                              "{count} files to copy ({size}), {already} already on the device",
-                              n).format(count=n, size=human_size(plan.copy.size),
-                                        already=len(plan.copy.already)))
+        if plan.copy.already:
+            lines.append(ngettext("{count} file to copy ({size}), {already} already on the device",
+                                  "{count} files to copy ({size}), {already} already on the device",
+                                  n).format(count=n, size=human_size(plan.copy.size),
+                                            already=len(plan.copy.already)))
+        else:
+            # TRANSLATORS: a line of the question before a playlist is added, when none of its
+            # files is on the device yet; {size}: their size, e.g. 1.2 GB
+            lines.append(ngettext("{count} file to copy ({size})", "{count} files to copy ({size})",
+                                  n).format(count=n, size=human_size(plan.copy.size)))
         if plan.copy.replaced:
             from openexpress import music
 

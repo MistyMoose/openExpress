@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 07:28+0100\n"
+"POT-Creation-Date: 2026-11-22 07:37+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -8567,6 +8567,13 @@ msgstr[2] ""
 "Na urządzenie zostanie skopiowane {size} ({count} plików jest już na "
 "urządzeniu)."
 
+#. TRANSLATORS: in the question before music is copied, when none of it is on the
+#. device yet; {size}: e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, python-brace-format
+msgid "{size} will be copied to the device."
+msgstr "Na urządzenie zostanie skopiowane {size}."
+
 #. TRANSLATORS: first line of the confirmation before a playlist is added: how many songs it
 #. has (music tracks, not GPS tracks)
 #: openexpress/gui/music_page.py
@@ -8586,6 +8593,16 @@ msgstr[1] ""
 "Do skopiowania: {count} pliki ({size}), już na urządzeniu: {already}"
 msgstr[2] ""
 "Do skopiowania: {count} plików ({size}), już na urządzeniu: {already}"
+
+#. TRANSLATORS: a line of the question before a playlist is added, when none of its
+#. files is on the device yet; {size}: their size, e.g. 1.2 GB
+#: openexpress/gui/music_page.py
+#, python-brace-format
+msgid "{count} file to copy ({size})"
+msgid_plural "{count} files to copy ({size})"
+msgstr[0] "Do skopiowania: {count} plik ({size})"
+msgstr[1] "Do skopiowania: {count} pliki ({size})"
+msgstr[2] "Do skopiowania: {count} plików ({size})"
 
 #: openexpress/gui/music_page.py
 #, python-brace-format

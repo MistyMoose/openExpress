@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 20:49+0100\n"
+"POT-Creation-Date: 2026-11-22 21:00+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -8984,6 +8984,20 @@ msgid_plural ""
 "{count} ({size}) without a copy, as the copies would not fit in {limit}"
 msgstr[0] ""
 msgstr[1] ""
+
+#. TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
+#. the crash logs that count the crashes stay
+#: openexpress/gui/status_page.py
+#, python-brace-format
+msgid "The crash logs stay on the device: the crashes are still counted."
+msgstr ""
+
+#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
+#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#: openexpress/gui/status_page.py
+#, python-brace-format
+msgid "A dump removed without a copy cannot be sent to Garmin later."
+msgstr ""
 
 #: openexpress/gui/status_page.py
 #, python-brace-format

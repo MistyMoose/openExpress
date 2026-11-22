@@ -520,16 +520,24 @@ GB_DUMPS = {
 }
 
 
+# Said in every question: only the dumps go. Said when some go without a copy: what is lost.
+LOGS_STAY = "The crash logs stay on the device: the crashes are still counted."
+NO_COPY = "A dump removed without a copy cannot be sent to Garmin later."
+
+
 @pytest.mark.needs_display
 @pytest.mark.parametrize(("dumps", "body", "answer"), [
     ("all", ("5 memory dumps (44.9\u00a0MB) will be copied to this computer and then removed "
-             "from the device. The newest dump stays on the device."), "Copy and Remove"),
+             f"from the device. {LOGS_STAY} The newest dump stays on the device."),
+     "Copy and Remove"),
     ("some", ("5 memory dumps (682.8\u00a0MB) will be removed from the device: 2 (75.3\u00a0MB) "
               "after a copy on this computer, 3 (607.5\u00a0MB) without a copy, as the copies "
-              "would not fit in 100\u00a0MB. The newest dump stays on the device."),
+              f"would not fit in 100\u00a0MB. {LOGS_STAY} {NO_COPY} The newest dump stays on the "
+              "device."),
      "Copy and Remove"),
     ("none", ("3 memory dumps (607.5\u00a0MB) will be removed from the device without a copy, "
-              "as the copies would not fit in 100\u00a0MB. The newest dump stays on the device."),
+              f"as the copies would not fit in 100\u00a0MB. {LOGS_STAY} {NO_COPY} The newest dump "
+              "stays on the device."),
      "Remove")])
 def test_the_question_names_what_goes_and_what_is_not_copied(clock, in_the_window, dumps,
                                                               body, answer):
@@ -556,8 +564,9 @@ def test_the_question_in_polish(clock, in_the_window):
     assert q.heading == "Usunąć starsze zrzuty pamięci?"
     assert q.body == ("Z\u00a0urządzenia zostanie usuniętych 5 zrzutów pamięci (682,8\u00a0MB): "
                       "2 (75,3\u00a0MB) po skopiowaniu na ten komputer, 3 (607,5\u00a0MB) bez "
-                      "kopii, bo kopie nie zmieściłyby się w\u00a0100\u00a0MB. Najnowszy zrzut "
-                      "zostaje na urządzeniu.")
+                      "kopii, bo kopie nie zmieściłyby się w\u00a0100\u00a0MB. Dzienniki awarii "
+                      "zostają na urządzeniu: awarie są nadal liczone. Zrzutu usuniętego bez kopii "
+                      "nie da się później wysłać do Garmina. Najnowszy zrzut zostaje na urządzeniu.")
     assert [a.label for a in q.answers] == ["Skopiuj i\u00a0usuń"]
 
 

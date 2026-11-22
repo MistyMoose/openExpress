@@ -687,8 +687,8 @@ def _dumps_answer(plan: freeing.DumpPlan) -> str:
 
 def _dumps_question(plan: freeing.DumpPlan) -> str:
     """The question before the older dumps are removed: how many, the space, which are copied
-    first and which are not (their copies would not fit within the limit); the newest
-    stays."""
+    first and which are not (their copies would not fit within the limit); the crash logs stay,
+    what a dump without a copy cannot be any more, and the newest stays."""
     copied, without_copy, older = plan.copied, plan.without_copy, plan.older
     count, size = len(older), human_size(sum(s for _p, s, _t in older))
     limit = freeing.limit_words()
@@ -724,7 +724,14 @@ def _dumps_question(plan: freeing.DumpPlan) -> str:
                           "{count} ({size}) without a copy, as the copies would not fit in "
                           "{limit}", n).format(count=n, size=room, limit=limit)
         text = f"{head} {first}, {second}."
-    return f"{text} {_('The newest dump stays on the device.')}"
+    # TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
+    # the crash logs that count the crashes stay
+    said = [text, _("The crash logs stay on the device: the crashes are still counted.")]
+    if without_copy:
+        # TRANSLATORS: in the same question, when some dumps are removed without a copy on this
+        # computer: nothing is left that could be sent to Garmin (e.g. its support) later
+        said.append(_("A dump removed without a copy cannot be sent to Garmin later."))
+    return " ".join([*said, _("The newest dump stays on the device.")])
 
 
 def _stopped_words(e: BaseException) -> str:

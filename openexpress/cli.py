@@ -2612,6 +2612,8 @@ def _apps_order(args, dev, st, state) -> int:
     for line, indented in ciq.describe_order(plan, None if args.all else 10):
         print(("  " if indented else "") + line)
     _print_app_list_size(len(plan.entries), sum(1 for a in state.apps if not a.pending))
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + _("the same apps with the same settings; only the order changes"))
     if not args.apply:
         print(ciq.app_list_copy_note(dev, st))
@@ -2641,6 +2643,8 @@ def _remove_app_directly(args, dev, st, state, app, api) -> int:
     _print_app_list_size(preview.entries, preview.on_device)
     if preview.pending or not preview.kept:
         raise _app_list_mismatch()
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + _("every other app on the device is kept, in the same order and with the "
                    "same settings"))
     kind = ciq.app_type_name(app.app_type) or app.app_type
@@ -2700,6 +2704,8 @@ def _print_in_bin_preview(preview) -> None:
         print("  " + ngettext("{count} more app is registered and waits for the device",
                               "{count} more apps are registered and wait for the device",
                               preview.pending).format(count=preview.pending))
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + (_("every app on the device is kept, in the same order and with the same "
                     "settings")
                   if preview.kept else

@@ -152,9 +152,10 @@ def more_available(count: int) -> str:
     """After an update copied already: how many more there are to install ("" for none)."""
     if not count:
         return ""
-    # TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
-    # page, after "Unplug the device to install it"): updates still to install besides the one
-    # copied already
+    # TRANSLATORS: after "Update ready: unplug the device to install it" or "Update ready: eject
+    # the device to install it" (and, on the Updates page, after "Unplug the device to install
+    # it" or "Eject the device to install it"): updates still to install besides the one copied
+    # already
     return ngettext("{count} more available", "{count} more available", count).format(
         count=count)
 

@@ -20,8 +20,11 @@ REGION_COMPONENT = """  <UpdateFile><PartNumber>006-D0005-00</PartNumber><Versio
   </UpdateFile>
 """
 NAME = "Made-up Region"
-REFUSED = ("Map “Made-up Region” cannot be installed: openExpress does not install maps into the "
-           "folder Garmin/RegionMaps yet.")
+REFUSED = ("Map “Made-up Region” cannot be installed: the device hides the folder Garmin/RegionMaps "
+           "from the file manager, and openExpress does not install maps there yet.")
+REFUSED_PL = ("Nie można zainstalować mapy „Made-up Region”: urządzenie ukrywa folder "
+              "Garmin/RegionMaps przed menedżerem plików, a\u00a0openExpress jeszcze nie instaluje tam "
+              "map.")
 # The line under the map on the Maps page: the device hides the folder, not openExpress.
 REASON = {"en": ("The device hides the folder Garmin/RegionMaps from the file manager; openExpress "
                  "does not install maps there yet"),
@@ -97,6 +100,13 @@ def test_the_line_under_the_map_says_the_device_hides_the_folder(watch, language
     with in_language(language):
         said = maps.cannot_install_reason(m)
     assert said == REASON[language]
+
+
+def test_the_refusal_in_polish(watch):
+    (m,) = _maps(LocalStorage(watch), watch)
+    with in_language("pl"):
+        said = maps.cannot_install_message(m)
+    assert said == REFUSED_PL
 
 
 def test_the_command_line_refuses_it_before_it_lists_anything(watch, monkeypatch, capsys):

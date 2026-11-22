@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 01:57+0100\n"
+"POT-Creation-Date: 2026-11-22 07:28+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -11072,6 +11072,15 @@ msgstr ""
 msgid ""
 "Map “{name}” cannot be installed: openExpress does not install maps into the "
 "folder {folder} yet."
+msgstr ""
+
+#. TRANSLATORS: {folder}: a folder the device hides inside a folder the file manager
+#. shows, e.g. GARMIN/RegionMaps
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” cannot be installed: the device hides the folder {folder} from "
+"the file manager, and openExpress does not install maps there yet."
 msgstr ""
 
 #: openexpress/maps.py

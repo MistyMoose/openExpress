@@ -561,11 +561,17 @@ def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
     """Why `m` cannot be installed, the same words in the command line and the window;
     `hidden_trial`: the reasons of the server and the account only (the trial installs into a
     folder the device hides)."""
-    if (folder := (None if hidden_trial else m.hidden_folder) or m.folder_hidden) is not None:
+    if not hidden_trial and m.hidden_folder is not None:
         # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
         # .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
-                 "the folder {folder} yet.").format(name=m.name, folder=folder)
+                 "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
+    if m.folder_hidden is not None:
+        # TRANSLATORS: {folder}: a folder the device hides inside a folder the file manager
+        # shows, e.g. GARMIN/RegionMaps
+        return _("Map “{name}” cannot be installed: the device hides the folder {folder} from "
+                 "the file manager, and openExpress does not install maps there yet.").format(
+            name=m.name, folder=m.folder_hidden)
     if m.restricted is True:
         return _("Map “{name}” cannot be installed: Garmin does not offer it in your account's "
                  "country ({country}).").format(name=m.name,

@@ -544,8 +544,10 @@ def can_install(m: UniversalMap, hidden_trial: bool = False) -> bool:
 
 def cannot_install_reason(m: UniversalMap) -> str:
     """The same reason as cannot_install_message, short, for the line under the map's name."""
-    if (folder := m.hidden_folder or m.folder_hidden) is not None:
-        return not_installed_into(folder)
+    if m.hidden_folder is not None:
+        return not_installed_into(m.hidden_folder)
+    if m.folder_hidden is not None:
+        return not_installed_hidden_inside(m.folder_hidden)
     if m.restricted is True:
         return _("Cannot be installed: Garmin does not offer this map in your account's "
                  "country")
@@ -908,6 +910,14 @@ def not_installed_into(folder: str) -> str:
     # openExpress installs software updates there, not maps
     return _("openExpress does not install maps into the folder {folder} yet").format(
         folder=folder)
+
+
+def not_installed_hidden_inside(folder: str) -> str:
+    # TRANSLATORS: on the Maps page, under a map whose files go to a folder ({folder}, e.g.
+    # GARMIN/RegionMaps) that the device hides inside a folder the file manager shows; without a
+    # full stop
+    return _("The device hides the folder {folder} from the file manager; openExpress does not "
+             "install maps there yet").format(folder=folder)
 
 
 def read_only_text(folder: str) -> str:

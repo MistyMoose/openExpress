@@ -831,7 +831,8 @@ def test_the_maps_page_says_why_a_map_into_a_folder_hidden_inside_is_refused(rev
         iterate(0.2)
         (row,) = [w for w in descendants(sec.stack)
                   if isinstance(w, Adw.ActionRow) and w.get_title() == REFUSED_MAP]
-        assert row.get_subtitle().endswith("\n" + maps.not_installed_into("Garmin/RegionMaps"))
+        assert row.get_subtitle().endswith(
+            "\n" + maps.not_installed_hidden_inside("Garmin/RegionMaps"))
         assert not [w for w in descendants(row) if isinstance(w, Gtk.Button)]
         assert said == [], said
         if r.width == NARROWEST:

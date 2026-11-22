@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-21 18:00+0100\n"
+"POT-Creation-Date: 2026-11-22 01:57+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -12130,6 +12130,18 @@ msgstr ""
 #, python-brace-format
 msgid "openExpress does not install maps into the folder {folder} yet"
 msgstr "openExpress jeszcze nie instaluje map w folderze {folder}"
+
+#. TRANSLATORS: on the Maps page, under a map whose files go to a folder ({folder}, e.g.
+#. GARMIN/RegionMaps) that the device hides inside a folder the file manager shows; without a
+#. full stop
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"The device hides the folder {folder} from the file manager; openExpress does "
+"not install maps there yet"
+msgstr ""
+"Urządzenie ukrywa folder {folder} przed menedżerem plików; openExpress "
+"jeszcze nie instaluje tam map"
 
 #. TRANSLATORS: `openexpress maps`, under a map whose files are in a folder the device hides
 #. ({folder}, e.g. .System); openExpress installs software updates there, not maps

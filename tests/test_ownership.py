@@ -483,7 +483,9 @@ def test_cli_refusal_comes_after_the_device_line_also_in_a_pipe(device_root, xdg
 
 @pytest.mark.parametrize("error,line,code", [
     (store.NotLoggedIn("Not logged in."), "Error: Not logged in.", 1),
-    (ApiError("Map check: HTTP 500", 500), "Server error: Map check: HTTP 500", 1),
+    (ApiError("Map check: server error (HTTP 500)", 500),
+     "Error: Map check: server error (HTTP 500)", 1),
+    (ApiError("Map check: HTTP 404", 404), "Server error: Map check: HTTP 404", 1),
     (requests.ConnectionError("down"),
      "Network error: could not reach the Garmin server (no connection)", 1),
     (KeyboardInterrupt(), "Interrupted.", 130),

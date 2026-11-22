@@ -340,13 +340,13 @@ def test_a_server_answer_shown_with_v_is_redacted(log_file, monkeypatch, capsys)
     from openexpress.connect import ApiError
 
     def refused(args):
-        raise ApiError("Upload: HTTP 500", 500,
+        raise ApiError("Upload: server error (HTTP 500)", 500,
                        '{"unitId": 3987654321, "owner": "a@example.org", "at": "' + SECRET_ADDRESS + '"}')
 
     monkeypatch.setattr(cli, "cmd_info", refused)
     assert cli.main(["info"]) == 1
     err = capsys.readouterr().err
-    assert "Server error: Upload: HTTP 500" in err and "unitId" not in err  # no body without -v
+    assert "Error: Upload: server error (HTTP 500)" in err and "unitId" not in err  # no body w/o -v
     assert cli.main(["-v", "info"]) == 1
     err = capsys.readouterr().err
     assert '{"unitId": <number>, "owner": "<email>", "at": "mtp://<device>/' in err

@@ -4205,9 +4205,14 @@ def _run(args) -> int:
         return 1
     except ApiError as e:
         log.info("server error: %s: %s", type(e).__name__, e)
-        # TRANSLATORS: CLI error from a Garmin server ({error}: the request's name and what went
-        # wrong)
-        _error(_("Server error: {error}").format(error=e))
+        status = getattr(e, "status", None)
+        if status is not None and status >= 500:
+            # Its words say "server error (HTTP 503)" already: not "Server error:" twice.
+            _error(_("Error: {error}").format(error=e))
+        else:
+            # TRANSLATORS: CLI error from a Garmin server ({error}: the request's name and what went
+            # wrong)
+            _error(_("Server error: {error}").format(error=e))
         if args.verbose and e.body:
             print(applog.redact(e.body), file=sys.stderr)  # the server's own words: filtered
         return 1

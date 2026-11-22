@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:12+0100\n"
+"POT-Creation-Date: 2026-11-22 21:22+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -4046,6 +4046,19 @@ msgstr[1] ""
 msgstr[2] ""
 "Znaleziono {count} plików do odtwarzania; do skopiowania: {to_copy} "
 "({size}), już na urządzeniu: {already}."
+
+#. TRANSLATORS: `openexpress music add`, when none of the files found is on the device
+#. yet ({to_copy}: how many will be copied, {size}: their size)
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Found {count} playable file; {to_copy} to copy ({size})."
+msgid_plural "Found {count} playable files; {to_copy} to copy ({size})."
+msgstr[0] ""
+"Znaleziono {count} plik do odtwarzania; do skopiowania: {to_copy} ({size})."
+msgstr[1] ""
+"Znaleziono {count} pliki do odtwarzania; do skopiowania: {to_copy} ({size})."
+msgstr[2] ""
+"Znaleziono {count} plików do odtwarzania; do skopiowania: {to_copy} ({size})."
 
 #. TRANSLATORS: CLI: the playlist file written on the device after the music was copied
 #. ({path}: its path)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:12+0100\n"
+"POT-Creation-Date: 2026-11-22 21:22+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3641,6 +3641,15 @@ msgid ""
 msgid_plural ""
 "Found {count} playable files; {to_copy} to copy ({size}), {already} already "
 "on the device."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: `openexpress music add`, when none of the files found is on the device
+#. yet ({to_copy}: how many will be copied, {size}: their size)
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Found {count} playable file; {to_copy} to copy ({size})."
+msgid_plural "Found {count} playable files; {to_copy} to copy ({size})."
 msgstr[0] ""
 msgstr[1] ""
 

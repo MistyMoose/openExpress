@@ -513,8 +513,10 @@ def _collapsed(win) -> bool:
     return bool(split is not None and split.get_collapsed())
 
 
-def _event_row(event: status.Event, now: datetime) -> Adw.PreferencesRow:
-    when = relative_time(event.at, now)
+def _event_row(event: status.Event) -> Adw.PreferencesRow:
+    # A history: each row with its date and hour, so that the rows can be compared; the words
+    # of time ("2 days ago") stay above the list.
+    when = full_time(event.at)
     if event.kind == "crash":
         crash = event.crash
         parts = [when]
@@ -566,10 +568,9 @@ def render_history(win, view=None) -> None:
     for row in view.status_history_rows:
         g.remove(row)
     view.status_history_rows = []
-    now = datetime.now()
     shown = facts.events if view.status_show_all else facts.events[:status.SHOWN_EVENTS]
     more = len(shown) < len(facts.events)
-    added = [_event_row(event, now) for event in shown]
+    added = [_event_row(event) for event in shown]
     if not facts.errors_known:
         # TRANSLATORS: a row of "Crashes and Updates" when the device's error logs could not be
         # read

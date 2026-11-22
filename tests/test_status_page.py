@@ -313,6 +313,19 @@ def test_a_kind_of_0_b_is_left_out_and_free_always_stays(clock, free):
 
 
 @pytest.mark.needs_display
+def test_the_dates_of_the_crashes_and_updates_in_polish(clock):
+    from openexpress import i18n
+
+    i18n.setup("pl")
+    try:
+        _win, section = page()
+        newest = titled(section, "Awaria")
+    finally:
+        i18n.setup("en")
+    assert newest.get_subtitle().startswith("19.10.2026 o\u00a012:00\u00a0· ")
+
+
+@pytest.mark.needs_display
 def test_the_kinds_with_a_page_lead_to_it(clock):
     win, section = page()
     details = titled(section, "Category Details")
@@ -324,10 +337,13 @@ def test_the_kinds_with_a_page_lead_to_it(clock):
 
 
 @pytest.mark.needs_display
-def test_the_crashes_and_updates_with_relative_dates_and_the_error_inside(clock):
+def test_the_crashes_and_updates_with_their_dates_and_hours_and_the_error_inside(clock):
+    """A history: every row has its date and hour, never "2 days ago", so that the rows can be
+    told apart and compared; the words of time stay above the list."""
     _win, section = page()
     newest = titled(section, "Crash")
-    assert newest.get_subtitle() == "2 days ago\u00a0· software 21.18\u00a0· the same error as the 2 before"
+    assert newest.get_subtitle() == ("2026-10-19 12:00\u00a0· software 21.18\u00a0· the same error as "
+                                     "the 2 before")
     inside = titled(section, "Error Details")
     assert inside.get_subtitle() == ("error 0x003\u00a0· at 0x10000abc\u00a0· screen 2301\u00a0· boot log "
                                      "error 0x1a2b")

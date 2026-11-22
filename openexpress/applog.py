@@ -153,6 +153,12 @@ def hide_device(device, usb=None) -> None:
 _ERROR_ADDRESS = re.compile(r"(with url: |\b[a-z][a-z0-9+.-]*://)[^\s'\"()]+")
 
 
+def server_error_text(status: int) -> str:
+    """An answer of a server with an error of its own (HTTP 5xx), in the words of the state of
+    Garmin's servers: "server error (HTTP 503)"."""
+    return _("server error (HTTP {status})").format(status=status)
+
+
 def network_error_text(error) -> str:
     """The words of a network error for the user, those of the state of Garmin's servers: "no
     connection" when no server answered (none reached, or none in time), the status of an
@@ -161,7 +167,7 @@ def network_error_text(error) -> str:
     import requests
 
     if isinstance(error, requests.HTTPError) and error.response is not None:
-        return _("server error (HTTP {status})").format(status=error.response.status_code)
+        return server_error_text(error.response.status_code)
     if (isinstance(error, (requests.ConnectionError, requests.Timeout))
             and not isinstance(error, requests.exceptions.SSLError)):
         return _("no connection")

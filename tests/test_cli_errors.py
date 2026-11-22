@@ -120,6 +120,34 @@ def test_the_answers_of_a_server_keep_their_words(error, said, log_file, capsys)
     assert "Traceback" not in log
 
 
+@pytest.mark.parametrize(("language", "status", "said"), [
+    ("en", 526, "Error: Connect IQ apps: server error (HTTP 526)"),
+    ("pl", 526, "Błąd: Aplikacje Connect IQ: błąd serwera (HTTP 526)"),
+    ("en", 404, "Server error: Connect IQ apps: HTTP 404"),
+    ("pl", 404, "Błąd serwera: Aplikacje Connect IQ: HTTP 404")])
+def test_a_server_error_is_not_called_one_twice_on_the_command_line(language, status, said,
+                                                                     log_file, capsys):
+    """An answer of 500 or above says "server error" itself: the command line puts "Error:"
+    before it, not "Server error:" a second time; other answers keep "Server error:"."""
+    from fakes import DEVICE_UNIT, make_client, response
+
+    from openexpress import ciq, i18n
+    from openexpress.connect import ApiError
+
+    client = make_client(**{"express/appstore/rest/apps/downloads": response(status, b"")})
+    client.verified_unit_id = DEVICE_UNIT
+    device = types.SimpleNamespace(unit_id=DEVICE_UNIT, part_number="006-B0000-00")
+    i18n.setup(language)
+    try:
+        with pytest.raises(ApiError) as raised:
+            ciq.StoreApi(client).account_apps(device, "en-US")
+        code, _log = _run(raised.value, log_file)
+    finally:
+        i18n.setup("en")
+    assert code == 1
+    assert capsys.readouterr().err.strip() == said
+
+
 FAULT = ("This is a bug in openExpress. To report it, run openexpress report and attach the "
          "output of openexpress report --log.")
 

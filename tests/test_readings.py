@@ -99,7 +99,8 @@ def test_a_refusal_is_an_error_and_is_not_asked_again(status, clock):
     client = make_client(**{SENSORS_PATH: response(status, b"")})
     with pytest.raises(ApiError) as error:
         client.account_sensors()
-    assert str(error.value) == f"Account sensors: HTTP {status}"
+    said = f"server error (HTTP {status})" if status >= 500 else f"HTTP {status}"
+    assert str(error.value) == f"Account sensors: {said}"
     assert client.http.paths() == [SENSORS_PATH]
 
 

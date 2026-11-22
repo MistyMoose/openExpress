@@ -124,12 +124,37 @@ def update_state_text(state: str | None, count: int = 0, only=None,
     return _("Checking…")
 
 
+def ready_heading(waiting: int = 1) -> str:
+    """The heading of the Updates page when `waiting` updates are copied and wait for the
+    device; what to do is under it (ready_line). The row "Device Software" says both in one
+    sentence (update_state_text)."""
+    # TRANSLATORS: heading of the Updates page when updates are copied and wait for the device
+    # to be unplugged (or ejected)
+    return ngettext("Update Ready", "Updates Ready", waiting)
+
+
+def ready_line(waiting: int = 1, count: int = 0, mass_storage: bool = False) -> str:
+    """The line under ready_heading: unplug the device, or eject it (`mass_storage`), and how
+    many more there are to install (`count`)."""
+    if mass_storage:
+        # TRANSLATORS: the line under "Update Ready" on the Updates page, for a device connected
+        # as a USB drive; without a full stop
+        line = ngettext("Eject the device to install it", "Eject the device to install them",
+                        waiting)
+    else:
+        # TRANSLATORS: the line under "Update Ready" on the Updates page; without a full stop
+        line = ngettext("Unplug the device to install it", "Unplug the device to install them",
+                        waiting)
+    return caption(line, more_available(count))
+
+
 def more_available(count: int) -> str:
     """After an update copied already: how many more there are to install ("" for none)."""
     if not count:
         return ""
-    # TRANSLATORS: after "Update ready: unplug the device to install it": updates
-    # still to install besides the one copied already
+    # TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
+    # page, after "Unplug the device to install it"): updates still to install besides the one
+    # copied already
     return ngettext("{count} more available", "{count} more available", count).format(
         count=count)
 

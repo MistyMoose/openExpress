@@ -1726,7 +1726,7 @@ def test_after_a_copy_into_the_folder_read_the_page_shows_it_waiting_for_the_dev
     top = _texts(status.rows[0])
     # Copied, waiting for the device to take it once unplugged: no Install; the time zone map,
     # not copied, is counted and offered.
-    assert top[0] == "Update ready: unplug the device to install it\u00a0· 1 more available"
+    assert top[:2] == ["Update Ready", "Unplug the device to install it\u00a0· 1 more available"]
     assert not {"Install", "Install All", "Reinstall"} & set(top)
     (tz,) = available.rows
     assert tz.get_title() == "Time zone map"
@@ -1735,7 +1735,7 @@ def test_after_a_copy_into_the_folder_read_the_page_shows_it_waiting_for_the_dev
     win, _said, _fake = _copy_in_the_window(navigator, ["006-D9001-00", "006-B0000-00"],
                                             in_the_window)
     top = _texts(win.sections["updates"].groups[0].rows[0])
-    assert top[0] == "Updates ready: unplug the device to install them"
+    assert top[:2] == ["Updates Ready", "Unplug the device to install them"]
     assert not {"Install", "Install All", "Reinstall"} & set(top)
 
 

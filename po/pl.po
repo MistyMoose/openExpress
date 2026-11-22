@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 20:15+0100\n"
+"POT-Creation-Date: 2026-11-22 20:35+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -10647,8 +10647,38 @@ msgstr "Oprogramowanie jest aktualne"
 msgid "Update copied, not installed by the device"
 msgstr "Aktualizacja skopiowana, urządzenie jej nie zainstalowało"
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it": updates
-#. still to install besides the one copied already
+#. TRANSLATORS: heading of the Updates page when updates are copied and wait for the device
+#. to be unplugged (or ejected)
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid "Update Ready"
+msgid_plural "Updates Ready"
+msgstr[0] "Aktualizacja gotowa"
+msgstr[1] "Aktualizacje gotowe"
+msgstr[2] "Aktualizacje gotowe"
+
+#. TRANSLATORS: the line under "Update Ready" on the Updates page, for a device connected
+#. as a USB drive; without a full stop
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid "Eject the device to install it"
+msgid_plural "Eject the device to install them"
+msgstr[0] "Wysuń urządzenie, aby ją zainstalować"
+msgstr[1] "Wysuń urządzenie, aby je zainstalować"
+msgstr[2] "Wysuń urządzenie, aby je zainstalować"
+
+#. TRANSLATORS: the line under "Update Ready" on the Updates page; without a full stop
+#: openexpress/gui/words.py
+#, python-brace-format
+msgid "Unplug the device to install it"
+msgid_plural "Unplug the device to install them"
+msgstr[0] "Odłącz urządzenie, aby ją zainstalować"
+msgstr[1] "Odłącz urządzenie, aby je zainstalować"
+msgstr[2] "Odłącz urządzenie, aby je zainstalować"
+
+#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
+#. page, after "Unplug the device to install it"): updates still to install besides the one
+#. copied already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"

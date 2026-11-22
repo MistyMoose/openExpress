@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-21 18:00+0100\n"
-"PO-Revision-Date: 2026-11-20 19:35+0000\n"
+"PO-Revision-Date: 2026-11-22 06:28+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/cs/>\n"
@@ -5542,10 +5542,9 @@ msgstr "{path} je stále v zařízení."
 #. (not the Flatpak), so that it can be told apart from the Flatpak's "openExpress"; keep the
 #. name openExpress as it is
 #: openexpress/desktop.py
-#, fuzzy, python-brace-format
-#| msgid "openExpress (background)"
+#, python-brace-format
 msgid "openExpress (source)"
-msgstr "openExpress (na pozadí)"
+msgstr "openExpress (ze zdrojového kódu)"
 
 #. TRANSLATORS: name of the hidden desktop entry that syncs in the background when the device is
 #. connected

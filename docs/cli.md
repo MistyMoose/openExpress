@@ -17,7 +17,7 @@ the two are separate installations, see
 | `openexpress status [--online]` | the sign-in, the Garmin devices connected (name, USB mode, whether they are on the account), the last sync of each with the activities it has to upload now, what the window's last check of its updates found, and for a device with satellite data (experimental) whether they are on and when they were last written; `--online` also asks Garmin Connect and Garmin's update server, or uses their answers from a moment ago ([How long Garmin's answers are kept](privacy.md#how-long-garmins-answers-are-kept)); without it nothing is asked of a server |
 | `openexpress devices [--forget N] [--discard-pending] [--backups] [--apply]` | the devices this installation has seen; `--forget N` forgets device number N of the list and what this installation keeps of it, as **Forget Device** does ([what that is](guide.md#the-start-page-and-the-device-page)); files not uploaded yet go only with `--discard-pending`, its backups only with `--backups`; a connected device is not forgotten |
 | `openexpress setup --from-installer GarminExpress.exe` | one-time setup from the Garmin Express installer for Windows (only read, nothing installed); instead of it `--from-dll Networking.dll [--utilities-dll Utilities.dll]` or `--key KEY --secret SECRET` |
-| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china]` | settings: the program's language, the copy of the device's diagnostic files, the language to request from Garmin's servers (by default the program's), Garmin's servers; without options it shows the servers and the language asked of them |
+| `openexpress setup [--ui-language en\|cs\|de\|fr\|pl\|system] [--diagnostics-copy on\|off] [--locale LOCALE] [--environment production\|china]` | settings: the program's language, the copy of the device's diagnostic files, the language to request from Garmin's servers (by default the program's), Garmin's servers; without options it shows the servers and that language |
 | `openexpress login [--manual]` | sign in on the Garmin SSO page (WebKitGTK window) |
 | `openexpress whoami [--check]`, `logout` | account (its name masked: a user name as `t…b`, an e-mail address as `t…@e…`, as in every command's output), sign out (removes the local token) |
 | `openexpress upload-config [--json]` | what data is uploaded for this device and where (Garmin server) |
@@ -192,6 +192,9 @@ now or later, then restarts.
   back when the new one is not written whole
   ([Files on the device](privacy.md#files-on-the-device)). Without that connection such an
   update is refused before anything is downloaded, and the others are installed.
+- On such a watch the check also reads, over a direct USB connection, the folder of each offered
+  file the file manager does not show, once (as does `status --online`); a component found there
+  with the name and size offered is listed as "already on the device".
 - On a car navigator that hides its `.System` folder from the file manager, that folder is read
   once over a direct USB connection (names and sizes); every command that opens such a device
   reads it once too, as does `status --online`, so that they count and compare what the window

@@ -21,10 +21,10 @@ GitHub account:
   correction checked first.
 - **Comments and contexts**: Weblate shows them beside each text, and the rules of this page
   apply there too. "translator-credits" is a text like any other
-  ([Credits and sending a translation](#credits-and-sending-a-translation)).
+  ([Credits](#credits)).
 - **Sending**: Weblate sends the translations to this repository in a pull request, merged
-  before each release: the tests are run then, and your name goes to `TRANSLATORS`. Weblate also
-  brings each new text of the template into your language.
+  before each release: the tests are run then. Weblate also brings each new text of the
+  template into your language.
 - **In a release**: as a rule a language goes into the program once at least 90% of its texts
   are translated; the project then adds it to `po/LINGUAS` (Weblate does not). Texts not
   translated yet stay in English.
@@ -106,7 +106,7 @@ project adds it for a release, below); until then the list of languages shows it
 `LANGUAGE=de` works only while the Preferences say "System default". The window opens a
 connected device as usual.
 
-## Credits and sending a translation
+## Credits
 
 - Translate "translator-credits" into your name, one translator per line: the About dialog
   shows it. The project adds your name to [TRANSLATORS](../TRANSLATORS) when it merges Weblate's

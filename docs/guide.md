@@ -143,7 +143,7 @@ connected device; no login is needed.
   that waits for the device, or that the software is up to date.
 - Each row names the update, its version (or both versions) and its size, and its importance
   when Garmin gives one (*Critical*, *Recommended*, *Optional*). Where its file goes on the device
-  is in the row's tooltip, in the confirmation dialog, in `openexpress updates -v` and in the log;
+  is in the row's tooltip, in the confirmation dialog, in `openexpress -v updates` and in the log;
   the row itself names the file only when another row has the same name. In **Reinstall
   Components** the rows with **Reinstall** come first, then those without a button (an older
   version, another file, or one that could not be compared).
@@ -164,9 +164,11 @@ connected device; no login is needed.
   as one of these kinds (Wellness and Vivomove), the window and `openexpress updates --install`
   warn that the update erases the data stored on it and say to sync it first. The update is not
   held back. No such device has been tried yet.
-- After an update is copied, the device installs it once it is unplugged. Until then the page
-  says *Update ready: unplug the device to install it* (and how many more updates are available,
-  if any), its tile **Unplug to install** (**Eject to install** for a USB drive), and
+- After an update is copied, the device installs it once it is unplugged. Until then the top of
+  the Updates page says **Update Ready** and under it *Unplug the device to install it* (*Eject
+  the device to install it* for a USB drive), with how many more updates are available, if any;
+  the row **Device Software** of the device page says *Update ready: unplug the device to install
+  it*, the device's tile **Unplug to install** (**Eject to install** for a USB drive), and
   `openexpress updates` says that the update waits for the device. The software counts as up to
   date only when the server no longer offers the update, that is, once the device has reported
   the new version. A component counts as copied only when openExpress copied it: a file of that
@@ -199,6 +201,12 @@ connected device; no login is needed.
   read back whole, or put back if the new one is not written whole). Without that connection
   (the Flatpak without its USB permission) it is not installed: its group says
   so once, its row says it in short and its **Install** button is off.
+- On a watch that hides folders where its updates go, the check for updates also reads, over a
+  direct USB connection, the folder of each offered file the file manager does not show, once a
+  connection (*Reading the folder GARMIN…*; the device disappears from the file manager for a
+  moment). A component found there with the name and size offered is not an update to install:
+  the page lists it in **Reinstall Components**. `openexpress updates` and `openexpress status
+  --online` read these folders the same way.
 - While software updates or a map's files are copied, openExpress keeps the computer from
   sleeping (through the desktop, or else logind); when that cannot be asked, it says so and the
   copy goes on.
@@ -269,7 +277,7 @@ On a car navigator that keeps its maps in the folder it hides from the file mana
 line can install one as a trial (see below). When the device's folder for maps of your own is
 hidden from the file manager too (the folder Map on a Drive 53 EX), **Add Map…**
 is off for the same reason. A map whose files go to a folder the device hides inside one the
-file manager shows (a folder its GarminDevice.xml names for its own components) is refused the
+file manager shows (a folder its `GarminDevice.xml` names for its own components) is refused the
 same way, before anything is downloaded, the trial included.
 
 ### Maps on a car navigator (a trial)
@@ -664,12 +672,13 @@ setup --locale de_DE` sets another one for them.
 
 ### Cache
 
-Downloaded maps and software updates, device pictures and app icons, and files on their way to
-the device are kept in `~/.cache/openexpress` (the Flatpak: `~/.var/app/io.github.tomaszbojanowski.OpenExpress/cache/openexpress`;
+Downloaded maps and software updates, device pictures and app icons, files on their way to the
+device and large files read from it (each deleted as soon as it is read) are kept in
+`~/.cache/openexpress` (the Flatpak: `~/.var/app/io.github.tomaszbojanowski.OpenExpress/cache/openexpress`;
 each installation has its own), in six parts: `maps`, `updates`, `pictures`, `answers` (what
 Garmin's servers answered a moment ago: see [How long Garmin's answers are kept](privacy.md#how-long-garmins-answers-are-kept)),
 `tiles` (the tiles of OpenStreetMap under the maps of activities, once they are turned on) and
-`temp`.
+`temp` (the files on their way to the device and those read from it).
 `openexpress cache` shows how big each part is, `openexpress cache --clear --apply` empties all of
 them except the pictures of the devices openExpress remembers (`--only pictures` deletes those
 too) and `openexpress cache --clear --only maps,updates --apply` only those named (without

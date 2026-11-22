@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:22+0100\n"
+"POT-Creation-Date: 2026-11-22 21:48+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -9819,11 +9819,11 @@ msgstr[1] "{count} ({size}) bez kopii, bo kopie nie zmieściłyby się w {limit
 msgstr[2] "{count} ({size}) bez kopii, bo kopie nie zmieściłyby się w {limit}"
 
 #. TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
-#. the crash logs that count the crashes stay
+#. the error logs, from which the crashes are counted, stay
 #: openexpress/gui/status_page.py
 #, python-brace-format
-msgid "The crash logs stay on the device: the crashes are still counted."
-msgstr "Dzienniki awarii zostają na urządzeniu: awarie są nadal liczone."
+msgid "The error logs stay on the device: the crashes are still counted."
+msgstr "Dzienniki błędów zostają na urządzeniu: awarie są nadal liczone."
 
 #. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
 #. computer: nothing is left that could be sent to Garmin (e.g. its support) later

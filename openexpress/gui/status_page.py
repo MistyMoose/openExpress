@@ -1154,6 +1154,16 @@ def _empty_page(sec, facts: status.Facts) -> None:
         card.set_hexpand(True)
         holder.append(card)
         child = Adw.Clamp(maximum_size=520, valign=Gtk.Align.START, child=holder)
-    # TRANSLATORS: the page Device Status of a device that keeps no diagnostic data
-    sec.show_info(_("This device keeps no error logs or memory dumps that openExpress can read"),
-                  child)
+    # Files counted under Logs and Memory Dumps on its card (a Venu's event logs): said to be
+    # other diagnostic files, so that the sentence and the card do not seem to disagree.
+    if logs := facts.categories.get("logs"):
+        # TRANSLATORS: Device Status of a device without error logs or memory dumps openExpress
+        # reads, while the storage card counts some of its files under {category} (the name of
+        # that category on the card); {size}: e.g. 210.3 kB
+        text = _("This device keeps no error logs or memory dumps that openExpress can read. "
+                 "Its other diagnostic files ({size}) are counted under “{category}”.").format(
+            size=human_size(logs), category=kind_names()["logs"])
+    else:
+        # TRANSLATORS: the page Device Status of a device that keeps no diagnostic data
+        text = _("This device keeps no error logs or memory dumps that openExpress can read")
+    sec.show_info(text, child)

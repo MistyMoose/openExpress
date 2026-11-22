@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:00+0100\n"
+"POT-Creation-Date: 2026-11-22 21:12+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -10144,6 +10144,19 @@ msgid "Not connected – connect it to free up space or copy diagnostic files"
 msgstr ""
 "Niepodłączone – podłącz je, aby zwolnić miejsce lub skopiować pliki "
 "diagnostyczne"
+
+#. TRANSLATORS: Device Status of a device without error logs or memory dumps openExpress
+#. reads, while the storage card counts some of its files under {category} (the name of
+#. that category on the card); {size}: e.g. 210.3 kB
+#: openexpress/gui/status_page.py
+#, python-brace-format
+msgid ""
+"This device keeps no error logs or memory dumps that openExpress can read. "
+"Its other diagnostic files ({size}) are counted under “{category}”."
+msgstr ""
+"To urządzenie nie zapisuje dzienników błędów ani zrzutów pamięci, które "
+"openExpress potrafi odczytać. Jego pozostałe pliki diagnostyczne ({size}) są "
+"liczone w kategorii „{category}”."
 
 #. TRANSLATORS: the page Device Status of a device that keeps no diagnostic data
 #: openexpress/gui/status_page.py

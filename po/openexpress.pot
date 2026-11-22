@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:00+0100\n"
+"POT-Creation-Date: 2026-11-22 21:12+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -9300,6 +9300,16 @@ msgstr ""
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "Not connected – connect it to free up space or copy diagnostic files"
+msgstr ""
+
+#. TRANSLATORS: Device Status of a device without error logs or memory dumps openExpress
+#. reads, while the storage card counts some of its files under {category} (the name of
+#. that category on the card); {size}: e.g. 210.3 kB
+#: openexpress/gui/status_page.py
+#, python-brace-format
+msgid ""
+"This device keeps no error logs or memory dumps that openExpress can read. "
+"Its other diagnostic files ({size}) are counted under “{category}”."
 msgstr ""
 
 #. TRANSLATORS: the page Device Status of a device that keeps no diagnostic data

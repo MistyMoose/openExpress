@@ -893,15 +893,40 @@ def test_the_dumps_of_a_device_not_connected_not_counted_are_not_known(clock):
     assert titled(section, "Memory Dumps").get_subtitle() == "Not known"
 
 
+def _empty(**changes):
+    return facts(has_diagnostics=False, crashes=[], events=[], dumps=[], hidden_logs=False,
+                 copies=(0, 0, None), **changes)
+
+
 @pytest.mark.needs_display
 def test_a_device_without_diagnostic_data_has_the_empty_page(clock):
-    _win, section = page(facts(has_diagnostics=False, crashes=[], events=[], dumps=[],
-                               hidden_logs=False, copies=(0, 0, None)))
+    _win, section = page(_empty(categories={**CATEGORIES, "logs": 0}))
     assert section.stack.get_visible_child_name() == "info"
     # The page's name, as every page whose device has none of what it shows (show_info).
     assert section.info.get_title() == section.title
     assert section.info.get_description() == ("This device keeps no error logs or memory dumps "
                                               "that openExpress can read")
+
+
+@pytest.mark.needs_display
+@pytest.mark.parametrize(("language", "said"), [
+    ("en", ("This device keeps no error logs or memory dumps that openExpress can read. Its "
+            "other diagnostic files (61.0\u00a0MB) are counted under “Logs and Memory Dumps”.")),
+    ("pl", ("To urządzenie nie zapisuje dzienników błędów ani zrzutów pamięci, które openExpress "
+            "potrafi odczytać. Jego pozostałe pliki diagnostyczne (61,0\u00a0MB) są liczone "
+            "w\u00a0kategorii „Dzienniki i\u00a0zrzuty pamięci”."))])
+def test_the_empty_page_says_where_the_other_diagnostic_files_are_counted(clock, language, said):
+    """Its storage card counts files under Logs and Memory Dumps (a Venu's event logs): the
+    sentence above it says they are other diagnostic files, not what it cannot read."""
+    from openexpress import i18n
+
+    i18n.setup(language)
+    try:
+        _win, section = page(_empty())
+        description = section.info.get_description()
+    finally:
+        i18n.setup("en")
+    assert description == said
 
 
 # --- the device page ------------------------------------------------------------------------

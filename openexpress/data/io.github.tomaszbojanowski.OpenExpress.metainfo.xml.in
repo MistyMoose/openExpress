@@ -105,6 +105,29 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.13.1" date="2026-11-24">
+      <description translate="no">
+        <p>A maintenance release: clearer messages in the window and on the command line, and three more devices on
+        the list.</p>
+        <ul>
+          <li><em>Updates.</em> When an update is ready, the page has a short heading, "Update Ready", with what to do
+          under it; an update for a folder the device hides says what it needs, a direct USB connection.</li>
+          <li><em>Messages.</em> A busy device now says what is under way and what to do, and on the command line a
+          failed download is said once, without technical words.</li>
+          <li><em>Maps.</em> The Maps page and the command line say plainly when a device hides the folder a map
+          belongs in, and a failed copy of an own map says what became of the incomplete file.</li>
+          <li><em>Music and Apps.</em> Expandable rows are named by what they hold, and before a copy, files already
+          on the device are mentioned only when there are some.</li>
+          <li><em>Device Status.</em> Every row of Crashes and Updates shows its date and hour, the question before
+          older memory dumps are removed says what stays and what is lost, and a device report says how the device is
+          connected.</li>
+          <li><em>Forerunner 970, vívoactive 5 and fēnix 6 Pro</em> added to the list of devices reported working by
+          users.</li>
+        </ul>
+        <p>Thanks to isoarpa for the three device reports (#72, #73, #74) and to prajzner for the Czech
+        translation.</p>
+      </description>
+    </release>
     <release version="0.13.0" date="2026-11-22">
       <description translate="no">
         <p>openPath, faster reading of large files, and clearer server errors.</p>

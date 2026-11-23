@@ -119,6 +119,7 @@ Connect IQ apps. While it works, the device leaves the file manager for a moment
 | fēnix 8 (51 mm, AMOLED) | MTP | [#14](https://github.com/TomaszBojanowski/openExpress/issues/14) |
 | fēnix 7 (Sapphire Dual Power) | MTP | [#6](https://github.com/TomaszBojanowski/openExpress/issues/6) |
 | fēnix 7X (Sapphire Solar), fēnix 7S (Sapphire) | MTP | users on Reddit |
+| fēnix 6 Pro | MTP | [#74](https://github.com/TomaszBojanowski/openExpress/issues/74) |
 | fēnix 5X | MTP | [#27](https://github.com/TomaszBojanowski/openExpress/issues/27) |
 | Instinct 3 – 45mm Tactical | MTP | [#21](https://github.com/TomaszBojanowski/openExpress/issues/21) |
 | Edge 1040 | MTP | [#8](https://github.com/TomaszBojanowski/openExpress/issues/8), [#10](https://github.com/TomaszBojanowski/openExpress/issues/10) |
@@ -126,6 +127,8 @@ Connect IQ apps. While it works, the device leaves the file manager for a moment
 | Drive 53 EX | MTP | a user; [#42](https://github.com/TomaszBojanowski/openExpress/issues/42) |
 | Venu 2S | MTP | [#60](https://github.com/TomaszBojanowski/openExpress/issues/60) (read-only: another account) |
 | Venu X1 | MTP | [#70](https://github.com/TomaszBojanowski/openExpress/issues/70) |
+| Forerunner 970 | MTP | [#72](https://github.com/TomaszBojanowski/openExpress/issues/72) |
+| vívoactive 5 | MTP | [#73](https://github.com/TomaszBojanowski/openExpress/issues/73) (another account: sync and Connect IQ apps not tried) |
 | inReach Mini 2 | USB drive | [#11](https://github.com/TomaszBojanowski/openExpress/issues/11) |
 | Forerunner 55 | USB drive | [#19](https://github.com/TomaszBojanowski/openExpress/issues/19) |
 | Forerunner 920XT | USB drive | [#20](https://github.com/TomaszBojanowski/openExpress/issues/20) |
@@ -133,9 +136,6 @@ Connect IQ apps. While it works, the device leaves the file manager for a moment
 | Forerunner 45 | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36), [#30](https://github.com/TomaszBojanowski/openExpress/issues/30) |
 | Edge 820 | USB drive | [#23](https://github.com/TomaszBojanowski/openExpress/issues/23) |
 | zūmo 595LM | – | [#15](https://github.com/TomaszBojanowski/openExpress/issues/15) |
-| Forerunner 970 | – | [#72](https://github.com/TomaszBojanowski/openExpress/issues/72) |
-| vívoactive 5 | – | [#73](https://github.com/TomaszBojanowski/openExpress/issues/73) (another account: sync and Connect IQ apps not tried) |
-| fēnix 6 Pro | – | [#74](https://github.com/TomaszBojanowski/openExpress/issues/74) |
 | Other Garmin watches and bike computers over USB (MTP) | MTP | expected to work, untested |
 
 What works on each, and the reports in full: [Supported devices](docs/devices.md). A device that

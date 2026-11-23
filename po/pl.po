@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 21:17+0100\n"
+"POT-Creation-Date: 2026-11-23 21:24+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -10268,6 +10268,20 @@ msgstr ""
 "Wersja Flatpak nie ma dostępu do urządzeń USB, więc nie może odczytać "
 "folderu {folder}. Nadaj jej to uprawnienie (patrz README) albo użyj wersji "
 "ze źródeł."
+
+#. TRANSLATORS: on the Updates page, a line under its heading, without a full stop: the
+#. connection could be opened, but the folder could not be read this time (e.g. the device
+#. was busy); {folder}: a folder the device hides from the file manager, e.g. .System;
+#. {button}: the name of the button Check Again of this page
+#: openexpress/gui/updates_page.py
+#, python-brace-format
+msgctxt "updates page"
+msgid ""
+"openExpress could not read the folder {folder} this time; use “{button}” to "
+"try once more"
+msgstr ""
+"openExpress nie odczytał tym razem folderu {folder}; użyj przycisku "
+"„{button}”, aby spróbować jeszcze raz"
 
 #. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
 #. manager, e.g. .System

@@ -124,6 +124,14 @@ def not_read_text(u) -> str | None:
         text = pgettext("updates page", "The Flatpak version has no access to USB devices, so "
                         "it cannot read the folder {folder}. Give it the permission (see the "
                         "README) or use the version from source.")
+    elif u.hidden_session == hidden_folders.FAILED:
+        # TRANSLATORS: on the Updates page, a line under its heading, without a full stop: the
+        # connection could be opened, but the folder could not be read this time (e.g. the device
+        # was busy); {folder}: a folder the device hides from the file manager, e.g. .System;
+        # {button}: the name of the button Check Again of this page
+        text = pgettext("updates page", "openExpress could not read the folder {folder} this "
+                        "time; use “{button}” to try once more")
+        return text.format(folder=u.hidden_folder, button=_("Check Again"))
     else:
         # TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
         # manager, e.g. .System

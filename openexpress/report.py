@@ -119,6 +119,14 @@ def _size(n: int | None) -> str:
     return "unknown" if not n else human_size(n, localize=False)
 
 
+def _connection(storage: Storage) -> str:
+    """How the device is connected. Only the kind of its address is used: the rest of it has
+    the serial number."""
+    if storage.mass_storage:
+        return "USB drive"
+    return "MTP" if storage.label.lower().startswith("mtp://") else "a folder on this computer"
+
+
 def _system(logged_in: bool | None) -> list[str]:
     """The section of the system, the same with a device or without."""
     desktop = os.environ.get("XDG_CURRENT_DESKTOP") or "unknown"
@@ -199,6 +207,7 @@ def build(device: GarminDevice, storage: Storage, logged_in: bool | None = None,
         f"- Software: {device.software_version_str}",
         # Vendor and product ID of the USB device; never taken from the MTP address.
         f"- USB ID: {getattr(storage, 'usb_id', None) or 'unknown'}",
+        f"- Connection: {_connection(storage)}",
         f"- Storage: {_size(capacity)} total, {_size(free)} free",
         f"- Data types: {len(datatypes)}, components: {len(device.update_files)}",
         "",

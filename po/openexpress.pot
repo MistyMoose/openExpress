@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 21:24+0100\n"
+"POT-Creation-Date: 2026-11-23 21:31+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -9458,16 +9458,21 @@ msgstr ""
 msgid "Update Not Installed"
 msgstr ""
 
-#. TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
-#. from the file manager, which openExpress cannot write there (or the device refuses)
+#. TRANSLATORS: the note of a group on the Updates page: updates whose folder the device
+#. hides from the file manager, which openExpress writes only over a direct USB connection
+#. and cannot open to this device; the rows say it in short
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgid ""
-"{count} of these cannot be installed with openExpress yet: the device keeps "
-"it in a folder it hides from the file manager. The others install as usual."
+"{count} of these cannot be installed: the device keeps it in a folder it "
+"hides from the file manager, and openExpress cannot open a direct USB "
+"connection to this device (the Flatpak version needs access to USB devices "
+"for it, see the README). The others install as usual."
 msgid_plural ""
-"{count} of these cannot be installed with openExpress yet: the device keeps "
-"them in folders it hides from the file manager. The others install as usual."
+"{count} of these cannot be installed: the device keeps them in folders it "
+"hides from the file manager, and openExpress cannot open a direct USB "
+"connection to this device (the Flatpak version needs access to USB devices "
+"for it, see the README). The others install as usual."
 msgstr[0] ""
 msgstr[1] ""
 
@@ -9600,11 +9605,12 @@ msgstr ""
 msgid "Garmin offers beta software for this device"
 msgstr ""
 
-#. TRANSLATORS: a line of the row of an update that openExpress cannot install
-#. yet (its group says why), without a full stop
+#. TRANSLATORS: a line of the row of an update that openExpress cannot install,
+#. because it cannot open a direct USB connection to this device (its group says
+#. more), without a full stop
 #: openexpress/gui/updates_page.py
 #, python-brace-format
-msgid "Cannot be installed with openExpress yet"
+msgid "Cannot be installed without a direct USB connection"
 msgstr ""
 
 #: openexpress/gui/updates_page.py
@@ -12828,23 +12834,27 @@ msgid ""
 "openExpress cannot see on the device."
 msgstr ""
 
-#. TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
-#. the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
+#. TRANSLATORS: `openexpress updates`: an update not installed because openExpress cannot
+#. reach the folder its file goes to; {folder}: that folder, which the device hides from the
+#. file manager, e.g. GARMIN/Prompts
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
 "Not installed: {name} {version} goes to the folder {folder}, which the "
-"device hides from the file manager; openExpress cannot install it yet. The "
-"other updates install as usual."
+"device hides from the file manager, and openExpress cannot open a direct USB "
+"connection to this device to write there (the Flatpak version needs access "
+"to USB devices for it, see the README). The other updates install as usual."
 msgstr ""
 
-#. TRANSLATORS: why an update was not installed, after its name in the list of those not
-#. installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
+#. TRANSLATORS: why an update was not installed, after its name and version in the list of
+#. those not installed (lower case, no full stop); {folder}: the folder the device hides from
+#. the file manager, e.g. GARMIN/Prompts
 #: openexpress/updates.py
 #, python-brace-format
 msgid ""
-"the device keeps it in the folder {folder}, hidden from the file manager; "
-"openExpress cannot install it yet"
+"the device keeps it in the folder {folder}, hidden from the file manager, "
+"and openExpress cannot open a direct USB connection to this device to write "
+"there (the Flatpak version needs access to USB devices for it)"
 msgstr ""
 
 #. TRANSLATORS: after updates were copied: the head of the list of those that were not

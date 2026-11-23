@@ -246,14 +246,18 @@ def folders_hidden_text(updates) -> str:
     count = sum(1 for u in updates if u.refused_inside)
     if not count:
         return ""
-    # TRANSLATORS: the note of a group on the Updates page: updates in folders the device hides
-    # from the file manager, which openExpress cannot write there (or the device refuses)
-    return ngettext("{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "it in a folder it hides from the file manager. The others install as "
-                    "usual.",
-                    "{count} of these cannot be installed with openExpress yet: the device keeps "
-                    "them in folders it hides from the file manager. The others install as "
-                    "usual.", count).format(count=count)
+    # TRANSLATORS: the note of a group on the Updates page: updates whose folder the device
+    # hides from the file manager, which openExpress writes only over a direct USB connection
+    # and cannot open to this device; the rows say it in short
+    return ngettext("{count} of these cannot be installed: the device keeps it in a folder it "
+                    "hides from the file manager, and openExpress cannot open a direct USB "
+                    "connection to this device (the Flatpak version needs access to USB devices "
+                    "for it, see the README). The others install as usual.",
+                    "{count} of these cannot be installed: the device keeps them in folders it "
+                    "hides from the file manager, and openExpress cannot open a direct USB "
+                    "connection to this device (the Flatpak version needs access to USB devices "
+                    "for it, see the README). The others install as usual.",
+                    count).format(count=count)
 
 
 def tell_update_done(win, s, rep) -> None:
@@ -645,9 +649,10 @@ class UpdatesPage:
             if u.hidden_unread:
                 subtitle += "\n" + hidden_folder_text(u.hidden_folder)
             if u.refused_inside:
-                # TRANSLATORS: a line of the row of an update that openExpress cannot install
-                # yet (its group says why), without a full stop
-                subtitle += "\n" + _("Cannot be installed with openExpress yet")
+                # TRANSLATORS: a line of the row of an update that openExpress cannot install,
+                # because it cannot open a direct USB connection to this device (its group says
+                # more), without a full stop
+                subtitle += "\n" + _("Cannot be installed without a direct USB connection")
         row = Adw.ActionRow(
             # TRANSLATORS: title of the row of an update of the device's own software (firmware), on
             # the Updates page

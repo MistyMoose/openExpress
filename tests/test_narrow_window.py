@@ -1692,17 +1692,24 @@ def test_a_navigator_page_says_why_nothing_is_done(narrow_window, language, widt
 
 
 HIDDEN_INSIDE_SHOTS = os.environ.get("OPENEXPRESS_HIDDEN_INSIDE_SHOTS")
-HIDDEN_INSIDE_LINE = {"en": "Cannot be installed with openExpress yet",
-                      "pl": "openExpress nie może jeszcze tego zainstalować"}
+HIDDEN_INSIDE_LINE = {"en": "Cannot be installed without a direct USB connection",
+                      "pl": "Nie można zainstalować bez bezpośredniego połączenia USB"}
+HIDDEN_INSIDE_WHY = {
+    "en": ("and openExpress cannot open a direct USB connection to this device (the Flatpak "
+           "version needs access to USB devices for it, see the README). The others install as "
+           "usual."),
+    "pl": ("a\u00a0openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym urządzeniem "
+           "(wersja Flatpak potrzebuje do tego dostępu do urządzeń USB, patrz README). Pozostałe "
+           "instalują się normalnie.")}
 HIDDEN_INSIDE_GROUPS = {
-    "en": [("3 of these cannot be installed with openExpress yet: the device keeps them in "
-            "folders it hides from the file manager. The others install as usual."),
-           ("1 of these cannot be installed with openExpress yet: the device keeps it in a "
-            "folder it hides from the file manager. The others install as usual.")],
-    "pl": [("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-            "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie."),
-           ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
-            "w\u00a0folderze ukrytym przed menedżerem plików. Pozostałe instalują się normalnie.")]}
+    "en": [("3 of these cannot be installed: the device keeps them in folders it hides from the "
+            "file manager, " + HIDDEN_INSIDE_WHY["en"]),
+           ("1 of these cannot be installed: the device keeps it in a folder it hides from the "
+            "file manager, " + HIDDEN_INSIDE_WHY["en"])],
+    "pl": [("3 z\u00a0nich nie można zainstalować: urządzenie trzyma je w\u00a0folderach ukrytych "
+            "przed menedżerem plików, " + HIDDEN_INSIDE_WHY["pl"]),
+           ("1 z\u00a0nich nie można zainstalować: urządzenie trzyma ją w\u00a0folderze ukrytym przed "
+            "menedżerem plików, " + HIDDEN_INSIDE_WHY["pl"])]}
 NOT_ALL = {"en": "1 update was not installed:", "pl": "Nie zainstalowano 1 aktualizacji:"}
 
 

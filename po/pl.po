@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:17+0100\n"
+"POT-Creation-Date: 2026-11-23 22:29+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -3234,13 +3234,12 @@ msgstr "Kolejność aplikacji z kopii {name}"
 msgid "The apps on the device are already in this order."
 msgstr "Aplikacje na urządzeniu są już w tej kolejności."
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid "the same apps with the same settings; only the order changes"
-msgstr ""
-"te same aplikacje z tymi samymi ustawieniami; zmienia się tylko kolejność"
+msgid "the same apps, each as it is now; only the order changes"
+msgstr "te same aplikacje, każda bez zmian; zmienia się tylko kolejność"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3276,16 +3275,13 @@ msgstr ""
 "Ten plik jest ukryty przed menedżerem plików. openExpress usunie go przez "
 "bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid ""
-"every other app on the device is kept, in the same order and with the same "
-"settings"
+msgid "every other app on the device is kept as it is, in the same order"
 msgstr ""
-"każda inna aplikacja z urządzenia zostaje, w tej samej kolejności i z tymi "
-"samymi ustawieniami"
+"każda inna aplikacja z urządzenia zostaje bez zmian, w tej samej kolejności"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -3340,15 +3336,12 @@ msgstr[1] "{count} kolejne aplikacje są zarejestrowane i czekają na urządzen
 msgstr[2] ""
 "{count} kolejnych aplikacji jest zarejestrowanych i czeka na urządzenie"
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid ""
-"every app on the device is kept, in the same order and with the same settings"
-msgstr ""
-"każda aplikacja z urządzenia zostaje, w tej samej kolejności i z tymi samymi "
-"ustawieniami"
+msgid "every app on the device is kept as it is, in the same order"
+msgstr "każda aplikacja z urządzenia zostaje bez zmian, w tej samej kolejności"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -7031,13 +7024,12 @@ msgstr ""
 "Urządzenie nie zastosowało jeszcze wcześniejszych zmian. Odłącz je, "
 "poczekaj, aż będzie gotowe, i spróbuj ponownie."
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
-#. in the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/gui/apps_page.py
 #, python-brace-format
-msgid "The same apps with the same settings; only the order changes."
-msgstr ""
-"Te same aplikacje z tymi samymi ustawieniami; zmienia się tylko kolejność."
+msgid "The same apps, each as it is now; only the order changes."
+msgstr "Te same aplikacje, każda bez zmian; zmienia się tylko kolejność."
 
 #. TRANSLATORS: heading of the error when the order of the apps could not
 #. be restored from a copy of the app list

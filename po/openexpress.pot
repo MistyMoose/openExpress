@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:17+0100\n"
+"POT-Creation-Date: 2026-11-23 22:29+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2932,11 +2932,11 @@ msgstr ""
 msgid "The apps on the device are already in this order."
 msgstr ""
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid "the same apps with the same settings; only the order changes"
+msgid "the same apps, each as it is now; only the order changes"
 msgstr ""
 
 #: openexpress/cli.py
@@ -2969,13 +2969,11 @@ msgid ""
 "moment."
 msgstr ""
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid ""
-"every other app on the device is kept, in the same order and with the same "
-"settings"
+msgid "every other app on the device is kept as it is, in the same order"
 msgstr ""
 
 #: openexpress/cli.py
@@ -3023,12 +3021,11 @@ msgid_plural "{count} more apps are registered and wait for the device"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-#. the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/cli.py
 #, python-brace-format
-msgid ""
-"every app on the device is kept, in the same order and with the same settings"
+msgid "every app on the device is kept as it is, in the same order"
 msgstr ""
 
 #: openexpress/cli.py
@@ -6383,11 +6380,11 @@ msgid ""
 "ready and try again."
 msgstr ""
 
-#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
-#. in the device's app list, not the app's own settings
+#. TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+#. marked as a favourite or not in the app list, as it was
 #: openexpress/gui/apps_page.py
 #, python-brace-format
-msgid "The same apps with the same settings; only the order changes."
+msgid "The same apps, each as it is now; only the order changes."
 msgstr ""
 
 #. TRANSLATORS: heading of the error when the order of the apps could not

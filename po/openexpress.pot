@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:11+0100\n"
+"POT-Creation-Date: 2026-11-23 22:17+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -9434,14 +9434,14 @@ msgid ""
 "try once more"
 msgstr ""
 
-#. TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
-#. manager, e.g. .System
+#. TRANSLATORS: on the Updates page, a line under its heading, without a full stop;
+#. {folder}: a folder the device hides from the file manager, e.g. .System
 #: openexpress/gui/updates_page.py
 #, python-brace-format
 msgctxt "updates page"
 msgid ""
 "openExpress cannot open a direct USB connection to this device, so it cannot "
-"read the folder {folder}."
+"read the folder {folder}"
 msgstr ""
 
 #. TRANSLATORS: subtitle of the row "Add-Ons" on the Updates page: items Garmin offers to

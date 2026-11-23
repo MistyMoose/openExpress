@@ -685,12 +685,22 @@ def test_the_updates_page_says_a_reading_failed_without_blaming_the_connection(l
         assert not_read_text(failed) == said
 
 
-def test_the_updates_page_keeps_its_line_when_no_connection_can_be_opened():
+@pytest.mark.parametrize("language, said", [
+    ("en", ("openExpress cannot open a direct USB connection to this device, so it cannot read "
+            "the folder .System")),
+    ("pl", ("openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym urządzeniem, "
+            "więc nie odczyta folderu .System")),
+])
+def test_the_updates_page_says_no_connection_can_be_opened_in_a_line_without_a_full_stop(language,
+                                                                                         said):
+    from fakes import in_language
+
     from openexpress.gui.updates_page import not_read_text
 
     none = types.SimpleNamespace(hidden_folder=".System",
                                  hidden_session=hidden_folders.NO_SESSION)
-    assert "cannot open a direct USB connection" in not_read_text(none)
+    with in_language(language):
+        assert not_read_text(none) == said
 
 
 def test_the_log_of_a_reading_refused_as_busy_keeps_the_words_of_gvfs(navigator, caplog):
@@ -903,7 +913,8 @@ def test_the_updates_page_says_why_the_folder_was_not_read(navigator):
     hidden_folders.read(storage, [".System"], "test")
     status, *_groups = _updates_page(_offered_from(storage))
     top = _texts(status.rows[0])
-    assert NOTICE in top and NO_SESSION_LINE in top and "Install" not in top
+    # The page's line has no full stop, the command line's sentence has one.
+    assert NOTICE in top and NO_SESSION_LINE.removesuffix(".") in top and "Install" not in top
 
 
 @pytest.mark.needs_display

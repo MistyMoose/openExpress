@@ -133,10 +133,10 @@ def not_read_text(u) -> str | None:
                         "time; use “{button}” to try once more")
         return text.format(folder=u.hidden_folder, button=_("Check Again"))
     else:
-        # TRANSLATORS: on the Updates page; {folder}: a folder the device hides from the file
-        # manager, e.g. .System
+        # TRANSLATORS: on the Updates page, a line under its heading, without a full stop;
+        # {folder}: a folder the device hides from the file manager, e.g. .System
         text = pgettext("updates page", "openExpress cannot open a direct USB connection to "
-                        "this device, so it cannot read the folder {folder}.")
+                        "this device, so it cannot read the folder {folder}")
     return text.format(folder=u.hidden_folder)
 
 

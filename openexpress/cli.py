@@ -3684,9 +3684,11 @@ def build_parser() -> argparse.ArgumentParser:
     # it is logged as the window. After add_subparsers: it would set "cmd" to None.
     p.set_defaults(func=cmd_gui, cmd="gui")
 
+    # TRANSLATORS: help of `openexpress setup` in the list of commands: what it sets; "the copy
+    # of the device's diagnostic files" is its option --diagnostics-copy
     s = sub.add_parser("setup", help=_("the application key from the Garmin Express installer, "
                                        "and the settings: Garmin's servers, the languages, the "
-                                       "diagnostics copy"))
+                                       "copy of the device's diagnostic files"))
     s.add_argument("--from-installer", metavar="GarminExpress.exe",
                    help=_("read the needed data from the Garmin Express installer for Windows "
                           "(GarminExpress.exe from garmin.com); it is only read, nothing is "

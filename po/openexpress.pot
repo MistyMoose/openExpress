@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:05+0100\n"
+"POT-Creation-Date: 2026-11-23 22:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3811,11 +3811,13 @@ msgstr ""
 msgid "interface language, e.g. {examples}"
 msgstr ""
 
+#. TRANSLATORS: help of `openexpress setup` in the list of commands: what it sets; "the copy
+#. of the device's diagnostic files" is its option --diagnostics-copy
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
 "the application key from the Garmin Express installer, and the settings: "
-"Garmin's servers, the languages, the diagnostics copy"
+"Garmin's servers, the languages, the copy of the device's diagnostic files"
 msgstr ""
 
 #: openexpress/cli.py

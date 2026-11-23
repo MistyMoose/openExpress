@@ -112,6 +112,15 @@ def test_apply_does_not_repeat_what_the_command_says_above_it(capsys, language, 
     assert said in page and left_out not in page
 
 
+@pytest.mark.parametrize("language, said, left_out", [
+    ("en", "the languages, the copy of the device's diagnostic files", "diagnostics copy"),
+    ("pl", "języki, kopia plików diagnostycznych urządzenia", "kopia diagnostyki"),
+])
+def test_setup_names_the_copy_as_the_program_does(capsys, language, said, left_out):
+    for page in (help_in(language, capsys), help_in(language, capsys, "setup")):
+        assert said in page and left_out not in page
+
+
 def test_the_usage_line_does_not_list_every_command(capsys):
     said = help_of(capsys)
     usage = " ".join(said.split("\n\n")[0].split())  # the usage line, however it is wrapped

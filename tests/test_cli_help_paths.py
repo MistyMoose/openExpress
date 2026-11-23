@@ -121,6 +121,13 @@ def test_setup_names_the_copy_as_the_program_does(capsys, language, said, left_o
         assert said in page and left_out not in page
 
 
+@pytest.mark.parametrize("language, said", [
+    ("en", "with --type, or -v before the command: only the last N files"),
+    ("pl", "z --type albo z -v przed poleceniem: tylko ostatnie N plików")])
+def test_the_limit_of_files_says_where_v_goes(capsys, language, said):
+    assert said in help_in(language, capsys, "files")
+
+
 def test_the_usage_line_does_not_list_every_command(capsys):
     said = help_of(capsys)
     usage = " ".join(said.split("\n\n")[0].split())  # the usage line, however it is wrapped

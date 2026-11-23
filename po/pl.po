@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:29+0100\n"
+"POT-Creation-Date: 2026-11-23 22:36+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -4335,10 +4335,12 @@ msgstr "pliki na urządzeniu według typu danych"
 msgid "only this data type, each file listed, e.g. {example} (activities)"
 msgstr "tylko ten typ danych, z listą plików, np. {example} (aktywności)"
 
+#. TRANSLATORS: help of --limit of `openexpress files`; "--type" and "-v" are
+#. options, not to be translated; -v is given before the command
 #: openexpress/cli.py
 #, python-brace-format
-msgid "with --type or -v: only the last N files"
-msgstr "z --type albo -v: tylko ostatnie N plików"
+msgid "with --type, or -v before the command: only the last N files"
+msgstr "z --type albo z -v przed poleceniem: tylko ostatnie N plików"
 
 #: openexpress/cli.py
 #, python-brace-format

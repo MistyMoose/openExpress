@@ -3728,7 +3728,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--type", help=_("only this data type, each file listed, e.g. {example} "
                                     "(activities)").format(example="FIT_TYPE_4"))
     s.add_argument("--limit", type=int, default=0, metavar="N",
-                   help=_("with --type or -v: only the last N files"))
+                   # TRANSLATORS: help of --limit of `openexpress files`; "--type" and "-v" are
+                   # options, not to be translated; -v is given before the command
+                   help=_("with --type, or -v before the command: only the last N files"))
     s.set_defaults(func=cmd_files)
 
     from openexpress.activities import PAGE

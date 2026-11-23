@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:22+0100\n"
+"POT-Creation-Date: 2026-11-22 21:48+0100\n"
 "PO-Revision-Date: 2026-11-22 22:13+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -4054,7 +4054,8 @@ msgstr[2] ""
 #, python-brace-format
 msgid "Found {count} playable file; {to_copy} to copy ({size})."
 msgid_plural "Found {count} playable files; {to_copy} to copy ({size})."
-msgstr[0] "Nalezen {count} přehratelný soubor; ke zkopírování: {to_copy} ({size})."
+msgstr[0] ""
+"Nalezen {count} přehratelný soubor; ke zkopírování: {to_copy} ({size})."
 msgstr[1] ""
 "Nalezeny {count} přehratelné soubory; ke zkopírování: {to_copy} ({size})."
 msgstr[2] ""
@@ -9814,10 +9815,11 @@ msgstr[2] ""
 "{count} ({size}) bez vytvoření kopií, protože by se nevešly do limitu {limit}"
 
 #. TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
-#. the crash logs that count the crashes stay
+#. the error logs, from which the crashes are counted, stay
 #: openexpress/gui/status_page.py
-#, python-brace-format
-msgid "The crash logs stay on the device: the crashes are still counted."
+#, fuzzy, python-brace-format
+#| msgid "The crash logs stay on the device: the crashes are still counted."
+msgid "The error logs stay on the device: the crashes are still counted."
 msgstr "Záznamy o pádech zůstávají v zařízení a pády se nadále započítávají."
 
 #. TRANSLATORS: in the same question, when some dumps are removed without a copy on this

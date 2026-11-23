@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-22 21:48+0100\n"
-"PO-Revision-Date: 2026-11-22 22:13+0000\n"
+"PO-Revision-Date: 2026-11-23 14:08+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
 "openexpress/cs/>\n"
@@ -9817,10 +9817,10 @@ msgstr[2] ""
 #. TRANSLATORS: in the question before older memory dumps are removed: only the dumps go;
 #. the error logs, from which the crashes are counted, stay
 #: openexpress/gui/status_page.py
-#, fuzzy, python-brace-format
-#| msgid "The crash logs stay on the device: the crashes are still counted."
+#, python-brace-format
 msgid "The error logs stay on the device: the crashes are still counted."
-msgstr "Záznamy o pádech zůstávají v zařízení a pády se nadále započítávají."
+msgstr ""
+"Chybové protokoly zůstávají v zařízení a počet zaznamenaných pádů se nemění."
 
 #. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
 #. computer: nothing is left that could be sent to Garmin (e.g. its support) later

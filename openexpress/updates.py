@@ -891,18 +891,23 @@ def not_installed_here_text(u: SoftwareUpdate) -> str:
 
 
 def not_installed_inside_text(u: SoftwareUpdate) -> str:
-    # TRANSLATORS: `openexpress updates`: an update openExpress does not install yet; {folder}:
-    # the folder on the device its file goes to, which the device hides, e.g. GARMIN/Prompts
+    # TRANSLATORS: `openexpress updates`: an update not installed because openExpress cannot
+    # reach the folder its file goes to; {folder}: that folder, which the device hides from the
+    # file manager, e.g. GARMIN/Prompts
     return _("Not installed: {name} {version} goes to the folder {folder}, which the device hides "
-             "from the file manager; openExpress cannot install it yet. The other updates "
-             "install as usual.").format(name=u.title, version=u.version, folder=u.folder_hidden)
+             "from the file manager, and openExpress cannot open a direct USB connection to this "
+             "device to write there (the Flatpak version needs access to USB devices for it, see "
+             "the README). The other updates install as usual."
+             ).format(name=u.title, version=u.version, folder=u.folder_hidden)
 
 
 def hidden_inside_reason(u: SoftwareUpdate) -> str:
-    # TRANSLATORS: why an update was not installed, after its name in the list of those not
-    # installed; {folder}: the folder the device hides, e.g. GARMIN/Prompts
-    return _("the device keeps it in the folder {folder}, hidden from the file manager; "
-             "openExpress cannot install it yet").format(folder=u.folder_hidden)
+    # TRANSLATORS: why an update was not installed, after its name and version in the list of
+    # those not installed (lower case, no full stop); {folder}: the folder the device hides from
+    # the file manager, e.g. GARMIN/Prompts
+    return _("the device keeps it in the folder {folder}, hidden from the file manager, and "
+             "openExpress cannot open a direct USB connection to this device to write there (the "
+             "Flatpak version needs access to USB devices for it)").format(folder=u.folder_hidden)
 
 
 def failed_text(report: InstallReport) -> str:

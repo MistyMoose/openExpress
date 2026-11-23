@@ -23,6 +23,7 @@ from openexpress.connect import (
     ApiError,
     ClockSkew,
     GarminClient,
+    NetworkError,
     NotAccountDevice,
     OwnershipError,
     OwnershipUnknown,
@@ -1585,7 +1586,7 @@ def upload_skipped(s: DeviceSession, error: Exception) -> str:
     does not need it: Garmin Connect's queue, Connect IQ and TrueUp go on."""
     host = urlsplit(s.settings.hosts["omt"]).netloc
     # The client's error for a request without an answer carries the requests error.
-    cause = error.__cause__ if isinstance(error, ApiError) else error
+    cause = error.__cause__ if isinstance(error, NetworkError) else error
     if isinstance(cause, requests.RequestException):
         # TRANSLATORS: a sync uploaded nothing: Garmin's server that gives the upload settings
         # (its host, e.g. omt.garmin.com) could not be reached; the error in brackets

@@ -2612,9 +2612,9 @@ def _apps_order(args, dev, st, state) -> int:
     for line, indented in ciq.describe_order(plan, None if args.all else 10):
         print(("  " if indented else "") + line)
     _print_app_list_size(len(plan.entries), sum(1 for a in state.apps if not a.pending))
-    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-    # the device's app list, not the app's own settings
-    print("  " + _("the same apps with the same settings; only the order changes"))
+    # TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+    # marked as a favourite or not in the app list, as it was
+    print("  " + _("the same apps, each as it is now; only the order changes"))
     if not args.apply:
         print(ciq.app_list_copy_note(dev, st))
         print(_("Dry run: nothing was changed. Add --apply."))
@@ -2643,10 +2643,9 @@ def _remove_app_directly(args, dev, st, state, app, api) -> int:
     _print_app_list_size(preview.entries, preview.on_device)
     if preview.pending or not preview.kept:
         raise _app_list_mismatch()
-    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-    # the device's app list, not the app's own settings
-    print("  " + _("every other app on the device is kept, in the same order and with the "
-                   "same settings"))
+    # TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+    # marked as a favourite or not in the app list, as it was
+    print("  " + _("every other app on the device is kept as it is, in the same order"))
     kind = ciq.app_type_name(app.app_type) or app.app_type
     print("  " + _("to be removed: {name} ({type})").format(name=app.name, type=kind))
     if not args.apply:
@@ -2704,10 +2703,9 @@ def _print_in_bin_preview(preview) -> None:
         print("  " + ngettext("{count} more app is registered and waits for the device",
                               "{count} more apps are registered and wait for the device",
                               preview.pending).format(count=preview.pending))
-    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
-    # the device's app list, not the app's own settings
-    print("  " + (_("every app on the device is kept, in the same order and with the same "
-                    "settings")
+    # TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+    # marked as a favourite or not in the app list, as it was
+    print("  " + (_("every app on the device is kept as it is, in the same order")
                   if preview.kept else
                   _("Warning: the new list does not match the apps on the device")))
     for name, app_type, disabled in preview.new:
@@ -3684,9 +3682,11 @@ def build_parser() -> argparse.ArgumentParser:
     # it is logged as the window. After add_subparsers: it would set "cmd" to None.
     p.set_defaults(func=cmd_gui, cmd="gui")
 
+    # TRANSLATORS: help of `openexpress setup` in the list of commands: what it sets; "the copy
+    # of the device's diagnostic files" is its option --diagnostics-copy
     s = sub.add_parser("setup", help=_("the application key from the Garmin Express installer, "
                                        "and the settings: Garmin's servers, the languages, the "
-                                       "diagnostics copy"))
+                                       "copy of the device's diagnostic files"))
     s.add_argument("--from-installer", metavar="GarminExpress.exe",
                    help=_("read the needed data from the Garmin Express installer for Windows "
                           "(GarminExpress.exe from garmin.com); it is only read, nothing is "
@@ -3728,7 +3728,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--type", help=_("only this data type, each file listed, e.g. {example} "
                                     "(activities)").format(example="FIT_TYPE_4"))
     s.add_argument("--limit", type=int, default=0, metavar="N",
-                   help=_("with --type or -v: only the last N files"))
+                   # TRANSLATORS: help of --limit of `openexpress files`; "--type" and "-v" are
+                   # options, not to be translated; -v is given before the command
+                   help=_("with --type, or -v before the command: only the last N files"))
     s.set_defaults(func=cmd_files)
 
     from openexpress.activities import PAGE
@@ -3771,7 +3773,10 @@ def build_parser() -> argparse.ArgumentParser:
                           "manager for a moment)"))
     s.add_argument("--dumps", action="store_true", help=_("also copy the memory dumps"))
     s.add_argument("--free-space", action="store_true",
-                   help=_("free space on the device: older memory dumps (copied to this "
+                   # TRANSLATORS: help of `openexpress diagnostics --free-space`: "free up space"
+                   # as the button Free Up Space of the window; "--apply", "--dumps" and
+                   # "--crash-logs" are options, not to be translated
+                   help=_("free up space on the device: older memory dumps (copied to this "
                           "computer first where they fit) and files of updates it did not "
                           "install; with --apply they are removed (not with --dumps or "
                           "--crash-logs)"))
@@ -3811,7 +3816,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("status", help=_("the sign-in, the devices connected, their last sync and "
                                         "updates, from what this installation knows"))
     s.add_argument("--online", action="store_true",
-                   help=_("also ask Garmin Connect and Garmin's update server now"))
+                   # TRANSLATORS: help of `openexpress status --online`; "answers from a moment
+                   # ago": those openExpress keeps for some minutes, so that they are not asked
+                   # again at once
+                   help=_("also ask Garmin Connect and Garmin's update server, or use their "
+                          "answers from a moment ago"))
     s.set_defaults(func=cmd_status)
 
     # TRANSLATORS: CLI help of the whoami command, which shows the signed-in Garmin Connect account
@@ -3828,7 +3837,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("sync", help=_("sync with Garmin Connect (dry run by default)"))
     s.add_argument("--apply", action="store_true",
-                   help=_("upload and write (without it: a dry run)"))
+                   # TRANSLATORS: help of --apply of `openexpress sync` (the description of the
+                   # command above says it is a dry run without it)
+                   help=pgettext("sync --apply", "upload and write"))
     s.add_argument("--all", action="store_true", help=_("upload everything on the first sync"))
     s.add_argument("--upload-only", action="store_true",
                    help=_("only upload; leave what waits in Garmin Connect for the device"))
@@ -3843,7 +3854,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("baseline", help=_("mark the device's files as already uploaded, for the "
                                           "first sync (nothing is uploaded)"))
-    s.add_argument("--apply", action="store_true", help=_("mark the files (nothing is uploaded)"))
+    s.add_argument("--apply", action="store_true",
+                   # TRANSLATORS: help of --apply of `openexpress baseline` (the description of
+                   # the command above says nothing is uploaded)
+                   help=pgettext("baseline --apply", "mark the files"))
     s.set_defaults(func=cmd_baseline)
 
     s = sub.add_parser("backup", help=_("local backup of device data"))
@@ -4243,8 +4257,9 @@ def _run(args) -> int:
         log.info("unexpected error: %s", type(e).__name__, exc_info=True)
         _error(_("Error: {error}").format(error=applog.error_text(e)))
         if applog.is_fault(e):
-            # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
-            # and "openexpress report --log" are commands, not to be translated
-            _error(_("This is a bug in openExpress. To report it, run openexpress report and "
-                     "attach the output of openexpress report --log."))
+            # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report
+            # --log" is a command, not to be translated; it prints the address of a device report
+            # filled in and the log to paste into it
+            _error(_("This is a bug in openExpress. To report it, run openexpress report --log "
+                     "and follow what it prints."))
         return 1

@@ -71,7 +71,8 @@ def downloads(monkeypatch, tmp_path):
 
 
 HIDDEN_WHY = ("the device keeps it in the folder Garmin/Prompts, hidden from the file "
-              "manager; openExpress cannot install it yet")
+              "manager, and openExpress cannot open a direct USB connection to this device to "
+              "write there (the Flatpak version needs access to USB devices for it)")
 
 
 # --- the folder the device hides inside a folder that is seen ------------------------------------
@@ -188,8 +189,10 @@ def offered_to(watch, monkeypatch):
 
 
 NOT_INSTALLED = ("Not installed: Made-up Prompt Bundle 2.18 goes to the folder Garmin/Prompts, "
-                 "which the device hides from the file manager; openExpress cannot install it "
-                 "yet. The other updates install as usual.")
+                 "which the device hides from the file manager, and openExpress cannot open a "
+                 "direct USB connection to this device to write there (the Flatpak version needs "
+                 "access to USB devices for it, see the README). The other updates install as "
+                 "usual.")
 
 
 def test_the_list_says_which_one_cannot_be_installed_yet(offered_to, capsys):
@@ -235,9 +238,11 @@ def _window_of(storage, offered):
     return win, s
 
 
-ROW_LINE = "Cannot be installed with openExpress yet"
-GROUP_NOTE = ("1 of these cannot be installed with openExpress yet: the device keeps it in a folder "
-              "it hides from the file manager. The others install as usual.")
+ROW_LINE = "Cannot be installed without a direct USB connection"
+GROUP_NOTE = ("1 of these cannot be installed: the device keeps it in a folder it hides from the "
+              "file manager, and openExpress cannot open a direct USB connection to this device "
+              "(the Flatpak version needs access to USB devices for it, see the README). The "
+              "others install as usual.")
 
 
 @pytest.mark.needs_display
@@ -272,17 +277,21 @@ def test_done_after_install_all_says_what_was_not_installed(watch, downloads, in
     assert "1 update was not installed:\nMade-up Prompt Bundle 2.18: " + HIDDEN_WHY in body
 
 
+def _group_in_polish(count: int, where: str) -> str:
+    return (f"{count} z\u00a0nich nie można zainstalować: urządzenie trzyma {where} przed menedżerem "
+            f"plików, a\u00a0openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym "
+            "urządzeniem (wersja Flatpak potrzebuje do tego dostępu do urządzeń USB, patrz "
+            "README). Pozostałe instalują się normalnie.")
+
+
+ONE_FOLDER = "ją w\u00a0folderze ukrytym"
+FOLDERS = "je w\u00a0folderach ukrytych"
+
+
 @pytest.mark.parametrize(("count", "said"), [
-    (1, ("1 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma ją "
-        "w\u00a0folderze ukrytym przed menedżerem plików. Pozostałe instalują się normalnie.")),
-    (3, ("3 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-        "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie.")),
-    (5, ("5 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-        "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie.")),
-    (12, ("12 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-         "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie.")),
-    (22, ("22 z\u00a0nich openExpress nie może jeszcze zainstalować: urządzenie trzyma je "
-         "w\u00a0folderach ukrytych przed menedżerem plików. Pozostałe instalują się normalnie.")),
+    (1, _group_in_polish(1, ONE_FOLDER)), (3, _group_in_polish(3, FOLDERS)),
+    (5, _group_in_polish(5, FOLDERS)), (12, _group_in_polish(12, FOLDERS)),
+    (22, _group_in_polish(22, FOLDERS)),
 ])
 def test_the_note_of_the_group_in_polish_by_count(count, said):
     from fakes import in_language
@@ -295,6 +304,32 @@ def test_the_note_of_the_group_in_polish_by_count(count, said):
     assert text == said
 
 
+def test_a_busy_device_is_said_among_those_not_installed(watch, downloads, monkeypatch):
+    """The session for the hidden folder is refused: the sentence that says what to do stands
+    after the update's name, and the other updates are installed."""
+    from openexpress import hidden_folders
+    from openexpress.device.storage import DeviceBusy
+
+    gio_storage = pytest.importorskip("openexpress.device.gio_storage")
+    storage, by = _offered(watch)
+    by["006-D0002-00"].folder_writable = True
+
+    def busy(*args, **kw):
+        raise DeviceBusy(gio_storage.busy_text())
+
+    monkeypatch.setattr(hidden_folders, "write", busy)
+    report = updates.install(list(by.values()), storage)
+    assert [u.part_number for u, _why in report.failed] == ["006-D0002-00"]
+    assert len(report.written) == 2
+    assert ("The device is busy with another operation, such as a copy in the file manager or "
+            "another task of openExpress. Try again when it ends.") in updates.failed_text(report)
+
+
+def test_the_command_line_says_why_an_update_in_a_hidden_folder_is_not_installed(watch):
+    storage, by = _offered(watch)
+    assert updates.not_installed_inside_text(by["006-D0002-00"]) == NOT_INSTALLED
+
+
 def test_in_polish(watch, downloads, capsys):
     from fakes import in_language
 
@@ -305,9 +340,12 @@ def test_in_polish(watch, downloads, capsys):
         line = updates.not_installed_inside_text(by["006-D0002-00"])
     nb = " "
     assert said == ("Nie zainstalowano 1 aktualizacji:\nMade-up Prompt Bundle 2.18: urządzenie "
-                    f"trzyma ją w{nb}folderze Garmin/Prompts, ukrytym przed menedżerem plików; "
-                    "openExpress nie może jej jeszcze zainstalować")
+                    f"trzyma ją w{nb}folderze Garmin/Prompts, ukrytym przed menedżerem plików, "
+                    f"a{nb}openExpress nie może otworzyć bezpośredniego połączenia USB z{nb}tym "
+                    "urządzeniem, aby tam zapisać (wersja Flatpak potrzebuje do tego dostępu do "
+                    "urządzeń USB)")
     assert line == ("Nie zainstalowano: Made-up Prompt Bundle 2.18 trafia do folderu "
-                    "Garmin/Prompts, który urządzenie ukrywa przed menedżerem plików; openExpress "
-                    "nie może jej jeszcze zainstalować. Pozostałe aktualizacje instalują się "
-                    "normalnie.")
+                    "Garmin/Prompts, który urządzenie ukrywa przed menedżerem plików, "
+                    f"a{nb}openExpress nie może otworzyć bezpośredniego połączenia USB z{nb}tym "
+                    "urządzeniem, aby tam zapisać (wersja Flatpak potrzebuje do tego dostępu do "
+                    "urządzeń USB, patrz README). Pozostałe aktualizacje instalują się normalnie.")

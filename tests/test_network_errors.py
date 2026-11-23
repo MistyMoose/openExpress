@@ -143,6 +143,41 @@ def test_the_command_line_says_a_request_without_an_answer_is_a_network_error(mo
     assert not any("HTTPSConnectionPool" in line for line in err)  # nor in a warning
 
 
+def _a_failed_download_on_the_command_line(monkeypatch, tmp_path, *before):
+    """`openexpress info`, whose command downloads from an address nothing answers at."""
+    from openexpress import cli, download
+
+    class Broken:
+        def get(self, url, **kw):
+            raise _refused_like_requests(url)
+
+    def fetch(args):
+        download.fetch([f"https://download.garmin.com/a.img?garmindlm={SIGNATURE}"],
+                       tmp_path / "a", None, "0" * 32, session=Broken())
+
+    monkeypatch.setattr(cli, "cmd_info", fetch)
+    return cli.main([*before, "info"])
+
+
+def test_the_command_line_says_a_failed_download_once(monkeypatch, tmp_path, capsys):
+    """The error at the end names each address: no warning with the words of requests before
+    it, once for each time the address was asked."""
+    assert _a_failed_download_on_the_command_line(monkeypatch, tmp_path) == 1
+    assert capsys.readouterr().err.splitlines() == [
+        "Error: Could not download the file:",
+        "  https://download.garmin.com/a.img: no connection"]
+
+
+def test_a_failed_download_stays_in_the_log_file_and_under_verbose(monkeypatch, tmp_path, capsys,
+                                                                  log_file):
+    assert _a_failed_download_on_the_command_line(monkeypatch, tmp_path, "-v") == 1
+    err = capsys.readouterr().err
+    logged = log_file.read_text(encoding="utf-8")
+    for said in (err, logged):
+        assert said.count("Download failed (") == 2 and "<address>" in said
+        assert SIGNATURE not in said
+
+
 def test_the_command_line_says_a_network_error_without_its_address(monkeypatch, capsys):
     from openexpress import cli
 

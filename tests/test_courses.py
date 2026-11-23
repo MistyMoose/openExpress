@@ -362,6 +362,24 @@ def test_a_failed_copy_names_the_file_once(drive, tmp_path, error, said):
     assert str(failed.value) == said
 
 
+@pytest.mark.parametrize("error", [
+    DeviceError("Cannot write Garmin/NewFiles/Morning_Loop.GPX: Could not send object info"),
+    OSError(5, "Input/output error"),
+], ids=["device", "system"])
+def test_a_failed_copy_is_told_once_on_the_terminal(drive, tmp_path, error, caplog):
+    """The error says it: its warning goes to the log file, not to the command line's terminal."""
+    class Refuses(LocalStorage):
+        def _write(self, real_path, data):
+            raise error
+
+    st = Refuses(drive)
+    plan = courses.plan_add(device(), st, a_gpx(tmp_path))
+    with pytest.raises(CourseError):
+        courses.add(plan, device(), st)
+    warned = [r for r in caplog.records if "the copy failed" in r.getMessage()]
+    assert len(warned) == 1 and warned[0].told
+
+
 def test_the_names_stay_out_of_the_log(drive, tmp_path, log_file):
     applog.setup("cli")
     copy_a_file(drive, tmp_path, name="Secret Hill")

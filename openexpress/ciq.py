@@ -34,7 +34,7 @@ from openexpress.device.storage import (
     replug_text,
 )
 from openexpress.device.xmldevice import DeviceFile, GarminDevice
-from openexpress.errors import UserFacingError
+from openexpress.errors import UserFacingError, sentence
 from openexpress.i18n import N_, NC_, _, caption, ngettext, pgettext
 from openexpress.progress import Step, downloading_text, say_to, writing_text
 
@@ -1507,17 +1507,10 @@ def _ptp_delete(session, handle: int | None, path: str) -> list[str]:
     return []
 
 
-def _sentence(error) -> str:
-    """The text of an error as a sentence of its own: with a full stop when it ends without
-    one, before the next sentence of a message ("…did not answer in time. Unplug…")."""
-    text = str(error).rstrip()
-    return text if text.endswith((".", "!", "?", "…")) else text + "."
-
-
 def _with_leftovers(error, paths: list[str]) -> str:
     if not paths:
         return str(error)
-    return _sentence(error) + " " + ngettext(
+    return sentence(error) + " " + ngettext(
         "An unfinished file may have been left on the device: {paths}.",
         "Unfinished files may have been left on the device: {paths}.",
         len(paths)).format(paths=", ".join(paths))
@@ -1691,7 +1684,7 @@ def _remove_hidden(device, storage, state: InstalledState, app: InstalledApp) ->
             "The file of {name} was deleted, but the app list on the device could not be "
             "updated: {error} The device may still list the app. Unplug it and check; if "
             "{name} is still listed, connect the device and remove the app again to "
-            "update the list.").format(name=app.name, error=_sentence(error))
+            "update the list.").format(name=app.name, error=sentence(error))
 
     def list_left() -> str:
         # The app list was not written (`problem`): with the file deleted, or already gone.
@@ -1710,7 +1703,7 @@ def _remove_hidden(device, storage, state: InstalledState, app: InstalledApp) ->
             return _("It is not known whether the file of {name} was deleted: {error} The "
                      "device may still list the app. Unplug it and check; if {name} is still "
                      "listed, connect the device and remove the app again.").format(
-                name=app.name, error=_sentence(error))
+                name=app.name, error=sentence(error))
         return _("{name} was not removed: {error}").format(name=app.name, error=error)
 
     save_app_list_copy(device, storage)  # while the device is still mounted
@@ -1770,7 +1763,7 @@ def _remove_hidden(device, storage, state: InstalledState, app: InstalledApp) ->
         if finished:
             raise CiqError(_("{name} was removed, but the device could not be mounted again: "
                              "{error} Unplug the device and plug it in again.").format(
-                name=app.name, error=_sentence(e))) from e
+                name=app.name, error=sentence(e))) from e
         # What became of the app first, then the USB connection to renew.
         said = (what_became(ended[0]) if ended else list_left() if problem is not None
                 else None)

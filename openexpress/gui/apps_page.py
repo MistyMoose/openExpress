@@ -334,9 +334,9 @@ class AppsPage:
 
         lines = [("  " if indented else "") + text
                  for text, indented in ciq.describe_order(plan, 10)]
-        # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
-        # in the device's app list, not the app's own settings
-        lines += ["", _("The same apps with the same settings; only the order changes."), copy_note]
+        # TRANSLATORS: "as it is" / "each as it is now": each app stays turned on or off and
+        # marked as a favourite or not in the app list, as it was
+        lines += ["", _("The same apps, each as it is now; only the order changes."), copy_note]
         return "\n".join(lines)
 
     def choose_order(self, button: Gtk.Button | None = None) -> None:

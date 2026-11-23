@@ -667,6 +667,60 @@ def test_a_reading_refused_as_busy_is_not_kept_and_what_was_read_stays(navigator
     assert hidden_folders.busy_failures(storage) == 0
 
 
+@pytest.mark.parametrize("language, said", [
+    ("en", ("openExpress could not read the folder .System this time; use “Check Again” to try "
+            "once more")),
+    ("pl", ("openExpress nie odczytał tym razem folderu .System; użyj przycisku „Sprawdź "
+            "ponownie”, aby spróbować jeszcze raz")),
+])
+def test_the_updates_page_says_a_reading_failed_without_blaming_the_connection(language, said):
+    """The connection could be opened (the device was busy, say): a line of its own, with the
+    button's own name and without a full stop, as every line under the heading."""
+    from fakes import in_language
+
+    from openexpress.gui.updates_page import not_read_text
+
+    failed = types.SimpleNamespace(hidden_folder=".System", hidden_session=hidden_folders.FAILED)
+    with in_language(language):
+        assert not_read_text(failed) == said
+
+
+@pytest.mark.parametrize("language, said", [
+    ("en", ("openExpress cannot open a direct USB connection to this device, so it cannot read "
+            "the folder .System")),
+    ("pl", ("openExpress nie może otworzyć bezpośredniego połączenia USB z\u00a0tym urządzeniem, "
+            "więc nie odczyta folderu .System")),
+])
+def test_the_updates_page_says_no_connection_can_be_opened_in_a_line_without_a_full_stop(language,
+                                                                                         said):
+    from fakes import in_language
+
+    from openexpress.gui.updates_page import not_read_text
+
+    none = types.SimpleNamespace(hidden_folder=".System",
+                                 hidden_session=hidden_folders.NO_SESSION)
+    with in_language(language):
+        assert not_read_text(none) == said
+
+
+def test_the_log_of_a_reading_refused_as_busy_keeps_the_words_of_gvfs(navigator, caplog):
+    """The error carries the sentence for the user; what gvfs said is in its cause."""
+    caplog.set_level(logging.WARNING, logger="openexpress.hidden_folders")
+    storage = OverUsb(navigator, navigator_session())
+
+    @contextlib.contextmanager
+    def refused():
+        gvfs = DeviceBusy("Cannot unmount the device: File system is busy")
+        raise DeviceBusy("The device is busy with another operation.") from gvfs
+        yield
+
+    storage.exclusive_ptp = refused
+    assert hidden_folders.read(storage, [".System"], "test").state == hidden_folders.FAILED
+    assert [r.getMessage() for r in caplog.records] == [
+        ("hidden folders: not read, the device was busy (Cannot unmount the device: File system "
+         "is busy); not kept, 1 such reading(s) this connection")]
+
+
 def test_the_command_line_does_not_ask_a_busy_device_again_within_a_command(navigator):
     from openexpress import cli, service
 
@@ -859,7 +913,8 @@ def test_the_updates_page_says_why_the_folder_was_not_read(navigator):
     hidden_folders.read(storage, [".System"], "test")
     status, *_groups = _updates_page(_offered_from(storage))
     top = _texts(status.rows[0])
-    assert NOTICE in top and NO_SESSION_LINE in top and "Install" not in top
+    # The page's line has no full stop, the command line's sentence has one.
+    assert NOTICE in top and NO_SESSION_LINE.removesuffix(".") in top and "Install" not in top
 
 
 @pytest.mark.needs_display

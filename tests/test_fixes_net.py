@@ -184,6 +184,27 @@ def test_a_failed_upload_status_check_logs_no_address(monkeypatch, caplog, whole
     assert "upload-service" not in said[0] and "424242" not in said[0]
 
 
+def test_the_command_line_does_not_repeat_a_failed_upload_status_check(monkeypatch, capsys):
+    """The sync says it itself: "Garmin Connect did not confirm processing of …"."""
+    from openexpress import cli
+
+    c = make_client(monkeypatch, unused_url())
+    url = c.connect_url("upload-service/upload/424242?ticket=made-up")
+    monkeypatch.setattr(cli, "cmd_info", lambda args: c.poll_location(url, 1, timeout_s=5))
+    assert cli.main(["info"]) == 0
+    assert "Upload status check failed" not in capsys.readouterr().err
+
+
+def test_a_failed_upload_status_check_stays_in_the_log_file(monkeypatch, log_file):
+    from openexpress import cli
+
+    c = make_client(monkeypatch, unused_url())
+    url = c.connect_url("upload-service/upload/424242?ticket=made-up")
+    monkeypatch.setattr(cli, "cmd_info", lambda args: c.poll_location(url, 1, timeout_s=5))
+    assert cli.main(["info"]) == 0
+    assert log_file.read_text(encoding="utf-8").count("Upload status check failed") == 1
+
+
 def test_poll_location_relative_and_clamped(monkeypatch, server):
     server.routes["/up"] = (202, {"Location": "/activity-service/st/1"}, b"{}")
     server.routes["/activity-service/st/1"] = (201, {}, b"")

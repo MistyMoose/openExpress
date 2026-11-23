@@ -133,6 +133,9 @@ Connect IQ apps. While it works, the device leaves the file manager for a moment
 | Forerunner 45 | USB drive | [#36](https://github.com/TomaszBojanowski/openExpress/issues/36), [#30](https://github.com/TomaszBojanowski/openExpress/issues/30) |
 | Edge 820 | USB drive | [#23](https://github.com/TomaszBojanowski/openExpress/issues/23) |
 | zūmo 595LM | – | [#15](https://github.com/TomaszBojanowski/openExpress/issues/15) |
+| Forerunner 970 | – | [#72](https://github.com/TomaszBojanowski/openExpress/issues/72) |
+| vívoactive 5 | – | [#73](https://github.com/TomaszBojanowski/openExpress/issues/73) (another account: sync and Connect IQ apps not tried) |
+| fēnix 6 Pro | – | [#74](https://github.com/TomaszBojanowski/openExpress/issues/74) |
 | Other Garmin watches and bike computers over USB (MTP) | MTP | expected to work, untested |
 
 What works on each, and the reports in full: [Supported devices](docs/devices.md). A device that

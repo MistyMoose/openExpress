@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:48+0100\n"
+"POT-Creation-Date: 2026-11-22 23:47+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -162,7 +162,7 @@ msgstr ""
 msgid "Reading activities"
 msgstr ""
 
-#: openexpress/applog.py openexpress/netstatus.py
+#: openexpress/applog.py
 #, python-brace-format
 msgid "server error (HTTP {status})"
 msgstr ""
@@ -2931,6 +2931,8 @@ msgstr ""
 msgid "The apps on the device are already in this order."
 msgstr ""
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid "the same apps with the same settings; only the order changes"
@@ -2966,6 +2968,8 @@ msgid ""
 "moment."
 msgstr ""
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -3018,6 +3022,8 @@ msgid_plural "{count} more apps are registered and wait for the device"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -6303,7 +6309,8 @@ msgstr ""
 msgid "All Activities and Apps"
 msgstr ""
 
-#. TRANSLATORS: subtitle of that row: how many it lists
+#. TRANSLATORS: subtitle of the row "All Activities and Apps":
+#. how many built-in activities and apps it lists
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "{count} item"
@@ -6346,6 +6353,8 @@ msgid ""
 "ready and try again."
 msgstr ""
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
+#. in the device's app list, not the app's own settings
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "The same apps with the same settings; only the order changes."
@@ -9000,8 +9009,9 @@ msgstr[1] ""
 msgid "The error logs stay on the device: the crashes are still counted."
 msgstr ""
 
-#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
-#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#. TRANSLATORS: in the question before older memory dumps are removed, when some of them
+#. are removed without a copy on this computer: nothing is left that could be sent to
+#. Garmin (e.g. its support) later
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "A dump removed without a copy cannot be sent to Garmin later."
@@ -9808,9 +9818,10 @@ msgid_plural "Unplug the device to install them"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
-#. page, after "Unplug the device to install it"): updates still to install besides the one
-#. copied already
+#. TRANSLATORS: after "Update ready: unplug the device to install it" or "Update ready: eject
+#. the device to install it" (and, on the Updates page, after "Unplug the device to install
+#. it" or "Eject the device to install it"): updates still to install besides the one copied
+#. already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"

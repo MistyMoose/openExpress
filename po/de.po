@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:48+0100\n"
+"POT-Creation-Date: 2026-11-22 23:47+0100\n"
 "PO-Revision-Date: 2026-11-15 19:13+0000\n"
 "Last-Translator: BeGiBue <begibue@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/openexpress/"
@@ -163,7 +163,7 @@ msgstr "Sportart {number}"
 msgid "Reading activities"
 msgstr "Aktivitäten werden gelesen"
 
-#: openexpress/applog.py openexpress/netstatus.py
+#: openexpress/applog.py
 #, python-brace-format
 msgid "server error (HTTP {status})"
 msgstr "Serverfehler (HTTP {status})"
@@ -3210,6 +3210,8 @@ msgstr "Reihenfolge der Apps aus der Kopie {name}"
 msgid "The apps on the device are already in this order."
 msgstr "Die Apps auf dem Gerät sind bereits in dieser Reihenfolge."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, fuzzy, python-brace-format
 #| msgid "the same apps with the same flags; only the order changes"
@@ -3255,6 +3257,8 @@ msgstr ""
 "löscht sie über eine direkte USB-Verbindung; das Gerät verschwindet dafür "
 "kurz aus der Dateiverwaltung."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, fuzzy, python-brace-format
 #| msgid ""
@@ -3317,6 +3321,8 @@ msgid_plural "{count} more apps are registered and wait for the device"
 msgstr[0] "{count} weitere App ist registriert und wartet auf das Gerät"
 msgstr[1] "{count} weitere Apps sind registriert und warten auf das Gerät"
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, fuzzy, python-brace-format
 #| msgid ""
@@ -6968,7 +6974,8 @@ msgstr "Aktivitäten durchsuchen"
 msgid "All Activities and Apps"
 msgstr "Integrierte Aktivitäten und Apps"
 
-#. TRANSLATORS: subtitle of that row: how many it lists
+#. TRANSLATORS: subtitle of the row "All Activities and Apps":
+#. how many built-in activities and apps it lists
 #: openexpress/gui/apps_page.py
 #, fuzzy, python-brace-format
 #| msgid "{count} file"
@@ -7016,6 +7023,8 @@ msgstr ""
 "Das Gerät hat frühere Änderungen noch nicht übernommen. Trennen Sie es, "
 "warten Sie, bis es bereit ist, und versuchen Sie es erneut."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
+#. in the device's app list, not the app's own settings
 #: openexpress/gui/apps_page.py
 #, fuzzy, python-brace-format
 #| msgid "The same apps with the same flags; only the order changes."
@@ -9845,8 +9854,9 @@ msgid "The error logs stay on the device: the crashes are still counted."
 msgstr ""
 "Die App-Liste auf dem Gerät hat Einträge, die nicht gelesen werden können"
 
-#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
-#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#. TRANSLATORS: in the question before older memory dumps are removed, when some of them
+#. are removed without a copy on this computer: nothing is left that could be sent to
+#. Garmin (e.g. its support) later
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "A dump removed without a copy cannot be sent to Garmin later."
@@ -10737,9 +10747,10 @@ msgid_plural "Unplug the device to install them"
 msgstr[0] "Trennen Sie das Gerät, um es zu installieren."
 msgstr[1] "Trennen Sie das Gerät, um es zu installieren."
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
-#. page, after "Unplug the device to install it"): updates still to install besides the one
-#. copied already
+#. TRANSLATORS: after "Update ready: unplug the device to install it" or "Update ready: eject
+#. the device to install it" (and, on the Updates page, after "Unplug the device to install
+#. it" or "Eject the device to install it"): updates still to install besides the one copied
+#. already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"

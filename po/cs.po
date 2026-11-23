@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.9.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:48+0100\n"
+"POT-Creation-Date: 2026-11-22 23:47+0100\n"
 "PO-Revision-Date: 2026-11-23 14:08+0000\n"
 "Last-Translator: prajzner <prajzner@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Czech <https://hosted.weblate.org/projects/openexpress/"
@@ -164,7 +164,7 @@ msgstr "Sport {number}"
 msgid "Reading activities"
 msgstr "Načítání aktivit"
 
-#: openexpress/applog.py openexpress/netstatus.py
+#: openexpress/applog.py
 #, python-brace-format
 msgid "server error (HTTP {status})"
 msgstr "chyba serveru (HTTP {status})"
@@ -3246,6 +3246,8 @@ msgstr "Pořadí aplikací z kopie {name}"
 msgid "The apps on the device are already in this order."
 msgstr "Aplikace jsou již v zařízení seřazeny v tomto pořadí."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid "the same apps with the same settings; only the order changes"
@@ -3284,6 +3286,8 @@ msgstr ""
 "prostřednictvím přímého USB připojení; zařízení na chvíli zmizí ze správce "
 "souborů."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -3345,6 +3349,8 @@ msgstr[0] "Je registrována ještě {count} aplikace čekající na zařízení"
 msgstr[1] "Jsou registrovány ještě {count} aplikace čekající na zařízení"
 msgstr[2] "Je registrováno ještě {count} aplikací čekajících na zařízení"
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -6950,7 +6956,8 @@ msgstr "Hledat aktivity"
 msgid "All Activities and Apps"
 msgstr "Všechny aktivity a aplikace"
 
-#. TRANSLATORS: subtitle of that row: how many it lists
+#. TRANSLATORS: subtitle of the row "All Activities and Apps":
+#. how many built-in activities and apps it lists
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "{count} item"
@@ -6997,6 +7004,8 @@ msgstr ""
 "Zařízení ještě neprovedlo předchozí změny. Odpojte ho, počkejte, až bude "
 "připravené, a zkuste to znovu."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
+#. in the device's app list, not the app's own settings
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "The same apps with the same settings; only the order changes."
@@ -9822,8 +9831,9 @@ msgid "The error logs stay on the device: the crashes are still counted."
 msgstr ""
 "Chybové protokoly zůstávají v zařízení a počet zaznamenaných pádů se nemění."
 
-#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
-#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#. TRANSLATORS: in the question before older memory dumps are removed, when some of them
+#. are removed without a copy on this computer: nothing is left that could be sent to
+#. Garmin (e.g. its support) later
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "A dump removed without a copy cannot be sent to Garmin later."
@@ -10725,9 +10735,10 @@ msgstr[0] "Odpojte zařízení, aby se aktualizace nainstalovala"
 msgstr[1] "Odpojte zařízení, aby se aktualizace nainstalovaly"
 msgstr[2] "Odpojte zařízení, aby se aktualizace nainstalovaly"
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
-#. page, after "Unplug the device to install it"): updates still to install besides the one
-#. copied already
+#. TRANSLATORS: after "Update ready: unplug the device to install it" or "Update ready: eject
+#. the device to install it" (and, on the Updates page, after "Unplug the device to install
+#. it" or "Eject the device to install it"): updates still to install besides the one copied
+#. already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"

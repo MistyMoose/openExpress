@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 23:47+0100\n"
+"POT-Creation-Date: 2026-11-23 20:57+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -12638,6 +12638,25 @@ msgstr ""
 #, python-brace-format
 msgid "The name {name} is reserved for Garmin's own maps."
 msgstr "Nazwa {name} jest zastrzeżona dla map Garmina."
+
+#. TRANSLATORS: after the words of a failed copy of a map of the user's own to the
+#. device, which name the file (e.g. "Cannot write GARMIN/x.img: Input/output error."):
+#. what the copy left was deleted
+#: openexpress/ownmaps.py
+#, python-brace-format
+msgid "The incomplete file was removed from the device."
+msgstr "Niepełny plik usunięto z urządzenia."
+
+#. TRANSLATORS: after the words of a failed copy of a map of the user's own to the device,
+#. which name the file: what the copy left could not be deleted; {path}: its path on the
+#. device, e.g. GARMIN/x.img
+#: openexpress/ownmaps.py
+#, python-brace-format
+msgid ""
+"The incomplete file could not be removed; delete {path} from the device "
+"yourself."
+msgstr ""
+"Niepełnego pliku nie udało się usunąć; usuń {path} z urządzenia ręcznie."
 
 #: openexpress/ownmaps.py
 #, python-brace-format

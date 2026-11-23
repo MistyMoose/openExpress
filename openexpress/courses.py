@@ -491,10 +491,10 @@ def add(plan: AddPlan, device: GarminDevice, storage: Storage,
         except (DeviceNotResponding, CourseError):
             raise
         except DeviceError as e:  # its words name the file already
-            log.warning("courses: the copy failed (%s)", type(e).__name__)
+            log.warning("courses: the copy failed (%s)", type(e).__name__, extra=applog.TOLD)
             raise CourseError(str(e)) from e
         except OSError as e:
-            log.warning("courses: the copy failed (%s)", type(e).__name__)
+            log.warning("courses: the copy failed (%s)", type(e).__name__, extra=applog.TOLD)
             failed = _("Writing {path} failed.").format(path=plan.path)
             raise CourseError(f"{failed} ({applog.system_words(e) or e})") from e
         copies = [c for c in recorded(device.unit_id)

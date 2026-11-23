@@ -7,7 +7,7 @@ import pytest
 from fakes import RunNow, step_words
 from fakes import window as stand_in
 
-from openexpress import ciq, music, proto
+from openexpress import ciq, errors, music, proto
 from openexpress.device.storage import LocalStorage
 from openexpress.device.xmldevice import parse
 
@@ -2023,7 +2023,7 @@ TIMED_OUT = "Cannot mount the device: the device did not answer in time"  # as _
 def test_an_error_ends_its_sentence_before_the_next_one(error, expected):
     from openexpress.device.storage import DeviceError
 
-    assert ciq._sentence(DeviceError(error)) == expected
+    assert errors.sentence(DeviceError(error)) == expected
 
 
 def test_the_leftovers_come_in_a_sentence_of_their_own():

@@ -157,7 +157,10 @@ def fetch(
                                      e.status if applog.is_server_error(e.status) else 200)
                 # The text of a requests error names the signed address, query and all.
                 errors.append(f"{_short(url)}: {applog.network_error_text(e)}")
-                log.warning("Download failed (%s)", applog.network_error_detail(e))
+                # The DownloadError at the end says each address once: on the terminal of the
+                # command line not again.
+                log.warning("Download failed (%s)", applog.network_error_detail(e),
+                            extra=applog.TOLD)
                 if isinstance(e, DownloadError) and e.status and 400 <= e.status < 500:
                     break  # retrying the same request will not help
                 continue

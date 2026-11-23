@@ -3811,7 +3811,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("status", help=_("the sign-in, the devices connected, their last sync and "
                                         "updates, from what this installation knows"))
     s.add_argument("--online", action="store_true",
-                   help=_("also ask Garmin Connect and Garmin's update server now"))
+                   # TRANSLATORS: help of `openexpress status --online`; "answers from a moment
+                   # ago": those openExpress keeps for some minutes, so that they are not asked
+                   # again at once
+                   help=_("also ask Garmin Connect and Garmin's update server, or use their "
+                          "answers from a moment ago"))
     s.set_defaults(func=cmd_status)
 
     # TRANSLATORS: CLI help of the whoami command, which shows the signed-in Garmin Connect account

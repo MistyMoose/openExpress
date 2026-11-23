@@ -76,6 +76,25 @@ def test_each_command_says_on_its_own_page_what_it_does(capsys):
     assert "sync with Garmin Connect (dry run by default)" in help_of(capsys, "sync")
 
 
+def help_in(language, capsys, *argv) -> str:
+    """A page of the help in `language`, its words apart from how it is wrapped."""
+    from openexpress import i18n
+
+    try:
+        return " ".join(help_of(capsys, "--lang", language, *argv).split())
+    finally:
+        i18n.setup("en")
+
+
+@pytest.mark.parametrize("language, said", [
+    ("en", ("also ask Garmin Connect and Garmin's update server, or use their answers from a "
+            "moment ago")),
+    ("pl", ("zapytaj też Garmin Connect i serwer aktualizacji Garmina albo użyj ich odpowiedzi "
+            "sprzed chwili"))])
+def test_status_online_says_it_may_use_answers_from_a_moment_ago(capsys, language, said):
+    assert said in help_in(language, capsys, "status")
+
+
 def test_the_usage_line_does_not_list_every_command(capsys):
     said = help_of(capsys)
     usage = " ".join(said.split("\n\n")[0].split())  # the usage line, however it is wrapped

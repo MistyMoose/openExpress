@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 21:39+0100\n"
+"POT-Creation-Date: 2026-11-23 21:46+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -4515,10 +4515,17 @@ msgstr ""
 "logowanie, podłączone urządzenia, ich ostatnia synchronizacja "
 "i aktualizacje – z tego, co wie ta instalacja"
 
+#. TRANSLATORS: help of `openexpress status --online`; "answers from a moment
+#. ago": those openExpress keeps for some minutes, so that they are not asked
+#. again at once
 #: openexpress/cli.py
 #, python-brace-format
-msgid "also ask Garmin Connect and Garmin's update server now"
-msgstr "zapytaj też teraz Garmin Connect i serwer aktualizacji Garmina"
+msgid ""
+"also ask Garmin Connect and Garmin's update server, or use their answers "
+"from a moment ago"
+msgstr ""
+"zapytaj też Garmin Connect i serwer aktualizacji Garmina albo użyj ich "
+"odpowiedzi sprzed chwili"
 
 #. TRANSLATORS: CLI help of the whoami command, which shows the signed-in Garmin Connect account
 #: openexpress/cli.py

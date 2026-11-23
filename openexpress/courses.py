@@ -496,8 +496,7 @@ def add(plan: AddPlan, device: GarminDevice, storage: Storage,
         except OSError as e:
             log.warning("courses: the copy failed (%s)", type(e).__name__)
             failed = _("Writing {path} failed.").format(path=plan.path)
-            # The system's words: not the number of the error, nor the path on this computer.
-            raise CourseError(f"{failed} ({e.strerror or e})") from e
+            raise CourseError(f"{failed} ({applog.system_words(e) or e})") from e
         copies = [c for c in recorded(device.unit_id)
                   if str(c.get("file", "")).casefold() != plan.name.casefold()]
         _keep(device.unit_id, [*copies, {"file": plan.name, "courses": plan.courses,

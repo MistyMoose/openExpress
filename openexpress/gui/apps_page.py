@@ -212,7 +212,8 @@ class AppsPage:
         # TRANSLATORS: title of an expandable row in "Built-In Activities and Apps" that lists
         # all of them
         exp = Adw.ExpanderRow(title=_("All Activities and Apps"),
-                              # TRANSLATORS: subtitle of that row: how many it lists
+                              # TRANSLATORS: subtitle of the row "All Activities and Apps":
+                              # how many built-in activities and apps it lists
                               subtitle=ngettext("{count} item", "{count} items",
                                                 len(builtin)).format(count=len(builtin)))
         listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
@@ -333,6 +334,8 @@ class AppsPage:
 
         lines = [("  " if indented else "") + text
                  for text, indented in ciq.describe_order(plan, 10)]
+        # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
+        # in the device's app list, not the app's own settings
         lines += ["", _("The same apps with the same settings; only the order changes."), copy_note]
         return "\n".join(lines)
 

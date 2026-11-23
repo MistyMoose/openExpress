@@ -8,7 +8,7 @@ import types
 import uuid
 
 import pytest
-from fakes import descendants, device_session, in_language, page_window, window_methods
+from fakes import apps_page, descendants, device_session, in_language, page_window, window_methods
 
 from openexpress import ciq, music
 from openexpress.music import DeviceMedia
@@ -38,23 +38,9 @@ def _music_page():
 
 
 def _apps_page(count: int):
-    win, section = page_window("apps")
-    device = types.SimpleNamespace(unit_id=3000000001, software_version_str="23.39",
-                                   description="Made-up watch")
-    win.session = types.SimpleNamespace(device=device, storage=None, logged_in=False,
-                                        ownership_error=None)
-    win._updated_apps = set()
-    win.toast = lambda text: None
-    win.load_section = lambda key, force=False: None
-    win._load_app_icons = lambda icons: None
-    window_methods(win, ("_updates_to_offer", "_apps_space", "_waiting_note", "_app_icon",
-                         "_order_blocked", "_store_type_name", "_search_filter", "show_apps",
-                         "toggle_app"))
-    built_in = [ciq.InstalledApp(
+    _win, section = apps_page(ciq.InstalledApp(
         app_id=uuid.UUID(f"{ciq.PRELOADED_PREFIX}-0000-0000-{n:012d}"), app_type=8,
-        name=f"Made-up Sport {n}", disabled=False) for n in range(1, count + 1)]
-    win.show_apps((ciq.InstalledState(apps=built_in, available_space=10**9,
-                                      available_slots=31), [], []))
+        name=f"Made-up Sport {n}", disabled=False) for n in range(1, count + 1))
     return section
 
 

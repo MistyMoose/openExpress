@@ -311,8 +311,7 @@ def _sha(data: bytes) -> str:
 def _private(where: Path) -> None:
     """The folder of the copies and its own folders: for their owner alone (0700)."""
     for folder_ in (where, where / "objects", where / "snapshots"):
-        paths.make_dir(folder_)
-        folder_.chmod(0o700)
+        paths.make_private_dir(folder_)
 
 
 def _snapshot_order(path: Path) -> tuple[str, int]:
@@ -558,8 +557,7 @@ def copy_dumps(device: GarminDevice, storage: Storage, now: datetime | None = No
     head = _("Copying memory dumps")
     for n, (path, entry) in enumerate(chosen, 1):
         say_to(progress)(Step(head, n, len(chosen)))
-        data = whole_reads.whole_file(storage, path, entry.size,
-                                      lambda path=path: storage.read(path))
+        data = whole_reads.whole_file(storage, path, entry.size)
         report.add(_keep_file(where, files, report, path, data, entry.mtime)[1])
     if files and files != _last(where, "dumps").get("files"):
         _save(where, "dumps", files, {}, now, device.software_version_str)

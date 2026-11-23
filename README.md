@@ -99,7 +99,9 @@ was checked on other devices is in the table below. Other Garmin devices that co
 
 openPath is openExpress's own direct USB connection to the device. Through it, openExpress reads and writes what
 the file manager does not show: hidden folders and files such as voice packages and fonts, hidden crash logs and
-Connect IQ apps. While it works, the device leaves the file manager for a moment.
+Connect IQ apps. While it works, the device disappears from the file manager for a moment. The window and the
+command line call it a direct USB connection; in the Flatpak it needs the USB permission
+([Flatpak permissions](#flatpak-permissions)).
 
 <p align="center">
   <img src="docs/openpath/openpath-drogi.png" width="800"

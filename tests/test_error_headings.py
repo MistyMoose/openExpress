@@ -142,7 +142,7 @@ def _failed(monkeypatch, error):
     return text
 
 
-def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress(monkeypatch):
+def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress_in_the_window(monkeypatch):
     assert _failed(monkeypatch, RuntimeError("made-up failure")) == (
         f"made-up failure\n\n{FAULT}")
 

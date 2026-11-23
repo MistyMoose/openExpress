@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 
 import pytest
+from fakes import hidden_at
 
 from openexpress import ciq, courses, music, sync, trueup
 from openexpress.device.storage import LocalStorage
@@ -30,14 +31,6 @@ REAL = [p for p in sorted((ROOT / "testdata" / "write-routes").glob("*.json"))
 ORDINARY, OWN_SESSION, NOT_WRITTEN = "ordinary", "own session", "not written here"
 
 
-def _hidden_at(folder: str, hidden: list[str]) -> str | None:
-    key = folder.casefold()
-    for h in sorted(hidden, key=len):
-        if key == h.casefold() or key.startswith(h.casefold() + "/"):
-            return h
-    return None
-
-
 def _device(data: dict) -> GarminDevice:
     device = GarminDevice(unit_id=0, part_number="006-B0000-00", software_version=100,
                           description="Made-up Device")
@@ -47,23 +40,32 @@ def _device(data: dict) -> GarminDevice:
     return device
 
 
-def _storage(root: Path, data: dict, device: GarminDevice, session: bool) -> LocalStorage:
+def _storage(root: Path, data: dict, device: GarminDevice) -> LocalStorage:
     """The device as the ordinary listing shows it: every folder the XML names that it does
-    not hide."""
+    not hide; openExpress's own session can be had."""
     hidden = [h["folder"] for h in data["hidden"]]
     (root / "GARMIN").mkdir(parents=True, exist_ok=True)
     for f in device.files:
-        if _hidden_at(f.path, hidden) is None:
+        if hidden_at(f.path, hidden) is None:
             (root / f.path).mkdir(parents=True, exist_ok=True)
     storage = LocalStorage(root)
-    storage.exclusive_ptp = lambda: (object() if session else None)
+    storage.exclusive_ptp = lambda: object()
     return storage
 
 
-def routes(data: dict, root: Path, session: bool = True) -> dict[str, dict[str, str]]:
+def _queue(data: dict, device: GarminDevice) -> list:
+    """What Garmin Connect's queue would send `device`: one message of each data type its
+    GarminDevice.xml takes files in, as sync.plan_downloads plans it."""
+    return sync.plan_downloads(device, [
+        {"messageid": n, "devicexmldatatype": dt,
+         "metadata": {"messagename": dt, "messageurl": "https://example.org/x"}}
+        for n, dt in enumerate(data["xml_targets"])])
+
+
+def routes(data: dict, root: Path) -> dict[str, dict[str, str]]:
     """Each folder the modules write to on this device: the route of each module there."""
     device = _device(data)
-    storage = _storage(root, data, device, session)
+    storage = _storage(root, data, device)
     out: dict[str, dict[str, str]] = {}
 
     def route(module: str, folder: str | None, how: str) -> None:
@@ -84,10 +86,7 @@ def routes(data: dict, root: Path, session: bool = True) -> dict[str, dict[str, 
     route("courses", gpx.path if gpx else None, ORDINARY)
     true_up = device.targets(trueup.DATATYPE)
     route("TrueUp", true_up[0].path if true_up else None, ORDINARY)
-    for item in sync.plan_downloads(device, [
-            {"messageid": n, "devicexmldatatype": dt,
-             "metadata": {"messagename": dt, "messageurl": "https://example.org/x"}}
-            for n, dt in enumerate(data["xml_targets"])]):
+    for item in _queue(data, device):
         if item.target is not None and not item.handled_by:
             route(QUEUE, item.target.path, ORDINARY)
     return out
@@ -96,11 +95,11 @@ def routes(data: dict, root: Path, session: bool = True) -> dict[str, dict[str, 
 QUEUE = "Garmin Connect's queue"
 
 
-def _wrong(data: dict, root: Path, session: bool = True, queue: bool = True) -> list[str]:
+def _wrong(data: dict, root: Path, queue: bool = True) -> list[str]:
     hidden = [h["folder"] for h in data["hidden"]]
     return [f"{folder} ({module}): the ordinary write, into {at}, which the device hides"
-            for folder, by_module in sorted(routes(data, root, session).items())
-            if (at := _hidden_at(folder, hidden)) is not None
+            for folder, by_module in sorted(routes(data, root).items())
+            if (at := hidden_at(folder, hidden)) is not None
             for module, how in sorted(by_module.items())
             if how == ORDINARY and (queue or module != QUEUE)]
 
@@ -108,13 +107,9 @@ def _wrong(data: dict, root: Path, session: bool = True, queue: bool = True) -> 
 def queue_into_hidden(data: dict) -> list[str]:
     """The data types Garmin Connect's queue would write into a folder the device hides."""
     hidden = [h["folder"] for h in data["hidden"]]
-    device = _device(data)
-    return sorted(item.datatype for item in sync.plan_downloads(device, [
-        {"messageid": n, "devicexmldatatype": dt,
-         "metadata": {"messagename": dt, "messageurl": "https://example.org/x"}}
-        for n, dt in enumerate(data["xml_targets"])])
-        if item.target is not None and not item.handled_by
-        and _hidden_at(item.target.path, hidden) is not None)
+    return sorted(item.datatype for item in _queue(data, _device(data))
+                  if item.target is not None and not item.handled_by
+                  and hidden_at(item.target.path, hidden) is not None)
 
 
 @pytest.mark.parametrize("path", MADE_UP, ids=[p.stem for p in MADE_UP])

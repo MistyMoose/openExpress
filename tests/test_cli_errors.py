@@ -152,7 +152,8 @@ FAULT = ("This is a bug in openExpress. To report it, run openexpress report and
          "output of openexpress report --log.")
 
 
-def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress(log_file, capsys):
+def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress_on_the_command_line(log_file,
+                                                                                    capsys):
     code, _log = _run(RuntimeError("made-up failure"), log_file)
     assert code == 1
     assert capsys.readouterr().err.splitlines() == ["Error: made-up failure", FAULT]

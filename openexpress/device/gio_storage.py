@@ -83,9 +83,8 @@ def _refused(e: GLib.Error, what: str) -> DeviceError:
 
 
 def _os_said(what: str, e: OSError) -> str:
-    """`what` with the system's words for `e`: not its number, nor the path of a file the user
-    does not know of (the temporary file on its way to the device)."""
-    return f"{what}: {e.strerror or e}"
+    """`what` with the system's words for `e` (applog.system_words), else its own."""
+    return f"{what}: {applog.system_words(e) or e}"
 
 
 def _host_visible(path: Path) -> bool:
@@ -223,14 +222,58 @@ def _has_bytes(path: Path) -> bool:
         return False
 
 
+def _flatpak_spawn_needed(what: str) -> None:
+    """CopyNotStarted with `what` without flatpak-spawn, through which the host's gio copies."""
+    if not shutil.which("flatpak-spawn"):
+        raise CopyNotStarted(f"{what}: " + _("flatpak-spawn is not available"))
+
+
+def _host_gio_copy(command: list[str],
+                   what: str) -> tuple[subprocess.Popen, list[bytes], threading.Thread]:
+    """The host's `gio copy -p` started (`command`), its error output read meanwhile by a thread
+    of its own, so that a lot of it cannot block the copy. Gives the process, the list the
+    thread puts that output in (whole once the thread has ended) and the thread. A command that
+    cannot be started: CopyNotStarted with `what`."""
+    try:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:  # the command could not be started: its name said
+        raise CopyNotStarted(f"{what}: {e}") from e
+    errors: list[bytes] = []
+    reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
+    reader.start()
+    return proc, errors, reader
+
+
+def _copy_updates(proc: subprocess.Popen, on_fraction: Callable[[float], None]) -> str:
+    """What `gio copy -p` prints, read as it comes until the command ends: `on_fraction` with
+    how far the copy is (copy_fraction) for each update that tells it. Gives all it printed."""
+    said, pending = [], ""
+    decode = codecs.getincrementaldecoder("utf-8")("replace")
+    while True:
+        data = os.read(proc.stdout.fileno(), 65536)
+        if not data:
+            break
+        text = decode.decode(data)
+        said.append(text)
+        # Updates begin with a carriage return and are cut anywhere by the pipe: the newest one
+        # is read as far as it has come, and again when the rest arrives.
+        *complete, pending = re.split(r"[\r\n]", pending + text)
+        # An update that cannot be read only goes without its progress: the result of the copy
+        # depends on the exit code alone.
+        for update in (*complete, pending):
+            fraction = copy_fraction(update)
+            if fraction is not None:
+                on_fraction(fraction)
+    return "".join(said)
+
+
 def host_copy(local: Path, target_uri: str, what: str, progress=None, started=None) -> None:
     """Copies a local file to the watch with the host's `gio copy`, as gvfs refuses local files
     from sandboxed (Flatpak) apps and gvfs-mtp has no other way of writing (needs
     --talk-name=org.freedesktop.Flatpak). `progress(done, total)` adds `-p`; `started()` is
     called for each update of progress read. Raises CopyNotStarted when the command cannot
     start, DeviceError when the copy fails or times out."""
-    if not shutil.which("flatpak-spawn"):
-        raise CopyNotStarted(f"{what}: " + _("flatpak-spawn is not available"))
+    _flatpak_spawn_needed(what)
     command = host_command("gio", "copy")
     # The whole path, as _host_visible saw it: one given as typed ("-x.mp3", "Name: x.mp3")
     # would be an option or an address to the host's gio.
@@ -253,38 +296,25 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         return
     try:
         size = Path(local).stat().st_size
-        proc = subprocess.Popen([*command, "-p", source, target_uri],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except OSError as e:  # the command could not be started: its name said
+    except OSError as e:
         raise CopyNotStarted(f"{what}: {e}") from e
-    errors: list[bytes] = []
-    reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
-    reader.start()  # so that a lot of error output cannot block the copy
+    proc, errors, reader = _host_gio_copy([*command, "-p", source, target_uri], what)
     timed_out = threading.Event()
     watchdog = threading.Timer(HOST_COPY_TIMEOUT_S, lambda: (timed_out.set(), proc.kill()))
     watchdog.daemon = True
     watchdog.start()
-    shown, said, pending = 0.0, [], ""
-    decode = codecs.getincrementaldecoder("utf-8")("replace")
+    shown = 0.0
+
+    def on_fraction(fraction: float) -> None:
+        nonlocal shown
+        if started is not None:
+            started()  # the evidence that the copy, so a write to the device, is under way
+        if fraction > shown:
+            shown = fraction
+            progress(int(fraction * size), size)
+
     try:
-        while True:
-            data = os.read(proc.stdout.fileno(), 65536)
-            if not data:
-                break
-            text = decode.decode(data)
-            said.append(text)
-            # Updates begin with a carriage return and are cut anywhere by the pipe: the
-            # newest one is read as far as it has come, and again when the rest arrives.
-            *complete, pending = re.split(r"[\r\n]", pending + text)
-            # An update that cannot be read only goes without `progress`: the result of the
-            # copy depends on the exit code alone.
-            for update in (*complete, pending):
-                fraction = copy_fraction(update)
-                if fraction is not None and started is not None:
-                    started()  # the evidence that the copy, so a write to the device, is under way
-                if fraction is not None and fraction > shown:
-                    shown = fraction
-                    progress(int(fraction * size), size)
+        said = _copy_updates(proc, on_fraction)
         code = proc.wait()
     except OSError as e:
         proc.kill()
@@ -301,7 +331,7 @@ def host_copy(local: Path, target_uri: str, what: str, progress=None, started=No
         raise _timed_out(what)
     if code != 0:
         stderr = b"".join(errors).decode("utf-8", "replace")
-        raise DeviceError(f"{what}: {_detail(stderr, ''.join(said))}")
+        raise DeviceError(f"{what}: {_detail(stderr, said)}")
 
 
 # The size of a file that could not be told.
@@ -557,15 +587,13 @@ class GioStorage(Storage):
     @_on_the_device
     def copy_to_local(self, real_path: str, dest: Path, size: int, told=None) -> int:
         """The file at this real path copied whole by one copy of gvfs into `dest` on this
-        computer: a stream asks the device for at most 256 KiB at a time, one transaction each,
-        and some watches take tens of milliseconds for each above the transfer, which one copy
-        does not. From source Gio.File.copy; in the Flatpak the host's gio copy (gvfs copies
-        for a sandboxed app no faster than a stream). `size`: the listed size, for the progress
-        and the log. `told(done, total)` as the bytes come; a `told` that raises stops the copy
-        and its error passes on. No progress for STALL_S: DeviceNotResponding, kept as for a
-        read. Refused before its first byte: CopyNotStarted (nothing to remove); any other
-        failure: DeviceError. Whatever stopped it, `dest` is removed. Returns the bytes
-        copied."""
+        computer, faster than a stream (whole_reads says why). From source Gio.File.copy; in the
+        Flatpak the host's gio copy (gvfs copies for a sandboxed app no faster than a stream).
+        `size`: the listed size, for the progress and the log. `told(done, total)` as the bytes
+        come; a `told` that raises stops the copy and its error passes on. No progress for
+        STALL_S: DeviceNotResponding, kept as for a read. Refused before its first byte:
+        CopyNotStarted (nothing to remove); any other failure: DeviceError. Whatever stopped it,
+        `dest` is removed. Returns the bytes copied."""
         self._responding()
         what = _("Cannot read {path}").format(path=real_path)
         way = "the host's gio copy" if in_flatpak() else "Gio.File.copy"
@@ -597,7 +625,6 @@ class GioStorage(Storage):
         """copy_to_local from source: Gio.File.copy_async, waited for with its time limit
         renewed by each progress. A PyGObject that cannot give it its two callbacks (an older
         one): CopyNotStarted, marked `said`, the reason in the log once a process."""
-        global _copy_unavailable
         if _copy_unavailable is not None:
             refused = CopyNotStarted(f"{what}: {_copy_unavailable}")
             refused.said = True
@@ -656,17 +683,10 @@ class GioStorage(Storage):
         if not _host_visible(dest.parent):
             # The reason before the path: the log's filter takes all after a path for it.
             raise CopyNotStarted(f"{what}: the host does not see {dest.parent}")
-        if not shutil.which("flatpak-spawn"):
-            raise CopyNotStarted(f"{what}: " + _("flatpak-spawn is not available"))
+        _flatpak_spawn_needed(what)
         command = host_command("gio", "copy", "-p", self._f(real_path).get_uri(),
                                str(dest.resolve()), watch_bus=True)
-        try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except OSError as e:
-            raise CopyNotStarted(f"{what}: {e}") from e
-        errors: list[bytes] = []
-        reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
-        reader.start()  # so that a lot of error output cannot block the copy
+        proc, errors, reader = _host_gio_copy(command, what)
         state = {"last": time.monotonic(), "done": 0, "seen": -1, "stalled": False}
         watching = threading.Event()
 
@@ -684,23 +704,17 @@ class GioStorage(Storage):
         watcher = threading.Thread(target=watch, daemon=True)
         watcher.start()
         failure: BaseException | None = None
-        said, pending = [], ""
-        decode = codecs.getincrementaldecoder("utf-8")("replace")
+        said = ""
+
+        def on_fraction(fraction: float) -> None:
+            if int(fraction * size) <= state["done"]:
+                return
+            state["done"], state["last"] = int(fraction * size), time.monotonic()
+            if told is not None:
+                told(state["done"], size)
+
         try:
-            while True:
-                data = os.read(proc.stdout.fileno(), 65536)
-                if not data:
-                    break
-                text = decode.decode(data)
-                said.append(text)
-                *complete, pending = re.split(r"[\r\n]", pending + text)
-                for update in (*complete, pending):
-                    fraction = copy_fraction(update)
-                    if fraction is None or int(fraction * size) <= state["done"]:
-                        continue
-                    state["done"], state["last"] = int(fraction * size), time.monotonic()
-                    if told is not None:
-                        told(state["done"], size)
+            said = _copy_updates(proc, on_fraction)
         except BaseException as e:  # noqa: BLE001 - raised after the copy ends: a `told` that
             # raised (the window closed), Ctrl+C
             failure = e
@@ -715,7 +729,7 @@ class GioStorage(Storage):
         if state["stalled"]:
             raise self._stall(what, "copy", started)
         if code != 0:
-            detail = _detail(b"".join(errors).decode("utf-8", "replace"), "".join(said))
+            detail = _detail(b"".join(errors).decode("utf-8", "replace"), said)
             if not state["done"] and not _has_bytes(dest):
                 raise CopyNotStarted(f"{what}: {detail}")
             raise DeviceError(f"{what}: {detail}")
@@ -895,8 +909,9 @@ class GioStorage(Storage):
         except ptp.UsbUnavailable as e:
             # Said once: a folder the device hides is then refused the ordinary way, and the
             # log names the reason.
+            global _no_libusb_said
             if not _no_libusb_said:
-                _no_libusb_said.append(str(e))
+                _no_libusb_said = True
                 log.info("PTP: no session of its own: %s", e)
             return None
         return _exclusive(self, node)
@@ -1321,7 +1336,7 @@ def drives_on_usb() -> frozenset[UsbAddress]:
 TEST_DRIVE_ENV = "OPENEXPRESS_TEST_DRIVE_USB"
 _TEST_DRIVE_IDS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
 _test_drive_said: set[str] = set()  # the warnings about it already in the log
-_no_libusb_said: list[str] = []  # why libusb could not be loaded, once in the log
+_no_libusb_said = False  # whether the log said why libusb could not be loaded (once)
 
 
 def _warn_once(key: str, *message) -> None:

@@ -117,17 +117,12 @@ def _read_hidden(st, dev, needed=(), why: str = "", inside=()) -> bool:
     that ordinary MTP does not show which `needed` names (updates, maps) or the device is known
     to hide, with what its GarminDevice.xml names under them, and the folders `inside` folders
     that are seen whose files the file manager does not show (updates.session_folders;
-    hidden_folders.folders_to_read): what the window reads, so that both count and compare the
+    hidden_folders.still_to_read): what the window reads, so that both count and compare the
     same; once read, the line of this connection in the device's log counted again, as the
     window counts it. Whether it read now."""
-    kept = hidden_folders.kept(st)
-    if kept is not None and kept.state != hidden_folders.READ:
-        return False  # it failed, or no session can be had: said once
     if hidden_folders.busy_failures(st):
         return False  # refused as busy: not asked again within a command, as any failure
-    # Only what this connection has not read: a reading is added to what it read before.
-    folders = [f for f in hidden_folders.folders_to_read(dev, needed, inside=inside)
-               if kept is None or not kept.knows(f)]
+    folders = hidden_folders.still_to_read(st, dev, needed, inside=inside)
     if not folders:
         return False
     with _progress() as progress:
@@ -2617,6 +2612,8 @@ def _apps_order(args, dev, st, state) -> int:
     for line, indented in ciq.describe_order(plan, None if args.all else 10):
         print(("  " if indented else "") + line)
     _print_app_list_size(len(plan.entries), sum(1 for a in state.apps if not a.pending))
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + _("the same apps with the same settings; only the order changes"))
     if not args.apply:
         print(ciq.app_list_copy_note(dev, st))
@@ -2646,6 +2643,8 @@ def _remove_app_directly(args, dev, st, state, app, api) -> int:
     _print_app_list_size(preview.entries, preview.on_device)
     if preview.pending or not preview.kept:
         raise _app_list_mismatch()
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + _("every other app on the device is kept, in the same order and with the "
                    "same settings"))
     kind = ciq.app_type_name(app.app_type) or app.app_type
@@ -2705,6 +2704,8 @@ def _print_in_bin_preview(preview) -> None:
         print("  " + ngettext("{count} more app is registered and waits for the device",
                               "{count} more apps are registered and wait for the device",
                               preview.pending).format(count=preview.pending))
+    # TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+    # the device's app list, not the app's own settings
     print("  " + (_("every app on the device is kept, in the same order and with the same "
                     "settings")
                   if preview.kept else
@@ -4214,7 +4215,7 @@ def _run(args) -> int:
     except ApiError as e:
         log.info("server error: %s: %s", type(e).__name__, e)
         status = getattr(e, "status", None)
-        if status is not None and status >= 500:
+        if status is not None and applog.is_server_error(status):
             # Its words say "server error (HTTP 503)" already: not "Server error:" twice.
             _error(_("Error: {error}").format(error=e))
         else:

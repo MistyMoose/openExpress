@@ -348,9 +348,7 @@ class Disk:
     def _own_folder(self) -> None:
         """The folder its owner's alone (0700), also one made before with the usual mode: the
         account's answers are among them."""
-        self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-        if self.folder.stat().st_mode & 0o777 != 0o700:
-            self.folder.chmod(0o700)
+        paths.make_private_dir(self.folder)
 
     def put(self, kind: str, full: tuple, value, tags: frozenset[str], at: float) -> None:
         """Kept on disk as the cache is used; never while it is being cleared (that does not

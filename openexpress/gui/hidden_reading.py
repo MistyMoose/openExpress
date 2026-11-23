@@ -4,7 +4,7 @@ connection, right after the device was opened, when what its first checks found 
 its maps) goes to such a folder or the device is known to hide one; again only when the user
 asks (Check Again, Refresh), or after a reading refused as busy, at the next first check (at
 most hidden_folders.BUSY_TRIES times a connection). It reads what the command line reads
-(folders_to_read), so that both count the same. The device leaves the file manager for a
+(still_to_read), so that both count the same. The device leaves the file manager for a
 moment, so the reading is a task: never during another one, and after the diagnostics of the
 opening are read.
 
@@ -58,7 +58,7 @@ def _folders(s) -> list[str]:
     if not hasattr(s, "hidden_wanted"):
         return []
     return hidden_folders.folders_to_read(s.device, s.hidden_wanted.values(),
-                                          inside=getattr(s, "inside_wanted", {}).values())
+                                          inside=s.inside_wanted.values())
 
 
 def _start(win, s) -> None:
@@ -73,8 +73,8 @@ def _start(win, s) -> None:
         return
     if win._update_check_session is s or win._map_check_session is s:
         return  # the other first check may need a folder too: it ends with note_needed
-    # Only what this connection has not read: a reading is added to what it read before.
-    folders = [f for f in _folders(s) if kept is None or not kept.knows(f)]
+    folders = hidden_folders.still_to_read(s.storage, s.device, s.hidden_wanted.values(),
+                                           inside=s.inside_wanted.values())
     if not folders:
         return
     if win.busy:

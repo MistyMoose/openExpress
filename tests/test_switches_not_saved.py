@@ -10,7 +10,7 @@ import types
 import uuid
 
 import pytest
-from fakes import RunNow, descendants, device_session, page_window, window_methods
+from fakes import RunNow, apps_page, descendants, device_session, window_methods
 from fakes import window as stand_in
 
 from openexpress import ciq, satellite
@@ -62,24 +62,11 @@ def switch_rows(widget) -> list:
 def test_an_app_switch_never_saved_goes_back_once_and_asks_no_more(monkeypatch):
     """The device refuses every app list: the switch goes back once and the window says it
     once."""
-    win, section = page_window("apps")
-    device = types.SimpleNamespace(unit_id=UNIT, software_version_str="23.39",
-                                   description="Made-up watch")
-    win.session = types.SimpleNamespace(device=device, storage=None, logged_in=False,
-                                        ownership_error=None)
-    win._updated_apps = set()
     said = []
-    win.run_task = RunNow(error=lambda title, text: said.append((title, text)))
-    win.toast = lambda text: None
-    win.load_section = lambda key, force=False: None
-    win._load_app_icons = lambda icons: None
-    window_methods(win, ("_updates_to_offer", "_apps_space", "_waiting_note", "_app_icon",
-                         "_order_blocked", "_store_type_name", "_search_filter", "show_apps",
-                         "toggle_app"))
     built_in = ciq.InstalledApp(app_id=uuid.UUID(f"{ciq.PRELOADED_PREFIX}-0000-0000-000000000008"),
                                 app_type=8, name="Softball", disabled=True)
-    win.show_apps((ciq.InstalledState(apps=[built_in], available_space=10**9,
-                                      available_slots=31), [], []))
+    _win, section = apps_page([built_in], run_task=RunNow(
+        error=lambda title, text: said.append((title, text))))
     saves = []
 
     def refused(device, storage, app_id, enabled, app_type=None):

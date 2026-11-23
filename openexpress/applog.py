@@ -153,6 +153,12 @@ def hide_device(device, usb=None) -> None:
 _ERROR_ADDRESS = re.compile(r"(with url: |\b[a-z][a-z0-9+.-]*://)[^\s'\"()]+")
 
 
+def is_server_error(status: int) -> bool:
+    """Whether an answer with this HTTP status is an error of the server itself (5xx: down,
+    overloaded, a proxy that cannot reach it), which server_error_text says."""
+    return status >= 500
+
+
 def server_error_text(status: int) -> str:
     """An answer of a server with an error of its own (HTTP 5xx), in the words of the state of
     Garmin's servers: "server error (HTTP 503)"."""
@@ -192,6 +198,15 @@ def error_text(error: BaseException) -> str:
         return network_error_text(error)
     text = str(error) or type(error).__name__
     return text if isinstance(error, UserFacingError) else redact(text)
+
+
+def system_words(error: BaseException) -> str | None:
+    """The system's words for an error of a file it could not read or write (an OSError's
+    strerror, "Permission denied"): not the number of the error, nor the path of the file, which
+    may be one on this computer the user does not know of (a temporary file on its way to the
+    device). None when there are none (not an OSError, or one without them): each caller says
+    what then."""
+    return (error.strerror or None) if isinstance(error, OSError) else None
 
 
 def is_fault(error: BaseException) -> bool:

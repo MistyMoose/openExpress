@@ -11,6 +11,7 @@ when the next one starts (remove_leftovers). They carry no name of the device's 
 
 from __future__ import annotations
 
+import functools
 import itertools
 import logging
 import os
@@ -19,7 +20,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from openexpress import applog, paths
+from openexpress import applog, cache, paths
 from openexpress.device.storage import CopyNotStarted, DeviceError, Storage
 
 log = logging.getLogger(__name__)
@@ -37,8 +38,7 @@ def folder() -> Path:
 
 def _made_folder() -> Path:
     where = folder()
-    where.mkdir(parents=True, exist_ok=True)
-    os.chmod(where, 0o700)  # whatever a copy makes in it, only this user reads it
+    paths.make_private_dir(where)  # whatever a copy makes in it, only this user reads it
     return where
 
 
@@ -77,19 +77,20 @@ def remove_leftovers(now: Callable[[], float] = time.time) -> None:
         log.info("whole reads: %d temporary file(s) left by an earlier run removed", removed)
 
 
-def whole_file(storage: Storage, real_path: str, size: int | None, stream: Callable[[], bytes],
-               told=None) -> bytes:
+def whole_file(storage: Storage, real_path: str, size: int | None,
+               stream: Callable[[], bytes] | None = None, told=None) -> bytes:
     """The bytes of the file at this real path of `storage`. From COPY_FROM on a device that
     copies (GioStorage.copy_to_local), with room for it in the cache: copied whole into a
     temporary file and read there; otherwise, and when the copy is refused before its first
-    byte, `stream()` (the caller's own read). A copy that fails after it began is not
-    read again as a stream: its DeviceError passes on. `told(done, total)`: the bytes copied
-    (a `told` that raises stops the copy). The cache is held while a copy is in it."""
+    byte, `stream()` (the caller's own read; without one, storage.read of the path). A copy
+    that fails after it began is not read again as a stream: its DeviceError passes on.
+    `told(done, total)`: the bytes copied (a `told` that raises stops the copy). The cache is
+    held while a copy is in it."""
+    if stream is None:
+        stream = functools.partial(storage.read, real_path)
     copy = getattr(storage, "copy_to_local", None)
     if copy is None or size is None or size < COPY_FROM:
         return stream()
-    from openexpress import cache
-
     with cache.using():
         where = _made_folder()
         free = shutil.disk_usage(where).free
@@ -106,9 +107,9 @@ def whole_file(storage: Storage, real_path: str, size: int | None, stream: Calla
                     # What happens first, why last: the log's filter takes all after a path
                     # for it, and the reason may end in one.
                     log.info("whole reads: read as a stream, the copy was refused before it "
-                             "began: %s", applog.redact(str(e)))
-            except OSError as e:  # the copy on this computer: the system's words for it
-                raise DeviceError(f"{real_path}: {e.strerror or e}") from e
+                             "began: %s", e)
+            except OSError as e:  # the copy on this computer
+                raise DeviceError(f"{real_path}: {applog.system_words(e) or e}") from e
             finally:
                 target.unlink(missing_ok=True)
     return stream()

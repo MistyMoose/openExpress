@@ -728,8 +728,9 @@ def _dumps_question(plan: freeing.DumpPlan) -> str:
     # the error logs, from which the crashes are counted, stay
     said = [text, _("The error logs stay on the device: the crashes are still counted.")]
     if without_copy:
-        # TRANSLATORS: in the same question, when some dumps are removed without a copy on this
-        # computer: nothing is left that could be sent to Garmin (e.g. its support) later
+        # TRANSLATORS: in the question before older memory dumps are removed, when some of them
+        # are removed without a copy on this computer: nothing is left that could be sent to
+        # Garmin (e.g. its support) later
         said.append(_("A dump removed without a copy cannot be sent to Garmin later."))
     return " ".join([*said, _("The newest dump stays on the device.")])
 

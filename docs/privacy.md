@@ -71,9 +71,9 @@ Otherwise the device's diagnostic files stay on this computer:
 - With Preferences → **Diagnostics** → **Keep Diagnostic Files** turned on (off by default;
   `openexpress setup --diagnostics-copy on`), the window also copies the diagnostic files the
   device shows: `Garmin/Debug`, the folders of its diagnostic data types and its event logs. It
-  copies them once per connection, before anything is written to the device, through the
-  ordinary connection. Health metrics (`MetricsBackup`), settings (`Backup`), memory dumps and
-  files of more than 4 MB are only listed.
+  copies them once per connection, before anything is written to the device, as the file manager
+  reads them, not over a direct USB connection. Health metrics (`MetricsBackup`), settings
+  (`Backup`), memory dumps and files of more than 4 MB are only listed.
 - Only when you ask: the hidden crash logs of a fēnix 8 (its boot log and event logs) are read
   with **Copy** in the row **Crash Logs** of the Device Status page or
   `openexpress diagnostics --crash-logs --apply`, over a direct USB connection; the
@@ -161,6 +161,10 @@ The map data is © OpenStreetMap contributors, under the Open Database License.
   openExpress's cache keeps `md5-on-device.json` (at most 300 entries): a hash of the device's
   address (never the address, which carries its serial number), the file's path, size, time on
   the device and MD5.
+- A file of 4 MiB or more read from a device over MTP (an update file read for its checksum, a
+  memory dump, a file of a backup or of a sync) is copied whole into the cache first
+  (`device-reads`, readable only by you) and read there. The copy is deleted as soon as it is
+  read; one left by a run that ended during the copy is deleted at a later start of openExpress.
 - When an update replaces a file in a folder a watch hides, that file is first copied to
   `~/.local/share/openexpress/replaced/` (in the Flatpak under
   `~/.var/app/io.github.tomaszbojanowski.OpenExpress/data/openexpress/`) and deleted again once the

@@ -204,7 +204,7 @@ def _copy(storage: Storage, dumps: list[Dump], where: Path, freed: Freed, progre
         names.add(name.casefold())
         target = where / name
         try:
-            data = whole_reads.whole_file(storage, path, size, lambda path=path: storage.read(path))
+            data = whole_reads.whole_file(storage, path, size)
             paths.write_private(target, data)
             whole = target.read_bytes()
         except DeviceNotResponding:
@@ -265,8 +265,7 @@ def _new_removal_folder(unit_id: int, test_drive: bool) -> Path:
     where = removed_folder(unit_id, test_drive) / (
         f"{number:04d} {datetime.now().strftime(diagnostics.STAMP)}")
     for folder in (where.parent.parent, where.parent, where):
-        paths.make_dir(folder)
-        folder.chmod(0o700)
+        paths.make_private_dir(folder)
     return where
 
 

@@ -25,8 +25,11 @@ from fakes import (
     DRIVE_SPACE,
     Section,
     in_language,
+    map_entry,
     maps_window,
+    offered_update,
     window_methods,
+    xml_with,
 )
 from fakes import window as stand_in
 from ptp_fake import DRIVE_53_OPERATIONS, FakeDevice
@@ -41,20 +44,9 @@ SYSTEM = b"made-up navigator software"
 NEW_PART = b"made-up new part"
 
 
-def _entry(part, name, path, filename, data, severity="Recommended", installed=True,
-           primary=False, locale=None, eula=None):
-    """One offered item, the keys as the server sends them."""
-    return {
-        "partNumber": part, "productName": name, "dataType": "Firmware",
-        "displayVersion": "9.00", "severity": severity, "isPrimaryFirmware": primary,
-        "locale": locale, "releaseState": "live", "releaseNotes": [], "eulaUrl": eula,
-        "deliverable": {"downloadUrl": "https://example.org/" + filename,
-                        "md5": hashlib.md5(data).hexdigest().upper(),
-                        "sizeInBytes": len(data)},
-        "installation": {"path": path, "fileName": filename, "isReinstall": False,
-                         "isProductInstalled": installed, "isRestartRequired": False,
-                         "order": 0},
-    }
+def _entry(part, name, path, filename, data, **changes):
+    """One offered item, the keys as the server sends them, at the version 9.00."""
+    return offered_update(part, name, path, filename, data, version="9.00", **changes)
 
 
 def server_answer():
@@ -257,19 +249,8 @@ def test_the_updates_page_installs_nothing_into_a_top_folder_not_seen(navigator)
 
 
 def _map(name, path):
-    return {
-        "displayname": name, "maptype": "CityNavigator", "installationstate": 1,
-        "isreinstall": True, "canuninstall": True,
-        "release": {"majorversion": 2026, "minorversion": 20},
-        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
-                          "failoverhosts": []},
-        "filestoremove": [{"filename": path}],
-        "installoptions": [{"ispreferred": True, "identifier": {"regionpartnumber": name},
-                            "files": [{"filename": path, "datatype": "X",
-                                       "deliverableoptions": [{
-                                           "type": 1, "url": "x.img", "md5": "AAAA",
-                                           "sizeinbytes": 4}]}]}],
-    }
+    """A map the server offers as a reinstall, of one file at `path`, which it removes first."""
+    return map_entry(name, path, state=1, md5="AAAA", reinstall=True, remove=[path])
 
 
 def test_a_map_whose_folder_is_not_seen_cannot_be_read_not_removed(navigator):
@@ -811,13 +792,6 @@ NAVIGATOR_TYPES = """
 """
 
 
-def _xml_with(root, block):
-    """`root`, its GarminDevice.xml with `block` added at the end of what it declares."""
-    xml = root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace("</MassStorageMode>", block + "</MassStorageMode>"))
-    return root
-
-
 def test_device_status_counts_what_was_read_in_the_folders_not_seen(navigator):
     from openexpress import history, service
 
@@ -979,7 +953,7 @@ def test_the_words_of_a_folder_read_in_both_languages(language):
 def _with_types(root):
     """The made-up navigator's GarminDevice.xml naming its maps in .System/Map and its software
     in .System, as Device Status counts them."""
-    return _xml_with(root, NAVIGATOR_TYPES)
+    return xml_with(root, NAVIGATOR_TYPES)
 
 
 def test_a_device_found_to_hide_a_top_folder_is_remembered_so(navigator):
@@ -1102,7 +1076,7 @@ OWN_MAPS_HIDDEN = """
 
 
 def _own_maps_in_system(root):
-    return _xml_with(root, OWN_MAPS_HIDDEN)
+    return xml_with(root, OWN_MAPS_HIDDEN)
 
 
 def _map_file(tmp_path):
@@ -1174,7 +1148,7 @@ def test_a_folder_of_the_device_is_called_a_folder(navigator, language, text):
     from openexpress import ownmaps, service
     from openexpress.gui.app import MainWindow
 
-    storage = OverUsb(_xml_with(navigator, OWN_MAPS_AT_THE_TOP), navigator_session())
+    storage = OverUsb(xml_with(navigator, OWN_MAPS_AT_THE_TOP), navigator_session())
     win, _reloads = maps_window(storage)
     win.session.device = service.read_device(storage, found_now=False)
     win.choose_map = lambda *args: pytest.fail("a map was chosen")
@@ -2001,7 +1975,7 @@ def _time_zones_listed_newer(navigator, version="9.50"):
     """The navigator's GarminDevice.xml lists its time zone map at a version higher than the
     one Garmin offers (9.00): Garmin offers an older one."""
     major, minor = version.split(".")
-    _xml_with(navigator, (
+    xml_with(navigator, (
         f"<UpdateFile><PartNumber>006-D9001-00</PartNumber><Version><Major>{major}</Major>"
         f"<Minor>{minor}</Minor></Version><Path>.System</Path><FileName>gmaptz.img</FileName>"
         "</UpdateFile>"))
@@ -2878,7 +2852,7 @@ def fenix_like(device_root):
     """The made-up watch as the fēnix 8 shows itself to the file manager: GARMIN/SQL and
     GARMIN/RemoteSW there, GARMIN/Prompts not; its GarminDevice.xml names Prompts and SQL for
     its components."""
-    _xml_with(device_root, INSIDE_COMPONENTS)
+    xml_with(device_root, INSIDE_COMPONENTS)
     (device_root / "GARMIN" / "SQL").mkdir()
     (device_root / "GARMIN" / "SQL" / "Visible.db").write_bytes(b"seen")
     (device_root / "GARMIN" / "RemoteSW").mkdir()

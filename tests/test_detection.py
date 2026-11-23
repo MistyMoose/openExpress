@@ -3589,7 +3589,7 @@ def test_no_libusb_is_said_in_the_log_once(exclusive, monkeypatch, caplog):
         raise ptp.UsbUnavailable("libusb is not available: made-up")
 
     monkeypatch.setattr(ptp, "load_libusb", missing)
-    monkeypatch.setattr(gio_storage, "_no_libusb_said", [])
+    monkeypatch.setattr(gio_storage, "_no_libusb_said", False)
     with caplog.at_level("INFO", logger="openexpress.device.gio_storage"):
         assert (st.exclusive_ptp(), st.exclusive_ptp()) == (None, None)
     said = [r.getMessage() for r in caplog.records if "libusb" in r.getMessage()]
@@ -6674,7 +6674,6 @@ def test_logging_out_on_the_view_of_a_device_of_the_account_gives_the_start_page
 def test_logging_out_on_the_view_of_a_remembered_device_keeps_it(start_window, monkeypatch):
     """Logged out on the read-only view of a device remembered by this computer (not
     from the account): the view stays."""
-
     win = start_window
     later = defer_background(win)
     remember_others()

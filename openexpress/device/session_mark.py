@@ -9,11 +9,11 @@ paths.session_mark_dirs (the one the Flatpak shares with the host when it is the
 version from source's own): {"usb": "<bus>-<address>", "until": null, or the time.time() its
 quiet ends, "app": "flatpak" or "source"}; nothing else of the device. The process of the session
 holds flock(LOCK_EX) on it for the whole session (the kernel lets go of it with the process),
-and at the end writes when its quiet ends. Another process takes the session for on while the
-lock is taken or the quiet lasts; a file whose lock is free and whose quiet is over or was never
-written (a process that ended in its session) means nothing, and the look that finds it removes
-it. A mark that cannot be kept (no runtime folder, a folder not writable) is said once in the log:
-the session goes on, known to its own process only."""
+and at the end writes when its quiet ends. Another process takes the session as under way while
+the lock is taken or the quiet lasts; a file whose lock is free and whose quiet is over or was
+never written (a process that ended in its session) means nothing, and the look that finds it
+removes it. A mark that cannot be kept (no runtime folder, a folder not writable) is said once in
+the log: the session goes on, known to its own process only."""
 
 from __future__ import annotations
 
@@ -39,6 +39,8 @@ def _name(place: tuple[int, int]) -> str:
 
 
 def _text(place: tuple[int, int], until: float | None) -> bytes:
+    # Only "until" is read back; "usb" and "app" tell whoever looks into the folder whose mark
+    # it is.
     return json.dumps({"usb": f"{place[0]}-{place[1]}", "until": until,
                        "app": "flatpak" if paths.in_flatpak() else "source"}).encode()
 

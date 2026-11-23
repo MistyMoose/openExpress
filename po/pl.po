@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-22 21:48+0100\n"
+"POT-Creation-Date: 2026-11-22 23:47+0100\n"
 "PO-Revision-Date: 2026-10-11 02:36+0200\n"
 "Last-Translator: Tomasz Bojanowski\n"
 "Language-Team: none\n"
@@ -162,7 +162,7 @@ msgstr "Sport {number}"
 msgid "Reading activities"
 msgstr "Odczyt aktywności"
 
-#: openexpress/applog.py openexpress/netstatus.py
+#: openexpress/applog.py
 #, python-brace-format
 msgid "server error (HTTP {status})"
 msgstr "błąd serwera (HTTP {status})"
@@ -3234,6 +3234,8 @@ msgstr "Kolejność aplikacji z kopii {name}"
 msgid "The apps on the device are already in this order."
 msgstr "Aplikacje na urządzeniu są już w tej kolejności."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid "the same apps with the same settings; only the order changes"
@@ -3274,6 +3276,8 @@ msgstr ""
 "Ten plik jest ukryty przed menedżerem plików. openExpress usunie go przez "
 "bezpośrednie połączenie USB; urządzenie na chwilę zniknie z menedżera plików."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -3336,6 +3340,8 @@ msgstr[1] "{count} kolejne aplikacje są zarejestrowane i czekają na urządzen
 msgstr[2] ""
 "{count} kolejnych aplikacji jest zarejestrowanych i czeka na urządzenie"
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite in
+#. the device's app list, not the app's own settings
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
@@ -4231,7 +4237,7 @@ msgid ""
 "Garmin's servers, the languages, the diagnostics copy"
 msgstr ""
 "klucz aplikacji z instalatora Garmin Express i ustawienia: serwery Garmina, "
-"języki, kopia diagnostyki"
+"języki, kopia plików diagnostycznych"
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4268,7 +4274,7 @@ msgid ""
 "the application secret of Garmin Express (its OAuth1 consumer secret); only "
 "together with --key"
 msgstr ""
-"sekret aplikacji Garmin Express (jej sekret konsumenta OAuth1); tylko razem "
+"sekret aplikacji Garmin Express (jego sekret konsumenta OAuth1); tylko razem "
 "z --key"
 
 #: openexpress/cli.py
@@ -6943,7 +6949,8 @@ msgstr "Szukaj aktywności"
 msgid "All Activities and Apps"
 msgstr "Wszystkie aktywności i aplikacje"
 
-#. TRANSLATORS: subtitle of that row: how many it lists
+#. TRANSLATORS: subtitle of the row "All Activities and Apps":
+#. how many built-in activities and apps it lists
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "{count} item"
@@ -6991,6 +6998,8 @@ msgstr ""
 "Urządzenie nie zastosowało jeszcze wcześniejszych zmian. Odłącz je, "
 "poczekaj, aż będzie gotowe, i spróbuj ponownie."
 
+#. TRANSLATORS: "settings": whether each app is turned on and whether it is a favourite
+#. in the device's app list, not the app's own settings
 #: openexpress/gui/apps_page.py
 #, python-brace-format
 msgid "The same apps with the same settings; only the order changes."
@@ -9407,7 +9416,7 @@ msgstr "Niezamontowane; wybierz, aby otworzyć"
 #: openexpress/gui/start_window.py
 #, python-brace-format
 msgid "Its device description (GarminDevice.xml) was not found"
-msgstr "Nie znaleziono jego opisu urządzenia (GarminDevice.xml)"
+msgstr "Nie znaleziono opisu urządzenia (GarminDevice.xml)"
 
 #: openexpress/gui/start_window.py
 #, python-brace-format
@@ -9825,8 +9834,9 @@ msgstr[2] "{count} ({size}) bez kopii, bo kopie nie zmieściłyby się w {limit
 msgid "The error logs stay on the device: the crashes are still counted."
 msgstr "Dzienniki błędów zostają na urządzeniu: awarie są nadal liczone."
 
-#. TRANSLATORS: in the same question, when some dumps are removed without a copy on this
-#. computer: nothing is left that could be sent to Garmin (e.g. its support) later
+#. TRANSLATORS: in the question before older memory dumps are removed, when some of them
+#. are removed without a copy on this computer: nothing is left that could be sent to
+#. Garmin (e.g. its support) later
 #: openexpress/gui/status_page.py
 #, python-brace-format
 msgid "A dump removed without a copy cannot be sent to Garmin later."
@@ -10723,9 +10733,10 @@ msgstr[0] "Odłącz urządzenie, aby ją zainstalować"
 msgstr[1] "Odłącz urządzenie, aby je zainstalować"
 msgstr[2] "Odłącz urządzenie, aby je zainstalować"
 
-#. TRANSLATORS: after "Update ready: unplug the device to install it" (and, on the Updates
-#. page, after "Unplug the device to install it"): updates still to install besides the one
-#. copied already
+#. TRANSLATORS: after "Update ready: unplug the device to install it" or "Update ready: eject
+#. the device to install it" (and, on the Updates page, after "Unplug the device to install
+#. it" or "Eject the device to install it"): updates still to install besides the one copied
+#. already
 #: openexpress/gui/words.py
 #, python-brace-format
 msgid "{count} more available"

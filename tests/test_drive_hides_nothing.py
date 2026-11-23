@@ -4,10 +4,10 @@ or a folder of the top level a map or an own map goes to, that is not on the dri
 there yet. No such folder is taken for one the device hides, and no USB session of openExpress's
 own is asked of a drive. All devices, files and answers here are made up."""
 
-import hashlib
 import types
 
 import pytest
+from fakes import hidden_folder_waits, map_entry, offered_update, xml_with
 
 from openexpress import download, hidden_folders, maps, ownmaps, service, updates
 from openexpress.connect import lower_keys
@@ -25,30 +25,17 @@ TEXT_COMPONENT = """  <UpdateFile><PartNumber>006-D0004-00</PartNumber><Version>
 WHERE = "file:///run/media/someone/GARMIN/"
 
 
-def _entry(part, name, path, filename, data, primary=False):
-    """One offered item, the keys as the server sends them."""
-    return {
-        "partNumber": part, "productName": name, "dataType": "Firmware",
-        "displayVersion": "3.20", "severity": "Recommended", "isPrimaryFirmware": primary,
-        "locale": None, "releaseState": "live", "releaseNotes": [], "eulaUrl": None,
-        "deliverable": {"downloadUrl": "https://example.org/" + filename,
-                        "md5": hashlib.md5(data).hexdigest().upper(), "sizeInBytes": len(data)},
-        "installation": {"path": path, "fileName": filename, "isReinstall": False,
-                         "isProductInstalled": True, "isRestartRequired": False, "order": 0},
-    }
-
-
 ANSWER = {"updates": [
-    _entry(SOFTWARE_PART, "Made-up Watch", "Garmin", "GUPDATE.GCD", SOFTWARE, primary=True),
-    _entry(TEXT_PART, "Made-up Language", "GARMIN\\TEXT", "made_up.ln4", TEXT),
+    offered_update(SOFTWARE_PART, "Made-up Watch", "Garmin", "GUPDATE.GCD", SOFTWARE,
+                   version="3.20", primary=True),
+    offered_update(TEXT_PART, "Made-up Language", "GARMIN\\TEXT", "made_up.ln4", TEXT,
+                   version="3.20"),
 ]}
 
 
 @pytest.fixture
 def drive(device_root):
-    xml = device_root / "GARMIN" / "GarminDevice.xml"
-    xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                           TEXT_COMPONENT + " </MassStorageMode>"))
+    xml_with(device_root, TEXT_COMPONENT)
     assert not (device_root / "GARMIN" / "Text").exists()
     return device_root
 
@@ -69,9 +56,7 @@ def downloads(monkeypatch, tmp_path):
 @pytest.fixture
 def waits(monkeypatch):
     """The waits for a USB session of openExpress's own, recorded instead of slept."""
-    said = []
-    monkeypatch.setattr(hidden_folders, "_sleep", said.append)
-    return said
+    return hidden_folder_waits(monkeypatch)
 
 
 PLACES = {"its place on USB not known": None,
@@ -127,25 +112,9 @@ def test_a_drive_whose_top_level_cannot_be_listed_is_gone(drive, monkeypatch):
     assert updates._gone(storage)
 
 
-def _map(name, path):
-    return {
-        "displayname": name, "maptype": "CityNavigator", "installationstate": 1,
-        "isreinstall": False, "canuninstall": True,
-        "release": {"majorversion": 2026, "minorversion": 20},
-        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
-                          "failoverhosts": []},
-        "filestoremove": [],
-        "installoptions": [{"ispreferred": True, "identifier": {"regionpartnumber": name},
-                            "files": [{"filename": path, "datatype": "X",
-                                       "deliverableoptions": [{
-                                           "type": 1, "url": "x.img",
-                                           "md5": "0123456789ABCDEF0123456789ABCDEF",
-                                           "sizeinbytes": 4}]}]}],
-    }
-
-
 def test_a_map_into_a_top_folder_not_on_the_drive_yet_is_not_taken_for_hidden(drive):
-    found, _count = maps.read_maps({"maps": [_map("Made-up Topo", "Map/D0000001A.img")]})
+    found, _count = maps.read_maps({"maps": [map_entry("Made-up Topo", "Map/D0000001A.img",
+                                                       state=1)]})
     storage = UmsStorage(drive, WHERE, PLACES["its place on USB known"])
     maps.mark_waiting(storage, found)
     assert found[0].hidden_folder is None and maps.can_install(found[0])
@@ -155,7 +124,8 @@ def test_a_map_into_a_named_folder_not_on_the_drive_yet_is_not_taken_for_hidden(
     """Garmin/Text, named for a component and not on the drive: not hidden inside GARMIN."""
     from openexpress.device.xmldevice import parse
 
-    found, _count = maps.read_maps({"maps": [_map("Made-up Topo", "Garmin/Text/D0000001A.img")]})
+    found, _count = maps.read_maps({"maps": [map_entry("Made-up Topo", "Garmin/Text/D0000001A.img",
+                                                       state=1)]})
     storage = UmsStorage(drive, WHERE, PLACES["its place on USB known"])
     maps.mark_waiting(storage, found, parse((drive / "GARMIN" / "GarminDevice.xml").read_bytes()))
     assert found[0].folder_hidden is None and maps.can_install(found[0])

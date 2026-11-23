@@ -31,7 +31,18 @@ from pathlib import Path
 
 import pytest
 from conftest import DEVICE_XML
-from fakes import descendants, gtk_complaints, make_client, program_style, window_picture
+from fakes import (
+    REGION_COMPONENT,
+    descendants,
+    gtk_complaints,
+    make_client,
+    map_entry,
+    offered_update,
+    program_style,
+    ptp_opened,
+    window_picture,
+    xml_with,
+)
 
 from openexpress.status import SHOWN_EVENTS
 
@@ -771,31 +782,13 @@ def test_the_page_chosen_while_another_task_runs(review, shape, width, language)
 
 # --- the Maps page: a map refused -------------------------------------------------------------
 
-# A component in Garmin/RegionMaps: the made-up watch names that folder for its own files and
-# its listing does not show it, so the device hides it inside Garmin.
-REGION_COMPONENT = """  <UpdateFile><PartNumber>006-D0005-00</PartNumber><Version><Major>1</Major>
-   <Minor>10</Minor></Version><Path>Garmin/RegionMaps</Path><FileName>made_up.rgn</FileName>
-  </UpdateFile>
-"""
+# The made-up watch names Garmin/RegionMaps for its own files (REGION_COMPONENT) and its listing
+# does not show it, so the device hides it inside Garmin.
 REFUSED_MAP = "Made-up Region"
 
 
 def _refused_map() -> dict:
-    return {
-        "displayname": REFUSED_MAP, "maptype": "CityNavigator", "installationstate": 0,
-        "isreinstall": False, "canuninstall": True,
-        "release": {"majorversion": 2026, "minorversion": 20},
-        "downloadhosts": {"foregroundprimaryhost": "https://example.org/maps/",
-                          "failoverhosts": []},
-        "filestoremove": [],
-        "installoptions": [{"ispreferred": True,
-                            "identifier": {"regionpartnumber": REFUSED_MAP},
-                            "files": [{"filename": "Garmin/RegionMaps/D0000001A.img",
-                                       "datatype": "X", "deliverableoptions": [{
-                                           "type": 1, "url": "x.img",
-                                           "md5": "0123456789ABCDEF0123456789ABCDEF",
-                                           "sizeinbytes": 4_000_000}]}]}],
-    }
+    return map_entry(REFUSED_MAP, "Garmin/RegionMaps/D0000001A.img", size=4_000_000)
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
@@ -817,9 +810,7 @@ def test_the_maps_page_says_why_a_map_into_a_folder_hidden_inside_is_refused(rev
         shape = SHAPES["watch"]
         root = r.root / "maps"
         make_device(root, shape)
-        xml = root / "Garmin" / "GarminDevice.xml"
-        xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                               REGION_COMPONENT + " </MassStorageMode>"))
+        xml_with(root, REGION_COMPONENT, folder="Garmin")
         s = session_of(root, shape)
         r.plugged["now"] = s
         r.win.refresh_device()
@@ -856,18 +847,8 @@ PROMPTS_NAME = "Made-up Voice Prompts"
 
 
 def _prompts_offered() -> dict:
-    import hashlib
-
-    return {"updates": [{
-        "partNumber": "006-D0001-00", "productName": PROMPTS_NAME, "dataType": "Firmware",
-        "displayVersion": "2.18", "severity": "Recommended", "isPrimaryFirmware": False,
-        "locale": None, "releaseState": "live", "releaseNotes": [], "eulaUrl": None,
-        "deliverable": {"downloadUrl": "https://example.org/prompt_bundle.hvm",
-                        "md5": hashlib.md5(PROMPTS).hexdigest().upper(),
-                        "sizeInBytes": len(PROMPTS)},
-        "installation": {"path": "Garmin\\Prompts", "fileName": "prompt_bundle.hvm",
-                         "isReinstall": False, "isProductInstalled": True,
-                         "isRestartRequired": False, "order": 0}}]}
+    return {"updates": [offered_update("006-D0001-00", PROMPTS_NAME, "Garmin\\Prompts",
+                                       "prompt_bundle.hvm", PROMPTS)]}
 
 
 @pytest.mark.parametrize("language", ["en", "pl"])
@@ -879,14 +860,11 @@ def test_the_updates_page_lists_a_hidden_file_on_the_device_with_the_components(
     (the check of the device page, updates.session_folders), its voice prompts at the size
     offered are on the device, so the page lists them with the components already there, with
     Reinstall, not as an update. Pictures: shape "updates" in the review."""
-    import contextlib
-
     from gi.repository import Adw, Gtk
     from ptp_fake import FakeDevice
 
     from openexpress import hidden_folders
     from openexpress.connect import lower_keys
-    from openexpress.device import ptp
     from openexpress.gui.app import MainWindow
     from openexpress.gui.device_page import DevicePage
 
@@ -899,22 +877,13 @@ def test_the_updates_page_lists_a_hidden_file_on_the_device_with_the_components(
         shape = SHAPES["watch"]
         root = r.root / "updates"
         make_device(root, shape)
-        xml = root / "Garmin" / "GarminDevice.xml"
-        xml.write_text(xml.read_text().replace(" </MassStorageMode>",
-                                               PROMPT_COMPONENT + " </MassStorageMode>"))
+        xml_with(root, PROMPT_COMPONENT, folder="Garmin")
         fake = FakeDevice()
         fake.add("Garmin/GarminDevice.xml", b"<Device/>")
         fake.add("Garmin/Prompts", hidden=True)
         fake.add("Garmin/Prompts/prompt_bundle.hvm", PROMPTS, hidden=True)
         s = session_of(root, shape)
-
-        @contextlib.contextmanager
-        def opened():
-            fake.reconnect()
-            with ptp.Session(fake) as session:
-                yield session
-
-        s.storage.exclusive_ptp = opened
+        s.storage.exclusive_ptp = lambda: ptp_opened(fake)
         answer = lower_keys(_prompts_offered())
         monkeypatch.setattr(s.client, "software_updates",
                             lambda raw, include_reinstalls=False: answer)
@@ -935,7 +904,8 @@ def test_the_updates_page_lists_a_hidden_file_on_the_device_with_the_components(
         expander.set_expanded(True)
         iterate(0.2)
         assert len(rows) == 1
-        assert [b for b in descendants(rows[0]) if isinstance(b, Gtk.Button)]  # Reinstall
+        assert [b.get_label() for b in descendants(rows[0]) if isinstance(b, Gtk.Button)] == [
+            {"en": "Reinstall", "pl": "Zainstaluj ponownie"}[language]]
         assert said == [], said
         if r.width == NARROWEST:
             narrowest = r.win.get_content().measure(Gtk.Orientation.HORIZONTAL, -1)[0]

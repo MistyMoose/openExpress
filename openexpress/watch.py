@@ -17,6 +17,7 @@ gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402 - imports must follow gi.require_version
 
 from openexpress import history, last_sync, service  # noqa: E402
+from openexpress.background import watch_id  # noqa: E402
 from openexpress.connect import OwnershipError  # noqa: E402
 from openexpress.device.gio_storage import (  # noqa: E402
     MassStorageNotice,
@@ -26,7 +27,6 @@ from openexpress.device.gio_storage import (  # noqa: E402
 )
 from openexpress.device.storage import DeviceError, DeviceNotResponding  # noqa: E402
 from openexpress.i18n import _  # noqa: E402
-from openexpress.paths import app_id  # noqa: E402
 from openexpress.progress import nothing  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -37,10 +37,10 @@ SYNC_DELAY_S = 5  # from a Garmin device's mount to its sync
 
 class Watcher(Gio.Application):
     def __init__(self):
-        # The ID of this install with ".Watch" (the version from source has a launcher of its
-        # own for it: desktop.files): notifications get its icon and name.
+        # The ID of this install's background service (the version from source has a launcher
+        # of its own for it: desktop.files): notifications get its icon and name.
         # Unique: a second start (autostart + GUI switch) just exits.
-        super().__init__(application_id=app_id() + ".Watch",
+        super().__init__(application_id=watch_id(),
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
         self.running = False
         self.pending = False

@@ -4,6 +4,7 @@ does all the rest - the files of Garmin Connect's queue are written to the devic
 acknowledged. The window, the command line and the dry run alike. All answers are made up."""
 
 import shutil
+import types
 
 import pytest
 import requests
@@ -126,3 +127,18 @@ def test_a_first_sync_without_omt_writes_the_queue_and_leaves_the_choice(device,
         applog.close()
     assert written(device) == ["course"]
     assert not sync.state_path(UNIT).exists()
+
+
+def test_an_answer_that_is_not_json_is_an_answer_not_a_server_out_of_reach():
+    """The server answered, with something openExpress cannot read: nothing to look for in the
+    user's network, and no words of the parser."""
+    from openexpress.connect import GarminClient
+
+    answer = requests.Response()
+    answer.status_code = 200
+    answer._content = b"<html>made up</html>"
+    with pytest.raises(ApiError) as said:
+        GarminClient(Settings())._json(answer, "Upload configuration")
+    text = service.upload_skipped(types.SimpleNamespace(settings=Settings()), said.value)
+    assert text == (ANSWERED + "Upload configuration: Garmin's server gave an answer openExpress "
+                    "does not understand; try again later).")

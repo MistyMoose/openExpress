@@ -295,6 +295,27 @@ def test_the_note_of_the_group_in_polish_by_count(count, said):
     assert text == said
 
 
+def test_a_busy_device_is_said_among_those_not_installed(watch, downloads, monkeypatch):
+    """The session for the hidden folder is refused: the sentence that says what to do stands
+    after the update's name, and the other updates are installed."""
+    from openexpress import hidden_folders
+    from openexpress.device.storage import DeviceBusy
+
+    gio_storage = pytest.importorskip("openexpress.device.gio_storage")
+    storage, by = _offered(watch)
+    by["006-D0002-00"].folder_writable = True
+
+    def busy(*args, **kw):
+        raise DeviceBusy(gio_storage.busy_text())
+
+    monkeypatch.setattr(hidden_folders, "write", busy)
+    report = updates.install(list(by.values()), storage)
+    assert [u.part_number for u, _why in report.failed] == ["006-D0002-00"]
+    assert len(report.written) == 2
+    assert ("The device is busy with another operation, such as a copy in the file manager or "
+            "another task of openExpress. Try again when it ends.") in updates.failed_text(report)
+
+
 def test_in_polish(watch, downloads, capsys):
     from fakes import in_language
 

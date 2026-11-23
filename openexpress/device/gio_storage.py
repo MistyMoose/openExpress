@@ -9,7 +9,6 @@ from __future__ import annotations
 import codecs
 import contextlib
 import dataclasses
-import errno
 import functools
 import logging
 import os
@@ -2765,7 +2764,7 @@ class _InUse:
                     log.info("%s: %d operation(s) of openExpress on the device still under way "
                              "after %g s; the device is not unmounted", what, self._others(me),
                              OWN_USE_WAIT_S)
-                    raise DeviceBusy(_still_in_use_text())
+                    raise DeviceBusy(busy_text())
                 self.changed.wait(left)
             log.info("%s: they ended after %.1f s", what, time.monotonic() - started)
         finally:
@@ -2996,25 +2995,31 @@ def _unmount(uri: str) -> None:
         UNMOUNT_TIMEOUT_S, _("Cannot unmount the device"), "unmount")
 
 
-def _still_in_use_text() -> str:
-    """The error of a session not had as this process's own operations on the device still
-    run: the words of an unmount refused, with the system's words for a busy device (as
-    _os_said gives them)."""
-    return f"{_('Cannot unmount the device')}: {os.strerror(errno.EBUSY)}"
+def busy_text() -> str:
+    """The error of a session not had because another operation on the device is under way:
+    in another program or another task of this one. What gvfs said stays in its cause."""
+    # TRANSLATORS: an error: openExpress could not open a direct USB connection to the device,
+    # because another operation on it was under way (in the file manager or another program,
+    # another openExpress window or command, or another task of this one); nothing was changed
+    # on the device. Said alone or after the name and version of an update that was not
+    # installed ("{name} {version}: ")
+    return _("The device is busy with another operation, such as a copy in the file manager or "
+             "another task of openExpress. Try again when it ends.")
 
 
 def _unmount_when_free(uri: str, what: str) -> None:
     """_unmount, asked again while gvfs refuses it as busy: UNMOUNT_TRIES times in all,
-    UNMOUNT_BUSY_PAUSE_S apart; then DeviceBusy as gvfs said it, the device left mounted."""
+    UNMOUNT_BUSY_PAUSE_S apart; then DeviceBusy with busy_text and the words of gvfs as its
+    cause, the device left mounted."""
     for tried in range(1, UNMOUNT_TRIES + 1):
         try:
             _unmount(uri)
             return
-        except DeviceBusy:
+        except DeviceBusy as e:
             if tried == UNMOUNT_TRIES:
                 log.info("%s: gvfs said the device is busy %d times; not unmounted", what,
                          tried)
-                raise
+                raise DeviceBusy(busy_text()) from e
             log.info("%s: gvfs says the device is busy, tried again in %.1f s (%d of %d)",
                      what, UNMOUNT_BUSY_PAUSE_S, tried + 1, UNMOUNT_TRIES)
             time.sleep(UNMOUNT_BUSY_PAUSE_S)

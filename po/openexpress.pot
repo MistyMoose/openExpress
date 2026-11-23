@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 20:57+0100\n"
+"POT-Creation-Date: 2026-11-23 21:17+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5361,6 +5361,18 @@ msgstr ""
 #: openexpress/device/gio_storage.py
 #, python-brace-format
 msgid "Cannot unmount the device"
+msgstr ""
+
+#. TRANSLATORS: an error: openExpress could not open a direct USB connection to the device,
+#. because another operation on it was under way (in the file manager or another program,
+#. another openExpress window or command, or another task of this one); nothing was changed
+#. on the device. Said alone or after the name and version of an update that was not
+#. installed ("{name} {version}: ")
+#: openexpress/device/gio_storage.py
+#, python-brace-format
+msgid ""
+"The device is busy with another operation, such as a copy in the file "
+"manager or another task of openExpress. Try again when it ends."
 msgstr ""
 
 #: openexpress/device/gio_storage.py

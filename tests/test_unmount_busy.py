@@ -8,9 +8,7 @@ the wait at once); the main thread and the session's own thread never wait. The 
 gvfs are made up (gio_fake): its gvfs refuses an unmount while a file is open, which here is
 only while it is read (real gvfs: while an operation is under way), and not during a copy."""
 
-import errno
 import logging
-import os
 import threading
 import time
 import types
@@ -27,6 +25,8 @@ XML = b"<Device>made up</Device>"
 LOGGER = "openexpress.device.gio_storage"
 PLACE = (3, 14)
 BUSY = "Cannot unmount the device: File system is busy"
+BUSY_TEXT = ("The device is busy with another operation, such as a copy in the file manager or "
+             "another task of openExpress. Try again when it ends.")
 LIMIT_S = 10.0  # no test waits this long: a thread still alive by then is stuck
 
 
@@ -158,7 +158,7 @@ def test_a_write_longer_than_the_wait_leaves_the_device_mounted_and_is_not_cut(
     release.set()
     ended(writer)
     assert isinstance(refused, gio_storage.DeviceBusy)
-    assert str(refused) == f"Cannot unmount the device: {os.strerror(errno.EBUSY)}"
+    assert str(refused) == BUSY_TEXT
     assert device.unmounts_asked == 0 and device.events == [] and device.mounted
     assert wrote["value"] == "GARMIN/NewFiles/NEW.BIN"
     assert not session_mark.active(PLACE)  # the other processes are told it is over
@@ -215,10 +215,20 @@ def test_a_device_busy_at_every_try_stays_mounted(made, monkeypatch, caplog):
     monkeypatch.setattr(gio_storage, "REMOUNT_QUIET_S", 0)  # the mark's quiet over at once
     device, _files, _st = made(busy_refusals=99)
     refused = a_session(the_session_storage(device))
-    assert isinstance(refused, gio_storage.DeviceBusy) and str(refused) == BUSY
+    assert isinstance(refused, gio_storage.DeviceBusy) and str(refused) == BUSY_TEXT
+    assert str(refused.__cause__) == BUSY  # the words of gvfs, for the log
     assert device.unmounts_asked == 5 and device.events == [] and device.mounted
     assert not session_mark.active(PLACE)
     assert "PTP: gvfs said the device is busy 5 times; not unmounted" in lines(caplog)
+
+
+def test_a_busy_device_is_said_in_polish_without_the_words_of_the_system():
+    from fakes import in_language
+
+    with in_language("pl"):
+        said = gio_storage.busy_text()
+    assert said == ("Urządzenie jest zajęte inną operacją, np. kopiowaniem w\u00a0menedżerze plików "
+                    "albo innym zadaniem openExpressu. Spróbuj ponownie, gdy się skończy.")
 
 
 # --- an operation that meets a session waits for the mount -----------------------------------

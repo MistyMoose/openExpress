@@ -289,8 +289,9 @@ def read(storage: Storage, folders: Iterable[str], why: str,
     except DeviceBusy as e:
         # What the connection read before stays: a later reading may find the device free.
         tries = _busy[connection(storage)] = busy_failures(storage) + 1
+        # The words of gvfs when it refused; the error itself is the sentence for the user.
         log.warning("hidden folders: not read, the device was busy (%s); not kept, %d such "
-                    "reading(s) this connection", e, tries)
+                    "reading(s) this connection", e.__cause__ or e, tries)
         return Listing(state=FAILED)
     except DeviceError as e:
         log.warning("hidden folders: not read, %s (%s: %s)", FAILED, type(e).__name__, e)

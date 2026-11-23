@@ -667,6 +667,24 @@ def test_a_reading_refused_as_busy_is_not_kept_and_what_was_read_stays(navigator
     assert hidden_folders.busy_failures(storage) == 0
 
 
+def test_the_log_of_a_reading_refused_as_busy_keeps_the_words_of_gvfs(navigator, caplog):
+    """The error carries the sentence for the user; what gvfs said is in its cause."""
+    caplog.set_level(logging.WARNING, logger="openexpress.hidden_folders")
+    storage = OverUsb(navigator, navigator_session())
+
+    @contextlib.contextmanager
+    def refused():
+        gvfs = DeviceBusy("Cannot unmount the device: File system is busy")
+        raise DeviceBusy("The device is busy with another operation.") from gvfs
+        yield
+
+    storage.exclusive_ptp = refused
+    assert hidden_folders.read(storage, [".System"], "test").state == hidden_folders.FAILED
+    assert [r.getMessage() for r in caplog.records] == [
+        ("hidden folders: not read, the device was busy (Cannot unmount the device: File system "
+         "is busy); not kept, 1 such reading(s) this connection")]
+
+
 def test_the_command_line_does_not_ask_a_busy_device_again_within_a_command(navigator):
     from openexpress import cli, service
 

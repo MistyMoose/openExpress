@@ -254,7 +254,7 @@ fēnix 8 (24.20), and reported working on a fēnix 7 ([#6](https://github.com/To
 
 <p align="center">
   <img src="screenshots/update-ready.png" width="700"
-       alt="The Updates page of a fēnix 8 after the copy: Updates ready: unplug the device to install them, 1 more available, 23.39 → 24.20, with Check Again">
+       alt="The Updates page of a fēnix 8 after a font component was copied: Update Ready, Unplug the device to install it, 0.01 → 2.00, TTF Binary Data, Garmin Misc, with Check Again">
 </p>
 
 ## Maps
@@ -535,7 +535,7 @@ choose under Free Up Space.
 
 <p align="center">
   <img src="screenshots/status-history.png" width="700"
-       alt="The Device Status page of an Edge 1050 bike computer: here an update just installed, from 33.20 to 33.21, and its first connection to this computer; its diagnostic files (two copies on this computer, one memory dump) and Report a Problem">
+       alt="The Device Status page of an Edge 1050 bike computer: its software updates from 33.20 to 33.21 and from 33.21 to 33.22, and its first connection to this computer; its diagnostic files (two copies on this computer, one memory dump) and Report a Problem">
 </p>
 
 The device page leads there from its rows **Device Storage** and **Device Status**.

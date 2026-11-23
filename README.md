@@ -87,7 +87,7 @@ was checked on other devices is in the table below. Other Garmin devices that co
 
 <p align="center">
   <img src="docs/screenshots/status.png" width="700"
-       alt="The Device Status page of a fēnix 8 watch: four crashes in the last 30 days, its storage by kind of file, maps the largest, and the newest crash at the top of its list">
+       alt="The Device Status page of a fēnix 8 watch: four crashes in the last 30 days, its storage by kind of file, maps the largest, and at the top of its history the software update from 23.39 to 24.20">
 </p>
 
 ## openPath

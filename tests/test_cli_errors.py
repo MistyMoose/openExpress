@@ -148,8 +148,8 @@ def test_a_server_error_is_not_called_one_twice_on_the_command_line(language, st
     assert capsys.readouterr().err.strip() == said
 
 
-FAULT = ("This is a bug in openExpress. To report it, run openexpress report and attach the "
-         "output of openexpress report --log.")
+FAULT = ("This is a bug in openExpress. To report it, run openexpress report --log and follow "
+         "what it prints.")
 
 
 def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress_on_the_command_line(log_file,
@@ -157,6 +157,17 @@ def test_an_error_nobody_foresaw_says_it_is_a_bug_in_openexpress_on_the_command_
     code, _log = _run(RuntimeError("made-up failure"), log_file)
     assert code == 1
     assert capsys.readouterr().err.splitlines() == ["Error: made-up failure", FAULT]
+
+
+def test_the_line_about_a_bug_in_polish(log_file, capsys):
+    from fakes import in_language
+
+    with in_language("pl"):
+        code, _log = _run(RuntimeError("made-up failure"), log_file)
+    assert code == 1
+    assert capsys.readouterr().err.splitlines()[-1] == (
+        "To błąd openExpressu. Aby go zgłosić, uruchom openexpress report --log i\u00a0postępuj "
+        "według tego, co wypisze.")
 
 
 def test_a_file_the_system_could_not_write_says_no_fault(log_file, capsys):

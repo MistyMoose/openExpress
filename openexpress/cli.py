@@ -4243,8 +4243,9 @@ def _run(args) -> int:
         log.info("unexpected error: %s", type(e).__name__, exc_info=True)
         _error(_("Error: {error}").format(error=applog.error_text(e)))
         if applog.is_fault(e):
-            # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
-            # and "openexpress report --log" are commands, not to be translated
-            _error(_("This is a bug in openExpress. To report it, run openexpress report and "
-                     "attach the output of openexpress report --log."))
+            # TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report
+            # --log" is a command, not to be translated; it prints the address of a device report
+            # filled in and the log to paste into it
+            _error(_("This is a bug in openExpress. To report it, run openexpress report --log "
+                     "and follow what it prints."))
         return 1

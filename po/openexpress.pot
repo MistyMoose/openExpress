@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 21:31+0100\n"
+"POT-Creation-Date: 2026-11-23 21:39+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -4619,13 +4619,14 @@ msgstr ""
 msgid "Interrupted."
 msgstr ""
 
-#. TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report"
-#. and "openexpress report --log" are commands, not to be translated
+#. TRANSLATORS: CLI, under the words of an error nobody foresaw; "openexpress report
+#. --log" is a command, not to be translated; it prints the address of a device report
+#. filled in and the log to paste into it
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"This is a bug in openExpress. To report it, run openexpress report and "
-"attach the output of openexpress report --log."
+"This is a bug in openExpress. To report it, run openexpress report --log and "
+"follow what it prints."
 msgstr ""
 
 #: openexpress/connect.py

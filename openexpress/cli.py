@@ -3771,7 +3771,10 @@ def build_parser() -> argparse.ArgumentParser:
                           "manager for a moment)"))
     s.add_argument("--dumps", action="store_true", help=_("also copy the memory dumps"))
     s.add_argument("--free-space", action="store_true",
-                   help=_("free space on the device: older memory dumps (copied to this "
+                   # TRANSLATORS: help of `openexpress diagnostics --free-space`: "free up space"
+                   # as the button Free Up Space of the window; "--apply", "--dumps" and
+                   # "--crash-logs" are options, not to be translated
+                   help=_("free up space on the device: older memory dumps (copied to this "
                           "computer first where they fit) and files of updates it did not "
                           "install; with --apply they are removed (not with --dumps or "
                           "--crash-logs)"))
@@ -3832,7 +3835,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("sync", help=_("sync with Garmin Connect (dry run by default)"))
     s.add_argument("--apply", action="store_true",
-                   help=_("upload and write (without it: a dry run)"))
+                   # TRANSLATORS: help of --apply of `openexpress sync` (the description of the
+                   # command above says it is a dry run without it)
+                   help=pgettext("sync --apply", "upload and write"))
     s.add_argument("--all", action="store_true", help=_("upload everything on the first sync"))
     s.add_argument("--upload-only", action="store_true",
                    help=_("only upload; leave what waits in Garmin Connect for the device"))
@@ -3847,7 +3852,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("baseline", help=_("mark the device's files as already uploaded, for the "
                                           "first sync (nothing is uploaded)"))
-    s.add_argument("--apply", action="store_true", help=_("mark the files (nothing is uploaded)"))
+    s.add_argument("--apply", action="store_true",
+                   # TRANSLATORS: help of --apply of `openexpress baseline` (the description of
+                   # the command above says nothing is uploaded)
+                   help=pgettext("baseline --apply", "mark the files"))
     s.set_defaults(func=cmd_baseline)
 
     s = sub.add_parser("backup", help=_("local backup of device data"))

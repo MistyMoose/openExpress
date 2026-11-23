@@ -95,6 +95,23 @@ def test_status_online_says_it_may_use_answers_from_a_moment_ago(capsys, languag
     assert said in help_in(language, capsys, "status")
 
 
+def test_free_space_is_said_as_the_button_of_the_window(capsys):
+    assert ("--free-space free up space on the device: older memory dumps"
+            in help_in("en", capsys, "diagnostics"))
+
+
+@pytest.mark.parametrize("language, command, said, left_out", [
+    ("en", "baseline", "--apply mark the files", "mark the files (nothing"),
+    ("pl", "baseline", "--apply oznacz pliki", "oznacz pliki (nic"),
+    ("en", "sync", "--apply upload and write", "(without it"),
+    ("pl", "sync", "--apply wyślij i zapisz", "(bez tego"),
+])
+def test_apply_does_not_repeat_what_the_command_says_above_it(capsys, language, command, said,
+                                                              left_out):
+    page = help_in(language, capsys, command)
+    assert said in page and left_out not in page
+
+
 def test_the_usage_line_does_not_list_every_command(capsys):
     said = help_of(capsys)
     usage = " ".join(said.split("\n\n")[0].split())  # the usage line, however it is wrapped

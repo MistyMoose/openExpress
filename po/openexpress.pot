@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 21:46+0100\n"
+"POT-Creation-Date: 2026-11-23 22:05+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3990,12 +3990,15 @@ msgstr ""
 msgid "also copy the memory dumps"
 msgstr ""
 
+#. TRANSLATORS: help of `openexpress diagnostics --free-space`: "free up space"
+#. as the button Free Up Space of the window; "--apply", "--dumps" and
+#. "--crash-logs" are options, not to be translated
 #: openexpress/cli.py
 #, python-brace-format
 msgid ""
-"free space on the device: older memory dumps (copied to this computer first "
-"where they fit) and files of updates it did not install; with --apply they "
-"are removed (not with --dumps or --crash-logs)"
+"free up space on the device: older memory dumps (copied to this computer "
+"first where they fit) and files of updates it did not install; with --apply "
+"they are removed (not with --dumps or --crash-logs)"
 msgstr ""
 
 #: openexpress/cli.py
@@ -4105,9 +4108,12 @@ msgstr ""
 msgid "sync with Garmin Connect (dry run by default)"
 msgstr ""
 
+#. TRANSLATORS: help of --apply of `openexpress sync` (the description of the
+#. command above says it is a dry run without it)
 #: openexpress/cli.py
 #, python-brace-format
-msgid "upload and write (without it: a dry run)"
+msgctxt "sync --apply"
+msgid "upload and write"
 msgstr ""
 
 #: openexpress/cli.py
@@ -4142,9 +4148,12 @@ msgid ""
 "uploaded)"
 msgstr ""
 
+#. TRANSLATORS: help of --apply of `openexpress baseline` (the description of
+#. the command above says nothing is uploaded)
 #: openexpress/cli.py
 #, python-brace-format
-msgid "mark the files (nothing is uploaded)"
+msgctxt "baseline --apply"
+msgid "mark the files"
 msgstr ""
 
 #: openexpress/cli.py

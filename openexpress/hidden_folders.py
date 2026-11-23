@@ -301,10 +301,10 @@ def read(storage: Storage, folders: Iterable[str], why: str,
 
             with known_devices.optional_change("devices: the hidden folders not kept (%s)"):
                 known_devices.note_hidden_tops(unit_id, listing.tops())
-        log.info("hidden folders: %s", "; ".join(
-            f"{real}: {len(entries)} entries" for real, entries in listing.folders.values())
-            + "".join(f"; {m}: not on the device"
-                      for m in sorted(listing.missing.values(), key=str.casefold)))
+        log.info("hidden folders: %s", "; ".join([
+            *(f"{real}: {len(entries)} entries" for real, entries in listing.folders.values()),
+            *(f"{m}: not on the device"
+              for m in sorted(listing.missing.values(), key=str.casefold))]))
         listing = _added(_kept.get(connection(storage)), listing)
     _kept[connection(storage)] = listing
     return listing

@@ -1354,6 +1354,14 @@ def test_the_log_names_a_folder_not_on_the_device_as_it_was_asked(navigator, cap
     assert listing.knows(".system/md2") and listing.state_of(".SYSTEM/MD2") == hidden_folders.READ
 
 
+def test_the_log_starts_with_the_folder_when_none_asked_for_is_there(navigator, caplog):
+    storage = OverUsb(navigator, navigator_session())
+    with caplog.at_level(logging.INFO, logger="openexpress.hidden_folders"):
+        hidden_folders.read(storage, [".System/MD2", ".System/GPX/Archive"], "test")
+    assert ("hidden folders: .System/GPX/Archive: not on the device; "
+            ".System/MD2: not on the device") in _hidden_folders_log(caplog)
+
+
 def test_the_updates_and_maps_are_logged_in_full_once_a_connection(navigator, caplog):
     """The window looks at the device three or four times a connection: the updates and the
     maps go to the log in full the first time and when they change, else one short line each;

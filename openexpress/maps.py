@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from openexpress import answers, applog, awake, cache, download, hidden_folders, paths
+from openexpress import answers, applog, awake, cache, download, hidden_folders, paths, updates
 from openexpress.connect import ApiError, unexpected_answer_text
 from openexpress.device.storage import DeviceError, DeviceNotResponding, Storage, connection
 from openexpress.errors import UserFacingError
@@ -112,6 +112,10 @@ class UniversalMap:
     # (mark_waiting): nothing is installed or removed there; its files are known only when
     # that folder was read through openExpress's own session (hidden_folders).
     hidden_folder: str | None = None
+    # The folder its files go to when the device hides it inside a folder the listing shows
+    # (mark_waiting with the device: the rule of the updates, updates.hidden_inside): maps are
+    # not written there, the command line's trial included, so it is refused before anything.
+    folder_hidden: str | None = None
     # The country Garmin does not offer the map in ("restriction", type "Country"; upper
     # case), and whether that is the account's country (apply_country): True, False (no
     # restriction, or another country), None (restricted, the account's country not known).
@@ -531,9 +535,10 @@ MISSING_FILE, BAD_CHECKSUM = "missing-file", "bad-checksum"
 def can_install(m: UniversalMap, hidden_trial: bool = False) -> bool:
     """Whether the server gave a usable, checked download for every file of `m`, Garmin
     offers it in the account's country, and its files go to folders ordinary MTP shows - or,
-    with `hidden_trial` (the command line's trial), to a folder the device hides that
-    openExpress's own session read."""
+    with `hidden_trial` (the command line's trial), to a folder of the top level the device
+    hides that openExpress's own session read; never to one it hides inside a seen one."""
     return (m.installable and bool(m.files) and m.restricted is not True
+            and m.folder_hidden is None
             and (m.hidden_folder is None or (hidden_trial and m.device_sizes is not None)))
 
 
@@ -541,6 +546,8 @@ def cannot_install_reason(m: UniversalMap) -> str:
     """The same reason as cannot_install_message, short, for the line under the map's name."""
     if m.hidden_folder is not None:
         return not_installed_into(m.hidden_folder)
+    if m.folder_hidden is not None:
+        return not_installed_hidden_inside(m.folder_hidden)
     if m.restricted is True:
         return _("Cannot be installed: Garmin does not offer this map in your account's "
                  "country")
@@ -554,11 +561,17 @@ def cannot_install_message(m: UniversalMap, hidden_trial: bool = False) -> str:
     """Why `m` cannot be installed, the same words in the command line and the window;
     `hidden_trial`: the reasons of the server and the account only (the trial installs into a
     folder the device hides)."""
-    if m.hidden_folder is not None and not hidden_trial:
-        # TRANSLATORS: {folder}: a folder the device hides from the ordinary USB connection,
-        # e.g. .System
+    if not hidden_trial and m.hidden_folder is not None:
+        # TRANSLATORS: {folder}: a folder the device hides from the file manager, e.g.
+        # .System
         return _("Map “{name}” cannot be installed: openExpress does not install maps into "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
+    if m.folder_hidden is not None:
+        # TRANSLATORS: {folder}: a folder the device hides inside a folder the file manager
+        # shows, e.g. GARMIN/RegionMaps
+        return _("Map “{name}” cannot be installed: the device hides the folder {folder} from "
+                 "the file manager, and openExpress does not install maps there yet.").format(
+            name=m.name, folder=m.folder_hidden)
     if m.restricted is True:
         return _("Map “{name}” cannot be installed: Garmin does not offer it in your account's "
                  "country ({country}).").format(name=m.name,
@@ -639,12 +652,15 @@ def find(maps: list[UniversalMap], name: str) -> UniversalMap:
                    .format(names="; ".join(m.name for m in partial)))
 
 
-def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
+def mark_waiting(storage: Storage, maps: list[UniversalMap], device=None) -> None:
     """Sets `waiting` on the maps written to or removed from the device that the device has
     not taken in yet: it does that when it is unplugged, and only then do GarminDevice.xml and
     so Garmin's server know. Read from the files on the device against the server's list,
-    nothing remembered; none is marked when the files cannot be listed."""
+    nothing remembered; none is marked when the files cannot be listed. With the `device`
+    (its GarminDevice.xml): the maps whose files go to a folder it hides inside a seen one
+    (folder_hidden)."""
     for m in maps:
+        m.folder_hidden = None
         m.waiting = None
         m.unseen = False
         m.device_sizes = None
@@ -658,6 +674,8 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
         tops = hidden_folders.top_folders(storage)
         for m in maps:
             m.hidden_folder = _top_not_seen(m.all_paths, tops)
+        if device is not None:
+            _mark_folder_hidden(storage, maps, device)
         for folder in {posixpath.dirname(p) for p in wanted}:
             if hidden_folders.top_not_seen(folder, tops) is not None:
                 # Read through openExpress's own session, or not known.
@@ -716,6 +734,23 @@ def mark_waiting(storage: Storage, maps: list[UniversalMap]) -> None:
     for m in removed:
         m.waiting = WAIT_REMOVE
     log_states(storage, maps)
+
+
+def _mark_folder_hidden(storage: Storage, maps: list[UniversalMap], device) -> None:
+    """Sets `folder_hidden` on the maps a file of which goes to a folder the device hides
+    inside a seen one, by the rule of the updates; only the maps' own folders are asked."""
+    def folder(f: MapFile) -> str:
+        return posixpath.dirname(f.device_path).strip("/").casefold()
+
+    inside = updates.hidden_inside(storage, device, among={folder(f) for m in maps
+                                                           for f in m.files})
+    for m in maps:
+        m.folder_hidden = next((inside[folder(f)] for f in m.files if folder(f) in inside), None)
+    refused = [m for m in maps if m.folder_hidden is not None]
+    if refused:
+        log.info("maps: %d go to a folder the device hides inside a seen one (%s): not "
+                 "installed there", len(refused),
+                 ", ".join(sorted({m.folder_hidden for m in refused}, key=str.casefold)))
 
 
 def _partly_written(m: UniversalMap, maps: list[UniversalMap], present: dict[str, int]) -> bool:
@@ -786,7 +821,7 @@ def no_complete_map_text() -> str:
 
 def folder_not_read_text(folder: str) -> str:
     # TRANSLATORS: {folder}: a folder the device hides, e.g. .System/Map
-    return _("The folder {folder} was not read through openExpress's own USB session.").format(
+    return _("The folder {folder} was not read over a direct USB connection.").format(
         folder=folder)
 
 
@@ -881,6 +916,14 @@ def not_installed_into(folder: str) -> str:
     # openExpress installs software updates there, not maps
     return _("openExpress does not install maps into the folder {folder} yet").format(
         folder=folder)
+
+
+def not_installed_hidden_inside(folder: str) -> str:
+    # TRANSLATORS: on the Maps page, under a map whose files go to a folder ({folder}, e.g.
+    # GARMIN/RegionMaps) that the device hides inside a folder the file manager shows; without a
+    # full stop
+    return _("The device hides the folder {folder} from the file manager; openExpress does not "
+             "install maps there yet").format(folder=folder)
 
 
 def read_only_text(folder: str) -> str:
@@ -1253,7 +1296,7 @@ def removal_refused(m: UniversalMap) -> str | None:
                  "on the device.").format(name=m.name)
     if m.hidden_folder is not None:
         # TRANSLATORS: error of a map removal; {folder}: a folder the device hides from the
-        # ordinary USB connection, e.g. .System
+        # file manager, e.g. .System
         return _("Map “{name}” cannot be removed: openExpress does not remove maps from "
                  "the folder {folder} yet.").format(name=m.name, folder=m.hidden_folder)
     return None

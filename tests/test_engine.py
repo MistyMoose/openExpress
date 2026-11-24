@@ -21,8 +21,8 @@ from openexpress import __version__, activities, backup, engine
 from openexpress import settings as settings_mod
 from openexpress.device.found import DeviceSummary, FoundDevice
 from openexpress.device.storage import LocalStorage
-from openexpress.i18n import caption
 from openexpress.device.xmldevice import parse
+from openexpress.i18n import caption
 from openexpress.progress import Step, copying_text, downloading_text
 
 UNIT = "1234567890"  # conftest.DEVICE_XML

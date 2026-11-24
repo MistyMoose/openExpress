@@ -9,7 +9,11 @@ and listing the operations it lists:
   when `allows_folders` (the fēnix 8 refuses one in GARMIN/Apps), and only one described as
   libmtp describes it (an association of the type "generic folder");
 * DeleteObject removes a protected app file too, as seen when Garmin Express removes an app
-  (`delete_protected`: the fake refuses instead).
+  (`delete_protected`: the fake refuses instead);
+* an object of the top level names 0 as its parent in its description (`top_parent`), as the
+  fēnix 8 and the Edge 1050 do in both listings, though the listings are asked with ROOT;
+* 0x9002 lists only what the ordinary listing does not, every object in the folder asked, as
+  on those two devices; `also_in_garmins` and `garmins_extra` make it answer otherwise.
 
 Everything in the tree is made up.
 """
@@ -76,6 +80,10 @@ class FakeDevice:
         self.refuse_delete_names: dict[str, int] = {}  # file name -> code, at DeleteObject
         self.supports_hidden = True
         self.allows_folders = False  # whether SendObjectInfo of a folder makes one
+        self.top_parent = 0  # the parent a top-level object names in its description
+        self.also_in_garmins: set[int] = set()  # ordinary objects 0x9002 lists too
+        # folder -> objects of other folders that 0x9002 lists in it too
+        self.garmins_extra: dict[int, list[int]] = {}
         self.delete_protected = ptp.OK  # or a refusal such as ptp.OBJECT_WRITE_PROTECTED
         self.session_open = False
         self.wrong_transaction = False
@@ -116,6 +124,15 @@ class FakeDevice:
         """A second storage the device has, besides STORAGE: empty of files (GetObjectHandles
         of it returns none), its own description, capacity and free space (GetStorageInfo)."""
         self.extra_storages[store_id] = _ExtraStorage(description, capacity, free)
+
+    def add_twin(self, path: str, name: str | None = None, data: bytes | None = None) -> int:
+        """A hidden object beside the one at `path`, in the same folder, called `name` (by
+        default the same name): a second object under another handle."""
+        parent = self.objects[self.handle(path)].parent
+        handle = self._next
+        self._next += 1
+        self.objects[handle] = FakeObject(name or path.rsplit("/", 1)[-1], parent, data, True)
+        return handle
 
     def handle(self, path: str) -> int | None:
         parent = ptp.ROOT
@@ -245,7 +262,10 @@ class FakeDevice:
                                        or self.objects[parent].data is not None):
                 return (ptp.INVALID_PARENT_OBJECT,)
             handles = [h for h, o in self.objects.items()
-                       if o.parent == parent and o.hidden == hidden]
+                       if o.parent == parent and (o.hidden == hidden
+                                                  or (hidden and h in self.also_in_garmins))]
+            if hidden:
+                handles += self.garmins_extra.get(parent, [])
             return ptp.OK, struct.pack(f"<I{len(handles)}I", len(handles), *handles)
         if operation == ptp.SEND_OBJECT_INFO:
             return self._send_object_info(params, data)
@@ -292,8 +312,9 @@ class FakeDevice:
     def _object_info(self, obj: FakeObject) -> bytes:
         fmt = ptp.FORMAT_FOLDER if obj.data is None else ptp.FORMAT_UNDEFINED
         size = obj.listed_size if obj.listed_size is not None else len(obj.data or b"")
+        parent = self.top_parent if obj.parent == ptp.ROOT else obj.parent
         return (struct.pack("<IHHI", STORAGE, fmt, obj.protection, size)
-                + struct.pack("<HIIIIIIIHII", 0, 0, 0, 0, 0, 0, 0, obj.parent, 0, 0, 0)
+                + struct.pack("<HIIIIIIIHII", 0, 0, 0, 0, 0, 0, 0, parent, 0, 0, 0)
                 + ptp.ptp_string(obj.name) + ptp.ptp_string("") + ptp.ptp_string(obj.modified)
                 + ptp.ptp_string(""))
 

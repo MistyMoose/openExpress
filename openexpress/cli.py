@@ -28,6 +28,7 @@ from openexpress.connect import (
     Unauthorized,
 )
 from openexpress.console import error as _error
+from openexpress.device import card as cards
 from openexpress.device.storage import DeviceError, DeviceNotResponding, LocalStorage, Storage
 from openexpress.device.xmldevice import GarminDevice, parse
 from openexpress.errors import UserFacingError
@@ -2339,6 +2340,11 @@ def _load_maps(args, client, own: bool = False):
     from openexpress import maps as mp
 
     st, dev = open_device(args)
+    # The device's card in this computer's reader stands in for the card over MTP, for this
+    # command alone: a session kept open for the next request never keeps it.
+    st.card_volume = None
+    if getattr(args, "card_reader", None):
+        st.card_volume = cards.reader_card(dev, Path(args.card_reader))
     if args.path:  # a folder (maybe a copy): the universal map service
         all_maps, listed = mp.read_maps(client.universal_maps(dev.raw))
         mp.apply_restrictions(all_maps)  # no account for a folder: a restricted map is marked
@@ -2467,7 +2473,7 @@ def cmd_maps(args) -> int:
         return _maps_remove_own(args, dev, st, all_maps)
     if not listed:
         # One message instead of an empty list, as for a device without media.
-        if args.maps_cmd in ("install", "remove"):
+        if args.maps_cmd in ("install", "remove", "move"):
             raise mp.MapError(mp.no_maps_message())
         print(mp.no_maps_message())
         return 0
@@ -2477,7 +2483,8 @@ def cmd_maps(args) -> int:
         print((_("Maps for {device} (all):") if args.all
                else _("Maps for {device} (installed):")).format(device=dev.description))
         for m in sorted(shown, key=lambda m: (m not in on_device, m.map_type, m.name)):
-            print(f"  {m.name:48} {m.version:>9}  {human_size(m.size):>9}  {m.status}")
+            print(f"  {m.name:48} {m.version:>9}  {human_size(m.size):>9}  {m.status}"
+                  + _map_place(m))
             if (note := mp.restriction_note(m)) is not None:
                 print("    " + note)
             if m.hidden_folder is not None and not m.unseen:
@@ -2488,6 +2495,11 @@ def cmd_maps(args) -> int:
                                   "{count} more maps are available (openexpress maps --all).",
                                   n).format(count=n))
         print(_("Free space on the device: {size}").format(size=human_size(st.free_space())))
+        if (card := cards.card_of(st, dev)) is not None:
+            # TRANSLATORS: `openexpress maps`, after the free space on the device; {size}: a
+            # size, e.g. 120.5 GB
+            print(_("Free space on its memory card: {size}").format(
+                size=human_size(card.free_space())))
         own = ownmaps.list_own(dev, st, all_maps)
         if own:
             print("\n" + _("Own maps (not from Garmin):"))
@@ -2499,10 +2511,14 @@ def cmd_maps(args) -> int:
         return 0
 
     if args.maps_cmd == "update":
-        targets = [m for m in all_maps if m.update_available and m.hidden_folder is None
-                   and m.folder_hidden is None]
+        def kept_from(m) -> bool:  # a folder the device hides; on both storages, or a card not in
+            # the device (a map on the card is updated there)
+            return ((m.hidden_folder or m.folder_hidden) is not None
+                    or m.location in (cards.BOTH, cards.CARD_OUT))
+
+        targets = [m for m in all_maps if m.update_available and not kept_from(m)]
         for m in all_maps:
-            if m.update_available and (m.hidden_folder or m.folder_hidden) is not None:
+            if m.update_available and kept_from(m):
                 print(mp.cannot_install_message(m))
         incomplete = sum(1 for m in all_maps if m.incomplete)
         for m in all_maps:
@@ -2526,6 +2542,177 @@ def cmd_maps(args) -> int:
     return code
 
 
+def _map_place(m) -> str:
+    """After a map's status in `openexpress maps`: where it is, when not on the device's own
+    storage alone."""
+    if m.location == cards.CARD:
+        # TRANSLATORS: `openexpress maps`, after a map's status: the map is on the memory card
+        return "  " + _("(memory card)")
+    if m.location == cards.BOTH:
+        # TRANSLATORS: `openexpress maps`, after a map's status: its files are on the device's
+        # own storage and on its memory card
+        return "  " + _("(device and memory card)")
+    if m.location == cards.CARD_OUT:
+        # TRANSLATORS: `openexpress maps`, after a map's status: on the memory card, which is
+        # not in the device now
+        return "  " + _("(memory card, not in the device)")
+    return ""
+
+
+def _move_map(args, client, st, dev, all_maps, m) -> int:
+    """`maps move NAME --to internal|card`: the plan (each file moved, copied or checked, and
+    what stays), then with --apply the move. MapError when it is refused."""
+    from openexpress import maps as mp
+
+    steps = mp.move_plan(m, all_maps, st, dev, args.to)
+    if refused := mp.move_refusals(m, steps, args.to):
+        raise mp.MapError(refused[0])
+    card = cards.card_of(st, dev)
+    target = card if args.to == cards.CARD else st
+    if args.to == cards.CARD:
+        # TRANSLATORS: `openexpress maps move --to card`; {name}: the map, {count}: its files
+        msg = ngettext("Moving map {name} to the memory card: {count} file",
+                       "Moving map {name} to the memory card: {count} files", len(steps))
+    else:
+        # TRANSLATORS: `openexpress maps move --to internal`; {name}: the map, {count}: its files
+        msg = ngettext("Moving map {name} to the device: {count} file",
+                       "Moving map {name} to the device: {count} files", len(steps))
+    print(msg.format(name=m.name, count=len(steps)))
+    for s in steps:
+        if s.copy:
+            print(f"  > {s.target_path}  {human_size(s.file.size)}"
+                  + ("  " + _("(then removed from where it was)") if s.delete else ""))
+        elif s.verify:
+            # TRANSLATORS: in the plan of a map move: a file already where the map goes (a map on
+            # both storages), checked before the other copy is removed
+            checked = _("(there already, checked)")
+            print(f"  = {s.target_path}  {human_size(s.file.size)}  {checked}")
+        else:
+            # TRANSLATORS: in the plan of a map move: a shared file already where the map goes
+            print(f"  = {s.target_path}  {human_size(s.file.size)}  " + _("(there already)"))
+        if not s.copy and s.delete:
+            print(f"  - {s.source_path}")
+    # TRANSLATORS: in the plan of a map move: its unlock and search files, which stay on the
+    # device's own storage wherever the map is, and shared layers, which stay where they are
+    print("  " + _("Its unlock and search files, and terrain it shares with other maps, stay "
+                   "where they are."))
+    print(_("Space needed where it goes: {needed} ({free} free)").format(
+        needed=human_size(mp.move_space(steps)), free=human_size(target.free_space())))
+    if getattr(args, "download", False):
+        # TRANSLATORS: in the plan of `maps move --download`
+        print(_("Its files are downloaded again from Garmin, not read off the device."))
+    if not args.apply:
+        print(_("Dry run: nothing was read, written or removed. Add --apply."))
+        return 0
+    with _progress() as progress:
+        rep = mp.move(m, all_maps, st, dev, args.to, session=client.http if client else None,
+                      url_salt=load_consumer().url_salt if client else None, progress=progress,
+                      source=mp.FROM_DOWNLOAD if getattr(args, "download", False)
+                      else mp.FROM_DEVICE)
+    # TRANSLATORS: after `openexpress maps move --apply`; labels and numbers, so that no
+    # plural form is needed
+    print(_("Copied: {count}").format(count=len(rep.copied)))
+    if rep.verified:
+        print(_("There already and checked: {count}").format(count=len(rep.verified)))
+    print(_("Removed from where it was: {count}").format(count=len(rep.removed)))
+    _eject_reader_card(st)
+    print(_("The map will be loaded from where it is now after the device is unplugged."))
+    return 0
+
+
+def _change_map_on_card(args, client, st, dev, all_maps, m, to) -> int:
+    """`maps install --to card`, or `maps install` and `update` of a map on the memory card:
+    its plan (each file where it goes, a shared layer left where it is, the space on each
+    storage), then with --apply the install. MapError when it is refused."""
+    from openexpress import maps as mp
+
+    if not mp.can_install(m):
+        raise mp.MapError(mp.cannot_install_message(m))
+    plan = mp.card_plan(m, all_maps, st, dev)
+    if refused := mp.card_refusals(m, plan):
+        raise mp.MapError(refused[0])
+    removing = mp.removal_list(all_maps, m, rewriting=True)
+    need = mp.card_space(m, plan, st, dev, removing)
+    card = cards.card_of(st, dev)
+    if m.installed:
+        # TRANSLATORS: `openexpress maps update` of a map on the memory card; {name}, {version}:
+        # the map, {count}: its files, {size}: the download
+        msg = ngettext("Updating map {name} {version} on the memory card: {count} file, "
+                       "download {size}",
+                       "Updating map {name} {version} on the memory card: {count} files, "
+                       "download {size}", len(m.files))
+    else:
+        # TRANSLATORS: `openexpress maps install --to card`; {name}, {version}: the map,
+        # {count}: its files, {size}: the download
+        msg = ngettext("Installing map {name} {version} on the memory card: {count} file, "
+                       "download {size}",
+                       "Installing map {name} {version} on the memory card: {count} files, "
+                       "download {size}", len(m.files))
+    print(msg.format(name=m.name, version=m.version, count=len(m.files),
+                     size=human_size(m.size)))
+    for p in plan:
+        if p.storage is None:
+            # TRANSLATORS: in the plan of a map install on the memory card: a file other maps
+            # share (a terrain layer), left on the storage it is on
+            print(f"  = {p.path}  {human_size(p.file.size)}  " + _("(shared, stays where it is)"))
+        elif p.where == cards.CARD:
+            print(f"  + {p.path}  {human_size(p.file.size)}  " + _("(memory card)"))
+        elif p.path.casefold().endswith(".sid") and cards.may_go_to_card(p.path, dev):
+            # TRANSLATORS: in the plan of a map install on the memory card: a search or type
+            # file whose kind, read once it is downloaded, decides where it goes
+            either = _("(the device or the memory card, by its kind)")
+            print(f"  + {p.path}  {human_size(p.file.size)}  {either}")
+        else:
+            print(f"  + {p.path}  {human_size(p.file.size)}")
+    for p in removing:
+        print(f"  - {p}")
+    # TRANSLATORS: in the plan of a map install on the memory card; {internal}, {card}: the
+    # space needed on each, {internal_free}, {card_free}: free there
+    print(_("Space needed on the device {internal} ({internal_free} free), on the memory card "
+            "{card} ({card_free} free)").format(
+        internal=human_size(need[cards.INTERNAL]), internal_free=human_size(st.free_space()),
+        card=human_size(need[cards.CARD]), card_free=human_size(card.free_space())))
+    for e in m.eula_urls:
+        print(_("License (EULA): {url}").format(url=e))
+    if not args.apply:
+        print(_("Dry run: nothing was downloaded or written. Add --apply."))
+        return 0
+    with _progress() as progress:
+        rep = mp.install(
+            m, all_maps, st,
+            activate=lambda ident: client.activate_maps(dev.raw, [ident]),
+            session=client.http, url_salt=_url_salt(), progress=progress, device=dev, to=to)
+    print(ngettext("Wrote {count} map file.", "Wrote {count} map files.",
+                   len(rep.written)).format(count=len(rep.written)))
+    # TRANSLATORS: openexpress maps install --to card, after the files: how many of them went to
+    # the memory card; a label and a number, so that no plural form is needed
+    print(_("On the memory card: {count}").format(count=len(rep.on_card)))
+    if rep.shared:
+        # TRANSLATORS: openexpress maps install --to card: shared layers left where they were; a
+        # label and a number
+        print(_("Shared files left where they are: {count}").format(count=len(rep.shared)))
+    print(_("Unlock files written: {count}").format(count=len(rep.unlocks)))
+    _eject_reader_card(st)
+    print(_("The map will be loaded after the device is unplugged."))
+    return 0
+
+
+def _eject_reader_card(st) -> None:
+    """The device's card in this computer's reader, written: ejected, to be put back."""
+    card = getattr(st, "card_volume", None)
+    if card is None:
+        return
+    st.card_volume = None  # ejected: the card is the device's again once it is back
+    if cards.eject(card):
+        # TRANSLATORS: after a map was written to the memory card in the computer's card reader
+        print(_("The memory card was ejected: put it back in the device."))
+    else:
+        # TRANSLATORS: after a map was written to the memory card in the computer's card reader;
+        # {volume}: the card's name
+        print(_("Eject the memory card {volume}, then put it back in the device.").format(
+            volume=Path(card.root).name))
+
+
 def print_map_cleanup(st, dev, all_maps) -> None:
     """The old files Garmin's cleanup rules would take: listed with the plan of `maps install`,
     `update` and `remove`, in a dry run and with --apply; never removed."""
@@ -2547,23 +2734,26 @@ def change_map(args, client, st, dev, all_maps, m) -> int:
     from openexpress import maps as mp
 
     code = 0
+    if args.maps_cmd == "move":
+        return _move_map(args, client, st, dev, all_maps, m)
     if args.maps_cmd == "remove":
         if (why := mp.removal_refused(m)) is not None:
             raise mp.MapError(why)  # refused before anything is listed
         if not m.can_uninstall:
             # Refused before anything is listed: the files are not going to be removed.
             raise mp.MapError(mp.cannot_remove_message(m))
-        files = mp.removal_list(all_maps, m, rewriting=False)
+        places = mp.removal_places(m, all_maps, st, dev)
         print(ngettext("Removing map {name}: {count} file",
-                       "Removing map {name}: {count} files", len(files)).format(
-            name=m.name, count=len(files)))
-        for p in files:
-            print(f"  - {p}  ({human_size(st.size(p))})")
+                       "Removing map {name}: {count} files", len(places)).format(
+            name=m.name, count=len(places)))
+        for where, p in places:
+            print(f"  - {p}  ({human_size(where.size(p))})"
+                  + ("" if where is st else "  " + _("(memory card)")))
         if not args.apply:
             print(_("Dry run: nothing was changed. Add --apply."))
             return code
         with _progress() as progress:
-            removed = mp.uninstall(m, all_maps, st, progress=progress)
+            removed = mp.uninstall(m, all_maps, st, progress=progress, device=dev)
         print(ngettext("Removed {count} file.", "Removed {count} files.",
                        len(removed)).format(count=len(removed)))
         return code
@@ -2571,6 +2761,9 @@ def change_map(args, client, st, dev, all_maps, m) -> int:
     if m.waiting == mp.WAIT_INSTALL:
         # Refused before anything is listed: it is written already.
         raise mp.MapError(mp.waiting_message(m))
+    to = getattr(args, "to", None)
+    if mp.install_target(m, to) == cards.CARD:
+        return _change_map_on_card(args, client, st, dev, all_maps, m, to)
     trial = getattr(args, "hidden_folder_trial", False)
     hidden = m.hidden_folder is not None
     removing = mp.removal_list(all_maps, m, rewriting=True)
@@ -4131,6 +4324,35 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--hidden-folder-trial", action="store_true",
                    help=_("a trial: install a map into a folder the device hides (a car "
                           "navigator's .System), through openExpress's own USB session"))
+    m.add_argument("--to", choices=("internal", "card"),
+                   # TRANSLATORS: CLI help of `maps install --to`; "internal" and "card" are
+                   # values, not to be translated
+                   help=_("where to install a map that is not on the device yet: its own "
+                          "storage (internal, the default) or its memory card (card)"))
+    m.add_argument("--card-reader", metavar="VOLUME",
+                   # TRANSLATORS: CLI help of `--card-reader`; VOLUME is a placeholder
+                   help=_("the device's memory card in this computer's card reader (its "
+                          "volume, e.g. /Volumes/CARD): the map's files are written to it "
+                          "there, faster than through the device, then it is ejected"))
+    m = msub.add_parser("move", help=_("move a map between the device's own storage and its "
+                                       "memory card"))
+    m.add_argument("name", metavar="NAME",
+                   help=_("the map's name, or a part of it that only one map has"))
+    m.add_argument("--to", choices=("internal", "card"), required=True,
+                   # TRANSLATORS: CLI help of `maps move --to`; "internal" and "card" are
+                   # values, not to be translated
+                   help=_("where the map goes: the device's own storage (internal) or its "
+                          "memory card (card); a map on both is kept there alone"))
+    m.add_argument("--download", action="store_true",
+                   help=_("download the map's files again from Garmin rather than reading them "
+                          "off the device (faster on a fast connection); the copy on the device "
+                          "is removed only once the new one is written"))
+    m.add_argument("--card-reader", metavar="VOLUME",
+                   # TRANSLATORS: CLI help of `--card-reader`; VOLUME is a placeholder
+                   help=_("the device's memory card in this computer's card reader (its "
+                          "volume, e.g. /Volumes/CARD): the map's files are written to it "
+                          "there, faster than through the device, then it is ejected"))
+    m.add_argument("--apply", action="store_true", help=_("move the map"))
     m = msub.add_parser("update", help=_("update installed maps"))
     m.add_argument("--apply", action="store_true",
                    help=_("download the updates and write them to the device"))

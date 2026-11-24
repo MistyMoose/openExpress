@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: openexpress 0.13.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 22:54-0500\n"
+"POT-Creation-Date: 2026-11-24 11:12-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2952,6 +2952,13 @@ msgstr[1] ""
 msgid "Free space on the device: {size}"
 msgstr ""
 
+#. TRANSLATORS: `openexpress maps`, after the free space on the device; {size}: a
+#. size, e.g. 120.5 GB
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Free space on its memory card: {size}"
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "Own maps (not from Garmin):"
@@ -2974,6 +2981,208 @@ msgstr ""
 #: openexpress/cli.py
 #, python-brace-format
 msgid "All installed maps are up to date."
+msgstr ""
+
+#. TRANSLATORS: `openexpress maps`, after a map's status: the map is on the memory card
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(memory card)"
+msgstr ""
+
+#. TRANSLATORS: `openexpress maps`, after a map's status: its files are on the device's
+#. own storage and on its memory card
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(device and memory card)"
+msgstr ""
+
+#. TRANSLATORS: `openexpress maps`, after a map's status: on the memory card, which is
+#. not in the device now
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(memory card, not in the device)"
+msgstr ""
+
+#. TRANSLATORS: `openexpress maps move --to card`; {name}: the map, {count}: its files
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Moving map {name} to the memory card: {count} file"
+msgid_plural "Moving map {name} to the memory card: {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: `openexpress maps move --to internal`; {name}: the map, {count}: its files
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Moving map {name} to the device: {count} file"
+msgid_plural "Moving map {name} to the device: {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(then removed from where it was)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of a map move: a file already where the map goes (a map on
+#. both storages), checked before the other copy is removed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(there already, checked)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of a map move: a shared file already where the map goes
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(there already)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of a map move: its unlock and search files, which stay on the
+#. device's own storage wherever the map is, and shared layers, which stay where they are
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Its unlock and search files, and terrain it shares with other maps, stay "
+"where they are."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Space needed where it goes: {needed} ({free} free)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of `maps move --download`
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Its files are downloaded again from Garmin, not read off the device."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Dry run: nothing was read, written or removed. Add --apply."
+msgstr ""
+
+#. TRANSLATORS: after `openexpress maps move --apply`; labels and numbers, so that no
+#. plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Copied: {count}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "There already and checked: {count}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Removed from where it was: {count}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"The map will be loaded from where it is now after the device is unplugged."
+msgstr ""
+
+#. TRANSLATORS: `openexpress maps update` of a map on the memory card; {name}, {version}:
+#. the map, {count}: its files, {size}: the download
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Updating map {name} {version} on the memory card: {count} file, download "
+"{size}"
+msgid_plural ""
+"Updating map {name} {version} on the memory card: {count} files, download "
+"{size}"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: `openexpress maps install --to card`; {name}, {version}: the map,
+#. {count}: its files, {size}: the download
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Installing map {name} {version} on the memory card: {count} file, download "
+"{size}"
+msgid_plural ""
+"Installing map {name} {version} on the memory card: {count} files, download "
+"{size}"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: in the plan of a map install on the memory card: a file other maps
+#. share (a terrain layer), left on the storage it is on
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(shared, stays where it is)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of a map install on the memory card: a search or type
+#. file whose kind, read once it is downloaded, decides where it goes
+#: openexpress/cli.py
+#, python-brace-format
+msgid "(the device or the memory card, by its kind)"
+msgstr ""
+
+#. TRANSLATORS: in the plan of a map install on the memory card; {internal}, {card}: the
+#. space needed on each, {internal_free}, {card_free}: free there
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"Space needed on the device {internal} ({internal_free} free), on the memory "
+"card {card} ({card_free} free)"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Dry run: nothing was downloaded or written. Add --apply."
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Wrote {count} map file."
+msgid_plural "Wrote {count} map files."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: openexpress maps install --to card, after the files: how many of them went to
+#. the memory card; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "On the memory card: {count}"
+msgstr ""
+
+#. TRANSLATORS: openexpress maps install --to card: shared layers left where they were; a
+#. label and a number
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Shared files left where they are: {count}"
+msgstr ""
+
+#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
+#. (.gma) were written; a label and a number, so that no plural form is needed
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Unlock files written: {count}"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "The map will be loaded after the device is unplugged."
+msgstr ""
+
+#. TRANSLATORS: after a map was written to the memory card in the computer's card reader
+#: openexpress/cli.py
+#, python-brace-format
+msgid "The memory card was ejected: put it back in the device."
+msgstr ""
+
+#. TRANSLATORS: after a map was written to the memory card in the computer's card reader;
+#. {volume}: the card's name
+#: openexpress/cli.py
+#, python-brace-format
+msgid "Eject the memory card {volume}, then put it back in the device."
 msgstr ""
 
 #: openexpress/cli.py
@@ -3051,11 +3260,6 @@ msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
-msgid "Dry run: nothing was downloaded or written. Add --apply."
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
 msgid ""
 "{count} file was on the device already and read back the same: not written "
 "again."
@@ -3064,25 +3268,6 @@ msgid_plural ""
 "again."
 msgstr[0] ""
 msgstr[1] ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Wrote {count} map file."
-msgid_plural "Wrote {count} map files."
-msgstr[0] ""
-msgstr[1] ""
-
-#. TRANSLATORS: openexpress maps install, after the map's files: how many unlock files
-#. (.gma) were written; a label and a number, so that no plural form is needed
-#: openexpress/cli.py
-#, python-brace-format
-msgid "Unlock files written: {count}"
-msgstr ""
-
-#: openexpress/cli.py
-#, python-brace-format
-msgid "The map will be loaded after the device is unplugged."
-msgstr ""
 
 #: openexpress/cli.py
 #, python-brace-format
@@ -4539,6 +4724,56 @@ msgid ""
 "navigator's .System), through openExpress's own USB session"
 msgstr ""
 
+#. TRANSLATORS: CLI help of `maps install --to`; "internal" and "card" are
+#. values, not to be translated
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"where to install a map that is not on the device yet: its own storage "
+"(internal, the default) or its memory card (card)"
+msgstr ""
+
+#. TRANSLATORS: CLI help of `--card-reader`; VOLUME is a placeholder
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"the device's memory card in this computer's card reader (its volume, e.g. /"
+"Volumes/CARD): the map's files are written to it there, faster than through "
+"the device, then it is ejected"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "move a map between the device's own storage and its memory card"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "the map's name, or a part of it that only one map has"
+msgstr ""
+
+#. TRANSLATORS: CLI help of `maps move --to`; "internal" and "card" are
+#. values, not to be translated
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"where the map goes: the device's own storage (internal) or its memory card "
+"(card); a map on both is kept there alone"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid ""
+"download the map's files again from Garmin rather than reading them off the "
+"device (faster on a fast connection); the copy on the device is removed only "
+"once the new one is written"
+msgstr ""
+
+#: openexpress/cli.py
+#, python-brace-format
+msgid "move the map"
+msgstr ""
+
 #: openexpress/cli.py
 #, python-brace-format
 msgid "update installed maps"
@@ -5377,6 +5612,43 @@ msgstr ""
 #: openexpress/desktop.py
 #, python-brace-format
 msgid "Garmin;Fenix;Connect;sync;"
+msgstr ""
+
+#. TRANSLATORS: why a card in the computer's card reader is not used
+#: openexpress/device/card.py
+#, python-brace-format
+msgid ""
+"openExpress has not seen this device's memory card yet: connect the device "
+"with its card in it once, then try again."
+msgstr ""
+
+#: openexpress/device/card.py
+#, python-brace-format
+msgid "The card cannot be read."
+msgstr ""
+
+#. TRANSLATORS: why a card in the computer's card reader is not used
+#: openexpress/device/card.py
+#, python-brace-format
+msgid "Its size is not that of the device's memory card."
+msgstr ""
+
+#: openexpress/device/card.py
+#, python-brace-format
+msgid "It has no Garmin folder."
+msgstr ""
+
+#. TRANSLATORS: why a card in the computer's card reader is not used
+#: openexpress/device/card.py
+#, python-brace-format
+msgid "The maps on it are not those the device last had on its card."
+msgstr ""
+
+#. TRANSLATORS: error: a volume given as the device's card in the card reader is not;
+#. {volume}: its name, {reason}: why
+#: openexpress/device/card.py
+#, python-brace-format
+msgid "{volume} is not this device's memory card: {reason}"
 msgstr ""
 
 #. TRANSLATORS: macOS: its camera service holds the device; "ptpcamerad" is the
@@ -11637,6 +11909,18 @@ msgstr ""
 msgid "openExpress does not remove these files yet."
 msgstr ""
 
+#. TRANSLATORS: under a map's name: it is on the memory card, which is not in the device
+#: openexpress/maps.py
+#, python-brace-format
+msgid "On the memory card, which is not in the device"
+msgstr ""
+
+#. TRANSLATORS: under a map's name: its files are on the device and on its memory card
+#: openexpress/maps.py
+#, python-brace-format
+msgid "On the device and on its memory card: openExpress does not change it"
+msgstr ""
+
 #: openexpress/maps.py
 #, python-brace-format
 msgid ""
@@ -11777,6 +12061,83 @@ msgstr ""
 msgid "Removing old map files"
 msgstr ""
 
+#. TRANSLATORS: error of a map install on the memory card; {name}: the map,
+#. {path}: one of its files, {size}: its size
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” cannot be installed on the memory card: its file {path} "
+"({size}) is larger than a FAT32 card holds."
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Map “{name}” is not on the device."
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is moved only when it is up to date on the device: update or "
+"install it again first."
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Map “{name}” is on the memory card already."
+msgstr ""
+
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Map “{name}” is on the device already."
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map, {path}: one of its files
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is not moved: its file {path} is on neither storage of the "
+"device. Install it again."
+msgstr ""
+
+#. TRANSLATORS: a step of a map move: the map's files read from the device to this computer
+#. ("… · 1.2 MB of 3.4 MB")
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Reading {name} from the device"
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map, {path}: one of its files
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is not moved: its file {path} on the device is not Garmin's "
+"file. Install the map again."
+msgstr ""
+
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Map “{name}” cannot be downloaded again here."
+msgstr ""
+
+#. TRANSLATORS: error of a map move; {name}: the map, {path}: one of its files
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is not moved: its file {path} where it is to stay is not "
+"Garmin's file. Install the map again."
+msgstr ""
+
+#. TRANSLATORS: a step of a map move: its files removed from where it was ("… · 1
+#. of 3")
+#: openexpress/maps.py
+#, python-brace-format
+msgid "Removing {name} from where it was"
+msgstr ""
+
 #: openexpress/maps.py
 #, python-brace-format
 msgid "Activating the map on the Garmin server…"
@@ -11813,6 +12174,46 @@ msgstr ""
 #: openexpress/maps.py
 #, python-brace-format
 msgid "Map “{name}” cannot be removed"
+msgstr ""
+
+#. TRANSLATORS: error of a map install, update, move or removal; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is on the memory card, which is not in the device or cannot be "
+"read. Put the card back, then try again."
+msgstr ""
+
+#. TRANSLATORS: error of a map install, update or removal; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is on the device and on its memory card: openExpress does not "
+"change it until one of the two is removed, e.g. in Garmin Express."
+msgstr ""
+
+#. TRANSLATORS: error of a map install; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” cannot be installed on the memory card: the device has no "
+"memory card, or openExpress cannot tell which of its storages it is."
+msgstr ""
+
+#. TRANSLATORS: error of a map install; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is on the memory card already. openExpress does not move maps "
+"to the device yet."
+msgstr ""
+
+#. TRANSLATORS: error of a map install; {name}: the map
+#: openexpress/maps.py
+#, python-brace-format
+msgid ""
+"Map “{name}” is on the device already. openExpress does not move maps to the "
+"memory card yet."
 msgstr ""
 
 #. TRANSLATORS: error of a map removal: the device hides the folder of the map's files

@@ -280,11 +280,29 @@ class ObjectInfo:
         return self.format == FORMAT_FOLDER
 
 
+# StorageType of a StorageInfo dataset (PTP 5.2.2): a memory card is RemovableRAM.
+STORAGE_FIXED_ROM, STORAGE_REMOVABLE_ROM, STORAGE_FIXED_RAM, STORAGE_REMOVABLE_RAM = 1, 2, 3, 4
+
+
 @dataclass(frozen=True)
 class StorageInfo:
     capacity: int  # bytes
     free: int  # bytes
     description: str  # its name, as the device gives it (e.g. "Internal Storage")
+    # As the device gives them: StorageType (STORAGE_*), FilesystemType (2: generic
+    # hierarchical, all a Garmin device says) and AccessCapability (0: read and write).
+    storage_type: int = 0
+    filesystem: int = 0
+    access: int = 0
+
+    @property
+    def removable(self) -> bool:
+        """A storage the device says can be taken out (a memory card)."""
+        return self.storage_type in (STORAGE_REMOVABLE_ROM, STORAGE_REMOVABLE_RAM)
+
+    @property
+    def read_only(self) -> bool:
+        return self.access != 0
 
 
 def parse_object_info(handle: int, data: bytes, hidden: bool = False) -> ObjectInfo:
@@ -923,16 +941,17 @@ class Session:
         return struct.unpack_from("<Q", data, 14)[0] if len(data) >= 22 else None
 
     def storage_info(self, storage: int) -> StorageInfo:
-        """The size of the storage, its free space and its name (GetStorageInfo)."""
+        """The size of the storage, its free space, its name and its kind (GetStorageInfo)."""
         data, _answer = self._ok(GET_STORAGE_INFO, storage)
         if len(data) < 22:
             raise PtpError(_("The device sent an incomplete answer."))
+        kind, filesystem, access = struct.unpack_from("<HHH", data, 0)
         capacity, free = struct.unpack_from("<QQ", data, 6)
         try:
             description = read_string(data, 26)[0]
         except PtpError:
             description = ""  # a dataset cut after the sizes: they are what matters
-        return StorageInfo(capacity, free, description)
+        return StorageInfo(capacity, free, description, kind, filesystem, access)
 
     def info(self, handle: int, hidden: bool = False) -> ObjectInfo:
         data, _answer = self._ok(GET_OBJECT_INFO, handle)

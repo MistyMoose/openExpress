@@ -129,6 +129,17 @@ class Storage(ABC):
     # yet (openexpress.music refuses to write there instead of creating its folder here); a
     # device with one storage (most of them) keeps this empty.
     other_storages: tuple[str, ...] = ()
+    # The device's other storages themselves, opened beside this one (mac_storage, gio_storage),
+    # each with its name as the device gives it (`description`) and whether the device says it
+    # can be taken out (`removable`; None: not told): a memory card among them is found by
+    # openexpress.device.card. A device with one storage keeps this empty.
+    others: tuple[Storage, ...] = ()
+    description = ""
+    removable: bool | None = None
+    # The device's memory card in the computer's card reader, standing in for the card over MTP
+    # for an install or a move (openexpress.device.card.reader_card); `in_reader` on that storage.
+    card_volume: Storage | None = None
+    in_reader = False
     # Whether write_file keeps the file it replaces until the new one is whole (a temporary
     # copy renamed at the end), so both have to fit for a while: what the space checks count.
     # Over MTP the old file is deleted before the new one is sent. (What a failed write
@@ -312,6 +323,27 @@ class Storage(ABC):
 
     def _read_start(self, real_path: str, count: int) -> bytes:
         return self._read(real_path)[:count]
+
+    def copy_out(self, path: str, dest: Path, told=None) -> int:
+        """The file at `path` copied to `dest` on this computer, never held whole where the
+        storage can stream it (over MTP, as the device sends it); `told(done, total)` as the
+        bytes come. The bytes copied; `dest` is removed when the copy fails."""
+        real = self.resolve(path, strict=True)
+        if real is None:
+            raise DeviceError(_("File not found on the device: {path}").format(path=path))
+        dest = Path(dest)
+        try:
+            return self._copy_out(real, dest, told)
+        except BaseException:
+            dest.unlink(missing_ok=True)
+            raise
+
+    def _copy_out(self, real_path: str, dest: Path, told=None) -> int:
+        data = self._read(real_path)
+        dest.write_bytes(data)
+        if told is not None:
+            told(len(data), len(data))
+        return len(data)
 
     def _target(self, path: str) -> str:
         parent, name = _split_file_path(path)
@@ -637,6 +669,14 @@ class LocalStorage(Storage):
         with _os_errors(_("Cannot read {path}").format(path=real_path)), \
                 open(self._p(real_path), "rb") as f:
             return f.read(count)
+
+    def _copy_out(self, real_path: str, dest: Path, told=None) -> int:
+        with _os_errors(_("Cannot read {path}").format(path=real_path)):
+            shutil.copyfile(self._p(real_path), dest)
+        size = dest.stat().st_size
+        if told is not None:
+            told(size, size)
+        return size
 
     def _write(self, real_path: str, data: bytes) -> None:
         """As _write_file: under a temporary name, synced, then renamed."""

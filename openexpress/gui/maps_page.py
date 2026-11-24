@@ -504,7 +504,7 @@ class MapsPage:
                     m, self.maps_cache, s.storage,
                     activate=lambda ident: s.client.activate_maps(s.device.raw, [ident]),
                     session=s.client.http, progress=self.progress,
-                    url_salt=s.client.consumer.url_salt)),
+                    url_salt=s.client.consumer.url_salt, device=s.device)),
                 # TRANSLATORS: toast after a map of Garmin was installed; {name}: the map's name
                 lambda rep: (self.toast(_("Copied {name}; unplug the device to load it")
                                         .format(name=m.name)),
@@ -527,7 +527,8 @@ class MapsPage:
             self.run_task(
                 _("Removing {name}…").format(name=m.name),
                 writes_to_device(lambda: mp.uninstall(m, self.maps_cache, s.storage,
-                                                      progress=self.progress)),
+                                                      progress=self.progress,
+                                                      device=s.device)),
                 lambda removed: (self.toast(self._removed_files(len(removed))),
                                  self.load_section("maps", force=True)),
                 read_again_after_failure(self, "maps"), failed_title=_("Map Not Removed"))

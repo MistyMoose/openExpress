@@ -604,6 +604,10 @@ class GioStorage(Storage):
         self._close(stream, what, "read", context)
         return b"".join(chunks)
 
+    def _copy_out(self, real_path: str, dest: Path, told=None) -> int:
+        entry = self.info(real_path)
+        return self.copy_to_local(real_path, dest, entry.size if entry else 0, told)
+
     @_on_the_device
     def copy_to_local(self, real_path: str, dest: Path, size: int, told=None) -> int:
         """The file at this real path copied whole by one copy of gvfs into `dest` on this
@@ -2329,12 +2333,15 @@ def _mtp_storage(uri: str, usb: GarminUsb | None) -> GioStorage:
         st.usb = usb
     named = list(zip(candidates, storages))
     for name, st in named:
+        st.description = name  # gvfs names each storage's folder as the device names it
+    for name, st in named:
         if st.exists("GARMIN/GarminDevice.xml"):
             st.device_uri = uri
             # A device with more than one top-level storage (e.g. a Forerunner 645 Music's
             # small Primary, beside its Media one): music.py refuses to create its folder on
             # the wrong one.
             st.other_storages = tuple(n for n, s in named if s is not st)
+            st.others = tuple(s for _n, s in named if s is not st)  # a memory card among them
             log.info("device: %d storage%s: %s; GARMIN on %s", len(named),
                      "" if len(named) == 1 else "s", ", ".join(candidates), name)
             return st

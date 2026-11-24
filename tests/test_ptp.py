@@ -1064,7 +1064,18 @@ def test_a_folder_the_device_does_not_make_is_refused(device):
 def test_the_size_free_space_and_name_of_a_storage(device):
     with ptp.Session(device) as session:
         info = session.storage_info(STORAGE)
-    assert info == ptp.StorageInfo(2 * device.free, device.free, "Internal")
+    assert info == ptp.StorageInfo(2 * device.free, device.free, "Internal",
+                                   ptp.STORAGE_FIXED_RAM, 2, 0)
+    assert not info.removable and not info.read_only
+
+
+def test_a_memory_card_is_told_by_its_storage_type(device):
+    """A GPSMAP H1i Plus lists its card as a second storage, "Memory Card", RemovableRAM."""
+    device.add_storage(0x00020001, "Memory Card", 128 * 10**9, 127 * 10**9,
+                       kind=ptp.STORAGE_REMOVABLE_RAM)
+    with ptp.Session(device) as session:
+        info = session.storage_info(0x00020001)
+    assert (info.description, info.removable, info.read_only) == ("Memory Card", True, False)
 
 
 def test_the_modification_date_of_an_object(device):

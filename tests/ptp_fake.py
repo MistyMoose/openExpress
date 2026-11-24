@@ -61,6 +61,7 @@ class _ExtraStorage:
     description: str
     capacity: int
     free: int
+    kind: int = 3  # StorageType: 3 FixedRAM, 4 RemovableRAM (a memory card)
 
 
 class FakeDevice:
@@ -120,10 +121,12 @@ class FakeDevice:
             parent = found
         return parent
 
-    def add_storage(self, store_id: int, description: str, capacity: int, free: int) -> None:
+    def add_storage(self, store_id: int, description: str, capacity: int, free: int,
+                    kind: int = 3) -> None:
         """A second storage the device has, besides STORAGE: empty of files (GetObjectHandles
-        of it returns none), its own description, capacity and free space (GetStorageInfo)."""
-        self.extra_storages[store_id] = _ExtraStorage(description, capacity, free)
+        of it returns none), its own description, capacity, free space and StorageType
+        (GetStorageInfo; 4: a memory card)."""
+        self.extra_storages[store_id] = _ExtraStorage(description, capacity, free, kind)
 
     def add_twin(self, path: str, name: str | None = None, data: bytes | None = None) -> int:
         """A hidden object beside the one at `path`, in the same folder, called `name` (by
@@ -244,10 +247,10 @@ class FakeDevice:
             extra = self.extra_storages.get(params[0]) if params else None
             if params and params[0] != STORAGE and extra is None:
                 return (ptp.INVALID_STORAGE_ID,)
-            capacity, free, description = (
-                (extra.capacity, extra.free, extra.description) if extra is not None
-                else (2 * self.free, self.free, "Internal"))
-            return ptp.OK, (struct.pack("<HHHQQI", 3, 2, 0, capacity, free, 0xFFFFFFFF)
+            capacity, free, description, kind = (
+                (extra.capacity, extra.free, extra.description, extra.kind) if extra is not None
+                else (2 * self.free, self.free, "Internal", 3))
+            return ptp.OK, (struct.pack("<HHHQQI", kind, 2, 0, capacity, free, 0xFFFFFFFF)
                             + ptp.ptp_string(description) + ptp.ptp_string(""))
         if operation in (ptp.GET_OBJECT_HANDLES, ptp.GARMIN_GET_OBJECT_IDS):
             hidden = operation == ptp.GARMIN_GET_OBJECT_IDS
